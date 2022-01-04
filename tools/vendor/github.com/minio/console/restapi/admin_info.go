@@ -19,8 +19,8 @@ package restapi
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -40,7 +40,7 @@ import (
 func registerAdminInfoHandlers(api *operations.ConsoleAPI) {
 	// return usage stats
 	api.AdminAPIAdminInfoHandler = admin_api.AdminInfoHandlerFunc(func(params admin_api.AdminInfoParams, session *models.Principal) middleware.Responder {
-		infoResp, err := getAdminInfoResponse(session)
+		infoResp, err := getAdminInfoResponse(session, params)
 		if err != nil {
 			return admin_api.NewAdminInfoDefault(int(err.Code)).WithPayload(err)
 		}
@@ -57,15 +57,16 @@ func registerAdminInfoHandlers(api *operations.ConsoleAPI) {
 
 }
 
-type usageInfo struct {
+type UsageInfo struct {
 	Buckets    int64
 	Objects    int64
 	Usage      int64
 	DisksUsage int64
+	Servers    []*models.ServerProperties
 }
 
-// getAdminInfo invokes admin info and returns a parsed `usageInfo` structure
-func getAdminInfo(ctx context.Context, client MinioAdmin) (*usageInfo, error) {
+// GetAdminInfo invokes admin info and returns a parsed `UsageInfo` structure
+func GetAdminInfo(ctx context.Context, client MinioAdmin) (*UsageInfo, error) {
 	serverInfo, err := client.serverInfo(ctx)
 	if err != nil {
 		return nil, err
@@ -80,11 +81,46 @@ func getAdminInfo(ctx context.Context, client MinioAdmin) (*usageInfo, error) {
 		}
 	}
 
-	return &usageInfo{
+	//serverArray contains the serverProperties which describe the servers in the network
+	var serverArray []*models.ServerProperties
+	for _, serv := range serverInfo.Servers {
+		var drives = []*models.ServerDrives{}
+
+		for _, drive := range serv.Disks {
+			drives = append(drives, &models.ServerDrives{
+				State:          drive.State,
+				UUID:           drive.UUID,
+				Endpoint:       drive.Endpoint,
+				RootDisk:       drive.RootDisk,
+				DrivePath:      drive.DrivePath,
+				Healing:        drive.Healing,
+				Model:          drive.Model,
+				TotalSpace:     int64(drive.TotalSpace),
+				UsedSpace:      int64(drive.UsedSpace),
+				AvailableSpace: int64(drive.AvailableSpace),
+			})
+		}
+
+		var newServer = &models.ServerProperties{
+			State:      serv.State,
+			Endpoint:   serv.Endpoint,
+			Uptime:     serv.Uptime,
+			Version:    serv.Version,
+			CommitID:   serv.CommitID,
+			PoolNumber: int64(serv.PoolNumber),
+			Network:    serv.Network,
+			Drives:     drives,
+		}
+
+		serverArray = append(serverArray, newServer)
+	}
+
+	return &UsageInfo{
 		Buckets:    int64(serverInfo.Buckets.Count),
 		Objects:    int64(serverInfo.Objects.Count),
 		Usage:      int64(serverInfo.Usage.Size),
 		DisksUsage: usedSpace,
+		Servers:    serverArray,
 	}, nil
 }
 
@@ -419,7 +455,7 @@ var widgets = []Metric{
 		},
 		Targets: []Target{
 			{
-				Expr:         `sum by (server) (rate(minio_s3_traffic_received_bytes{job="${jobid}"}[$__interval]))`,
+				Expr:         `sum by (server) (rate(minio_s3_traffic_received_bytes{job="${jobid}"}[$__rate_interval]))`,
 				LegendFormat: "Data Received [{{server}}]",
 			},
 		},
@@ -436,7 +472,7 @@ var widgets = []Metric{
 		},
 		Targets: []Target{
 			{
-				Expr:         `sum by (server) (rate(minio_s3_traffic_sent_bytes{job="${jobid}"}[$__interval]))`,
+				Expr:         `sum by (server) (rate(minio_s3_traffic_sent_bytes{job="${jobid}"}[$__rate_interval]))`,
 				LegendFormat: "Data Sent [{{server}}]",
 			},
 		},
@@ -582,7 +618,7 @@ var widgets = []Metric{
 		},
 		Targets: []Target{
 			{
-				Expr:         `sum by (server,api) (rate(minio_s3_requests_total{job="${jobid}"}[$__interval]))`,
+				Expr:         `sum by (server,api) (increase(minio_s3_requests_total{job="${jobid}"}[$__rate_interval]))`,
 				LegendFormat: "{{server,api}}",
 			},
 		},
@@ -599,7 +635,7 @@ var widgets = []Metric{
 		},
 		Targets: []Target{
 			{
-				Expr:         `rate(minio_s3_requests_errors_total{job="${jobid}"}[$__interval])`,
+				Expr:         `sum by (server,api) (increase(minio_s3_requests_errors_total{job="${jobid}"}[$__rate_interval]))`,
 				LegendFormat: "{{server,api}}",
 			},
 		},
@@ -616,13 +652,13 @@ var widgets = []Metric{
 		},
 		Targets: []Target{
 			{
-				Expr:         `rate(minio_inter_node_traffic_sent_bytes{job="${jobid}"}[$__interval])`,
+				Expr:         `rate(minio_inter_node_traffic_sent_bytes{job="${jobid}"}[$__rate_interval])`,
 				LegendFormat: "Internode Bytes Received [{{server}}]",
 				Step:         4,
 			},
 
 			{
-				Expr:         `rate(minio_inter_node_traffic_sent_bytes{job="${jobid}"}[$__interval])`,
+				Expr:         `rate(minio_inter_node_traffic_sent_bytes{job="${jobid}"}[$__rate_interval])`,
 				LegendFormat: "Internode Bytes Received [{{server}}]",
 			},
 		},
@@ -639,7 +675,7 @@ var widgets = []Metric{
 		},
 		Targets: []Target{
 			{
-				Expr:         `rate(minio_node_process_cpu_total_seconds{job="${jobid}"}[$__interval])`,
+				Expr:         `rate(minio_node_process_cpu_total_seconds{job="${jobid}"}[$__rate_interval])`,
 				LegendFormat: "CPU Usage Rate [{{server}}]",
 			},
 		},
@@ -707,13 +743,13 @@ var widgets = []Metric{
 		},
 		Targets: []Target{
 			{
-				Expr:         `rate(minio_node_syscall_read_total{job="${jobid}"}[$__interval])`,
+				Expr:         `rate(minio_node_syscall_read_total{job="${jobid}"}[$__rate_interval])`,
 				LegendFormat: "Read Syscalls [{{server}}]",
 				Step:         60,
 			},
 
 			{
-				Expr:         `rate(minio_node_syscall_read_total{job="${jobid}"}[$__interval])`,
+				Expr:         `rate(minio_node_syscall_read_total{job="${jobid}"}[$__rate_interval])`,
 				LegendFormat: "Read Syscalls [{{server}}]",
 			},
 		},
@@ -747,12 +783,12 @@ var widgets = []Metric{
 		},
 		Targets: []Target{
 			{
-				Expr:         `rate(minio_node_io_rchar_bytes{job="${jobid}"}[$__interval])`,
+				Expr:         `rate(minio_node_io_rchar_bytes{job="${jobid}"}[$__rate_interval])`,
 				LegendFormat: "Node RChar [{{server}}]",
 			},
 
 			{
-				Expr:         `rate(minio_node_io_rchar_bytes{job="${jobid}"}[$__interval])`,
+				Expr:         `rate(minio_node_io_rchar_bytes{job="${jobid}"}[$__rate_interval])`,
 				LegendFormat: "Node RChar [{{server}}]",
 			},
 		},
@@ -788,9 +824,14 @@ type LabelResults struct {
 }
 
 // getAdminInfoResponse returns the response containing total buckets, objects and usage.
-func getAdminInfoResponse(session *models.Principal) (*models.AdminInfoResponse, *models.Error) {
-	prometheusURL := getPrometheusURL()
-	mAdmin, err := newAdminClient(session)
+func getAdminInfoResponse(session *models.Principal, params admin_api.AdminInfoParams) (*models.AdminInfoResponse, *models.Error) {
+	prometheusURL := ""
+
+	if !*params.DefaultOnly {
+		prometheusURL = getPrometheusURL()
+	}
+
+	mAdmin, err := NewMinioAdminClient(session)
 	if err != nil {
 		return nil, prepareError(err)
 	}
@@ -807,12 +848,12 @@ func getUsageWidgetsForDeployment(prometheusURL string, mAdmin *madmin.AdminClie
 	if prometheusURL == "" {
 		// create a minioClient interface implementation
 		// defining the client to be used
-		adminClient := adminClient{client: mAdmin}
+		adminClient := AdminClient{Client: mAdmin}
 		// 20 seconds timeout
 		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 		defer cancel()
 		// serialize output
-		usage, err := getAdminInfo(ctx, adminClient)
+		usage, err := GetAdminInfo(ctx, adminClient)
 		if err != nil {
 			return nil, prepareError(err)
 		}
@@ -820,6 +861,7 @@ func getUsageWidgetsForDeployment(prometheusURL string, mAdmin *madmin.AdminClie
 			Buckets: usage.Buckets,
 			Objects: usage.Objects,
 			Usage:   usage.Usage,
+			Servers: usage.Servers,
 		}
 		return sessionResp, nil
 	}
@@ -852,35 +894,58 @@ func getUsageWidgetsForDeployment(prometheusURL string, mAdmin *madmin.AdminClie
 }
 
 func unmarshalPrometheus(endpoint string, data interface{}) bool {
-	resp, err := http.Get(endpoint)
+	httpClnt := GetConsoleHTTPClient()
+	resp, err := httpClnt.Get(endpoint)
 	if err != nil {
-		LogError("Unable to fetch labels from prometheus %s, %v", endpoint, err)
+		LogError("Unable to fetch labels from prometheus (%s)", resp.Status)
 		return true
 	}
-
-	body, err := ioutil.ReadAll(resp.Body)
-	resp.Body.Close()
-	if err != nil {
-		LogError("Unexpected error reading response from prometheus %s, %v", endpoint, err)
-		return true
-	}
+	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
-		LogError("Unexpected error from prometheus %s, %s (%s)", endpoint, string(body), resp.Status)
+		LogError("Unexpected error from prometheus (%s)", resp.Status)
 		return true
 	}
 
-	if err = json.Unmarshal(body, data); err != nil {
-		LogError("Unexpected error reading response from prometheus %s, %v", endpoint, err)
+	if err = json.NewDecoder(resp.Body).Decode(data); err != nil {
+		LogError("Unexpected error reading response from prometheus, %v", err)
 		return true
 	}
 
 	return false
 }
 
+func testPrometheusURL(url string) bool {
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url+"/-/healthy", nil)
+
+	if err != nil {
+		LogError("Error Building Request: (%v)", err)
+		return false
+	}
+
+	response, err := GetConsoleHTTPClient().Do(req)
+
+	if err != nil {
+		LogError("Non reachable Prometheus URL: (%v)", err)
+		return false
+
+	}
+
+	return response.StatusCode == http.StatusOK
+}
+
 func getAdminInfoWidgetResponse(params admin_api.DashboardWidgetDetailsParams) (*models.WidgetDetails, *models.Error) {
 	prometheusURL := getPrometheusURL()
 	prometheusJobID := getPrometheusJobID()
+
+	// We test if prometheus URL is reachable. this is meant to avoid unuseful calls and application hang.
+	if !testPrometheusURL(prometheusURL) {
+		error := errors.New("Prometheus URL is unreachable")
+		return nil, prepareError(error)
+	}
 
 	return getWidgetDetails(prometheusURL, prometheusJobID, params.WidgetID, params.Step, params.Start, params.End)
 }
@@ -949,8 +1014,8 @@ LabelsWaitLoop:
 					extraParamters = fmt.Sprintf("&start=%d&end=%d&step=%d", *inStart, *inEnd, *inStep)
 				}
 
-				// replace the `$__interval` global for step with unit (s for seconds)
-				queryExpr := strings.ReplaceAll(target.Expr, "$__interval", fmt.Sprintf("%ds", 120))
+				// replace the `$__rate_interval` global for step with unit (s for seconds)
+				queryExpr := strings.ReplaceAll(target.Expr, "$__rate_interval", fmt.Sprintf("%ds", 240))
 				if strings.Contains(queryExpr, "$") {
 					var re = regexp.MustCompile(`\$([a-z]+)`)
 

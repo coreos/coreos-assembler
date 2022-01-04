@@ -26,3 +26,7 @@ comment:
   layout: "header,diff"
   behavior: default
   require_changes: no
+
+ignore:
+  - internal/encoder/vm_color
+  - internal/encoder/vm_color_indent

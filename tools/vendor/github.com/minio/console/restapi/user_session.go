@@ -17,12 +17,43 @@
 package restapi
 
 import (
+	"context"
+	"encoding/json"
+	"net/http"
+	"net/url"
+	"time"
+
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/minio/console/models"
 	"github.com/minio/console/pkg/acl"
 	"github.com/minio/console/restapi/operations"
 	"github.com/minio/console/restapi/operations/user_api"
 )
+
+func isErasureMode() bool {
+	u, err := url.Parse(getMinIOServer())
+	if err != nil {
+		panic(err)
+	}
+	u.Path = "/minio/health/cluster"
+
+	req, err := http.NewRequest(http.MethodGet, u.String(), nil)
+	if err != nil {
+		panic(err)
+	}
+
+	clnt := GetConsoleHTTPClient()
+	resp, err := clnt.Do(req)
+	if err != nil {
+		panic(err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return false
+	}
+
+	return resp.Header.Get("x-minio-write-quorum") != ""
+}
 
 func registerSessionHandlers(api *operations.ConsoleAPI) {
 	// session check
@@ -37,15 +68,53 @@ func registerSessionHandlers(api *operations.ConsoleAPI) {
 
 // getSessionResponse parse the token of the current session and returns a list of allowed actions to render in the UI
 func getSessionResponse(session *models.Principal) (*models.SessionResponse, *models.Error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
 	// serialize output
 	if session == nil {
 		return nil, prepareError(errorGenericInvalidSession)
 	}
+
+	// initialize admin client
+	mAdminClient, err := NewMinioAdminClient(&models.Principal{
+		STSAccessKeyID:     session.STSAccessKeyID,
+		STSSecretAccessKey: session.STSSecretAccessKey,
+		STSSessionToken:    session.STSSessionToken,
+	})
+	if err != nil {
+		return nil, prepareError(err, errorGenericInvalidSession)
+	}
+	userAdminClient := AdminClient{Client: mAdminClient}
+	// Obtain the current policy assigned to this user
+	// necessary for generating the list of allowed endpoints
+	policy, err := getAccountPolicy(ctx, userAdminClient)
+	if err != nil {
+		return nil, prepareError(err, errorGenericInvalidSession)
+	}
+	// by default every user starts with an empty array of available actions
+	// therefore we would have access only to pages that doesn't require any privilege
+	// ie: service-account page
+	var actions []string
+	// if a policy is assigned to this user we parse the actions from there
+	if policy != nil {
+		actions = acl.GetActionsStringFromPolicy(policy)
+	}
+	rawPolicy, err := json.Marshal(policy)
+	if err != nil {
+		return nil, prepareError(err, errorGenericInvalidSession)
+	}
+	var sessionPolicy *models.IamPolicy
+	err = json.Unmarshal(rawPolicy, &sessionPolicy)
+	if err != nil {
+		return nil, prepareError(err)
+	}
 	sessionResp := &models.SessionResponse{
-		Pages:    acl.GetAuthorizedEndpoints(session.Actions),
-		Features: getListOfEnabledFeatures(),
-		Status:   models.SessionResponseStatusOk,
-		Operator: acl.GetOperatorMode(),
+		Pages:           acl.GetAuthorizedEndpoints(actions),
+		Features:        getListOfEnabledFeatures(),
+		Status:          models.SessionResponseStatusOk,
+		Operator:        false,
+		DistributedMode: isErasureMode(),
+		Policy:          sessionPolicy,
 	}
 	return sessionResp, nil
 }
@@ -53,5 +122,11 @@ func getSessionResponse(session *models.Principal) (*models.SessionResponse, *mo
 // getListOfEnabledFeatures returns a list of features
 func getListOfEnabledFeatures() []string {
 	var features []string
+	logSearchURL := getLogSearchURL()
+
+	if logSearchURL != "" {
+		features = append(features, "log-search")
+	}
+
 	return features
 }

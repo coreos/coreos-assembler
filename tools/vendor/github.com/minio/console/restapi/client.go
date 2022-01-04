@@ -30,7 +30,6 @@ import (
 
 	"github.com/minio/console/models"
 	"github.com/minio/console/pkg"
-	"github.com/minio/console/pkg/acl"
 	"github.com/minio/console/pkg/auth"
 	"github.com/minio/console/pkg/auth/ldap"
 	xjwt "github.com/minio/console/pkg/auth/token"
@@ -75,6 +74,10 @@ type MinioClient interface {
 	getObjectLockConfig(ctx context.Context, bucketName string) (lock string, mode *minio.RetentionMode, validity *uint, unit *minio.ValidityUnit, err error)
 	getLifecycleRules(ctx context.Context, bucketName string) (lifecycle *lifecycle.Configuration, err error)
 	setBucketLifecycle(ctx context.Context, bucketName string, config *lifecycle.Configuration) error
+	copyObject(ctx context.Context, dst minio.CopyDestOptions, src minio.CopySrcOptions) (minio.UploadInfo, error)
+	GetBucketTagging(ctx context.Context, bucketName string) (*tags.Tags, error)
+	SetBucketTagging(ctx context.Context, bucketName string, tags *tags.Tags) error
+	RemoveBucketTagging(ctx context.Context, bucketName string) error
 }
 
 // Interface implementation
@@ -83,6 +86,18 @@ type MinioClient interface {
 // from minIO api.
 type minioClient struct {
 	client *minio.Client
+}
+
+func (c minioClient) GetBucketTagging(ctx context.Context, bucketName string) (*tags.Tags, error) {
+	return c.client.GetBucketTagging(ctx, bucketName)
+}
+
+func (c minioClient) SetBucketTagging(ctx context.Context, bucketName string, tags *tags.Tags) error {
+	return c.client.SetBucketTagging(ctx, bucketName, tags)
+}
+
+func (c minioClient) RemoveBucketTagging(ctx context.Context, bucketName string) error {
+	return c.client.RemoveBucketTagging(ctx, bucketName)
 }
 
 // implements minio.ListBuckets(ctx)
@@ -196,6 +211,10 @@ func (c minioClient) setBucketLifecycle(ctx context.Context, bucketName string, 
 	return c.client.SetBucketLifecycle(ctx, bucketName, config)
 }
 
+func (c minioClient) copyObject(ctx context.Context, dst minio.CopyDestOptions, src minio.CopySrcOptions) (minio.UploadInfo, error) {
+	return c.client.CopyObject(ctx, dst, src)
+}
+
 // MCClient interface with all functions to be implemented
 // by mock when testing, it should include all mc/S3Client respective api calls
 // that are used within this project.
@@ -263,32 +282,26 @@ type ConsoleCredentialsI interface {
 	Get() (credentials.Value, error)
 	Expire()
 	GetAccountAccessKey() string
-	GetActions() []string
 }
 
 // Interface implementation
-type consoleCredentials struct {
-	consoleCredentials *credentials.Credentials
-	accountAccessKey   string
-	actions            []string
+type ConsoleCredentials struct {
+	ConsoleCredentials *credentials.Credentials
+	AccountAccessKey   string
 }
 
-func (c consoleCredentials) GetActions() []string {
-	return c.actions
+func (c ConsoleCredentials) GetAccountAccessKey() string {
+	return c.AccountAccessKey
 }
 
-func (c consoleCredentials) GetAccountAccessKey() string {
-	return c.accountAccessKey
+// Get implements *Login.Get()
+func (c ConsoleCredentials) Get() (credentials.Value, error) {
+	return c.ConsoleCredentials.Get()
 }
 
-// implements *Login.Get()
-func (c consoleCredentials) Get() (credentials.Value, error) {
-	return c.consoleCredentials.Get()
-}
-
-// implements *Login.Expire()
-func (c consoleCredentials) Expire() {
-	c.consoleCredentials.Expire()
+// Expire implements *Login.Expire()
+func (c ConsoleCredentials) Expire() {
+	c.ConsoleCredentials.Expire()
 }
 
 // consoleSTSAssumeRole it's a STSAssumeRole wrapper, in general
@@ -306,22 +319,13 @@ func (s consoleSTSAssumeRole) IsExpired() bool {
 	return s.stsAssumeRole.IsExpired()
 }
 
-func newConsoleCredentials(accessKey, secretKey, location string) (*credentials.Credentials, error) {
+func NewConsoleCredentials(accessKey, secretKey, location string) (*credentials.Credentials, error) {
 	// Future authentication methods can be added under this switch statement
 	switch {
-	// authentication for Operator Console
-	case acl.GetOperatorMode():
-		{
-			creds, err := auth.GetConsoleCredentialsForOperator(secretKey)
-			if err != nil {
-				return nil, err
-			}
-			return creds, nil
-		}
 	// LDAP authentication for Console
 	case ldap.GetLDAPEnabled():
 		{
-			creds, err := auth.GetCredentialsFromLDAP(GetConsoleSTSClient(), getMinIOServer(), accessKey, secretKey)
+			creds, err := auth.GetCredentialsFromLDAP(GetConsoleHTTPClient(), getMinIOServer(), accessKey, secretKey)
 			if err != nil {
 				return nil, err
 			}
@@ -337,10 +341,10 @@ func newConsoleCredentials(accessKey, secretKey, location string) (*credentials.
 				AccessKey:       accessKey,
 				SecretKey:       secretKey,
 				Location:        location,
-				DurationSeconds: xjwt.GetConsoleSTSDurationInSeconds(),
+				DurationSeconds: int(xjwt.GetConsoleSTSDuration().Seconds()),
 			}
 			stsAssumeRole := &credentials.STSAssumeRole{
-				Client:      GetConsoleSTSClient(),
+				Client:      GetConsoleHTTPClient(),
 				STSEndpoint: getMinIOServer(),
 				Options:     opts,
 			}
@@ -356,14 +360,14 @@ func getConsoleCredentialsFromSession(claims *models.Principal) *credentials.Cre
 	return credentials.NewStaticV4(claims.STSAccessKeyID, claims.STSSecretAccessKey, claims.STSSessionToken)
 }
 
-// newMinioClient creates a new MinIO client based on the consoleCredentials extracted
+// newMinioClient creates a new MinIO client based on the ConsoleCredentials extracted
 // from the provided session token
 func newMinioClient(claims *models.Principal) (*minio.Client, error) {
 	creds := getConsoleCredentialsFromSession(claims)
 	minioClient, err := minio.New(getMinIOEndpoint(), &minio.Options{
 		Creds:     creds,
 		Secure:    getMinIOEndpointIsSecure(),
-		Transport: GetConsoleSTSClient().Transport,
+		Transport: GetConsoleHTTPClient().Transport,
 	})
 	if err != nil {
 		return nil, err

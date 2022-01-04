@@ -18,7 +18,7 @@ func (s *set) Get(idx int) (Key, bool) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	if idx >= 0 && idx < s.Len() {
+	if idx >= 0 && idx < len(s.keys) {
 		return s.keys[idx], true
 	}
 	return nil, false
@@ -69,9 +69,9 @@ func (s *set) Remove(key Key) bool {
 			case 0:
 				s.keys = s.keys[1:]
 			case len(s.keys) - 1:
-				s.keys = s.keys[:i-1]
+				s.keys = s.keys[:i]
 			default:
-				s.keys = append(s.keys[:i-1], s.keys[i+1:]...)
+				s.keys = append(s.keys[:i], s.keys[i+1:]...)
 			}
 			return true
 		}
@@ -142,15 +142,22 @@ func (s *set) UnmarshalJSON(data []byte) error {
 		return errors.Wrap(err, `failed to unmarshal into Key (proxy)`)
 	}
 
+	var options []ParseOption
+	if dc := s.dc; dc != nil {
+		if localReg := dc.Registry(); localReg != nil {
+			options = append(options, withLocalRegistry(localReg))
+		}
+	}
+
 	if len(proxy.Keys) == 0 {
-		k, err := ParseKey(data)
+		k, err := ParseKey(data, options...)
 		if err != nil {
 			return errors.Wrap(err, `failed to unmarshal key from JSON headers`)
 		}
 		s.keys = append(s.keys, k)
 	} else {
 		for i, buf := range proxy.Keys {
-			k, err := ParseKey([]byte(buf))
+			k, err := ParseKey([]byte(buf), options...)
 			if err != nil {
 				return errors.Wrapf(err, `failed to unmarshal key #%d (total %d) from multi-key JWK set`, i+1, len(proxy.Keys))
 			}
@@ -164,12 +171,41 @@ func (s *set) LookupKeyID(kid string) (Key, bool) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	for iter := s.Iterate(context.TODO()); iter.Next(context.TODO()); {
-		pair := iter.Pair()
-		key := pair.Value.(Key) //nolint:forcetypeassert
+	n := s.Len()
+	for i := 0; i < n; i++ {
+		key, ok := s.Get(i)
+		if !ok {
+			return nil, false
+		}
 		if key.KeyID() == kid {
 			return key, true
 		}
 	}
 	return nil, false
+}
+
+func (s *set) DecodeCtx() DecodeCtx {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.dc
+}
+
+func (s *set) SetDecodeCtx(dc DecodeCtx) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.dc = dc
+}
+
+func (s *set) Clone() (Set, error) {
+	s2 := &set{}
+
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	s2.keys = make([]Key, len(s.keys))
+
+	for i := 0; i < len(s.keys); i++ {
+		s2.keys[i] = s.keys[i]
+	}
+	return s2, nil
 }

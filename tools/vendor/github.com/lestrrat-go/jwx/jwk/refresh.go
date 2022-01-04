@@ -26,9 +26,11 @@ import (
 // All JWKS objects that are retrieved via the auto-fetch mechanism should be
 // treated read-only, as they are shared among the consumers and this object.
 type AutoRefresh struct {
+	errSink      chan AutoRefreshError
 	cache        map[string]Set
 	configureCh  chan struct{}
 	fetching     map[string]chan struct{}
+	muErrSink    sync.Mutex
 	muCache      sync.RWMutex
 	muFetching   sync.Mutex
 	muRegistry   sync.RWMutex
@@ -445,30 +447,47 @@ func (af *AutoRefresh) doRefreshRequest(ctx context.Context, url string, enableB
 
 	res, err := fetch(ctx, url, options...)
 	if err == nil {
-		defer res.Body.Close()
-		keyset, parseErr := ParseReader(res.Body)
-		if parseErr == nil {
-			// Got a new key set. replace the keyset in the target
-			af.muCache.Lock()
-			af.cache[url] = keyset
-			af.muCache.Unlock()
-			nextInterval := calculateRefreshDuration(res, t.refreshInterval, t.minRefreshInterval)
-			rtr := &resetTimerReq{
-				t: t,
-				d: nextInterval,
-			}
-			select {
-			case <-ctx.Done():
-				return ctx.Err()
-			case af.resetTimerCh <- rtr:
-			}
+		if res.StatusCode != http.StatusOK {
+			// now, can there be a remote resource that responds with a status code
+			// other than 200 and still be valid...? naaaaaaahhhhhh....
+			err = errors.Errorf(`bad response status code (%d)`, res.StatusCode)
+		} else {
+			defer res.Body.Close()
+			keyset, parseErr := ParseReader(res.Body)
+			if parseErr == nil {
+				// Got a new key set. replace the keyset in the target
+				af.muCache.Lock()
+				af.cache[url] = keyset
+				af.muCache.Unlock()
+				nextInterval := calculateRefreshDuration(res, t.refreshInterval, t.minRefreshInterval)
+				rtr := &resetTimerReq{
+					t: t,
+					d: nextInterval,
+				}
+				select {
+				case <-ctx.Done():
+					return ctx.Err()
+				case af.resetTimerCh <- rtr:
+				}
 
-			now := time.Now()
-			t.lastRefresh = now.Local()
-			t.nextRefresh = now.Add(nextInterval).Local()
-			return nil
+				now := time.Now()
+				t.lastRefresh = now.Local()
+				t.nextRefresh = now.Add(nextInterval).Local()
+				return nil
+			}
+			err = parseErr
 		}
-		err = parseErr
+	}
+
+	// At this point if err != nil, we know that there was something wrong
+	// in either the fetching or the parsing. Send this error to be processed,
+	// but take the extra mileage to not block regular processing by
+	// discarding the error if we fail to send it through the channel
+	if err != nil {
+		select {
+		case af.errSink <- AutoRefreshError{Error: err, URL: url}:
+		default:
+		}
 	}
 
 	// We either failed to perform the HTTP GET, or we failed to parse the
@@ -479,7 +498,7 @@ func (af *AutoRefresh) doRefreshRequest(ctx context.Context, url string, enableB
 	// If we failed to get a single time, then queue another fetch in the future.
 	rtr := &resetTimerReq{
 		t: t,
-		d: t.minRefreshInterval,
+		d: calculateRefreshDuration(res, t.refreshInterval, t.minRefreshInterval),
 	}
 	select {
 	case <-ctx.Done():
@@ -490,18 +509,46 @@ func (af *AutoRefresh) doRefreshRequest(ctx context.Context, url string, enableB
 	return err
 }
 
+// ErrorSink sets a channel to receive JWK fetch errors, if any.
+// Only the errors that occurred *after* the channel was set  will be sent.
+//
+// The user is responsible for properly draining the channel. If the channel
+// is not drained properly, errors will be discarded.
+//
+// To disable, set a nil channel.
+func (af *AutoRefresh) ErrorSink(ch chan AutoRefreshError) {
+	af.muErrSink.Lock()
+	af.errSink = ch
+	af.muErrSink.Unlock()
+}
+
 func calculateRefreshDuration(res *http.Response, refreshInterval *time.Duration, minRefreshInterval time.Duration) time.Duration {
 	// This always has precedence
 	if refreshInterval != nil {
 		return *refreshInterval
 	}
 
-	if v := res.Header.Get(`Cache-Control`); v != "" {
-		dir, err := httpcc.ParseResponse(v)
-		if err == nil {
-			maxAge, ok := dir.MaxAge()
-			if ok {
-				resDuration := time.Duration(maxAge) * time.Second
+	if res != nil {
+		if v := res.Header.Get(`Cache-Control`); v != "" {
+			dir, err := httpcc.ParseResponse(v)
+			if err == nil {
+				maxAge, ok := dir.MaxAge()
+				if ok {
+					resDuration := time.Duration(maxAge) * time.Second
+					if resDuration > minRefreshInterval {
+						return resDuration
+					}
+					return minRefreshInterval
+				}
+				// fallthrough
+			}
+			// fallthrough
+		}
+
+		if v := res.Header.Get(`Expires`); v != "" {
+			expires, err := http.ParseTime(v)
+			if err == nil {
+				resDuration := time.Until(expires)
 				if resDuration > minRefreshInterval {
 					return resDuration
 				}
@@ -509,19 +556,6 @@ func calculateRefreshDuration(res *http.Response, refreshInterval *time.Duration
 			}
 			// fallthrough
 		}
-		// fallthrough
-	}
-
-	if v := res.Header.Get(`Expires`); v != "" {
-		expires, err := http.ParseTime(v)
-		if err == nil {
-			resDuration := time.Until(expires)
-			if resDuration > minRefreshInterval {
-				return resDuration
-			}
-			return minRefreshInterval
-		}
-		// fallthrough
 	}
 
 	// Previous fallthroughs are a little redandunt, but hey, it's all good.

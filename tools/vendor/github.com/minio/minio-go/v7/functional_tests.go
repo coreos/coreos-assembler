@@ -151,6 +151,8 @@ func logError(testName string, function string, args map[string]interface{}, sta
 	// addition to NotImplemented error returned from server
 	if isErrNotImplemented(err) {
 		ignoredLog(testName, function, args, startTime, message).Info()
+	} else if isRunOnFail() {
+		failureLog(testName, function, args, startTime, alert, message, err).Error()
 	} else {
 		failureLog(testName, function, args, startTime, alert, message, err).Fatal()
 	}
@@ -258,6 +260,10 @@ func cleanupVersionedBucket(bucketName string, c *minio.Client) error {
 
 func isErrNotImplemented(err error) bool {
 	return minio.ToErrorResponse(err).Code == "NotImplemented"
+}
+
+func isRunOnFail() bool {
+	return os.Getenv("RUN_ON_FAIL") == "1"
 }
 
 func init() {
@@ -2885,8 +2891,8 @@ func testFPutObject() {
 		logError(testName, function, args, startTime, "", "StatObject failed", err)
 		return
 	}
-	if rGTar.ContentType != "application/x-gtar" && rGTar.ContentType != "application/octet-stream" {
-		logError(testName, function, args, startTime, "", "ContentType does not match, expected application/x-gtar or application/octet-stream, got "+rGTar.ContentType, err)
+	if rGTar.ContentType != "application/x-gtar" && rGTar.ContentType != "application/octet-stream" && rGTar.ContentType != "application/x-tar" {
+		logError(testName, function, args, startTime, "", "ContentType does not match, expected application/x-tar or application/octet-stream, got "+rGTar.ContentType, err)
 		return
 	}
 
@@ -6476,8 +6482,8 @@ func testFPutObjectV2() {
 		logError(testName, function, args, startTime, "", "Unexpected size", nil)
 		return
 	}
-	if rGTar.ContentType != "application/x-gtar" && rGTar.ContentType != "application/octet-stream" {
-		logError(testName, function, args, startTime, "", "Content-Type headers mismatched, expected: application/x-gtar , got "+rGTar.ContentType, err)
+	if rGTar.ContentType != "application/x-gtar" && rGTar.ContentType != "application/octet-stream" && rGTar.ContentType != "application/x-tar" {
+		logError(testName, function, args, startTime, "", "Content-Type headers mismatched, expected: application/x-tar , got "+rGTar.ContentType, err)
 		return
 	}
 
@@ -11593,22 +11599,20 @@ func testRemoveObjects() {
 	var reader = getDataReader("datafile-129-MB")
 	defer reader.Close()
 
-	n, err := c.PutObject(context.Background(), bucketName, objectName, reader, int64(bufSize), minio.PutObjectOptions{})
+	_, err = c.PutObject(context.Background(), bucketName, objectName, reader, int64(bufSize), minio.PutObjectOptions{})
 	if err != nil {
-		log.Fatalln(err)
+		logError(testName, function, args, startTime, "", "Error uploading object", err)
 	}
-	log.Println("Uploaded", objectName, " of size: ", n, "to bucket: ", bucketName, "Successfully.")
 
 	// Replace with smaller...
 	bufSize = dataFileMap["datafile-10-kB"]
 	reader = getDataReader("datafile-10-kB")
 	defer reader.Close()
 
-	n, err = c.PutObject(context.Background(), bucketName, objectName, reader, int64(bufSize), minio.PutObjectOptions{})
+	_, err = c.PutObject(context.Background(), bucketName, objectName, reader, int64(bufSize), minio.PutObjectOptions{})
 	if err != nil {
-		log.Fatalln(err)
+		logError(testName, function, args, startTime, "", "Error uploading object", err)
 	}
-	log.Println("Uploaded", objectName, " of size: ", n, "to bucket: ", bucketName, "Successfully.")
 
 	t := time.Date(2030, time.April, 25, 14, 0, 0, 0, time.UTC)
 	m := minio.RetentionMode(minio.Governance)

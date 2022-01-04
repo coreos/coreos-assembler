@@ -9,6 +9,9 @@ import (
 )
 
 const (
+	// XATTR_SUPPORTED will be true if the current platform is supported
+	XATTR_SUPPORTED = true
+
 	EXTATTR_NAMESPACE_USER = 1
 
 	// ENOATTR is not exported by the syscall package on Linux, because it is

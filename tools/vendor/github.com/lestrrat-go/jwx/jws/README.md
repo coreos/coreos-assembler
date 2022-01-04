@@ -1,12 +1,15 @@
-# github.com/lestrrat-go/jwx/jws [![Go Reference](https://pkg.go.dev/badge/github.com/lestrrat-go/jwx/jws.svg)](https://pkg.go.dev/github.com/lestrrat-go/jwx/jws)
+# JWS [![Go Reference](https://pkg.go.dev/badge/github.com/lestrrat-go/jwx/jws.svg)](https://pkg.go.dev/github.com/lestrrat-go/jwx/jws)
 
-Package jws implements JWS as described in [RFC7515](https://tools.ietf.org/html/rfc7515)
+Package jws implements JWS as described in [RFC7515](https://tools.ietf.org/html/rfc7515) and [RFC7797](https://tools.ietf.org/html/rfc7797)
 
 * Parse and generate compact or JSON serializations
 * Sign and verify arbitrary payload
 * Use any of the keys supported in [github.com/lestrrat-go/jwx/jwk](../jwk)
 * Add arbitrary fields in the JWS object
 * Ability to add/replace existing signature methods
+* Respect "b64" settings for RFC7797
+
+How-to style documentation can be found in the [docs directory](../docs).
 
 Examples are located in the examples directory ([jws_example_test.go](../examples/jws_example_test.go))
 
@@ -23,15 +26,18 @@ Supported signature algorithms:
 | ECDSA using P-256 and SHA-256           | YES        | jwa.ES256                |
 | ECDSA using P-384 and SHA-384           | YES        | jwa.ES384                |
 | ECDSA using P-521 and SHA-512           | YES        | jwa.ES512                |
-| ECDSA using secp256k1 and SHA-256 (1)   | YES        | jwa.ES256K               |
+| ECDSA using secp256k1 and SHA-256 (2)   | YES        | jwa.ES256K               |
 | RSASSA-PSS using SHA256 and MGF1-SHA256 | YES        | jwa.PS256                |
 | RSASSA-PSS using SHA384 and MGF1-SHA384 | YES        | jwa.PS384                |
 | RSASSA-PSS using SHA512 and MGF1-SHA512 | YES        | jwa.PS512                |
 | EdDSA (1)                               | YES        | jwa.EdDSA                |
 
 * Note 1: Experimental
+* Note 2: Experimental, and must be toggled using `-tags jwx_es256k` build tag
 
-# Sign and verify arbitrary data
+# SYNOPSIS
+
+## Sign and verify arbitrary data
 
 ```go
 import(
@@ -68,7 +74,7 @@ func main() {
 }
 ```
 
-# Programatically manipulate `jws.Message`
+## Programatically manipulate `jws.Message`
 
 ```go
 func ExampleMessage() {

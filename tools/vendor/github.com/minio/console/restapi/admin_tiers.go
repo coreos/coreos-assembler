@@ -131,13 +131,13 @@ func getTiers(ctx context.Context, client MinioAdmin) (*models.TierListResponse,
 
 // getTiersResponse returns a response with a list of tiers
 func getTiersResponse(session *models.Principal) (*models.TierListResponse, *models.Error) {
-	mAdmin, err := newAdminClient(session)
+	mAdmin, err := NewMinioAdminClient(session)
 	if err != nil {
 		return nil, prepareError(err)
 	}
 	// create a minioClient interface implementation
 	// defining the client to be used
-	adminClient := adminClient{client: mAdmin}
+	adminClient := AdminClient{Client: mAdmin}
 	// 20 seconds timeout
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
@@ -221,13 +221,13 @@ func addTier(ctx context.Context, client MinioAdmin, params *admin_api.AddTierPa
 
 // getAddTierResponse returns the response of admin tier
 func getAddTierResponse(session *models.Principal, params *admin_api.AddTierParams) *models.Error {
-	mAdmin, err := newAdminClient(session)
+	mAdmin, err := NewMinioAdminClient(session)
 	if err != nil {
 		return prepareError(err)
 	}
 	// create a minioClient interface implementation
 	// defining the client to be used
-	adminClient := adminClient{client: mAdmin}
+	adminClient := AdminClient{Client: mAdmin}
 	// 20 seconds timeout
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
@@ -304,13 +304,13 @@ func getTier(ctx context.Context, client MinioAdmin, params *admin_api.GetTierPa
 
 // getGetTierResponse returns a tier
 func getGetTierResponse(session *models.Principal, params *admin_api.GetTierParams) (*models.Tier, *models.Error) {
-	mAdmin, err := newAdminClient(session)
+	mAdmin, err := NewMinioAdminClient(session)
 	if err != nil {
 		return nil, prepareError(err)
 	}
 	// create a minioClient interface implementation
 	// defining the client to be used
-	adminClient := adminClient{client: mAdmin}
+	adminClient := AdminClient{Client: mAdmin}
 	// 20 seconds timeout
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
@@ -340,13 +340,13 @@ func editTierCredentials(ctx context.Context, client MinioAdmin, params *admin_a
 
 // getEditTierCredentialsResponse returns the result of editing credentials for a tier
 func getEditTierCredentialsResponse(session *models.Principal, params *admin_api.EditTierCredentialsParams) *models.Error {
-	mAdmin, err := newAdminClient(session)
+	mAdmin, err := NewMinioAdminClient(session)
 	if err != nil {
 		return prepareError(err)
 	}
 	// create a minioClient interface implementation
 	// defining the client to be used
-	adminClient := adminClient{client: mAdmin}
+	adminClient := AdminClient{Client: mAdmin}
 	// 20 seconds timeout
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()

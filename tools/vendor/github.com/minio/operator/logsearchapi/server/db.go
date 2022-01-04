@@ -1,3 +1,4 @@
+//go:build go1.13
 // +build go1.13
 
 /*
@@ -131,8 +132,8 @@ func (c *DBClient) checkPartitionTableExists(ctx context.Context, table string, 
 	return true, nil
 }
 
-func (c *DBClient) createTablePartition(ctx context.Context, table Table) error {
-	partTimeRange := newPartitionTimeRange(time.Now())
+func (c *DBClient) createTablePartition(ctx context.Context, table Table, givenTime time.Time) error {
+	partTimeRange := newPartitionTimeRange(givenTime)
 	_, err := c.ExecContext(ctx, table.getCreatePartitionStatement(partTimeRange))
 	return err
 }
@@ -148,19 +149,14 @@ func (c *DBClient) createTableAndPartition(ctx context.Context, table Table) err
 		return err
 	}
 
-	return c.createTablePartition(ctx, table)
+	return c.createTablePartition(ctx, table, time.Now())
 }
 
 func (c *DBClient) createTables(ctx context.Context) error {
 	if err := c.createTableAndPartition(ctx, auditLogEventsTable); err != nil {
 		return err
 	}
-
-	if err := c.createTableAndPartition(ctx, requestInfoTable); err != nil {
-		return err
-	}
-
-	return nil
+	return c.createTableAndPartition(ctx, requestInfoTable)
 }
 
 // InitDBTables Creates tables in the DB.

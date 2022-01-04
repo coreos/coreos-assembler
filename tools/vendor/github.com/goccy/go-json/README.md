@@ -8,6 +8,31 @@ Fast JSON encoder/decoder compatible with encoding/json for Go
 
 <img width="400px" src="https://user-images.githubusercontent.com/209884/92572337-42b42900-f2bf-11ea-973a-c74a359553a5.png"></img>
 
+# Roadmap
+
+```
+* version ( expected release date )
+
+* v0.7.0
+ |
+ | while maintaining compatibility with encoding/json, we will add convenient APIs
+ |
+ v
+* v1.0.0
+```
+
+We are accepting requests for features that will be implemented between v0.7.0 and v.1.0.0.
+If you have the API you need, please submit your issue [here](https://github.com/goccy/go-json/issues).
+For example, I'm thinking of supporting `context.Context` of `json.Marshaler` and decoding using JSON Path.
+
+# Features
+
+- Drop-in replacement of `encoding/json`
+- Fast ( See [Benchmark section](https://github.com/goccy/go-json#benchmarks) )
+- Flexible customization with options
+- Coloring the encoded string
+- Can propagate context.Context to `MarshalJSON` or `UnmarshalJSON`
+
 # Installation
 
 ```
@@ -31,13 +56,26 @@ Replace import statement from `encoding/json` to `github.com/goccy/go-json`
 | [json-iterator/go](https://github.com/json-iterator/go) | yes | yes | partial |
 | [easyjson](https://github.com/mailru/easyjson) | yes | yes |  no |
 | [gojay](https://github.com/francoispqt/gojay) | yes | yes |  no |
-| [segmentio/encoding/json](https://github.com/segmentio/encoding/tree/master/json) | yes | yes | yes |
+| [segmentio/encoding/json](https://github.com/segmentio/encoding/tree/master/json) | yes | yes | partial |
 | [jettison](https://github.com/wI2L/jettison) | yes | no | no |
 | [simdjson-go](https://github.com/minio/simdjson-go) | no | yes | no |
 | goccy/go-json | yes | yes | yes |
 
-- `json-iterator/go` isn't compatible with `encoding/json` in many ways, but it hasn't been supported for a long time.
+- `json-iterator/go` isn't compatible with `encoding/json` in many ways (e.g. https://github.com/json-iterator/go/issues/229 ), but it hasn't been supported for a long time.
+- `segmentio/encoding/json` is well supported for encoders, but some are not supported for decoder APIs such as `Token` ( streaming decode )
 
+## Other libraries
+
+- [jingo](https://github.com/bet365/jingo)
+
+I tried the benchmark but it didn't work.
+Also, it seems to panic when it receives an unexpected value because there is no error handling...
+
+- [ffjson](https://github.com/pquerna/ffjson)
+
+Benchmarking gave very slow results.
+It seems that it is assumed that the user will use the buffer pool properly.
+Also, development seems to have already stopped
 
 # Benchmarks
 
@@ -56,6 +94,12 @@ $ go test -bench .
 <img width="700" alt="" src="https://user-images.githubusercontent.com/209884/107979944-bd1d6d80-7002-11eb-944b-9d17b6674e3f.png">
 <img width="700" alt="" src="https://user-images.githubusercontent.com/209884/107979931-b989e680-7002-11eb-87a0-66fc22d90dd4.png">
 <img width="700" alt="" src="https://user-images.githubusercontent.com/209884/107979940-bc84d700-7002-11eb-9647-869bbc25c9d9.png">
+
+
+# Fuzzing
+
+[go-json-fuzz](https://github.com/goccy/go-json-fuzz) is the repository for fuzzing tests.
+If you run the test in this repository and find a bug, please commit to corpus to go-json-fuzz and report the issue to [go-json](https://github.com/goccy/go-json/issues).
 
 # How it works
 
@@ -148,7 +192,7 @@ For this reason, to date `reflect.Type` is the same as `*reflect.rtype`.
 
 Therefore, by directly handling `*reflect.rtype`, which is an implementation of `reflect.Type`, it is possible to avoid escaping because it changes from `interface` to using `struct`.
 
-The technique for working with `*reflect.rtype` directly from `go-json` is implemented at https://github.com/goccy/go-json/blob/master/rtype.go.
+The technique for working with `*reflect.rtype` directly from `go-json` is implemented at [rtype.go](https://github.com/goccy/go-json/blob/master/internal/runtime/rtype.go)
 
 Also, the same technique is cut out as a library ( https://github.com/goccy/go-reflect )
 
@@ -309,7 +353,7 @@ However, if there is too much type information, it will use a lot of memory, so 
 
 If this approach is not available, it will fall back to the `atomic` based process described above.
 
-If you want to know more, please refer to the implementation [here](https://github.com/goccy/go-json/blob/master/codec.go#L24-L76 )
+If you want to know more, please refer to the implementation [here](https://github.com/goccy/go-json/blob/master/internal/runtime/type.go#L36-L100)
 
 ## Decoder
 
@@ -427,7 +471,7 @@ You can think of this as a Bitmap with a height of `256` and a width of the maxi
 In other words, it can be represented by the following type .
 
 ```go
-[maxFieldKeyLength][256]int8`
+[maxFieldKeyLength][256]int8
 ```
 
 When decoding a field character, check whether the corresponding character exists by referring to the pre-built bitmap like the following.
@@ -475,6 +519,10 @@ Regarding the story of go-json, there are the following articles in Japanese onl
 
 - https://speakerdeck.com/goccy/zui-su-falsejsonraiburariwoqiu-mete
 - https://engineering.mercari.com/blog/entry/1599563768-081104c850/
+
+# Looking for Sponsors
+
+I'm looking for sponsors this library. This library is being developed as a personal project in my spare time. If you want a quick response or problem resolution when using this library in your project, please register as a [sponsor](https://github.com/sponsors/goccy). I will cooperate as much as possible. Of course, this library is developed as an MIT license, so you can use it freely for free.
 
 # License
 

@@ -19,14 +19,15 @@ package restapi
 // list of all console environment constants
 const (
 	// Constants for common configuration
-	ConsoleMinIOServer    = "CONSOLE_MINIO_SERVER"
-	ConsoleMinIORegion    = "CONSOLE_MINIO_REGION"
-	ConsoleProductionMode = "CONSOLE_PRODUCTION_MODE"
-	ConsoleHostname       = "CONSOLE_HOSTNAME"
-	ConsolePort           = "CONSOLE_PORT"
-	ConsoleTLSHostname    = "CONSOLE_TLS_HOSTNAME"
-	ConsoleTLSPort        = "CONSOLE_TLS_PORT"
-	ConsoleSubnetLicense  = "CONSOLE_SUBNET_LICENSE"
+	ConsoleMinIOServer   = "CONSOLE_MINIO_SERVER"
+	ConsoleMinIORegion   = "CONSOLE_MINIO_REGION"
+	ConsoleHostname      = "CONSOLE_HOSTNAME"
+	ConsolePort          = "CONSOLE_PORT"
+	ConsoleTLSHostname   = "CONSOLE_TLS_HOSTNAME"
+	ConsoleTLSPort       = "CONSOLE_TLS_PORT"
+	ConsoleSubnetLicense = "CONSOLE_SUBNET_LICENSE"
+	MinIOConfigEnvFile   = "MINIO_CONFIG_ENV_FILE"
+	MinIOSubnetLicense   = "MINIO_SUBNET_LICENSE"
 
 	// Constants for Secure middleware
 	ConsoleSecureAllowedHosts                    = "CONSOLE_SECURE_ALLOWED_HOSTS"
@@ -48,28 +49,9 @@ const (
 	ConsoleSecureReferrerPolicy                  = "CONSOLE_SECURE_REFERRER_POLICY"
 	ConsoleSecureFeaturePolicy                   = "CONSOLE_SECURE_FEATURE_POLICY"
 	ConsoleSecureExpectCTHeader                  = "CONSOLE_SECURE_EXPECT_CT_HEADER"
-	ConsoleOperatorSAToken                       = "CONSOLE_OPERATOR_SA_TOKEN"
-	ConsoleOperatorConsoleImage                  = "CONSOLE_OPERATOR_CONSOLE_IMAGE"
 	PrometheusURL                                = "CONSOLE_PROMETHEUS_URL"
 	PrometheusJobID                              = "CONSOLE_PROMETHEUS_JOB_ID"
 	ConsoleLogQueryURL                           = "CONSOLE_LOG_QUERY_URL"
 	ConsoleLogQueryAuthToken                     = "CONSOLE_LOG_QUERY_AUTH_TOKEN"
 	LogSearchQueryAuthToken                      = "LOGSEARCH_QUERY_AUTH_TOKEN"
-
-	// Constants for prometheus annotations
-	prometheusPath   = "prometheus.io/path"
-	prometheusPort   = "prometheus.io/port"
-	prometheusScrape = "prometheus.io/scrape"
-)
-
-// Image versions
-const (
-	KESImageVersion            = "minio/kes:v0.13.4"
-	ConsoleImageDefaultVersion = "minio/console:v0.7.4"
-)
-
-// K8s
-
-const (
-	OperatorSubnetLicenseSecretName = "subnet-license"
 )

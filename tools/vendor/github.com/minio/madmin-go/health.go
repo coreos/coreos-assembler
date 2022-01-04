@@ -17,16 +17,20 @@
 package madmin
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
 	"net/url"
+	"os"
+	"os/exec"
 	"runtime"
 	"strings"
 	"syscall"
 	"time"
 
+	"github.com/prometheus/procfs"
 	"github.com/shirou/gopsutil/v3/cpu"
 	"github.com/shirou/gopsutil/v3/disk"
 	"github.com/shirou/gopsutil/v3/host"
@@ -45,6 +49,71 @@ const (
 	HealthInfoVersion = HealthInfoVersion2
 )
 
+const (
+	SysErrAuditEnabled      = "audit is enabled"
+	SysErrUpdatedbInstalled = "updatedb is installed"
+)
+
+const (
+	SrvSELinux      = "selinux"
+	SrvNotInstalled = "not-installed"
+)
+
+// NodeInfo - Interface to abstract any struct that contains address/endpoint and error fields
+type NodeInfo interface {
+	GetAddr() string
+	SetAddr(addr string)
+	SetError(err string)
+}
+
+// NodeCommon - Common fields across most node-specific health structs
+type NodeCommon struct {
+	Addr  string `json:"addr"`
+	Error string `json:"error,omitempty"`
+}
+
+// GetAddr - return the address of the node
+func (n *NodeCommon) GetAddr() string {
+	return n.Addr
+}
+
+// SetAddr - set the address of the node
+func (n *NodeCommon) SetAddr(addr string) {
+	n.Addr = addr
+}
+
+// SetError - set the address of the node
+func (n *NodeCommon) SetError(err string) {
+	n.Error = err
+}
+
+// SysErrors - contains a system error
+type SysErrors struct {
+	NodeCommon
+
+	Errors []string `json:"errors,omitempty"`
+}
+
+// SysServices - info about services that affect minio
+type SysServices struct {
+	NodeCommon
+
+	Services []SysService `json:"services,omitempty"`
+}
+
+// SysConfigs - info about services that affect minio
+type SysConfig struct {
+	NodeCommon
+
+	Config map[string]interface{} `json:"config,omitempty"`
+}
+
+// SysService - name and status of a sys service
+type SysService struct {
+	Name   string `json:"name"`
+	Status string `json:"status"`
+}
+
 // CPU contains system's CPU information.
 type CPU struct {
 	VendorID   string   `json:"vendor_id"`
@@ -62,8 +131,7 @@ type CPU struct {
 
 // CPUs contains all CPU information of a node.
 type CPUs struct {
-	Addr  string `json:"addr"`
-	Error string `json:"error,omitempty"`
+	NodeCommon
 
 	CPUs []CPU `json:"cpus,omitempty"`
 }
@@ -73,8 +141,10 @@ func GetCPUs(ctx context.Context, addr string) CPUs {
 	infos, err := cpu.InfoWithContext(ctx)
 	if err != nil {
 		return CPUs{
-			Addr:  addr,
-			Error: err.Error(),
+			NodeCommon: NodeCommon{
+				Addr:  addr,
+				Error: err.Error(),
+			},
 		}
 	}
 
@@ -82,7 +152,7 @@ func GetCPUs(ctx context.Context, addr string) CPUs {
 	for _, info := range infos {
 		cpu, found := cpuMap[info.PhysicalID]
 		if found {
-			cpu.Cores += 1
+			cpu.Cores++
 		} else {
 			cpu = CPU{
 				VendorID:   info.VendorID,
@@ -107,8 +177,8 @@ func GetCPUs(ctx context.Context, addr string) CPUs {
 	}
 
 	return CPUs{
-		Addr: addr,
-		CPUs: cpus,
+		NodeCommon: NodeCommon{Addr: addr},
+		CPUs:       cpus,
 	}
 }
 
@@ -129,8 +199,7 @@ type Partition struct {
 
 // Partitions contains all disk partitions information of a node.
 type Partitions struct {
-	Addr  string `json:"addr"`
-	Error string `json:"error,omitempty"`
+	NodeCommon
 
 	Partitions []Partition `json:"partitions,omitempty"`
 }
@@ -139,16 +208,20 @@ type Partitions struct {
 func GetPartitions(ctx context.Context, addr string) Partitions {
 	if runtime.GOOS != "linux" {
 		return Partitions{
-			Addr:  addr,
-			Error: "unsupported operating system " + runtime.GOOS,
+			NodeCommon: NodeCommon{
+				Addr:  addr,
+				Error: "unsupported operating system " + runtime.GOOS,
+			},
 		}
 	}
 
 	parts, err := disk.PartitionsWithContext(ctx, false)
 	if err != nil {
 		return Partitions{
-			Addr:  addr,
-			Error: err.Error(),
+			NodeCommon: NodeCommon{
+				Addr:  addr,
+				Error: err.Error(),
+			},
 		}
 	}
 
@@ -177,15 +250,14 @@ func GetPartitions(ctx context.Context, addr string) Partitions {
 	}
 
 	return Partitions{
-		Addr:       addr,
+		NodeCommon: NodeCommon{Addr: addr},
 		Partitions: partitions,
 	}
 }
 
 // OSInfo contains operating system's information.
 type OSInfo struct {
-	Addr  string `json:"addr"`
-	Error string `json:"error,omitempty"`
+	NodeCommon
 
 	Info    host.InfoStat          `json:"info,omitempty"`
 	Sensors []host.TemperatureStat `json:"sensors,omitempty"`
@@ -195,22 +267,26 @@ type OSInfo struct {
 func GetOSInfo(ctx context.Context, addr string) OSInfo {
 	if runtime.GOOS != "linux" {
 		return OSInfo{
-			Addr:  addr,
-			Error: "unsupported operating system " + runtime.GOOS,
+			NodeCommon: NodeCommon{
+				Addr:  addr,
+				Error: "unsupported operating system " + runtime.GOOS,
+			},
 		}
 	}
 
 	info, err := host.InfoWithContext(ctx)
 	if err != nil {
 		return OSInfo{
-			Addr:  addr,
-			Error: err.Error(),
+			NodeCommon: NodeCommon{
+				Addr:  addr,
+				Error: err.Error(),
+			},
 		}
 	}
 
 	osInfo := OSInfo{
-		Addr: addr,
-		Info: *info,
+		NodeCommon: NodeCommon{Addr: addr},
+		Info:       *info,
 	}
 
 	osInfo.Sensors, err = host.SensorsTemperaturesWithContext(ctx)
@@ -223,10 +299,133 @@ func GetOSInfo(ctx context.Context, addr string) OSInfo {
 	return osInfo
 }
 
+// GetSysConfig returns config values from the system
+// (only those affecting minio performance)
+func GetSysConfig(ctx context.Context, addr string) SysConfig {
+	sc := SysConfig{
+		NodeCommon: NodeCommon{Addr: addr},
+		Config:     map[string]interface{}{},
+	}
+	proc, err := procfs.Self()
+	if err != nil {
+		sc.Error = "rlimit: " + err.Error()
+	} else {
+		limits, err := proc.Limits()
+		if err != nil {
+			sc.Error = "rlimit: " + err.Error()
+		}
+		sc.Config["rlimit-max"] = limits.OpenFiles
+	}
+
+	return sc
+}
+
+// GetSysServices returns info of sys services that affect minio
+func GetSysServices(ctx context.Context, addr string) SysServices {
+	ss := SysServices{
+		NodeCommon: NodeCommon{Addr: addr},
+		Services:   []SysService{},
+	}
+	srv, e := getSELinuxInfo()
+	if e != nil {
+		ss.Error = e.Error()
+	} else {
+		ss.Services = append(ss.Services, srv)
+	}
+
+	return ss
+}
+
+func getSELinuxInfo() (SysService, error) {
+	ss := SysService{Name: SrvSELinux}
+
+	file, err := os.Open("/etc/selinux/config")
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			ss.Status = SrvNotInstalled
+			return ss, nil
+		}
+		return ss, err
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		tokens := strings.SplitN(strings.TrimSpace(scanner.Text()), "=", 2)
+		if len(tokens) == 2 && tokens[0] == "SELINUX" {
+			ss.Status = tokens[1]
+			return ss, nil
+		}
+	}
+
+	return ss, scanner.Err()
+}
+
+// GetSysErrors returns issues in system setup/config
+func GetSysErrors(ctx context.Context, addr string) SysErrors {
+	se := SysErrors{NodeCommon: NodeCommon{Addr: addr}}
+	if runtime.GOOS != "linux" {
+		return se
+	}
+
+	ae, err := isAuditEnabled()
+	if err != nil {
+		se.Error = "audit: " + err.Error()
+	} else if ae {
+		se.Errors = append(se.Errors, SysErrAuditEnabled)
+	}
+
+	_, err = exec.LookPath("updatedb")
+	if err == nil {
+		se.Errors = append(se.Errors, SysErrUpdatedbInstalled)
+	} else if !strings.HasSuffix(err.Error(), exec.ErrNotFound.Error()) {
+		errMsg := "updatedb: " + err.Error()
+		if len(se.Error) == 0 {
+			se.Error = errMsg
+		} else {
+			se.Error = se.Error + ", " + errMsg
+		}
+	}
+
+	return se
+}
+
+// Audit is enabled if either `audit=1` is present in /proc/cmdline
+// or the `kauditd` process is running
+func isAuditEnabled() (bool, error) {
+	file, err := os.Open("/proc/cmdline")
+	if err != nil {
+		return false, err
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		if strings.Contains(scanner.Text(), "audit=1") {
+			return true, nil
+		}
+	}
+
+	return isKauditdRunning()
+}
+
+func isKauditdRunning() (bool, error) {
+	procs, err := process.Processes()
+	if err != nil {
+		return false, err
+	}
+	for _, proc := range procs {
+		pname, err := proc.Name()
+		if err != nil && pname == "kauditd" {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 // MemInfo contains system's RAM and swap information.
 type MemInfo struct {
-	Addr  string `json:"addr"`
-	Error string `json:"error,omitempty"`
+	NodeCommon
 
 	Total          uint64 `json:"total,omitempty"`
 	Available      uint64 `json:"available,omitempty"`
@@ -239,21 +438,25 @@ func GetMemInfo(ctx context.Context, addr string) MemInfo {
 	meminfo, err := mem.VirtualMemoryWithContext(ctx)
 	if err != nil {
 		return MemInfo{
-			Addr:  addr,
-			Error: err.Error(),
+			NodeCommon: NodeCommon{
+				Addr:  addr,
+				Error: err.Error(),
+			},
 		}
 	}
 
 	swapinfo, err := mem.SwapMemoryWithContext(ctx)
 	if err != nil {
 		return MemInfo{
-			Addr:  addr,
-			Error: err.Error(),
+			NodeCommon: NodeCommon{
+				Addr:  addr,
+				Error: err.Error(),
+			},
 		}
 	}
 
 	return MemInfo{
-		Addr:           addr,
+		NodeCommon:     NodeCommon{Addr: addr},
 		Total:          meminfo.Total,
 		Available:      meminfo.Available,
 		SwapSpaceTotal: swapinfo.Total,
@@ -263,8 +466,7 @@ func GetMemInfo(ctx context.Context, addr string) MemInfo {
 
 // ProcInfo contains current process's information.
 type ProcInfo struct {
-	Addr  string `json:"addr"`
-	Error string `json:"error,omitempty"`
+	NodeCommon
 
 	PID            int32                      `json:"pid,omitempty"`
 	IsBackground   bool                       `json:"is_background,omitempty"`
@@ -300,8 +502,8 @@ func GetProcInfo(ctx context.Context, addr string) ProcInfo {
 	pid := int32(syscall.Getpid())
 
 	procInfo := ProcInfo{
-		Addr: addr,
-		PID:  pid,
+		NodeCommon: NodeCommon{Addr: addr},
+		PID:        pid,
 	}
 	var err error
 
@@ -465,10 +667,11 @@ func GetProcInfo(ctx context.Context, addr string) ProcInfo {
 		return procInfo
 	}
 
+	// In certain environments, it is not possible to get username e.g. minio-operator
+	// Plus it's not a serious error. So ignore error if any.
 	procInfo.Username, err = proc.UsernameWithContext(ctx)
 	if err != nil {
-		procInfo.Error = err.Error()
-		return procInfo
+		procInfo.Username = "<non-root>"
 	}
 
 	return procInfo
@@ -476,11 +679,14 @@ func GetProcInfo(ctx context.Context, addr string) ProcInfo {
 
 // SysInfo - Includes hardware and system information of the MinIO cluster
 type SysInfo struct {
-	CPUInfo    []CPUs       `json:"cpus,omitempty"`
-	Partitions []Partitions `json:"partitions,omitempty"`
-	OSInfo     []OSInfo     `json:"osinfo,omitempty"`
-	MemInfo    []MemInfo    `json:"meminfo,omitempty"`
-	ProcInfo   []ProcInfo   `json:"procinfo,omitempty"`
+	CPUInfo     []CPUs        `json:"cpus,omitempty"`
+	Partitions  []Partitions  `json:"partitions,omitempty"`
+	OSInfo      []OSInfo      `json:"osinfo,omitempty"`
+	MemInfo     []MemInfo     `json:"meminfo,omitempty"`
+	ProcInfo    []ProcInfo    `json:"procinfo,omitempty"`
+	SysErrs     []SysErrors   `json:"errors,omitempty"`
+	SysServices []SysServices `json:"services,omitempty"`
+	SysConfig   []SysConfig   `json:"config,omitempty"`
 }
 
 // Latency contains write operation latency in seconds of a disk drive.
@@ -514,8 +720,7 @@ type DrivePerfInfo struct {
 
 // DrivePerfInfos contains all disk drive's performance information of a node.
 type DrivePerfInfos struct {
-	Addr  string `json:"addr"`
-	Error string `json:"error,omitempty"`
+	NodeCommon
 
 	SerialPerf   []DrivePerfInfo `json:"serial_perf,omitempty"`
 	ParallelPerf []DrivePerfInfo `json:"parallel_perf,omitempty"`
@@ -523,8 +728,7 @@ type DrivePerfInfos struct {
 
 // PeerNetPerfInfo contains network performance information of a node.
 type PeerNetPerfInfo struct {
-	Addr  string `json:"addr"`
-	Error string `json:"error,omitempty"`
+	NodeCommon
 
 	Latency    Latency    `json:"latency,omitempty"`
 	Throughput Throughput `json:"throughput,omitempty"`
@@ -532,8 +736,7 @@ type PeerNetPerfInfo struct {
 
 // NetPerfInfo contains network performance information of a node to other nodes.
 type NetPerfInfo struct {
-	Addr  string `json:"addr"`
-	Error string `json:"error,omitempty"`
+	NodeCommon
 
 	RemotePeers []PeerNetPerfInfo `json:"remote_peers,omitempty"`
 }
@@ -587,6 +790,19 @@ type MinioInfo struct {
 	Services     Services     `json:"services,omitempty"`
 	Backend      interface{}  `json:"backend,omitempty"`
 	Servers      []ServerInfo `json:"servers,omitempty"`
+	TLS          TLSInfo      `json:"tls"`
+}
+
+type TLSInfo struct {
+	TLSEnabled bool      `json:"tls_enabled"`
+	Certs      []TLSCert `json:"certs,omitempty"`
+}
+
+type TLSCert struct {
+	PubKeyAlgo    string    `json:"pub_key_algo"`
+	SignatureAlgo string    `json:"signature_algo"`
+	NotBefore     time.Time `json:"not_before"`
+	NotAfter      time.Time `json:"not_after"`
 }
 
 // MinioHealthInfo - Includes MinIO confifuration information
@@ -634,9 +850,8 @@ func (info HealthInfo) GetError() string {
 func (info HealthInfo) GetStatus() string {
 	if info.Error != "" {
 		return "error"
-	} else {
-		return "success"
 	}
+	return "success"
 }
 
 // GetTimestamp - returns timestamp from the cluster health info
@@ -661,6 +876,9 @@ const (
 	HealthDataTypeSysMem      HealthDataType = "sysmem"
 	HealthDataTypeSysNet      HealthDataType = "sysnet"
 	HealthDataTypeSysProcess  HealthDataType = "sysprocess"
+	HealthDataTypeSysErrors   HealthDataType = "syserrors"
+	HealthDataTypeSysServices HealthDataType = "sysservices"
+	HealthDataTypeSysConfig   HealthDataType = "sysconfig"
 )
 
 // HealthDataTypesMap - Map of Health datatypes
@@ -677,12 +895,13 @@ var HealthDataTypesMap = map[string]HealthDataType{
 	"sysmem":      HealthDataTypeSysMem,
 	"sysnet":      HealthDataTypeSysNet,
 	"sysprocess":  HealthDataTypeSysProcess,
+	"syserrors":   HealthDataTypeSysErrors,
+	"sysservices": HealthDataTypeSysServices,
+	"sysconfig":   HealthDataTypeSysConfig,
 }
 
-// HealthDataTypesList - List of Health datatypes
-var HealthDataTypesList = []HealthDataType{
-	HealthDataTypePerfDrive,
-	HealthDataTypePerfNet,
+// HealthDataTypesLite - List of health datatypes related to lightweight tests
+var HealthDataTypesLite = []HealthDataType{
 	HealthDataTypeMinioInfo,
 	HealthDataTypeMinioConfig,
 	HealthDataTypeSysCPU,
@@ -693,7 +912,19 @@ var HealthDataTypesList = []HealthDataType{
 	HealthDataTypeSysMem,
 	HealthDataTypeSysNet,
 	HealthDataTypeSysProcess,
+	HealthDataTypeSysErrors,
+	HealthDataTypeSysServices,
+	HealthDataTypeSysConfig,
 }
+
+// HealthDataTypesHeavy - List of health datatypes related to heavy (long running) tests
+var HealthDataTypesHeavy = []HealthDataType{
+	HealthDataTypePerfDrive,
+	HealthDataTypePerfNet,
+}
+
+// HealthDataTypesList - List of Health datatypes
+var HealthDataTypesList = append(HealthDataTypesLite, HealthDataTypesHeavy...)
 
 // HealthInfoVersionStruct - struct for health info version
 type HealthInfoVersionStruct struct {

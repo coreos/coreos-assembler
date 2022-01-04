@@ -22,6 +22,8 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/go-openapi/swag"
+
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/minio/console/models"
@@ -143,13 +145,13 @@ func listUsers(ctx context.Context, client MinioAdmin) ([]*models.User, error) {
 // getListUsersResponse performs listUsers() and serializes it to the handler's output
 func getListUsersResponse(session *models.Principal) (*models.ListUsersResponse, *models.Error) {
 	ctx := context.Background()
-	mAdmin, err := newAdminClient(session)
+	mAdmin, err := NewMinioAdminClient(session)
 	if err != nil {
 		return nil, prepareError(err)
 	}
 	// create a minioClient interface implementation
 	// defining the client to be used
-	adminClient := adminClient{client: mAdmin}
+	adminClient := AdminClient{Client: mAdmin}
 
 	users, err := listUsers(ctx, adminClient)
 	if err != nil {
@@ -163,41 +165,70 @@ func getListUsersResponse(session *models.Principal) (*models.ListUsersResponse,
 }
 
 // addUser invokes adding a users on `MinioAdmin` and builds the response `models.User`
-func addUser(ctx context.Context, client MinioAdmin, accessKey, secretKey *string, groups []string) (*models.User, error) {
+func addUser(ctx context.Context, client MinioAdmin, accessKey, secretKey *string, groups []string, policies []string) (*models.User, error) {
 	// Calls into MinIO to add a new user if there's an error return it
 	if err := client.addUser(ctx, *accessKey, *secretKey); err != nil {
 		return nil, err
 	}
-
+	// set groups for the newly created user
+	var userWithGroups *models.User
 	if len(groups) > 0 {
-		userElem, errUG := updateUserGroups(ctx, client, *accessKey, groups)
+		var errUG error
+		userWithGroups, errUG = updateUserGroups(ctx, client, *accessKey, groups)
 
 		if errUG != nil {
 			return nil, errUG
 		}
-		return userElem, nil
+	}
+	// set policies for the newly created user
+	if len(policies) > 0 {
+		policyString := strings.Join(policies, ",")
+		if err := setPolicy(ctx, client, policyString, *accessKey, "user"); err != nil {
+			return nil, err
+		}
+	}
+
+	memberOf := []string{}
+	status := "enabled"
+	if userWithGroups != nil {
+		memberOf = userWithGroups.MemberOf
+		status = userWithGroups.Status
 	}
 
 	userRet := &models.User{
 		AccessKey: *accessKey,
-		MemberOf:  nil,
-		Policy:    []string{},
-		Status:    "",
+		MemberOf:  memberOf,
+		Policy:    policies,
+		Status:    status,
 	}
 	return userRet, nil
 }
 
 func getUserAddResponse(session *models.Principal, params admin_api.AddUserParams) (*models.User, *models.Error) {
 	ctx := context.Background()
-	mAdmin, err := newAdminClient(session)
+	mAdmin, err := NewMinioAdminClient(session)
 	if err != nil {
 		return nil, prepareError(err)
 	}
 	// create a minioClient interface implementation
 	// defining the client to be used
-	adminClient := adminClient{client: mAdmin}
+	adminClient := AdminClient{Client: mAdmin}
+	var userExists bool
 
-	user, err := addUser(ctx, adminClient, params.Body.AccessKey, params.Body.SecretKey, params.Body.Groups)
+	_, err = adminClient.getUserInfo(ctx, *params.Body.AccessKey)
+	userExists = err == nil
+
+	if userExists {
+		return nil, prepareError(errNonUniqueAccessKey)
+	}
+	user, err := addUser(
+		ctx,
+		adminClient,
+		params.Body.AccessKey,
+		params.Body.SecretKey,
+		params.Body.Groups,
+		params.Body.Policies,
+	)
 	if err != nil {
 		return nil, prepareError(err)
 	}
@@ -212,7 +243,7 @@ func removeUser(ctx context.Context, client MinioAdmin, accessKey string) error 
 func getRemoveUserResponse(session *models.Principal, params admin_api.RemoveUserParams) *models.Error {
 	ctx := context.Background()
 
-	mAdmin, err := newAdminClient(session)
+	mAdmin, err := NewMinioAdminClient(session)
 	if err != nil {
 		return prepareError(err)
 	}
@@ -223,7 +254,7 @@ func getRemoveUserResponse(session *models.Principal, params admin_api.RemoveUse
 
 	// create a minioClient interface implementation
 	// defining the client to be used
-	adminClient := adminClient{client: mAdmin}
+	adminClient := AdminClient{Client: mAdmin}
 
 	if err := removeUser(ctx, adminClient, params.Name); err != nil {
 		return prepareError(err)
@@ -245,25 +276,55 @@ func getUserInfo(ctx context.Context, client MinioAdmin, accessKey string) (*mad
 func getUserInfoResponse(session *models.Principal, params admin_api.GetUserInfoParams) (*models.User, *models.Error) {
 	ctx := context.Background()
 
-	mAdmin, err := newAdminClient(session)
+	mAdmin, err := NewMinioAdminClient(session)
 	if err != nil {
 		return nil, prepareError(err)
 	}
 
 	// create a minioClient interface implementation
 	// defining the client to be used
-	adminClient := adminClient{client: mAdmin}
+	adminClient := AdminClient{Client: mAdmin}
 
 	user, err := getUserInfo(ctx, adminClient, params.Name)
 	if err != nil {
+		// User doesn't exist, return 404
+		if madmin.ToErrorResponse(err).Code == "XMinioAdminNoSuchUser" {
+			var errorCode int32 = 404
+			errorMessage := "User doesn't exist"
+			return nil, &models.Error{Code: errorCode, Message: swag.String(errorMessage), DetailedMessage: swag.String(err.Error())}
+		}
 		return nil, prepareError(err)
+	}
+
+	var policies []string
+	if user.PolicyName == "" {
+		policies = []string{}
+	} else {
+		policies = strings.Split(user.PolicyName, ",")
+	}
+
+	hasPolicy := true
+
+	if len(policies) == 0 {
+		hasPolicy = false
+		for i := 0; i < len(user.MemberOf); i++ {
+			group, err := adminClient.getGroupDescription(ctx, user.MemberOf[i])
+			if err != nil {
+				continue
+			}
+			if group.Policy != "" {
+				hasPolicy = true
+				break
+			}
+		}
 	}
 
 	userInformation := &models.User{
 		AccessKey: params.Name,
 		MemberOf:  user.MemberOf,
-		Policy:    strings.Split(user.PolicyName, ","),
+		Policy:    policies,
 		Status:    string(user.Status),
+		HasPolicy: hasPolicy,
 	}
 
 	return userInformation, nil
@@ -360,14 +421,14 @@ func updateUserGroups(ctx context.Context, client MinioAdmin, user string, group
 func getUpdateUserGroupsResponse(session *models.Principal, params admin_api.UpdateUserGroupsParams) (*models.User, *models.Error) {
 	ctx := context.Background()
 
-	mAdmin, err := newAdminClient(session)
+	mAdmin, err := NewMinioAdminClient(session)
 	if err != nil {
 		return nil, prepareError(err)
 	}
 
 	// create a minioClient interface implementation
 	// defining the client to be used
-	adminClient := adminClient{client: mAdmin}
+	adminClient := AdminClient{Client: mAdmin}
 
 	user, err := updateUserGroups(ctx, adminClient, params.Name, params.Body.Groups)
 
@@ -396,14 +457,14 @@ func setUserStatus(ctx context.Context, client MinioAdmin, user string, status s
 func getUpdateUserResponse(session *models.Principal, params admin_api.UpdateUserInfoParams) (*models.User, *models.Error) {
 	ctx := context.Background()
 
-	mAdmin, err := newAdminClient(session)
+	mAdmin, err := NewMinioAdminClient(session)
 	if err != nil {
 		return nil, prepareError(err)
 	}
 
 	// create a minioClient interface implementation
 	// defining the client to be used
-	adminClient := adminClient{client: mAdmin}
+	adminClient := AdminClient{Client: mAdmin}
 
 	name := params.Name
 	status := *params.Body.Status
@@ -467,14 +528,14 @@ func addUsersListToGroups(ctx context.Context, client MinioAdmin, usersToUpdate 
 func getAddUsersListToGroupsResponse(session *models.Principal, params admin_api.BulkUpdateUsersGroupsParams) *models.Error {
 	ctx := context.Background()
 
-	mAdmin, err := newAdminClient(session)
+	mAdmin, err := NewMinioAdminClient(session)
 	if err != nil {
 		return prepareError(err)
 	}
 
 	// create a minioClient interface implementation
 	// defining the client to be used
-	adminClient := adminClient{client: mAdmin}
+	adminClient := AdminClient{Client: mAdmin}
 
 	usersList := params.Body.Users
 	groupsList := params.Body.Groups
@@ -488,13 +549,13 @@ func getAddUsersListToGroupsResponse(session *models.Principal, params admin_api
 
 func getListUsersWithAccessToBucketResponse(session *models.Principal, bucket string) ([]string, *models.Error) {
 	ctx := context.Background()
-	mAdmin, err := newAdminClient(session)
+	mAdmin, err := NewMinioAdminClient(session)
 	if err != nil {
 		return nil, prepareError(err)
 	}
 	// create a minioClient interface implementation
 	// defining the client to be used
-	adminClient := adminClient{client: mAdmin}
+	adminClient := AdminClient{Client: mAdmin}
 
 	return listUsersWithAccessToBucket(ctx, adminClient, bucket)
 }
@@ -595,13 +656,13 @@ func changeUserPassword(ctx context.Context, client MinioAdmin, selectedUser str
 // getChangeUserPasswordResponse will change the password of selctedUser to newSecretKey
 func getChangeUserPasswordResponse(session *models.Principal, params admin_api.ChangeUserPasswordParams) *models.Error {
 	ctx := context.Background()
-	mAdmin, err := newAdminClient(session)
+	mAdmin, err := NewMinioAdminClient(session)
 	if err != nil {
 		return prepareError(err)
 	}
 	// create a minioClient interface implementation
 	// defining the client to be used
-	adminClient := adminClient{client: mAdmin}
+	adminClient := AdminClient{Client: mAdmin}
 
 	// params will contain selectedUser and newSecretKey credentials for the user
 	user := *params.Body.SelectedUser

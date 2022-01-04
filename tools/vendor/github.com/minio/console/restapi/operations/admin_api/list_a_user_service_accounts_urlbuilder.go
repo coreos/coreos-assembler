@@ -57,7 +57,7 @@ func (o *ListAUserServiceAccountsURL) SetBasePath(bp string) {
 func (o *ListAUserServiceAccountsURL) Build() (*url.URL, error) {
 	var _result url.URL
 
-	var _path = "/users/{name}/service-accounts"
+	var _path = "/user/{name}/service-accounts"
 
 	name := o.Name
 	if name != "" {

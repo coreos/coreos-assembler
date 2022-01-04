@@ -18,6 +18,7 @@ package restapi
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"net/http"
 	"strconv"
@@ -28,6 +29,7 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/minio/console/models"
 	"github.com/minio/console/pkg/auth"
+	"github.com/minio/madmin-go"
 )
 
 var upgrader = websocket.Upgrader{
@@ -212,6 +214,23 @@ func serveWS(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 		go wsS3Client.watch(wOptions)
+	case strings.HasPrefix(wsPath, `/speedtest`):
+		fmt.Println("Speedtest triggered")
+		speedtestOpts, err := getSpeedtestOptionsFromReq(req)
+
+		if err != nil {
+			LogError("error getting speedtest options: %v", err)
+			closeWsConn(conn)
+			return
+		}
+
+		wsAdminClient, err := newWebSocketAdminClient(conn, session)
+		if err != nil {
+			closeWsConn(conn)
+			return
+		}
+		go wsAdminClient.speedtest(speedtestOpts)
+
 	default:
 		// path not found
 		closeWsConn(conn)
@@ -232,7 +251,7 @@ func newWebSocketAdminClient(conn *websocket.Conn, autClaims *models.Principal) 
 	wsConnection := wsConn{conn: conn}
 	// create a minioClient interface implementation
 	// defining the client to be used
-	adminClient := adminClient{client: mAdmin}
+	adminClient := AdminClient{Client: mAdmin}
 	// create websocket client and handle request
 	wsAdminClient := &wsAdminClient{conn: wsConnection, client: adminClient}
 	return wsAdminClient, nil
@@ -374,6 +393,21 @@ func (wsc *wsAdminClient) healthInfo(deadline *time.Duration) {
 	sendWsCloseMessage(wsc.conn, err)
 }
 
+func (wsc *wsAdminClient) speedtest(opts *madmin.SpeedtestOpts) {
+	defer func() {
+		LogInfo("speedtest stopped")
+		// close connection after return
+		wsc.conn.close()
+	}()
+	LogInfo("speedtest started")
+
+	ctx := wsReadClientCtx(wsc.conn)
+
+	err := startSpeedtest(ctx, wsc.conn, wsc.client, opts)
+
+	sendWsCloseMessage(wsc.conn, err)
+}
+
 // sendWsCloseMessage sends Websocket Connection Close Message indicating the Status Code
 // see https://tools.ietf.org/html/rfc6455#page-45
 func sendWsCloseMessage(conn WSConn, err error) {
@@ -389,7 +423,7 @@ func sendWsCloseMessage(conn WSConn, err error) {
 			return
 		}
 		// else, internal server error
-		conn.writeMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseInternalServerErr, errorGeneric.Error()))
+		conn.writeMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseInternalServerErr, ErrorGeneric.Error()))
 		return
 	}
 	// normal closure

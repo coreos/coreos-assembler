@@ -24,11 +24,17 @@ import (
 	"io"
 	"io/fs"
 	"log"
+	"net"
 	"net/http"
+	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
+	"github.com/klauspost/compress/gzhttp"
+
 	portal_ui "github.com/minio/console/portal-ui"
+	"github.com/minio/pkg/mimedb"
 
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/swag"
@@ -54,7 +60,6 @@ func configureFlags(api *operations.ConsoleAPI) {
 }
 
 func configureAPI(api *operations.ConsoleAPI) http.Handler {
-
 	// Applies when the "x-token" header is set
 	api.KeyAuth = func(token string, scopes []string) (*models.Principal, error) {
 		// we are validating the session token by decrypting the claims inside, if the operation succeed that means the jwt
@@ -66,7 +71,6 @@ func configureAPI(api *operations.ConsoleAPI) http.Handler {
 		}
 		return &models.Principal{
 			STSAccessKeyID:     claims.STSAccessKeyID,
-			Actions:            claims.Actions,
 			STSSecretAccessKey: claims.STSSecretAccessKey,
 			STSSessionToken:    claims.STSSessionToken,
 			AccountAccessKey:   claims.AccountAccessKey,
@@ -115,28 +119,13 @@ func configureAPI(api *operations.ConsoleAPI) http.Handler {
 	registerAdminTiersHandlers(api)
 
 	// Operator Console
-	// Register tenant handlers
-	registerTenantHandlers(api)
-	// Register admin info handlers
-	registerOperatorTenantInfoHandlers(api)
-	// Register ResourceQuota handlers
-	registerResourceQuotaHandlers(api)
-	// Register Nodes' handlers
-	registerNodesHandlers(api)
-	// Register Parity' handlers
-	registerParityHandlers(api)
+
 	// Register Object's Handlers
 	registerObjectsHandlers(api)
 	// Register Bucket Quota's Handlers
 	registerBucketQuotaHandlers(api)
 	// Register Account handlers
 	registerAccountHandlers(api)
-	// Direct CSI handlers
-	registerDirectCSIHandlers(api)
-	// Volumes handlers
-	registerVolumesHandlers(api)
-	// Namespaces handlers
-	registerNamespaceHandlers(api)
 
 	api.PreServerShutdown = func() {}
 
@@ -164,33 +153,65 @@ func setupGlobalMiddleware(handler http.Handler) http.Handler {
 	next := AuthenticationMiddleware(handler)
 	// serve static files
 	next = FileServerMiddleware(next)
+
+	sslHostFn := secure.SSLHostFunc(func(host string) string {
+		h, _, err := net.SplitHostPort(host)
+		if err != nil {
+			return host
+		}
+		return net.JoinHostPort(h, TLSPort)
+	})
+
 	// Secure middleware, this middleware wrap all the previous handlers and add
 	// HTTP security headers
 	secureOptions := secure.Options{
-		AllowedHosts:                    getSecureAllowedHosts(),
-		AllowedHostsAreRegex:            getSecureAllowedHostsAreRegex(),
-		HostsProxyHeaders:               getSecureHostsProxyHeaders(),
+		AllowedHosts:                    GetSecureAllowedHosts(),
+		AllowedHostsAreRegex:            GetSecureAllowedHostsAreRegex(),
+		HostsProxyHeaders:               GetSecureHostsProxyHeaders(),
 		SSLRedirect:                     GetTLSRedirect() == "on" && len(GlobalPublicCerts) > 0,
-		SSLHost:                         getSecureTLSHost(),
-		STSSeconds:                      getSecureSTSSeconds(),
-		STSIncludeSubdomains:            getSecureSTSIncludeSubdomains(),
-		STSPreload:                      getSecureSTSPreload(),
-		SSLTemporaryRedirect:            getSecureTLSTemporaryRedirect(),
-		SSLHostFunc:                     nil,
-		ForceSTSHeader:                  getSecureForceSTSHeader(),
-		FrameDeny:                       getSecureFrameDeny(),
-		ContentTypeNosniff:              getSecureContentTypeNonSniff(),
-		BrowserXssFilter:                getSecureBrowserXSSFilter(),
-		ContentSecurityPolicy:           getSecureContentSecurityPolicy(),
-		ContentSecurityPolicyReportOnly: getSecureContentSecurityPolicyReportOnly(),
-		PublicKey:                       getSecurePublicKey(),
-		ReferrerPolicy:                  getSecureReferrerPolicy(),
-		FeaturePolicy:                   getSecureFeaturePolicy(),
-		ExpectCTHeader:                  getSecureExpectCTHeader(),
+		SSLHostFunc:                     &sslHostFn,
+		SSLHost:                         GetSecureTLSHost(),
+		STSSeconds:                      GetSecureSTSSeconds(),
+		STSIncludeSubdomains:            GetSecureSTSIncludeSubdomains(),
+		STSPreload:                      GetSecureSTSPreload(),
+		SSLTemporaryRedirect:            false,
+		ForceSTSHeader:                  GetSecureForceSTSHeader(),
+		FrameDeny:                       GetSecureFrameDeny(),
+		ContentTypeNosniff:              GetSecureContentTypeNonSniff(),
+		BrowserXssFilter:                GetSecureBrowserXSSFilter(),
+		ContentSecurityPolicy:           GetSecureContentSecurityPolicy(),
+		ContentSecurityPolicyReportOnly: GetSecureContentSecurityPolicyReportOnly(),
+		PublicKey:                       GetSecurePublicKey(),
+		ReferrerPolicy:                  GetSecureReferrerPolicy(),
+		FeaturePolicy:                   GetSecureFeaturePolicy(),
+		ExpectCTHeader:                  GetSecureExpectCTHeader(),
 		IsDevelopment:                   false,
 	}
 	secureMiddleware := secure.New(secureOptions)
-	return secureMiddleware.Handler(next)
+	next = secureMiddleware.Handler(next)
+	gnext := gzhttp.GzipHandler(next)
+	return RejectS3Middleware(gnext)
+}
+
+// RejectS3Middleware will reject requests that have AWS S3 specific headers.
+func RejectS3Middleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if len(r.Header.Get("X-Amz-Content-Sha256")) > 0 ||
+			len(r.Header.Get("X-Amz-Date")) > 0 ||
+			strings.HasPrefix(r.Header.Get("Authorization"), "AWS4-HMAC-SHA256") ||
+			r.URL.Query().Get("AWSAccessKeyId") != "" {
+			w.WriteHeader(http.StatusForbidden)
+			w.Write([]byte(`<?xml version="1.0" encoding="UTF-8"?>
+<Error>
+  <Code>AccessDenied</Code>
+  <Message>S3 API Request made to Console port. S3 Requests should be sent to API port.</Message>
+  <RequestId>0</RequestId>
+</Error>
+`))
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 func AuthenticationMiddleware(next http.Handler) http.Handler {
@@ -230,6 +251,8 @@ func FileServerMiddleware(next http.Handler) http.Handler {
 	})
 }
 
+var reHrefIndex = regexp.MustCompile(`(?m)((href|src)="(.\/).*?")`)
+
 type notFoundRedirectRespWr struct {
 	http.ResponseWriter // We embed http.ResponseWriter
 	status              int
@@ -249,16 +272,51 @@ func (w *notFoundRedirectRespWr) Write(p []byte) (int, error) {
 	return len(p), nil // Lie that we successfully wrote it
 }
 
+func handleSPA(w http.ResponseWriter, r *http.Request) {
+	basePath := "/"
+	// For SPA mode we will replace relative paths with absolute unless we receive query param cp=y
+	if v := r.URL.Query().Get("cp"); v == "y" {
+		basePath = "./"
+	}
+
+	indexPage, err := portal_ui.GetStaticAssets().Open("build/index.html")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	indexPageBytes, err := io.ReadAll(indexPage)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if basePath != "./" {
+		indexPageStr := string(indexPageBytes)
+		for _, match := range reHrefIndex.FindAllStringSubmatch(indexPageStr, -1) {
+			toReplace := strings.Replace(match[1], match[3], basePath, 1)
+			indexPageStr = strings.Replace(indexPageStr, match[1], toReplace, 1)
+		}
+		indexPageBytes = []byte(indexPageStr)
+	}
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	http.ServeContent(w, r, "index.html", time.Now(), bytes.NewReader(indexPageBytes))
+}
+
 // wrapHandlerSinglePageApplication handles a http.FileServer returning a 404 and overrides it with index.html
 func wrapHandlerSinglePageApplication(h http.Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		nfrw := &notFoundRedirectRespWr{ResponseWriter: w}
-		h.ServeHTTP(nfrw, r)
-		if nfrw.status == 404 {
-			indexPage, _ := portal_ui.GetStaticAssets().Open("build/index.html")
-			indexPageBytes, _ := io.ReadAll(indexPage)
-			w.Header().Set("Content-Type", "text/html; charset=utf-8")
-			http.ServeContent(w, r, "index.html", time.Now(), bytes.NewReader(indexPageBytes))
+		if r.URL.Path == "/" {
+			handleSPA(w, r)
+			return
+		}
+
+		w.Header().Set("Content-Type", mimedb.TypeByExtension(filepath.Ext(r.URL.Path)))
+		nfw := &notFoundRedirectRespWr{ResponseWriter: w}
+		h.ServeHTTP(nfw, r)
+		if nfw.status == http.StatusNotFound {
+			handleSPA(w, r)
 		}
 	}
 }

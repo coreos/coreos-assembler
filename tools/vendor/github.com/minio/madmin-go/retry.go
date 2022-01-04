@@ -112,32 +112,30 @@ func (adm AdminClient) newRetryTimer(ctx context.Context, maxRetry int, unit tim
 	return attemptCh
 }
 
-// List of AWS S3 error codes which are retryable.
-var retryableS3Codes = map[string]struct{}{
+// List of admin error codes which are retryable.
+var retryableAdminErrCodes = map[string]struct{}{
 	"RequestError":         {},
 	"RequestTimeout":       {},
 	"Throttling":           {},
 	"ThrottlingException":  {},
 	"RequestLimitExceeded": {},
 	"RequestThrottled":     {},
-	"InternalError":        {},
 	"SlowDown":             {},
-	// Add more AWS S3 codes here.
+	// Add more admin error codes here.
 }
 
-// isS3CodeRetryable - is s3 error code retryable.
-func isS3CodeRetryable(s3Code string) (ok bool) {
-	_, ok = retryableS3Codes[s3Code]
+// isAdminErrCodeRetryable - is admin error code retryable.
+func isAdminErrCodeRetryable(code string) (ok bool) {
+	_, ok = retryableAdminErrCodes[code]
 	return ok
 }
 
 // List of HTTP status codes which are retryable.
 var retryableHTTPStatusCodes = map[int]struct{}{
-	http.StatusRequestTimeout:      {},
-	http.StatusTooManyRequests:     {},
-	http.StatusInternalServerError: {},
-	http.StatusBadGateway:          {},
-	http.StatusServiceUnavailable:  {},
+	http.StatusRequestTimeout:     {},
+	http.StatusTooManyRequests:    {},
+	http.StatusBadGateway:         {},
+	http.StatusServiceUnavailable: {},
 	// Add more HTTP status codes here.
 }
 

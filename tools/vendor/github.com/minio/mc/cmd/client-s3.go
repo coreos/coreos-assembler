@@ -345,6 +345,11 @@ func (c *S3Client) RemoveNotificationConfig(ctx context.Context, arn string, eve
 				eventsTyped = append(eventsTyped, notification.ObjectRemovedAll)
 			case "get":
 				eventsTyped = append(eventsTyped, notification.ObjectAccessedAll)
+			case "replica":
+				eventsTyped = append(eventsTyped, notification.EventType("s3:Replication:*"))
+			case "ilm":
+				eventsTyped = append(eventsTyped, notification.EventType("s3:ObjectRestore:*"))
+				eventsTyped = append(eventsTyped, notification.EventType("s3:ObjectTransition:*"))
 			default:
 				return errInvalidArgument().Trace(events...)
 			}
@@ -989,7 +994,6 @@ func (c *S3Client) Put(ctx context.Context, reader io.Reader, size int64, progre
 		UserMetadata:         metadata,
 		UserTags:             tagsMap,
 		Progress:             progress,
-		NumThreads:           defaultMultipartThreadsNum,
 		ContentType:          contentType,
 		CacheControl:         cacheControl,
 		ContentDisposition:   contentDisposition,
@@ -999,6 +1003,8 @@ func (c *S3Client) Put(ctx context.Context, reader io.Reader, size int64, progre
 		ServerSideEncryption: putOpts.sse,
 		SendContentMd5:       putOpts.md5,
 		DisableMultipart:     putOpts.disableMultipart,
+		PartSize:             putOpts.multipartSize,
+		NumThreads:           putOpts.multipartThreads,
 	}
 
 	if !retainUntilDate.IsZero() && !retainUntilDate.Equal(timeSentinel) {
@@ -1258,6 +1264,23 @@ func (c *S3Client) MakeBucket(ctx context.Context, region string, ignoreExisting
 				return nil
 			}
 		}
+		return probe.NewError(e)
+	}
+	return nil
+}
+
+// RemoveBucket removes a bucket, forcibly if asked
+func (c *S3Client) RemoveBucket(ctx context.Context, forceRemove bool) *probe.Error {
+	bucket, object := c.url2BucketAndObject()
+	if bucket == "" {
+		return probe.NewError(BucketNameEmpty{})
+	}
+	if object != "" {
+		return errInvalidArgument()
+	}
+
+	opts := minio.BucketOptions{ForceDelete: forceRemove}
+	if e := c.api.RemoveBucketWithOptions(ctx, bucket, opts); e != nil {
 		return probe.NewError(e)
 	}
 	return nil
@@ -1881,26 +1904,6 @@ func (c *S3Client) listIncompleteRecursiveInRoutine(ctx context.Context, content
 	}
 }
 
-// Convert objectMultipartInfo to ClientContent
-func (c *S3Client) objectMultipartInfo2ClientContent(bucket string, entry minio.ObjectMultipartInfo) ClientContent {
-
-	content := ClientContent{}
-	url := c.targetURL.Clone()
-	// Join bucket and incoming object key.
-	url.Path = c.joinPath(bucket, entry.Key)
-	content.URL = url
-	content.Size = entry.Size
-	content.Time = entry.Initiated
-
-	if strings.HasSuffix(entry.Key, string(c.targetURL.Separator)) {
-		content.Type = os.ModeDir
-	} else {
-		content.Type = os.ModeTemporary
-	}
-
-	return content
-}
-
 // Returns new path by joining path segments with URL path separator.
 func (c *S3Client) joinPath(bucket string, objects ...string) string {
 	p := string(c.targetURL.Separator) + bucket
@@ -1942,6 +1945,7 @@ func (c *S3Client) objectInfo2ClientContent(bucket string, entry minio.ObjectInf
 	content.StorageClass = entry.StorageClass
 	content.IsDeleteMarker = entry.IsDeleteMarker
 	content.IsLatest = entry.IsLatest
+	content.Restore = entry.Restore
 	content.Metadata = map[string]string{}
 	content.UserMetadata = map[string]string{}
 	content.ReplicationStatus = entry.ReplicationStatus
@@ -2193,6 +2197,9 @@ func (c *S3Client) PutObjectRetention(ctx context.Context, versionID string, mod
 // GetObjectRetention - Get object retention for a given object.
 func (c *S3Client) GetObjectRetention(ctx context.Context, versionID string) (minio.RetentionMode, time.Time, *probe.Error) {
 	bucket, object := c.url2BucketAndObject()
+	if object == "" {
+		return "", time.Time{}, probe.NewError(ObjectNameEmpty{}).Trace(c.GetURL().String())
+	}
 	modePtr, untilPtr, e := c.api.GetObjectRetention(ctx, bucket, object, versionID)
 	if e != nil {
 		return "", time.Time{}, probe.NewError(e).Trace(c.GetURL().String())
@@ -2480,17 +2487,17 @@ func (c *S3Client) GetReplicationMetrics(ctx context.Context) (replication.Metri
 
 // ResetReplication - kicks off replication again on previously replicated objects if existing object
 // replication is enabled in the replication config.Optional to provide a timestamp
-func (c *S3Client) ResetReplication(ctx context.Context, before time.Duration) (string, *probe.Error) {
+func (c *S3Client) ResetReplication(ctx context.Context, before time.Duration, tgtArn string) (rinfo replication.ResyncTargetsInfo, err *probe.Error) {
 	bucket, _ := c.url2BucketAndObject()
 	if bucket == "" {
-		return "", probe.NewError(BucketNameEmpty{})
+		return rinfo, probe.NewError(BucketNameEmpty{})
 	}
 
-	rID, e := c.api.ResetBucketReplication(ctx, bucket, before)
+	rinfo, e := c.api.ResetBucketReplicationOnTarget(ctx, bucket, before, tgtArn)
 	if e != nil {
-		return "", probe.NewError(e)
+		return rinfo, probe.NewError(e)
 	}
-	return rID, nil
+	return rinfo, nil
 }
 
 // GetEncryption - gets bucket encryption info.
@@ -2606,4 +2613,23 @@ func (c *S3Client) GetBucketInfo(ctx context.Context) (BucketInfo, *probe.Error)
 		b.Notification.Config = nfc
 	}
 	return b, nil
+}
+
+// Restore gets a copy of an archived object
+func (c *S3Client) Restore(ctx context.Context, versionID string, days int) *probe.Error {
+	bucket, object := c.url2BucketAndObject()
+	if bucket == "" {
+		return probe.NewError(BucketNameEmpty{})
+	}
+	if object == "" {
+		return probe.NewError(ObjectNameEmpty{})
+	}
+
+	req := minio.RestoreRequest{}
+	req.SetDays(days)
+	req.SetGlacierJobParameters(minio.GlacierJobParameters{Tier: minio.TierExpedited})
+	if err := c.api.RestoreObject(ctx, bucket, object, versionID, req); err != nil {
+		return probe.NewError(err)
+	}
+	return nil
 }

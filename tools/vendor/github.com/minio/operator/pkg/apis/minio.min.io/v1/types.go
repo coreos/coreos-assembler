@@ -98,9 +98,6 @@ type TenantSpec struct {
 	// Security Context allows user to set entries like runAsUser, privilege escalation etc.
 	// +optional
 	SecurityContext *corev1.PodSecurityContext `json:"securityContext,omitempty"`
-	// ConsoleConfiguration is for setting up minio/console for graphical user interface
-	//+optional
-	Console *miniov2.ConsoleConfiguration `json:"console,omitempty"`
 	// KES is for setting up minio/kes as MinIO KMS
 	//+optional
 	KES *miniov2.KESConfig `json:"kes,omitempty"`
@@ -129,6 +126,12 @@ type TenantSpec struct {
 	// ExposeServices tells operator whether to expose the MinIO service and/or the Console Service
 	// +optional
 	ExposeServices *miniov2.ExposeServices `json:"exposeServices,omitempty"`
+	// *Optional* +
+	//
+	// Specify a secret that contains additional environment variable configurations to be used for the MinIO pools.
+	// The secret is expected to have a key named config.env containing all exported environment variables for MinIO+
+	// +optional
+	Configuration *corev1.LocalObjectReference `json:"configuration,omitempty"`
 }
 
 // Zone defines the spec for a MinIO Zone

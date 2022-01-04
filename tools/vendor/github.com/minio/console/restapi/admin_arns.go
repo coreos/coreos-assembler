@@ -52,13 +52,13 @@ func getArns(ctx context.Context, client MinioAdmin) (*models.ArnsResponse, erro
 
 // getArnsResponse returns a list of active arns in the instance
 func getArnsResponse(session *models.Principal) (*models.ArnsResponse, *models.Error) {
-	mAdmin, err := newAdminClient(session)
+	mAdmin, err := NewMinioAdminClient(session)
 	if err != nil {
 		return nil, prepareError(err)
 	}
 	// create a minioClient interface implementation
 	// defining the client to be used
-	adminClient := adminClient{client: mAdmin}
+	adminClient := AdminClient{Client: mAdmin}
 	// 20 seconds timeout
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()

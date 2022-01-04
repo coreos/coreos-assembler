@@ -124,11 +124,11 @@ func (policy Policy) Merge(input Policy) Policy {
 func (policy *Policy) dropDuplicateStatements() {
 redo:
 	for i := range policy.Statements {
-		for j, statement := range policy.Statements[i+1:] {
+		for _, statement := range policy.Statements[i+1:] {
 			if !policy.Statements[i].Equals(statement) {
 				continue
 			}
-			policy.Statements = append(policy.Statements[:j], policy.Statements[j+1:]...)
+			policy.Statements = append(policy.Statements[:i], policy.Statements[i+1:]...)
 			goto redo
 		}
 	}

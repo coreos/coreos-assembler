@@ -15,7 +15,7 @@ func CompileToGetCodeSet(typeptr uintptr) (*OpcodeSet, error) {
 	if typeptr > typeAddr.MaxTypeAddr {
 		return compileToGetCodeSetSlowPath(typeptr)
 	}
-	index := typeptr - typeAddr.BaseTypeAddr
+	index := (typeptr - typeAddr.BaseTypeAddr) >> typeAddr.AddrShift
 	setsMu.RLock()
 	if codeSet := cachedOpcodeSets[index]; codeSet != nil {
 		setsMu.RUnlock()
@@ -26,18 +26,37 @@ func CompileToGetCodeSet(typeptr uintptr) (*OpcodeSet, error) {
 	// noescape trick for header.typ ( reflect.*rtype )
 	copiedType := *(**runtime.Type)(unsafe.Pointer(&typeptr))
 
-	code, err := compileHead(&compileContext{
+	noescapeKeyCode, err := compileHead(&compileContext{
 		typ:                      copiedType,
 		structTypeToCompiledCode: map[uintptr]*CompiledCode{},
 	})
 	if err != nil {
 		return nil, err
 	}
-	code = copyOpcode(code)
-	codeLength := code.TotalLength()
+	escapeKeyCode, err := compileHead(&compileContext{
+		typ:                      copiedType,
+		structTypeToCompiledCode: map[uintptr]*CompiledCode{},
+		escapeKey:                true,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	noescapeKeyCode = copyOpcode(noescapeKeyCode)
+	escapeKeyCode = copyOpcode(escapeKeyCode)
+	setTotalLengthToInterfaceOp(noescapeKeyCode)
+	setTotalLengthToInterfaceOp(escapeKeyCode)
+	interfaceNoescapeKeyCode := copyToInterfaceOpcode(noescapeKeyCode)
+	interfaceEscapeKeyCode := copyToInterfaceOpcode(escapeKeyCode)
+	codeLength := noescapeKeyCode.TotalLength()
 	codeSet := &OpcodeSet{
-		Code:       code,
-		CodeLength: codeLength,
+		Type:                     copiedType,
+		NoescapeKeyCode:          noescapeKeyCode,
+		EscapeKeyCode:            escapeKeyCode,
+		InterfaceNoescapeKeyCode: interfaceNoescapeKeyCode,
+		InterfaceEscapeKeyCode:   interfaceEscapeKeyCode,
+		CodeLength:               codeLength,
+		EndCode:                  ToEndCode(interfaceNoescapeKeyCode),
 	}
 	setsMu.Lock()
 	cachedOpcodeSets[index] = codeSet

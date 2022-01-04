@@ -77,13 +77,13 @@ func listConfig(client MinioAdmin) ([]*models.ConfigDescription, error) {
 
 // getListConfigResponse performs listConfig() and serializes it to the handler's output
 func getListConfigResponse(session *models.Principal) (*models.ListConfigResponse, *models.Error) {
-	mAdmin, err := newAdminClient(session)
+	mAdmin, err := NewMinioAdminClient(session)
 	if err != nil {
 		return nil, prepareError(err)
 	}
 	// create a MinIO Admin Client interface implementation
 	// defining the client to be used
-	adminClient := adminClient{client: mAdmin}
+	adminClient := AdminClient{Client: mAdmin}
 
 	configDescs, err := listConfig(adminClient)
 	if err != nil {
@@ -125,13 +125,13 @@ func getConfig(ctx context.Context, client MinioAdmin, name string) ([]*models.C
 // getConfigResponse performs getConfig() and serializes it to the handler's output
 func getConfigResponse(session *models.Principal, params admin_api.ConfigInfoParams) (*models.Configuration, *models.Error) {
 	ctx := context.Background()
-	mAdmin, err := newAdminClient(session)
+	mAdmin, err := NewMinioAdminClient(session)
 	if err != nil {
 		return nil, prepareError(err)
 	}
 	// create a MinIO Admin Client interface implementation
 	// defining the client to be used
-	adminClient := adminClient{client: mAdmin}
+	adminClient := AdminClient{Client: mAdmin}
 
 	configkv, err := getConfig(ctx, adminClient, params.Name)
 	if err != nil {
@@ -169,7 +169,11 @@ func setConfigWithARNAccountID(ctx context.Context, client MinioAdmin, configNam
 func buildConfig(configName *string, kvs []*models.ConfigurationKV) *string {
 	configElements := []string{*configName}
 	for _, kv := range kvs {
-		configElements = append(configElements, fmt.Sprintf("%s=%s", kv.Key, kv.Value))
+		key := kv.Key
+		val := fmt.Sprintf("\"%s\"", kv.Value)
+		if key != "" {
+			configElements = append(configElements, fmt.Sprintf("%s=%s", key, val))
+		}
 	}
 	config := strings.Join(configElements, " ")
 	return &config
@@ -177,13 +181,13 @@ func buildConfig(configName *string, kvs []*models.ConfigurationKV) *string {
 
 // setConfigResponse implements setConfig() to be used by handler
 func setConfigResponse(session *models.Principal, name string, configRequest *models.SetConfigRequest) (*models.SetConfigResponse, *models.Error) {
-	mAdmin, err := newAdminClient(session)
+	mAdmin, err := NewMinioAdminClient(session)
 	if err != nil {
 		return nil, prepareError(err)
 	}
 	// create a MinIO Admin Client interface implementation
 	// defining the client to be used
-	adminClient := adminClient{client: mAdmin}
+	adminClient := AdminClient{Client: mAdmin}
 	configName := name
 
 	ctx := context.Background()

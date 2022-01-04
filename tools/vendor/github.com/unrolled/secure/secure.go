@@ -11,21 +11,22 @@ import (
 type secureCtxKey string
 
 const (
-	stsHeader            = "Strict-Transport-Security"
-	stsSubdomainString   = "; includeSubDomains"
-	stsPreloadString     = "; preload"
-	frameOptionsHeader   = "X-Frame-Options"
-	frameOptionsValue    = "DENY"
-	contentTypeHeader    = "X-Content-Type-Options"
-	contentTypeValue     = "nosniff"
-	xssProtectionHeader  = "X-XSS-Protection"
-	xssProtectionValue   = "1; mode=block"
-	cspHeader            = "Content-Security-Policy"
-	cspReportOnlyHeader  = "Content-Security-Policy-Report-Only"
-	hpkpHeader           = "Public-Key-Pins"
-	referrerPolicyHeader = "Referrer-Policy"
-	featurePolicyHeader  = "Feature-Policy"
-	expectCTHeader       = "Expect-CT"
+	stsHeader               = "Strict-Transport-Security"
+	stsSubdomainString      = "; includeSubDomains"
+	stsPreloadString        = "; preload"
+	frameOptionsHeader      = "X-Frame-Options"
+	frameOptionsValue       = "DENY"
+	contentTypeHeader       = "X-Content-Type-Options"
+	contentTypeValue        = "nosniff"
+	xssProtectionHeader     = "X-XSS-Protection"
+	xssProtectionValue      = "1; mode=block"
+	cspHeader               = "Content-Security-Policy"
+	cspReportOnlyHeader     = "Content-Security-Policy-Report-Only"
+	hpkpHeader              = "Public-Key-Pins"
+	referrerPolicyHeader    = "Referrer-Policy"
+	featurePolicyHeader     = "Feature-Policy"
+	permissionsPolicyHeader = "Permissions-Policy"
+	expectCTHeader          = "Expect-CT"
 
 	ctxDefaultSecureHeaderKey = secureCtxKey("SecureResponseHeader")
 	cspNonceSize              = 16
@@ -74,11 +75,15 @@ type Options struct {
 	// CustomFrameOptionsValue allows the X-Frame-Options header value to be set with a custom value. This overrides the FrameDeny option. Default is "".
 	CustomFrameOptionsValue string
 	// PublicKey implements HPKP to prevent MITM attacks with forged certificates. Default is "".
+	// Deprecated: This feature is no longer recommended. Though some browsers might still support it, it may have already been removed from the relevant web standards, may be in the process of being dropped, or may only be kept for compatibility purposes. Avoid using it, and update existing code if possible.
 	PublicKey string
 	// ReferrerPolicy allows sites to control when browsers will pass the Referer header to other sites. Default is "".
 	ReferrerPolicy string
 	// FeaturePolicy allows to selectively enable and disable use of various browser features and APIs. Default is "".
+	// Deprecated: This header has been renamed to Permissions-Policy.
 	FeaturePolicy string
+	// PermissionsPolicy allows to selectively enable and disable use of various browser features and APIs. Default is "".
+	PermissionsPolicy string
 	// SSLHost is the host name that is used to redirect http requests to https. Default is "", which indicates to use the same host.
 	SSLHost string
 	// AllowedHosts is a list of fully qualified domain names that are allowed. Default is empty list, which allows any and all host names.
@@ -250,6 +255,10 @@ func (s *Secure) Process(w http.ResponseWriter, r *http.Request) error {
 // In addition, the generated nonce for the request is returned as well as the error value.
 func (s *Secure) ProcessAndReturnNonce(w http.ResponseWriter, r *http.Request) (string, error) {
 	responseHeader, newR, err := s.processRequest(w, r)
+	if err != nil {
+		return "", err
+	}
+
 	addResponseHeaders(responseHeader, w)
 
 	return CSPNonce(newR.Context()), err
@@ -419,6 +428,11 @@ func (s *Secure) processRequest(w http.ResponseWriter, r *http.Request) (http.He
 	// Feature Policy header.
 	if len(s.opt.FeaturePolicy) > 0 {
 		responseHeader.Set(featurePolicyHeader, s.opt.FeaturePolicy)
+	}
+
+	// Permissions Policy header.
+	if len(s.opt.PermissionsPolicy) > 0 {
+		responseHeader.Set(permissionsPolicyHeader, s.opt.PermissionsPolicy)
 	}
 
 	// Expect-CT header.

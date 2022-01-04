@@ -7,6 +7,7 @@ require (
 	github.com/gedex/inflector v0.0.0-20170307190818-16278e9db813
 	github.com/golangci/golangci-lint v1.41.0
 	github.com/idubinskiy/schematyper v0.0.0-20190118213059-f71b40dac30d
+	github.com/minio/console v0.12.3 // indirect
 	github.com/minio/minio v0.0.0-20210630144424-a3f0288262e9
 	github.com/nats-io/nats-server/v2 v2.2.0 // indirect
 	github.com/princjef/gomarkdoc v0.1.3

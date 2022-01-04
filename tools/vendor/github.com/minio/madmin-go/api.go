@@ -403,7 +403,7 @@ func (adm AdminClient) executeMethod(ctx context.Context, method string, reqData
 		res.Body = ioutil.NopCloser(errBodySeeker)
 
 		// Verify if error response code is retryable.
-		if isS3CodeRetryable(errResponse.Code) {
+		if isAdminErrCodeRetryable(errResponse.Code) {
 			continue // Retry.
 		}
 
@@ -429,6 +429,20 @@ func (adm AdminClient) setUserAgent(req *http.Request) {
 	if adm.appInfo.appName != "" && adm.appInfo.appVersion != "" {
 		req.Header.Set("User-Agent", libraryUserAgent+" "+adm.appInfo.appName+"/"+adm.appInfo.appVersion)
 	}
+}
+
+// GetAccessAndSecretKey - retrieves the access and secret keys.
+func (adm AdminClient) GetAccessAndSecretKey() (string, string) {
+	value, err := adm.credsProvider.Get()
+	if err != nil {
+		return "", ""
+	}
+	return value.AccessKeyID, value.SecretAccessKey
+}
+
+// GetEndpointURL - returns the endpoint for the admin client.
+func (adm AdminClient) GetEndpointURL() *url.URL {
+	return adm.endpointURL
 }
 
 func (adm AdminClient) getSecretKey() string {

@@ -23,6 +23,8 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	xjwt "github.com/minio/console/pkg/auth/token"
 )
 
 // Do not use:
@@ -106,14 +108,13 @@ func FileExists(filename string) bool {
 }
 
 func NewSessionCookieForConsole(token string) http.Cookie {
-	expiration := time.Now().Add(SessionDuration)
-
+	sessionDuration := xjwt.GetConsoleSTSDuration()
 	return http.Cookie{
 		Path:     "/",
 		Name:     "token",
 		Value:    token,
-		MaxAge:   int(SessionDuration.Seconds()), // 45 minutes
-		Expires:  expiration,
+		MaxAge:   int(sessionDuration.Seconds()), // default 1 hr
+		Expires:  time.Now().Add(sessionDuration),
 		HttpOnly: true,
 		// if len(GlobalPublicCerts) > 0 is true, that means Console is running with TLS enable and the browser
 		// should not leak any cookie if we access the site using HTTP
@@ -137,4 +138,9 @@ func ExpireSessionCookie() http.Cookie {
 		// read more: https://web.dev/samesite-cookies-explained/
 		SameSite: http.SameSiteLaxMode,
 	}
+}
+
+// SanitizeEncodedPrefix replaces spaces for + since those are lost when you do GET parameters
+func SanitizeEncodedPrefix(rawPrefix string) string {
+	return strings.Replace(rawPrefix, " ", "+", -1)
 }

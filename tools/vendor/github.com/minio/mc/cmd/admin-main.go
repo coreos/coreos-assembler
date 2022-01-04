@@ -34,9 +34,11 @@ var adminCmdSubcommands = []cli.Command{
 	adminServiceCmd,
 	adminServerUpdateCmd,
 	adminInfoCmd,
+	adminInspectCmd,
 	adminUserCmd,
 	adminGroupCmd,
 	adminPolicyCmd,
+	adminReplicateCmd,
 	adminConfigCmd,
 	adminHealCmd,
 	adminProfileCmd,
@@ -45,10 +47,11 @@ var adminCmdSubcommands = []cli.Command{
 	adminConsoleCmd,
 	adminPrometheusCmd,
 	adminKMSCmd,
-	adminHealthCmd,
+	adminHealthCmd(),
 	adminSubnetCmd,
 	adminBucketCmd,
 	adminTierCmd,
+	adminSpeedtestCmd,
 }
 
 var adminCmd = cli.Command{

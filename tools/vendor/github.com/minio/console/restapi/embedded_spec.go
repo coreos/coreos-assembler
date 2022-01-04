@@ -70,11 +70,8 @@ func init() {
           }
         ],
         "responses": {
-          "201": {
-            "description": "A successful login.",
-            "schema": {
-              "$ref": "#/definitions/loginResponse"
-            }
+          "204": {
+            "description": "A successful login."
           },
           "default": {
             "description": "Generic error response.",
@@ -145,6 +142,14 @@ func init() {
         ],
         "summary": "Returns information about the deployment",
         "operationId": "AdminInfo",
+        "parameters": [
+          {
+            "type": "boolean",
+            "default": false,
+            "name": "defaultOnly",
+            "in": "query"
+          }
+        ],
         "responses": {
           "200": {
             "description": "A successful response.",
@@ -492,6 +497,123 @@ func init() {
         }
       }
     },
+    "/bucket/{bucket}/access-rules": {
+      "get": {
+        "tags": [
+          "AdminAPI"
+        ],
+        "summary": "List Access Rules With Given Bucket",
+        "operationId": "ListAccessRulesWithBucket",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "bucket",
+            "in": "path",
+            "required": true
+          },
+          {
+            "type": "integer",
+            "format": "int32",
+            "name": "offset",
+            "in": "query"
+          },
+          {
+            "type": "integer",
+            "format": "int32",
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/listAccessRulesResponse"
+            }
+          },
+          "default": {
+            "description": "Generic error response.",
+            "schema": {
+              "$ref": "#/definitions/error"
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "AdminAPI"
+        ],
+        "summary": "Add Access Rule To Given Bucket",
+        "operationId": "SetAccessRuleWithBucket",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "bucket",
+            "in": "path",
+            "required": true
+          },
+          {
+            "name": "prefixaccess",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/prefixAccessPair"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          "default": {
+            "description": "Generic error response.",
+            "schema": {
+              "$ref": "#/definitions/error"
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "AdminAPI"
+        ],
+        "summary": "Delete Access Rule From Given Bucket",
+        "operationId": "DeleteAccessRuleWithBucket",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "bucket",
+            "in": "path",
+            "required": true
+          },
+          {
+            "name": "prefix",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/prefixWrapper"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          "default": {
+            "description": "Generic error response.",
+            "schema": {
+              "$ref": "#/definitions/error"
+            }
+          }
+        }
+      }
+    },
     "/buckets": {
       "get": {
         "tags": [
@@ -585,6 +707,45 @@ func init() {
             "schema": {
               "$ref": "#/definitions/multiBucketResponseState"
             }
+          },
+          "default": {
+            "description": "Generic error response.",
+            "schema": {
+              "$ref": "#/definitions/error"
+            }
+          }
+        }
+      }
+    },
+    "/buckets/{bucket_name}/delete-objects": {
+      "post": {
+        "tags": [
+          "UserAPI"
+        ],
+        "summary": "Delete Multiple Objects",
+        "operationId": "DeleteMultipleObjects",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "bucket_name",
+            "in": "path",
+            "required": true
+          },
+          {
+            "name": "files",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/deleteFile"
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A successful response."
           },
           "default": {
             "description": "Generic error response.",
@@ -975,6 +1136,11 @@ func init() {
             "type": "boolean",
             "name": "with_versions",
             "in": "query"
+          },
+          {
+            "type": "boolean",
+            "name": "with_metadata",
+            "in": "query"
           }
         ],
         "responses": {
@@ -1062,6 +1228,12 @@ func init() {
             "type": "string",
             "name": "version_id",
             "in": "query"
+          },
+          {
+            "type": "boolean",
+            "default": false,
+            "name": "preview",
+            "in": "query"
           }
         ],
         "responses": {
@@ -1113,6 +1285,46 @@ func init() {
             "schema": {
               "$ref": "#/definitions/putObjectLegalHoldRequest"
             }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A successful response."
+          },
+          "default": {
+            "description": "Generic error response.",
+            "schema": {
+              "$ref": "#/definitions/error"
+            }
+          }
+        }
+      }
+    },
+    "/buckets/{bucket_name}/objects/restore": {
+      "put": {
+        "tags": [
+          "UserAPI"
+        ],
+        "summary": "Restore Object to a selected version",
+        "operationId": "PutObjectRestore",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "bucket_name",
+            "in": "path",
+            "required": true
+          },
+          {
+            "type": "string",
+            "name": "prefix",
+            "in": "query",
+            "required": true
+          },
+          {
+            "type": "string",
+            "name": "version_id",
+            "in": "query",
+            "required": true
           }
         ],
         "responses": {
@@ -1517,6 +1729,42 @@ func init() {
         }
       }
     },
+    "/buckets/{bucket_name}/tags": {
+      "put": {
+        "tags": [
+          "UserAPI"
+        ],
+        "summary": "Put Bucket's tags",
+        "operationId": "PutBucketTags",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "bucket_name",
+            "in": "path",
+            "required": true
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/putBucketTagsRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A successful response."
+          },
+          "default": {
+            "description": "Generic error response.",
+            "schema": {
+              "$ref": "#/definitions/error"
+            }
+          }
+        }
+      }
+    },
     "/buckets/{bucket_name}/versioning": {
       "get": {
         "tags": [
@@ -1746,39 +1994,6 @@ func init() {
         }
       }
     },
-    "/cluster/max-allocatable-memory": {
-      "get": {
-        "tags": [
-          "AdminAPI"
-        ],
-        "summary": "Get maximum allocatable memory for given number of nodes",
-        "operationId": "GetMaxAllocatableMem",
-        "parameters": [
-          {
-            "minimum": 1,
-            "type": "integer",
-            "format": "int32",
-            "name": "num_nodes",
-            "in": "query",
-            "required": true
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/maxAllocatableMemResponse"
-            }
-          },
-          "default": {
-            "description": "Generic error response.",
-            "schema": {
-              "$ref": "#/definitions/error"
-            }
-          }
-        }
-      }
-    },
     "/configs": {
       "get": {
         "tags": [
@@ -1884,30 +2099,26 @@ func init() {
         }
       }
     },
-    "/direct-csi/drives": {
+    "/group": {
       "get": {
         "tags": [
           "AdminAPI"
         ],
-        "summary": "Get direct-csi drives list",
-        "operationId": "GetDirectCSIDriveList",
+        "summary": "Group info",
+        "operationId": "GroupInfo",
         "parameters": [
           {
             "type": "string",
-            "name": "nodes",
-            "in": "query"
-          },
-          {
-            "type": "string",
-            "name": "drives",
-            "in": "query"
+            "name": "name",
+            "in": "query",
+            "required": true
           }
         ],
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/getDirectCSIDriveListResponse"
+              "$ref": "#/definitions/group"
             }
           },
           "default": {
@@ -1917,22 +2128,26 @@ func init() {
             }
           }
         }
-      }
-    },
-    "/direct-csi/drives/format": {
-      "post": {
+      },
+      "put": {
         "tags": [
           "AdminAPI"
         ],
-        "summary": "Format direct-csi drives from a list",
-        "operationId": "DirectCSIFormatDrive",
+        "summary": "Update Group Members or Status",
+        "operationId": "UpdateGroup",
         "parameters": [
+          {
+            "type": "string",
+            "name": "name",
+            "in": "query",
+            "required": true
+          },
           {
             "name": "body",
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/formatConfiguration"
+              "$ref": "#/definitions/updateGroupRequest"
             }
           }
         ],
@@ -1940,7 +2155,7 @@ func init() {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/formatDirectCSIDrivesResponse"
+              "$ref": "#/definitions/group"
             }
           },
           "default": {
@@ -1950,72 +2165,24 @@ func init() {
             }
           }
         }
-      }
-    },
-    "/direct-csi/volumes": {
-      "get": {
+      },
+      "delete": {
         "tags": [
           "AdminAPI"
         ],
-        "summary": "Get direct-csi volumes list",
-        "operationId": "GetDirectCSIVolumeList",
+        "summary": "Remove group",
+        "operationId": "RemoveGroup",
         "parameters": [
           {
             "type": "string",
-            "name": "nodes",
-            "in": "query"
-          },
-          {
-            "type": "string",
-            "name": "drives",
-            "in": "query"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/getDirectCSIVolumeListResponse"
-            }
-          },
-          "default": {
-            "description": "Generic error response.",
-            "schema": {
-              "$ref": "#/definitions/error"
-            }
-          }
-        }
-      }
-    },
-    "/get-parity/{nodes}/{disksPerNode}": {
-      "get": {
-        "tags": [
-          "AdminAPI"
-        ],
-        "summary": "Gets parity by sending number of nodes \u0026 number of disks",
-        "operationId": "GetParity",
-        "parameters": [
-          {
-            "minimum": 2,
-            "type": "integer",
-            "name": "nodes",
-            "in": "path",
-            "required": true
-          },
-          {
-            "minimum": 1,
-            "type": "integer",
-            "name": "disksPerNode",
-            "in": "path",
+            "name": "name",
+            "in": "query",
             "required": true
           }
         ],
         "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/parityResponse"
-            }
+          "204": {
+            "description": "A successful response."
           },
           "default": {
             "description": "Generic error response.",
@@ -2080,100 +2247,6 @@ func init() {
         ],
         "responses": {
           "201": {
-            "description": "A successful response."
-          },
-          "default": {
-            "description": "Generic error response.",
-            "schema": {
-              "$ref": "#/definitions/error"
-            }
-          }
-        }
-      }
-    },
-    "/groups/{name}": {
-      "get": {
-        "tags": [
-          "AdminAPI"
-        ],
-        "summary": "Group info",
-        "operationId": "GroupInfo",
-        "parameters": [
-          {
-            "type": "string",
-            "name": "name",
-            "in": "path",
-            "required": true
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/group"
-            }
-          },
-          "default": {
-            "description": "Generic error response.",
-            "schema": {
-              "$ref": "#/definitions/error"
-            }
-          }
-        }
-      },
-      "put": {
-        "tags": [
-          "AdminAPI"
-        ],
-        "summary": "Update Group Members or Status",
-        "operationId": "UpdateGroup",
-        "parameters": [
-          {
-            "type": "string",
-            "name": "name",
-            "in": "path",
-            "required": true
-          },
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/updateGroupRequest"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/group"
-            }
-          },
-          "default": {
-            "description": "Generic error response.",
-            "schema": {
-              "$ref": "#/definitions/error"
-            }
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "AdminAPI"
-        ],
-        "summary": "Remove group",
-        "operationId": "RemoveGroup",
-        "parameters": [
-          {
-            "type": "string",
-            "name": "name",
-            "in": "path",
-            "required": true
-          }
-        ],
-        "responses": {
-          "204": {
             "description": "A successful response."
           },
           "default": {
@@ -2251,29 +2324,6 @@ func init() {
         }
       }
     },
-    "/list-pvcs": {
-      "get": {
-        "tags": [
-          "AdminAPI"
-        ],
-        "summary": "List all PVCs from namespaces that the user has access to",
-        "operationId": "ListPVCs",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/listPVCsResponse"
-            }
-          },
-          "default": {
-            "description": "Generic error response.",
-            "schema": {
-              "$ref": "#/definitions/error"
-            }
-          }
-        }
-      }
-    },
     "/login": {
       "get": {
         "security": [],
@@ -2315,11 +2365,8 @@ func init() {
           }
         ],
         "responses": {
-          "201": {
-            "description": "A successful login.",
-            "schema": {
-              "$ref": "#/definitions/loginResponse"
-            }
+          "204": {
+            "description": "A successful login."
           },
           "default": {
             "description": "Generic error response.",
@@ -2349,45 +2396,8 @@ func init() {
           }
         ],
         "responses": {
-          "201": {
-            "description": "A successful login.",
-            "schema": {
-              "$ref": "#/definitions/loginResponse"
-            }
-          },
-          "default": {
-            "description": "Generic error response.",
-            "schema": {
-              "$ref": "#/definitions/error"
-            }
-          }
-        }
-      }
-    },
-    "/login/operator": {
-      "post": {
-        "security": [],
-        "tags": [
-          "UserAPI"
-        ],
-        "summary": "Login to Operator Console.",
-        "operationId": "LoginOperator",
-        "parameters": [
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/loginOperatorRequest"
-            }
-          }
-        ],
-        "responses": {
-          "201": {
-            "description": "A successful login.",
-            "schema": {
-              "$ref": "#/definitions/loginResponse"
-            }
+          "204": {
+            "description": "A successful login."
           },
           "default": {
             "description": "Generic error response.",
@@ -2471,843 +2481,6 @@ func init() {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/logSearchResponse"
-            }
-          },
-          "default": {
-            "description": "Generic error response.",
-            "schema": {
-              "$ref": "#/definitions/error"
-            }
-          }
-        }
-      }
-    },
-    "/namespace": {
-      "post": {
-        "tags": [
-          "AdminAPI"
-        ],
-        "summary": "Creates a new Namespace with given information",
-        "operationId": "CreateNamespace",
-        "parameters": [
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/namespace"
-            }
-          }
-        ],
-        "responses": {
-          "201": {
-            "description": "A successful response."
-          },
-          "default": {
-            "description": "Generic error response.",
-            "schema": {
-              "$ref": "#/definitions/error"
-            }
-          }
-        }
-      }
-    },
-    "/namespaces/{namespace}/resourcequotas/{resource-quota-name}": {
-      "get": {
-        "tags": [
-          "AdminAPI"
-        ],
-        "summary": "Get Resource Quota",
-        "operationId": "GetResourceQuota",
-        "parameters": [
-          {
-            "type": "string",
-            "name": "namespace",
-            "in": "path",
-            "required": true
-          },
-          {
-            "type": "string",
-            "name": "resource-quota-name",
-            "in": "path",
-            "required": true
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/resourceQuota"
-            }
-          },
-          "default": {
-            "description": "Generic error response.",
-            "schema": {
-              "$ref": "#/definitions/error"
-            }
-          }
-        }
-      }
-    },
-    "/namespaces/{namespace}/tenants": {
-      "get": {
-        "tags": [
-          "AdminAPI"
-        ],
-        "summary": "List Tenants by Namespace",
-        "operationId": "ListTenants",
-        "parameters": [
-          {
-            "type": "string",
-            "name": "namespace",
-            "in": "path",
-            "required": true
-          },
-          {
-            "type": "string",
-            "name": "sort_by",
-            "in": "query"
-          },
-          {
-            "type": "integer",
-            "format": "int32",
-            "name": "offset",
-            "in": "query"
-          },
-          {
-            "type": "integer",
-            "format": "int32",
-            "name": "limit",
-            "in": "query"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/listTenantsResponse"
-            }
-          },
-          "default": {
-            "description": "Generic error response.",
-            "schema": {
-              "$ref": "#/definitions/error"
-            }
-          }
-        }
-      }
-    },
-    "/namespaces/{namespace}/tenants/{tenant}": {
-      "get": {
-        "tags": [
-          "AdminAPI"
-        ],
-        "summary": "Tenant Details",
-        "operationId": "TenantDetails",
-        "parameters": [
-          {
-            "type": "string",
-            "name": "namespace",
-            "in": "path",
-            "required": true
-          },
-          {
-            "type": "string",
-            "name": "tenant",
-            "in": "path",
-            "required": true
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/tenant"
-            }
-          },
-          "default": {
-            "description": "Generic error response.",
-            "schema": {
-              "$ref": "#/definitions/error"
-            }
-          }
-        }
-      },
-      "put": {
-        "tags": [
-          "AdminAPI"
-        ],
-        "summary": "Update Tenant",
-        "operationId": "UpdateTenant",
-        "parameters": [
-          {
-            "type": "string",
-            "name": "namespace",
-            "in": "path",
-            "required": true
-          },
-          {
-            "type": "string",
-            "name": "tenant",
-            "in": "path",
-            "required": true
-          },
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/updateTenantRequest"
-            }
-          }
-        ],
-        "responses": {
-          "201": {
-            "description": "A successful response."
-          },
-          "default": {
-            "description": "Generic error response.",
-            "schema": {
-              "$ref": "#/definitions/error"
-            }
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "AdminAPI"
-        ],
-        "summary": "Delete tenant and underlying pvcs",
-        "operationId": "DeleteTenant",
-        "parameters": [
-          {
-            "type": "string",
-            "name": "namespace",
-            "in": "path",
-            "required": true
-          },
-          {
-            "type": "string",
-            "name": "tenant",
-            "in": "path",
-            "required": true
-          },
-          {
-            "name": "body",
-            "in": "body",
-            "schema": {
-              "$ref": "#/definitions/deleteTenantRequest"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "A successful response."
-          },
-          "default": {
-            "description": "Generic error response.",
-            "schema": {
-              "$ref": "#/definitions/error"
-            }
-          }
-        }
-      }
-    },
-    "/namespaces/{namespace}/tenants/{tenant}/certificates": {
-      "put": {
-        "tags": [
-          "AdminAPI"
-        ],
-        "summary": "Tenant Update Certificates",
-        "operationId": "TenantUpdateCertificate",
-        "parameters": [
-          {
-            "type": "string",
-            "name": "namespace",
-            "in": "path",
-            "required": true
-          },
-          {
-            "type": "string",
-            "name": "tenant",
-            "in": "path",
-            "required": true
-          },
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/tlsConfiguration"
-            }
-          }
-        ],
-        "responses": {
-          "201": {
-            "description": "A successful response."
-          },
-          "default": {
-            "description": "Generic error response.",
-            "schema": {
-              "$ref": "#/definitions/error"
-            }
-          }
-        }
-      }
-    },
-    "/namespaces/{namespace}/tenants/{tenant}/encryption": {
-      "put": {
-        "tags": [
-          "AdminAPI"
-        ],
-        "summary": "Tenant Update Encryption",
-        "operationId": "TenantUpdateEncryption",
-        "parameters": [
-          {
-            "type": "string",
-            "name": "namespace",
-            "in": "path",
-            "required": true
-          },
-          {
-            "type": "string",
-            "name": "tenant",
-            "in": "path",
-            "required": true
-          },
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/encryptionConfiguration"
-            }
-          }
-        ],
-        "responses": {
-          "201": {
-            "description": "A successful response."
-          },
-          "default": {
-            "description": "Generic error response.",
-            "schema": {
-              "$ref": "#/definitions/error"
-            }
-          }
-        }
-      }
-    },
-    "/namespaces/{namespace}/tenants/{tenant}/info": {
-      "get": {
-        "tags": [
-          "AdminAPI"
-        ],
-        "summary": "Tenant Info",
-        "operationId": "TenantInfo",
-        "parameters": [
-          {
-            "type": "string",
-            "name": "namespace",
-            "in": "path",
-            "required": true
-          },
-          {
-            "type": "string",
-            "name": "tenant",
-            "in": "path",
-            "required": true
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/adminInfoResponse"
-            }
-          },
-          "default": {
-            "description": "Generic error response.",
-            "schema": {
-              "$ref": "#/definitions/error"
-            }
-          }
-        }
-      }
-    },
-    "/namespaces/{namespace}/tenants/{tenant}/info/widgets/{widgetId}": {
-      "get": {
-        "tags": [
-          "AdminAPI"
-        ],
-        "summary": "Returns information about a tenant deployment",
-        "operationId": "TenantWidgetDetails",
-        "parameters": [
-          {
-            "type": "string",
-            "name": "namespace",
-            "in": "path",
-            "required": true
-          },
-          {
-            "type": "string",
-            "name": "tenant",
-            "in": "path",
-            "required": true
-          },
-          {
-            "type": "integer",
-            "format": "int32",
-            "name": "widgetId",
-            "in": "path",
-            "required": true
-          },
-          {
-            "type": "integer",
-            "name": "start",
-            "in": "query"
-          },
-          {
-            "type": "integer",
-            "name": "end",
-            "in": "query"
-          },
-          {
-            "type": "integer",
-            "format": "int32",
-            "name": "step",
-            "in": "query"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/widgetDetails"
-            }
-          },
-          "default": {
-            "description": "Generic error response.",
-            "schema": {
-              "$ref": "#/definitions/error"
-            }
-          }
-        }
-      }
-    },
-    "/namespaces/{namespace}/tenants/{tenant}/pods": {
-      "get": {
-        "tags": [
-          "AdminAPI"
-        ],
-        "summary": "Get Pods For The Tenant",
-        "operationId": "GetTenantPods",
-        "parameters": [
-          {
-            "type": "string",
-            "name": "namespace",
-            "in": "path",
-            "required": true
-          },
-          {
-            "type": "string",
-            "name": "tenant",
-            "in": "path",
-            "required": true
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "type": "array",
-              "items": {
-                "$ref": "#/definitions/tenantPod"
-              }
-            }
-          },
-          "default": {
-            "description": "Generic error response.",
-            "schema": {
-              "$ref": "#/definitions/error"
-            }
-          }
-        }
-      }
-    },
-    "/namespaces/{namespace}/tenants/{tenant}/pods/{podName}": {
-      "get": {
-        "tags": [
-          "AdminAPI"
-        ],
-        "summary": "Get Logs for Pod",
-        "operationId": "GetPodLogs",
-        "parameters": [
-          {
-            "type": "string",
-            "name": "namespace",
-            "in": "path",
-            "required": true
-          },
-          {
-            "type": "string",
-            "name": "tenant",
-            "in": "path",
-            "required": true
-          },
-          {
-            "type": "string",
-            "name": "podName",
-            "in": "path",
-            "required": true
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "type": "string"
-            }
-          },
-          "default": {
-            "description": "Generic error response.",
-            "schema": {
-              "$ref": "#/definitions/error"
-            }
-          }
-        }
-      }
-    },
-    "/namespaces/{namespace}/tenants/{tenant}/pods/{podName}/events": {
-      "get": {
-        "tags": [
-          "AdminAPI"
-        ],
-        "summary": "Get Events for Pod",
-        "operationId": "GetPodEvents",
-        "parameters": [
-          {
-            "type": "string",
-            "name": "namespace",
-            "in": "path",
-            "required": true
-          },
-          {
-            "type": "string",
-            "name": "tenant",
-            "in": "path",
-            "required": true
-          },
-          {
-            "type": "string",
-            "name": "podName",
-            "in": "path",
-            "required": true
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/eventListWrapper"
-            }
-          },
-          "default": {
-            "description": "Generic error response.",
-            "schema": {
-              "$ref": "#/definitions/error"
-            }
-          }
-        }
-      }
-    },
-    "/namespaces/{namespace}/tenants/{tenant}/pools": {
-      "put": {
-        "tags": [
-          "AdminAPI"
-        ],
-        "summary": "Tenant Update Pools",
-        "operationId": "TenantUpdatePools",
-        "parameters": [
-          {
-            "type": "string",
-            "name": "namespace",
-            "in": "path",
-            "required": true
-          },
-          {
-            "type": "string",
-            "name": "tenant",
-            "in": "path",
-            "required": true
-          },
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/poolUpdateRequest"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/tenant"
-            }
-          },
-          "default": {
-            "description": "Generic error response.",
-            "schema": {
-              "$ref": "#/definitions/error"
-            }
-          }
-        }
-      },
-      "post": {
-        "tags": [
-          "AdminAPI"
-        ],
-        "summary": "Tenant Add Pool",
-        "operationId": "TenantAddPool",
-        "parameters": [
-          {
-            "type": "string",
-            "name": "namespace",
-            "in": "path",
-            "required": true
-          },
-          {
-            "type": "string",
-            "name": "tenant",
-            "in": "path",
-            "required": true
-          },
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/pool"
-            }
-          }
-        ],
-        "responses": {
-          "201": {
-            "description": "A successful response."
-          },
-          "default": {
-            "description": "Generic error response.",
-            "schema": {
-              "$ref": "#/definitions/error"
-            }
-          }
-        }
-      }
-    },
-    "/namespaces/{namespace}/tenants/{tenant}/security": {
-      "get": {
-        "tags": [
-          "AdminAPI"
-        ],
-        "summary": "Tenant Security",
-        "operationId": "TenantSecurity",
-        "parameters": [
-          {
-            "type": "string",
-            "name": "namespace",
-            "in": "path",
-            "required": true
-          },
-          {
-            "type": "string",
-            "name": "tenant",
-            "in": "path",
-            "required": true
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/tenantSecurityResponse"
-            }
-          },
-          "default": {
-            "description": "Generic error response.",
-            "schema": {
-              "$ref": "#/definitions/error"
-            }
-          }
-        }
-      },
-      "post": {
-        "tags": [
-          "AdminAPI"
-        ],
-        "summary": "Update Tenant Security",
-        "operationId": "UpdateTenantSecurity",
-        "parameters": [
-          {
-            "type": "string",
-            "name": "namespace",
-            "in": "path",
-            "required": true
-          },
-          {
-            "type": "string",
-            "name": "tenant",
-            "in": "path",
-            "required": true
-          },
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/updateTenantSecurityRequest"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "A successful response."
-          },
-          "default": {
-            "description": "Generic error response.",
-            "schema": {
-              "$ref": "#/definitions/error"
-            }
-          }
-        }
-      }
-    },
-    "/namespaces/{namespace}/tenants/{tenant}/usage": {
-      "get": {
-        "tags": [
-          "AdminAPI"
-        ],
-        "summary": "Get Usage For The Tenant",
-        "operationId": "GetTenantUsage",
-        "parameters": [
-          {
-            "type": "string",
-            "name": "namespace",
-            "in": "path",
-            "required": true
-          },
-          {
-            "type": "string",
-            "name": "tenant",
-            "in": "path",
-            "required": true
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/tenantUsage"
-            }
-          },
-          "default": {
-            "description": "Generic error response.",
-            "schema": {
-              "$ref": "#/definitions/error"
-            }
-          }
-        }
-      }
-    },
-    "/namespaces/{namespace}/tenants/{tenant}/yaml": {
-      "get": {
-        "tags": [
-          "AdminAPI"
-        ],
-        "summary": "Get the Tenant YAML",
-        "operationId": "GetTenantYAML",
-        "parameters": [
-          {
-            "type": "string",
-            "name": "namespace",
-            "in": "path",
-            "required": true
-          },
-          {
-            "type": "string",
-            "name": "tenant",
-            "in": "path",
-            "required": true
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/tenantYAML"
-            }
-          },
-          "default": {
-            "description": "Generic error response.",
-            "schema": {
-              "$ref": "#/definitions/error"
-            }
-          }
-        }
-      },
-      "put": {
-        "tags": [
-          "AdminAPI"
-        ],
-        "summary": "Put the Tenant YAML",
-        "operationId": "PutTenantYAML",
-        "parameters": [
-          {
-            "type": "string",
-            "name": "namespace",
-            "in": "path",
-            "required": true
-          },
-          {
-            "type": "string",
-            "name": "tenant",
-            "in": "path",
-            "required": true
-          },
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/tenantYAML"
-            }
-          }
-        ],
-        "responses": {
-          "201": {
-            "description": "A successful response."
-          },
-          "default": {
-            "description": "Generic error response.",
-            "schema": {
-              "$ref": "#/definitions/error"
-            }
-          }
-        }
-      }
-    },
-    "/nodes/labels": {
-      "get": {
-        "tags": [
-          "OperatorAPI"
-        ],
-        "summary": "List node labels",
-        "operationId": "ListNodeLabels",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/nodeLabels"
             }
           },
           "default": {
@@ -3687,6 +2860,39 @@ func init() {
         }
       }
     },
+    "/service-account-credentials": {
+      "post": {
+        "tags": [
+          "AdminAPI"
+        ],
+        "summary": "Create Service Account With Credentials",
+        "operationId": "CreateServiceAccountCreds",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/serviceAccountRequestCreds"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/serviceAccountCreds"
+            }
+          },
+          "default": {
+            "description": "Generic error response.",
+            "schema": {
+              "$ref": "#/definitions/error"
+            }
+          }
+        }
+      }
+    },
     "/service-accounts": {
       "get": {
         "tags": [
@@ -3826,26 +3032,20 @@ func init() {
         }
       }
     },
-    "/set-policy-multi/{name}": {
+    "/set-policy": {
       "put": {
         "tags": [
           "AdminAPI"
         ],
-        "summary": "Set policy to multiple users/groups",
-        "operationId": "SetPolicyMultiple",
+        "summary": "Set policy",
+        "operationId": "SetPolicy",
         "parameters": [
-          {
-            "type": "string",
-            "name": "name",
-            "in": "path",
-            "required": true
-          },
           {
             "name": "body",
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/setPolicyMultipleRequest"
+              "$ref": "#/definitions/setPolicyNameRequest"
             }
           }
         ],
@@ -3862,26 +3062,20 @@ func init() {
         }
       }
     },
-    "/set-policy/{name}": {
+    "/set-policy-multi": {
       "put": {
         "tags": [
           "AdminAPI"
         ],
-        "summary": "Set policy",
-        "operationId": "SetPolicy",
+        "summary": "Set policy to multiple users/groups",
+        "operationId": "SetPolicyMultiple",
         "parameters": [
-          {
-            "type": "string",
-            "name": "name",
-            "in": "path",
-            "required": true
-          },
           {
             "name": "body",
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/setPolicyRequest"
+              "$ref": "#/definitions/setPolicyMultipleNameRequest"
             }
           }
         ],
@@ -3921,24 +3115,84 @@ func init() {
         }
       }
     },
-    "/subscription/namespaces/{namespace}/tenants/{tenant}/activate": {
-      "post": {
+    "/user": {
+      "get": {
         "tags": [
           "AdminAPI"
         ],
-        "summary": "Activate a particular tenant using the existing subscription license",
-        "operationId": "SubscriptionActivate",
+        "summary": "Get User Info",
+        "operationId": "GetUserInfo",
         "parameters": [
           {
             "type": "string",
-            "name": "namespace",
-            "in": "path",
+            "name": "name",
+            "in": "query",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/user"
+            }
+          },
+          "default": {
+            "description": "Generic error response.",
+            "schema": {
+              "$ref": "#/definitions/error"
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "AdminAPI"
+        ],
+        "summary": "Update User Info",
+        "operationId": "UpdateUserInfo",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "name",
+            "in": "query",
             "required": true
           },
           {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/updateUser"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/user"
+            }
+          },
+          "default": {
+            "description": "Generic error response.",
+            "schema": {
+              "$ref": "#/definitions/error"
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "AdminAPI"
+        ],
+        "summary": "Remove user",
+        "operationId": "RemoveUser",
+        "parameters": [
+          {
             "type": "string",
-            "name": "tenant",
-            "in": "path",
+            "name": "name",
+            "in": "query",
             "required": true
           }
         ],
@@ -3955,43 +3209,26 @@ func init() {
         }
       }
     },
-    "/subscription/refresh": {
-      "post": {
+    "/user/groups": {
+      "put": {
         "tags": [
           "AdminAPI"
         ],
-        "summary": "Refresh existing subscription license",
-        "operationId": "SubscriptionRefresh",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/license"
-            }
-          },
-          "default": {
-            "description": "Generic error response.",
-            "schema": {
-              "$ref": "#/definitions/error"
-            }
-          }
-        }
-      }
-    },
-    "/subscription/validate": {
-      "post": {
-        "tags": [
-          "AdminAPI"
-        ],
-        "summary": "Validates subscription license",
-        "operationId": "SubscriptionValidate",
+        "summary": "Update Groups for a user",
+        "operationId": "UpdateUserGroups",
         "parameters": [
+          {
+            "type": "string",
+            "name": "name",
+            "in": "query",
+            "required": true
+          },
           {
             "name": "body",
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/subscriptionValidateRequest"
+              "$ref": "#/definitions/updateUserGroups"
             }
           }
         ],
@@ -3999,7 +3236,7 @@ func init() {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/license"
+              "$ref": "#/definitions/user"
             }
           },
           "default": {
@@ -4011,37 +3248,65 @@ func init() {
         }
       }
     },
-    "/tenants": {
+    "/user/{name}/service-account-credentials": {
+      "post": {
+        "tags": [
+          "AdminAPI"
+        ],
+        "summary": "Create Service Account for User With Credentials",
+        "operationId": "CreateServiceAccountCredentials",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "name",
+            "in": "path",
+            "required": true
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/serviceAccountRequestCreds"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/serviceAccountCreds"
+            }
+          },
+          "default": {
+            "description": "Generic error response.",
+            "schema": {
+              "$ref": "#/definitions/error"
+            }
+          }
+        }
+      }
+    },
+    "/user/{name}/service-accounts": {
       "get": {
         "tags": [
           "AdminAPI"
         ],
-        "summary": "List Tenant of All Namespaces",
-        "operationId": "ListAllTenants",
+        "summary": "returns a list of service accounts for a user",
+        "operationId": "ListAUserServiceAccounts",
         "parameters": [
           {
             "type": "string",
-            "name": "sort_by",
-            "in": "query"
-          },
-          {
-            "type": "integer",
-            "format": "int32",
-            "name": "offset",
-            "in": "query"
-          },
-          {
-            "type": "integer",
-            "format": "int32",
-            "name": "limit",
-            "in": "query"
+            "name": "name",
+            "in": "path",
+            "required": true
           }
         ],
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/listTenantsResponse"
+              "$ref": "#/definitions/serviceAccounts"
             }
           },
           "default": {
@@ -4056,23 +3321,29 @@ func init() {
         "tags": [
           "AdminAPI"
         ],
-        "summary": "Create Tenant",
-        "operationId": "CreateTenant",
+        "summary": "Create Service Account for User",
+        "operationId": "CreateAUserServiceAccount",
         "parameters": [
+          {
+            "type": "string",
+            "name": "name",
+            "in": "path",
+            "required": true
+          },
           {
             "name": "body",
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/createTenantRequest"
+              "$ref": "#/definitions/serviceAccountRequest"
             }
           }
         ],
         "responses": {
-          "200": {
+          "201": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/createTenantResponse"
+              "$ref": "#/definitions/serviceAccountCreds"
             }
           },
           "default": {
@@ -4181,173 +3452,20 @@ func init() {
           }
         }
       }
-    },
-    "/users/{name}": {
-      "get": {
-        "tags": [
-          "AdminAPI"
-        ],
-        "summary": "Get User Info",
-        "operationId": "GetUserInfo",
-        "parameters": [
-          {
-            "type": "string",
-            "name": "name",
-            "in": "path",
-            "required": true
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/user"
-            }
-          },
-          "default": {
-            "description": "Generic error response.",
-            "schema": {
-              "$ref": "#/definitions/error"
-            }
-          }
-        }
-      },
-      "put": {
-        "tags": [
-          "AdminAPI"
-        ],
-        "summary": "Update User Info",
-        "operationId": "UpdateUserInfo",
-        "parameters": [
-          {
-            "type": "string",
-            "name": "name",
-            "in": "path",
-            "required": true
-          },
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/updateUser"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/user"
-            }
-          },
-          "default": {
-            "description": "Generic error response.",
-            "schema": {
-              "$ref": "#/definitions/error"
-            }
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "AdminAPI"
-        ],
-        "summary": "Remove user",
-        "operationId": "RemoveUser",
-        "parameters": [
-          {
-            "type": "string",
-            "name": "name",
-            "in": "path",
-            "required": true
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "A successful response."
-          },
-          "default": {
-            "description": "Generic error response.",
-            "schema": {
-              "$ref": "#/definitions/error"
-            }
-          }
-        }
-      }
-    },
-    "/users/{name}/groups": {
-      "put": {
-        "tags": [
-          "AdminAPI"
-        ],
-        "summary": "Update Groups for a user",
-        "operationId": "UpdateUserGroups",
-        "parameters": [
-          {
-            "type": "string",
-            "name": "name",
-            "in": "path",
-            "required": true
-          },
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/updateUserGroups"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/user"
-            }
-          },
-          "default": {
-            "description": "Generic error response.",
-            "schema": {
-              "$ref": "#/definitions/error"
-            }
-          }
-        }
-      }
-    },
-    "/users/{name}/service-accounts": {
-      "get": {
-        "tags": [
-          "AdminAPI"
-        ],
-        "summary": "returns a list of service accounts for a user",
-        "operationId": "ListAUserServiceAccounts",
-        "parameters": [
-          {
-            "type": "string",
-            "name": "name",
-            "in": "path",
-            "required": true
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/serviceAccounts"
-            }
-          },
-          "default": {
-            "description": "Generic error response.",
-            "schema": {
-              "$ref": "#/definitions/error"
-            }
-          }
-        }
-      }
     }
   },
   "definitions": {
+    "accessRule": {
+      "type": "object",
+      "properties": {
+        "access": {
+          "type": "string"
+        },
+        "prefix": {
+          "type": "string"
+        }
+      }
+    },
     "accountChangePasswordRequest": {
       "type": "object",
       "required": [
@@ -4473,13 +3591,20 @@ func init() {
       "required": [
         "accessKey",
         "secretKey",
-        "groups"
+        "groups",
+        "policies"
       ],
       "properties": {
         "accessKey": {
           "type": "string"
         },
         "groups": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "policies": {
           "type": "array",
           "items": {
             "type": "string"
@@ -4498,6 +3623,12 @@ func init() {
         },
         "objects": {
           "type": "integer"
+        },
+        "servers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/serverProperties"
+          }
         },
         "usage": {
           "type": "integer"
@@ -4521,51 +3652,6 @@ func init() {
         }
       }
     },
-    "awsConfiguration": {
-      "type": "object",
-      "required": [
-        "secretsmanager"
-      ],
-      "properties": {
-        "secretsmanager": {
-          "type": "object",
-          "required": [
-            "endpoint",
-            "region",
-            "credentials"
-          ],
-          "properties": {
-            "credentials": {
-              "type": "object",
-              "required": [
-                "accesskey",
-                "secretkey"
-              ],
-              "properties": {
-                "accesskey": {
-                  "type": "string"
-                },
-                "secretkey": {
-                  "type": "string"
-                },
-                "token": {
-                  "type": "string"
-                }
-              }
-            },
-            "endpoint": {
-              "type": "string"
-            },
-            "kmskey": {
-              "type": "string"
-            },
-            "region": {
-              "type": "string"
-            }
-          }
-        }
-      }
-    },
     "bucket": {
       "type": "object",
       "required": [
@@ -4575,12 +3661,75 @@ func init() {
         "access": {
           "$ref": "#/definitions/bucketAccess"
         },
+        "allowedActions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
         "creation_date": {
           "type": "string"
+        },
+        "details": {
+          "type": "object",
+          "properties": {
+            "locking": {
+              "type": "boolean"
+            },
+            "quota": {
+              "type": "object",
+              "properties": {
+                "quota": {
+                  "type": "integer",
+                  "format": "int64"
+                },
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "fifo",
+                    "hard"
+                  ]
+                }
+              }
+            },
+            "replication": {
+              "type": "boolean"
+            },
+            "tags": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            },
+            "versioning": {
+              "type": "boolean"
+            },
+            "versioningSuspended": {
+              "type": "boolean"
+            }
+          }
+        },
+        "manage": {
+          "type": "boolean"
         },
         "name": {
           "type": "string",
           "minLength": 3
+        },
+        "objects": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "rw_access": {
+          "type": "object",
+          "properties": {
+            "read": {
+              "type": "boolean"
+            },
+            "write": {
+              "type": "boolean"
+            }
+          }
         },
         "size": {
           "type": "integer",
@@ -4684,6 +3833,12 @@ func init() {
         "legal_hold_status": {
           "type": "string"
         },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
         "name": {
           "type": "string"
         },
@@ -4698,6 +3853,12 @@ func init() {
           "format": "int64"
         },
         "tags": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "user_metadata": {
           "type": "object",
           "additionalProperties": {
             "type": "string"
@@ -4828,26 +3989,6 @@ func init() {
         }
       }
     },
-    "certificateInfo": {
-      "type": "object",
-      "properties": {
-        "domains": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "expiry": {
-          "type": "string"
-        },
-        "name": {
-          "type": "string"
-        },
-        "serialNumber": {
-          "type": "string"
-        }
-      }
-    },
     "changeUserPasswordRequest": {
       "type": "object",
       "required": [
@@ -4899,21 +4040,6 @@ func init() {
         }
       }
     },
-    "consoleConfiguration": {
-      "allOf": [
-        {
-          "$ref": "#/definitions/metadataFields"
-        },
-        {
-          "type": "object",
-          "properties": {
-            "image": {
-              "type": "string"
-            }
-          }
-        }
-      ]
-    },
     "createRemoteBucket": {
       "required": [
         "accessKey",
@@ -4961,270 +4087,37 @@ func init() {
         }
       }
     },
-    "createTenantRequest": {
+    "deleteFile": {
       "type": "object",
-      "required": [
-        "name",
-        "namespace",
-        "pools"
-      ],
       "properties": {
-        "access_key": {
+        "path": {
           "type": "string"
         },
-        "annotations": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "string"
-          }
-        },
-        "console": {
-          "type": "object",
-          "$ref": "#/definitions/consoleConfiguration"
-        },
-        "console_image": {
-          "type": "string"
-        },
-        "enable_console": {
-          "type": "boolean",
-          "default": true
-        },
-        "enable_prometheus": {
-          "type": "boolean",
-          "default": false
-        },
-        "enable_tls": {
-          "type": "boolean",
-          "default": true
-        },
-        "encryption": {
-          "type": "object",
-          "$ref": "#/definitions/encryptionConfiguration"
-        },
-        "erasureCodingParity": {
-          "type": "integer"
-        },
-        "expose_console": {
+        "recursive": {
           "type": "boolean"
         },
-        "expose_minio": {
-          "type": "boolean"
-        },
-        "idp": {
-          "type": "object",
-          "$ref": "#/definitions/idpConfiguration"
-        },
-        "image": {
-          "type": "string"
-        },
-        "image_pull_secret": {
-          "type": "string"
-        },
-        "image_registry": {
-          "$ref": "#/definitions/imageRegistry"
-        },
-        "labels": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "string"
-          }
-        },
-        "logSearchConfiguration": {
-          "$ref": "#/definitions/logSearchConfiguration"
-        },
-        "mounth_path": {
-          "type": "string"
-        },
-        "name": {
-          "type": "string",
-          "pattern": "^[a-z0-9-]{3,63}$"
-        },
-        "namespace": {
-          "type": "string"
-        },
-        "pools": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/pool"
-          }
-        },
-        "prometheusConfiguration": {
-          "$ref": "#/definitions/prometheusConfiguration"
-        },
-        "secret_key": {
-          "type": "string"
-        },
-        "tls": {
-          "type": "object",
-          "$ref": "#/definitions/tlsConfiguration"
-        }
-      }
-    },
-    "createTenantResponse": {
-      "type": "object",
-      "properties": {
-        "console": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/tenantResponseItem"
-          }
-        }
-      }
-    },
-    "csiFormatErrorResponse": {
-      "type": "object",
-      "properties": {
-        "drive": {
-          "type": "string"
-        },
-        "error": {
-          "type": "string"
-        },
-        "node": {
+        "versionID": {
           "type": "string"
         }
       }
-    },
-    "deleteTenantRequest": {
-      "type": "object",
-      "properties": {
-        "delete_pvcs": {
-          "type": "boolean"
-        }
-      }
-    },
-    "directCSIDriveInfo": {
-      "type": "object",
-      "properties": {
-        "allocated": {
-          "type": "number",
-          "format": "int64"
-        },
-        "capacity": {
-          "type": "number",
-          "format": "int64"
-        },
-        "drive": {
-          "type": "string"
-        },
-        "message": {
-          "type": "string"
-        },
-        "node": {
-          "type": "string"
-        },
-        "status": {
-          "type": "string"
-        },
-        "volumes": {
-          "type": "number",
-          "format": "int64"
-        }
-      }
-    },
-    "directCSIVolumeInfo": {
-      "type": "object",
-      "properties": {
-        "capacity": {
-          "type": "number",
-          "format": "int64"
-        },
-        "drive": {
-          "type": "string"
-        },
-        "node": {
-          "type": "string"
-        },
-        "volume": {
-          "type": "string"
-        }
-      }
-    },
-    "encryptionConfiguration": {
-      "allOf": [
-        {
-          "$ref": "#/definitions/metadataFields"
-        },
-        {
-          "type": "object",
-          "properties": {
-            "aws": {
-              "type": "object",
-              "$ref": "#/definitions/awsConfiguration"
-            },
-            "client": {
-              "type": "object",
-              "$ref": "#/definitions/keyPairConfiguration"
-            },
-            "gcp": {
-              "type": "object",
-              "$ref": "#/definitions/gcpConfiguration"
-            },
-            "gemalto": {
-              "type": "object",
-              "$ref": "#/definitions/gemaltoConfiguration"
-            },
-            "image": {
-              "type": "string"
-            },
-            "replicas": {
-              "type": "string"
-            },
-            "server": {
-              "type": "object",
-              "$ref": "#/definitions/keyPairConfiguration"
-            },
-            "vault": {
-              "type": "object",
-              "$ref": "#/definitions/vaultConfiguration"
-            }
-          }
-        }
-      ]
     },
     "error": {
       "type": "object",
       "required": [
-        "message"
+        "message",
+        "detailedMessage"
       ],
       "properties": {
         "code": {
           "type": "integer",
           "format": "int32"
         },
+        "detailedMessage": {
+          "type": "string"
+        },
         "message": {
           "type": "string"
         }
-      }
-    },
-    "eventListElement": {
-      "type": "object",
-      "properties": {
-        "event_type": {
-          "type": "string"
-        },
-        "last_seen": {
-          "type": "integer",
-          "format": "int64"
-        },
-        "message": {
-          "type": "string"
-        },
-        "namespace": {
-          "type": "string"
-        },
-        "object": {
-          "type": "string"
-        },
-        "reason": {
-          "type": "string"
-        }
-      }
-    },
-    "eventListWrapper": {
-      "type": "array",
-      "items": {
-        "$ref": "#/definitions/eventListElement"
       }
     },
     "expirationResponse": {
@@ -5242,125 +4135,6 @@ func init() {
         }
       }
     },
-    "formatConfiguration": {
-      "type": "object",
-      "required": [
-        "drives",
-        "force"
-      ],
-      "properties": {
-        "drives": {
-          "type": "array",
-          "minLength": 1,
-          "items": {
-            "type": "string"
-          }
-        },
-        "force": {
-          "type": "boolean"
-        }
-      }
-    },
-    "formatDirectCSIDrivesResponse": {
-      "type": "object",
-      "properties": {
-        "formatIssuesList": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/csiFormatErrorResponse"
-          }
-        }
-      }
-    },
-    "gcpConfiguration": {
-      "type": "object",
-      "required": [
-        "secretmanager"
-      ],
-      "properties": {
-        "secretmanager": {
-          "type": "object",
-          "required": [
-            "project_id"
-          ],
-          "properties": {
-            "credentials": {
-              "type": "object",
-              "properties": {
-                "client_email": {
-                  "type": "string"
-                },
-                "client_id": {
-                  "type": "string"
-                },
-                "private_key": {
-                  "type": "string"
-                },
-                "private_key_id": {
-                  "type": "string"
-                }
-              }
-            },
-            "endpoint": {
-              "type": "string"
-            },
-            "project_id": {
-              "type": "string"
-            }
-          }
-        }
-      }
-    },
-    "gemaltoConfiguration": {
-      "type": "object",
-      "required": [
-        "keysecure"
-      ],
-      "properties": {
-        "keysecure": {
-          "type": "object",
-          "required": [
-            "endpoint",
-            "credentials"
-          ],
-          "properties": {
-            "credentials": {
-              "type": "object",
-              "required": [
-                "token",
-                "domain"
-              ],
-              "properties": {
-                "domain": {
-                  "type": "string"
-                },
-                "retry": {
-                  "type": "integer",
-                  "format": "int64"
-                },
-                "token": {
-                  "type": "string"
-                }
-              }
-            },
-            "endpoint": {
-              "type": "string"
-            },
-            "tls": {
-              "type": "object",
-              "required": [
-                "ca"
-              ],
-              "properties": {
-                "ca": {
-                  "type": "string"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "getBucketRetentionConfig": {
       "type": "object",
       "properties": {
@@ -5373,28 +4147,6 @@ func init() {
         "validity": {
           "type": "integer",
           "format": "int32"
-        }
-      }
-    },
-    "getDirectCSIDriveListResponse": {
-      "type": "object",
-      "properties": {
-        "drives": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/directCSIDriveInfo"
-          }
-        }
-      }
-    },
-    "getDirectCSIVolumeListResponse": {
-      "type": "object",
-      "properties": {
-        "volumes": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/directCSIVolumeInfo"
-          }
         }
       }
     },
@@ -5444,113 +4196,43 @@ func init() {
       "type": "string",
       "pattern": "^[\\w+=,.@-]{1,64}$"
     },
-    "idpConfiguration": {
+    "iamPolicy": {
       "type": "object",
       "properties": {
-        "active_directory": {
-          "type": "object",
-          "required": [
-            "url",
-            "username_format",
-            "user_search_filter"
-          ],
-          "properties": {
-            "group_name_attribute": {
-              "type": "string"
-            },
-            "group_search_base_dn": {
-              "type": "string"
-            },
-            "group_search_filter": {
-              "type": "string"
-            },
-            "server_insecure": {
-              "type": "boolean"
-            },
-            "skip_tls_verification": {
-              "type": "boolean"
-            },
-            "url": {
-              "type": "string"
-            },
-            "user_search_filter": {
-              "type": "string"
-            },
-            "username_format": {
-              "type": "string"
-            }
-          }
-        },
-        "keys": {
+        "statement": {
           "type": "array",
           "items": {
-            "type": "object",
-            "required": [
-              "access_key",
-              "secret_key"
-            ],
-            "properties": {
-              "access_key": {
-                "type": "string"
-              },
-              "secret_key": {
-                "type": "string"
-              }
-            }
+            "$ref": "#/definitions/iamPolicyStatement"
           }
         },
-        "oidc": {
+        "version": {
+          "type": "string"
+        }
+      }
+    },
+    "iamPolicyStatement": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "condition": {
           "type": "object",
-          "required": [
-            "url",
-            "client_id",
-            "secret_id"
-          ],
-          "properties": {
-            "client_id": {
-              "type": "string"
-            },
-            "secret_id": {
-              "type": "string"
-            },
-            "url": {
-              "type": "string"
-            }
+          "additionalProperties": {
+            "type": "object"
           }
-        }
-      }
-    },
-    "imageRegistry": {
-      "type": "object",
-      "required": [
-        "registry",
-        "username",
-        "password"
-      ],
-      "properties": {
-        "password": {
+        },
+        "effect": {
           "type": "string"
         },
-        "registry": {
-          "type": "string"
-        },
-        "username": {
-          "type": "string"
-        }
-      }
-    },
-    "keyPairConfiguration": {
-      "type": "object",
-      "required": [
-        "crt",
-        "key"
-      ],
-      "properties": {
-        "crt": {
-          "type": "string"
-        },
-        "key": {
-          "type": "string"
+        "resource": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       }
     },
@@ -5588,6 +4270,23 @@ func init() {
         }
       }
     },
+    "listAccessRulesResponse": {
+      "type": "object",
+      "properties": {
+        "accessRules": {
+          "type": "array",
+          "title": "list of policies",
+          "items": {
+            "$ref": "#/definitions/accessRule"
+          }
+        },
+        "total": {
+          "type": "integer",
+          "format": "int64",
+          "title": "total number of policies"
+        }
+      }
+    },
     "listBucketEventsResponse": {
       "type": "object",
       "properties": {
@@ -5617,7 +4316,7 @@ func init() {
         "total": {
           "type": "integer",
           "format": "int64",
-          "title": "number of buckets accessible to tenant user"
+          "title": "number of buckets accessible to the user"
         }
       }
     },
@@ -5698,17 +4397,6 @@ func init() {
         }
       }
     },
-    "listPVCsResponse": {
-      "type": "object",
-      "properties": {
-        "pvcs": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/pvcsListResponse"
-          }
-        }
-      }
-    },
     "listPoliciesResponse": {
       "type": "object",
       "properties": {
@@ -5743,23 +4431,6 @@ func init() {
         }
       }
     },
-    "listTenantsResponse": {
-      "type": "object",
-      "properties": {
-        "tenants": {
-          "type": "array",
-          "title": "list of resulting tenants",
-          "items": {
-            "$ref": "#/definitions/tenantList"
-          }
-        },
-        "total": {
-          "type": "integer",
-          "format": "int64",
-          "title": "number of tenants accessible to tenant user"
-        }
-      }
-    },
     "listUsersResponse": {
       "type": "object",
       "properties": {
@@ -5769,25 +4440,6 @@ func init() {
           "items": {
             "$ref": "#/definitions/user"
           }
-        }
-      }
-    },
-    "logSearchConfiguration": {
-      "type": "object",
-      "properties": {
-        "image": {
-          "type": "string"
-        },
-        "postgres_image": {
-          "type": "string"
-        },
-        "storageClass": {
-          "type": "string",
-          "default": ""
-        },
-        "storageSize": {
-          "type": "number",
-          "default": 5
         }
       }
     },
@@ -5827,17 +4479,6 @@ func init() {
           "type": "string"
         },
         "state": {
-          "type": "string"
-        }
-      }
-    },
-    "loginOperatorRequest": {
-      "type": "object",
-      "required": [
-        "jwt"
-      ],
-      "properties": {
-        "jwt": {
           "type": "string"
         }
       }
@@ -5885,38 +4526,6 @@ func init() {
         },
         "versioning": {
           "type": "boolean"
-        }
-      }
-    },
-    "maxAllocatableMemResponse": {
-      "type": "object",
-      "properties": {
-        "max_memory": {
-          "type": "integer",
-          "format": "int64"
-        }
-      }
-    },
-    "metadataFields": {
-      "type": "object",
-      "properties": {
-        "annotations": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "string"
-          }
-        },
-        "labels": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "string"
-          }
-        },
-        "node_selector": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "string"
-          }
         }
       }
     },
@@ -6015,90 +4624,6 @@ func init() {
         },
         "originBucket": {
           "type": "string"
-        }
-      }
-    },
-    "namespace": {
-      "type": "object",
-      "required": [
-        "name"
-      ],
-      "properties": {
-        "name": {
-          "type": "string"
-        }
-      }
-    },
-    "nodeLabels": {
-      "type": "object",
-      "additionalProperties": {
-        "type": "array",
-        "items": {
-          "type": "string"
-        }
-      }
-    },
-    "nodeSelectorTerm": {
-      "description": "A null or empty node selector term matches no objects. The requirements of them are ANDed. The TopologySelectorTerm type implements a subset of the NodeSelectorTerm.",
-      "type": "object",
-      "properties": {
-        "matchExpressions": {
-          "description": "A list of node selector requirements by node's labels.",
-          "type": "array",
-          "items": {
-            "description": "A node selector requirement is a selector that contains values, a key, and an operator that relates the key and values.",
-            "type": "object",
-            "required": [
-              "key",
-              "operator"
-            ],
-            "properties": {
-              "key": {
-                "description": "The label key that the selector applies to.",
-                "type": "string"
-              },
-              "operator": {
-                "description": "Represents a key's relationship to a set of values. Valid operators are In, NotIn, Exists, DoesNotExist. Gt, and Lt.",
-                "type": "string"
-              },
-              "values": {
-                "description": "An array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. If the operator is Gt or Lt, the values array must have a single element, which will be interpreted as an integer. This array is replaced during a strategic merge patch.",
-                "type": "array",
-                "items": {
-                  "type": "string"
-                }
-              }
-            }
-          }
-        },
-        "matchFields": {
-          "description": "A list of node selector requirements by node's fields.",
-          "type": "array",
-          "items": {
-            "description": "A node selector requirement is a selector that contains values, a key, and an operator that relates the key and values.",
-            "type": "object",
-            "required": [
-              "key",
-              "operator"
-            ],
-            "properties": {
-              "key": {
-                "description": "The label key that the selector applies to.",
-                "type": "string"
-              },
-              "operator": {
-                "description": "Represents a key's relationship to a set of values. Valid operators are In, NotIn, Exists, DoesNotExist. Gt, and Lt.",
-                "type": "string"
-              },
-              "values": {
-                "description": "An array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. If the operator is Gt or Lt, the values array must have a single element, which will be interpreted as an integer. This array is replaced during a strategic merge patch.",
-                "type": "array",
-                "items": {
-                  "type": "string"
-                }
-              }
-            }
-          }
         }
       }
     },
@@ -6274,12 +4799,6 @@ func init() {
         "years"
       ]
     },
-    "parityResponse": {
-      "type": "array",
-      "items": {
-        "type": "string"
-      }
-    },
     "permissionAction": {
       "type": "object",
       "properties": {
@@ -6287,68 +4806,6 @@ func init() {
           "type": "boolean"
         },
         "id": {
-          "type": "string"
-        }
-      }
-    },
-    "podAffinityTerm": {
-      "description": "Required. A pod affinity term, associated with the corresponding weight.",
-      "type": "object",
-      "required": [
-        "topologyKey"
-      ],
-      "properties": {
-        "labelSelector": {
-          "description": "A label query over a set of resources, in this case pods.",
-          "type": "object",
-          "properties": {
-            "matchExpressions": {
-              "description": "matchExpressions is a list of label selector requirements. The requirements are ANDed.",
-              "type": "array",
-              "items": {
-                "description": "A label selector requirement is a selector that contains values, a key, and an operator that relates the key and values.",
-                "type": "object",
-                "required": [
-                  "key",
-                  "operator"
-                ],
-                "properties": {
-                  "key": {
-                    "description": "key is the label key that the selector applies to.",
-                    "type": "string"
-                  },
-                  "operator": {
-                    "description": "operator represents a key's relationship to a set of values. Valid operators are In, NotIn, Exists and DoesNotExist.",
-                    "type": "string"
-                  },
-                  "values": {
-                    "description": "values is an array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. This array is replaced during a strategic merge patch.",
-                    "type": "array",
-                    "items": {
-                      "type": "string"
-                    }
-                  }
-                }
-              }
-            },
-            "matchLabels": {
-              "description": "matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is \"key\", the operator is \"In\", and the values array contains only \"value\". The requirements are ANDed.",
-              "type": "object",
-              "additionalProperties": {
-                "type": "string"
-              }
-            }
-          }
-        },
-        "namespaces": {
-          "description": "namespaces specifies which namespaces the labelSelector applies to (matches against); null or empty list means \"this pod's namespace\"",
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "topologyKey": {
-          "description": "This pod should be co-located (affinity) or not co-located (anti-affinity) with the pods matching the labelSelector in the specified namespaces, where co-located is defined as running on a node whose value of the label with key topologyKey matches that of any node on which any of the selected pods is running. Empty topologyKey is not allowed.",
           "type": "string"
         }
       }
@@ -6386,265 +4843,22 @@ func init() {
         "group"
       ]
     },
-    "pool": {
+    "prefixAccessPair": {
       "type": "object",
-      "required": [
-        "servers",
-        "volumes_per_server",
-        "volume_configuration"
-      ],
       "properties": {
-        "affinity": {
-          "$ref": "#/definitions/poolAffinity"
-        },
-        "name": {
+        "access": {
           "type": "string"
         },
-        "node_selector": {
-          "description": "NodeSelector is a selector which must be true for the pod to fit on a node. Selector which must match a node's labels for the pod to be scheduled on that node. More info: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/",
-          "type": "object",
-          "additionalProperties": {
-            "type": "string"
-          }
-        },
-        "resources": {
-          "$ref": "#/definitions/poolResources"
-        },
-        "servers": {
-          "type": "integer"
-        },
-        "tolerations": {
-          "$ref": "#/definitions/poolTolerations"
-        },
-        "volume_configuration": {
-          "type": "object",
-          "required": [
-            "size"
-          ],
-          "properties": {
-            "annotations": {
-              "type": "object",
-              "additionalProperties": {
-                "type": "string"
-              }
-            },
-            "labels": {
-              "type": "object",
-              "additionalProperties": {
-                "type": "string"
-              }
-            },
-            "size": {
-              "type": "integer"
-            },
-            "storage_class_name": {
-              "type": "string"
-            }
-          }
-        },
-        "volumes_per_server": {
-          "type": "integer",
-          "format": "int32"
+        "prefix": {
+          "type": "string"
         }
       }
     },
-    "poolAffinity": {
-      "description": "If specified, affinity will define the pod's scheduling constraints",
+    "prefixWrapper": {
       "type": "object",
       "properties": {
-        "nodeAffinity": {
-          "description": "Describes node affinity scheduling rules for the pod.",
-          "type": "object",
-          "properties": {
-            "preferredDuringSchedulingIgnoredDuringExecution": {
-              "description": "The scheduler will prefer to schedule pods to nodes that satisfy the affinity expressions specified by this field, but it may choose a node that violates one or more of the expressions. The node that is most preferred is the one with the greatest sum of weights, i.e. for each node that meets all of the scheduling requirements (resource request, requiredDuringScheduling affinity expressions, etc.), compute a sum by iterating through the elements of this field and adding \"weight\" to the sum if the node matches the corresponding matchExpressions; the node(s) with the highest sum are the most preferred.",
-              "type": "array",
-              "items": {
-                "description": "An empty preferred scheduling term matches all objects with implicit weight 0 (i.e. it's a no-op). A null preferred scheduling term matches no objects (i.e. is also a no-op).",
-                "type": "object",
-                "required": [
-                  "preference",
-                  "weight"
-                ],
-                "properties": {
-                  "preference": {
-                    "description": "A node selector term, associated with the corresponding weight.",
-                    "type": "object",
-                    "$ref": "#/definitions/nodeSelectorTerm"
-                  },
-                  "weight": {
-                    "description": "Weight associated with matching the corresponding nodeSelectorTerm, in the range 1-100.",
-                    "type": "integer",
-                    "format": "int32"
-                  }
-                }
-              }
-            },
-            "requiredDuringSchedulingIgnoredDuringExecution": {
-              "description": "If the affinity requirements specified by this field are not met at scheduling time, the pod will not be scheduled onto the node. If the affinity requirements specified by this field cease to be met at some point during pod execution (e.g. due to an update), the system may or may not try to eventually evict the pod from its node.",
-              "type": "object",
-              "required": [
-                "nodeSelectorTerms"
-              ],
-              "properties": {
-                "nodeSelectorTerms": {
-                  "description": "Required. A list of node selector terms. The terms are ORed.",
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/definitions/nodeSelectorTerm"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "podAffinity": {
-          "description": "Describes pod affinity scheduling rules (e.g. co-locate this pod in the same node, pool, etc. as some other pod(s)).",
-          "type": "object",
-          "properties": {
-            "preferredDuringSchedulingIgnoredDuringExecution": {
-              "description": "The scheduler will prefer to schedule pods to nodes that satisfy the affinity expressions specified by this field, but it may choose a node that violates one or more of the expressions. The node that is most preferred is the one with the greatest sum of weights, i.e. for each node that meets all of the scheduling requirements (resource request, requiredDuringScheduling affinity expressions, etc.), compute a sum by iterating through the elements of this field and adding \"weight\" to the sum if the node has pods which matches the corresponding podAffinityTerm; the node(s) with the highest sum are the most preferred.",
-              "type": "array",
-              "items": {
-                "description": "The weights of all of the matched WeightedPodAffinityTerm fields are added per-node to find the most preferred node(s)",
-                "type": "object",
-                "required": [
-                  "podAffinityTerm",
-                  "weight"
-                ],
-                "properties": {
-                  "podAffinityTerm": {
-                    "$ref": "#/definitions/podAffinityTerm"
-                  },
-                  "weight": {
-                    "description": "weight associated with matching the corresponding podAffinityTerm, in the range 1-100.",
-                    "type": "integer",
-                    "format": "int32"
-                  }
-                }
-              }
-            },
-            "requiredDuringSchedulingIgnoredDuringExecution": {
-              "description": "If the affinity requirements specified by this field are not met at scheduling time, the pod will not be scheduled onto the node. If the affinity requirements specified by this field cease to be met at some point during pod execution (e.g. due to a pod label update), the system may or may not try to eventually evict the pod from its node. When there are multiple elements, the lists of nodes corresponding to each podAffinityTerm are intersected, i.e. all terms must be satisfied.",
-              "type": "array",
-              "items": {
-                "$ref": "#/definitions/podAffinityTerm"
-              }
-            }
-          }
-        },
-        "podAntiAffinity": {
-          "description": "Describes pod anti-affinity scheduling rules (e.g. avoid putting this pod in the same node, pool, etc. as some other pod(s)).",
-          "type": "object",
-          "properties": {
-            "preferredDuringSchedulingIgnoredDuringExecution": {
-              "description": "The scheduler will prefer to schedule pods to nodes that satisfy the anti-affinity expressions specified by this field, but it may choose a node that violates one or more of the expressions. The node that is most preferred is the one with the greatest sum of weights, i.e. for each node that meets all of the scheduling requirements (resource request, requiredDuringScheduling anti-affinity expressions, etc.), compute a sum by iterating through the elements of this field and adding \"weight\" to the sum if the node has pods which matches the corresponding podAffinityTerm; the node(s) with the highest sum are the most preferred.",
-              "type": "array",
-              "items": {
-                "description": "The weights of all of the matched WeightedPodAffinityTerm fields are added per-node to find the most preferred node(s)",
-                "type": "object",
-                "required": [
-                  "podAffinityTerm",
-                  "weight"
-                ],
-                "properties": {
-                  "podAffinityTerm": {
-                    "$ref": "#/definitions/podAffinityTerm"
-                  },
-                  "weight": {
-                    "description": "weight associated with matching the corresponding podAffinityTerm, in the range 1-100.",
-                    "type": "integer",
-                    "format": "int32"
-                  }
-                }
-              }
-            },
-            "requiredDuringSchedulingIgnoredDuringExecution": {
-              "description": "If the anti-affinity requirements specified by this field are not met at scheduling time, the pod will not be scheduled onto the node. If the anti-affinity requirements specified by this field cease to be met at some point during pod execution (e.g. due to a pod label update), the system may or may not try to eventually evict the pod from its node. When there are multiple elements, the lists of nodes corresponding to each podAffinityTerm are intersected, i.e. all terms must be satisfied.",
-              "type": "array",
-              "items": {
-                "$ref": "#/definitions/podAffinityTerm"
-              }
-            }
-          }
-        }
-      }
-    },
-    "poolResources": {
-      "description": "If provided, use these requests and limit for cpu/memory resource allocation",
-      "type": "object",
-      "properties": {
-        "limits": {
-          "description": "Limits describes the maximum amount of compute resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/",
-          "type": "object",
-          "additionalProperties": {
-            "type": "integer",
-            "format": "int64"
-          }
-        },
-        "requests": {
-          "description": "Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/",
-          "type": "object",
-          "additionalProperties": {
-            "type": "integer",
-            "format": "int64"
-          }
-        }
-      }
-    },
-    "poolTolerationSeconds": {
-      "description": "TolerationSeconds represents the period of time the toleration (which must be of effect NoExecute, otherwise this field is ignored) tolerates the taint. By default, it is not set, which means tolerate the taint forever (do not evict). Zero and negative values will be treated as 0 (evict immediately) by the system.",
-      "type": "object",
-      "required": [
-        "seconds"
-      ],
-      "properties": {
-        "seconds": {
-          "type": "integer",
-          "format": "int64"
-        }
-      }
-    },
-    "poolTolerations": {
-      "description": "Tolerations allows users to set entries like effect, key, operator, value.",
-      "type": "array",
-      "items": {
-        "description": "The pod this Toleration is attached to tolerates any taint that matches the triple \u003ckey,value,effect\u003e using the matching operator \u003coperator\u003e.",
-        "type": "object",
-        "properties": {
-          "effect": {
-            "description": "Effect indicates the taint effect to match. Empty means match all taint effects. When specified, allowed values are NoSchedule, PreferNoSchedule and NoExecute.",
-            "type": "string"
-          },
-          "key": {
-            "description": "Key is the taint key that the toleration applies to. Empty means match all taint keys. If the key is empty, operator must be Exists; this combination means to match all values and all keys.",
-            "type": "string"
-          },
-          "operator": {
-            "description": "Operator represents a key's relationship to the value. Valid operators are Exists and Equal. Defaults to Equal. Exists is equivalent to wildcard for value, so that a pod can tolerate all taints of a particular category.",
-            "type": "string"
-          },
-          "tolerationSeconds": {
-            "$ref": "#/definitions/poolTolerationSeconds"
-          },
-          "value": {
-            "description": "Value is the taint value the toleration matches to. If the operator is Exists, the value should be empty, otherwise just a regular string.",
-            "type": "string"
-          }
-        }
-      }
-    },
-    "poolUpdateRequest": {
-      "type": "object",
-      "required": [
-        "pools"
-      ],
-      "properties": {
-        "pools": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/pool"
-          }
+        "prefix": {
+          "type": "string"
         }
       }
     },
@@ -6662,12 +4876,6 @@ func init() {
         },
         "accountAccessKey": {
           "type": "string"
-        },
-        "actions": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
         }
       }
     },
@@ -6694,22 +4902,6 @@ func init() {
         }
       }
     },
-    "prometheusConfiguration": {
-      "type": "object",
-      "properties": {
-        "image": {
-          "type": "string"
-        },
-        "storageClass": {
-          "type": "string",
-          "default": ""
-        },
-        "storageSize": {
-          "type": "number",
-          "default": 5
-        }
-      }
-    },
     "putBucketRetentionRequest": {
       "type": "object",
       "required": [
@@ -6727,6 +4919,16 @@ func init() {
         "validity": {
           "type": "integer",
           "format": "int32"
+        }
+      }
+    },
+    "putBucketTagsRequest": {
+      "type": "object",
+      "properties": {
+        "tags": {
+          "additionalProperties": {
+            "type": "string"
+          }
         }
       }
     },
@@ -6766,32 +4968,6 @@ func init() {
           "additionalProperties": {
             "type": "string"
           }
-        }
-      }
-    },
-    "pvcsListResponse": {
-      "type": "object",
-      "properties": {
-        "age": {
-          "type": "string"
-        },
-        "capacity": {
-          "type": "string"
-        },
-        "name": {
-          "type": "string"
-        },
-        "namespace": {
-          "type": "string"
-        },
-        "status": {
-          "type": "string"
-        },
-        "storageClass": {
-          "type": "string"
-        },
-        "volume": {
-          "type": "string"
         }
       }
     },
@@ -6841,36 +5017,6 @@ func init() {
         },
         "targetURL": {
           "type": "string"
-        }
-      }
-    },
-    "resourceQuota": {
-      "type": "object",
-      "properties": {
-        "elements": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/resourceQuotaElement"
-          }
-        },
-        "name": {
-          "type": "string"
-        }
-      }
-    },
-    "resourceQuotaElement": {
-      "type": "object",
-      "properties": {
-        "hard": {
-          "type": "integer",
-          "format": "int64"
-        },
-        "name": {
-          "type": "string"
-        },
-        "used": {
-          "type": "integer",
-          "format": "int64"
         }
       }
     },
@@ -6926,6 +5072,76 @@ func init() {
         }
       }
     },
+    "serverDrives": {
+      "type": "object",
+      "properties": {
+        "availableSpace": {
+          "type": "integer"
+        },
+        "drivePath": {
+          "type": "string"
+        },
+        "endpoint": {
+          "type": "string"
+        },
+        "healing": {
+          "type": "boolean"
+        },
+        "model": {
+          "type": "string"
+        },
+        "rootDisk": {
+          "type": "boolean"
+        },
+        "state": {
+          "type": "string"
+        },
+        "totalSpace": {
+          "type": "integer"
+        },
+        "usedSpace": {
+          "type": "integer"
+        },
+        "uuid": {
+          "type": "string"
+        }
+      }
+    },
+    "serverProperties": {
+      "type": "object",
+      "properties": {
+        "commitID": {
+          "type": "string"
+        },
+        "drives": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/serverDrives"
+          }
+        },
+        "endpoint": {
+          "type": "string"
+        },
+        "network": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "poolNumber": {
+          "type": "integer"
+        },
+        "state": {
+          "type": "string"
+        },
+        "uptime": {
+          "type": "integer"
+        },
+        "version": {
+          "type": "string"
+        }
+      }
+    },
     "serviceAccountCreds": {
       "type": "object",
       "properties": {
@@ -6946,6 +5162,21 @@ func init() {
         }
       }
     },
+    "serviceAccountRequestCreds": {
+      "type": "object",
+      "properties": {
+        "accessKey": {
+          "type": "string"
+        },
+        "policy": {
+          "type": "string",
+          "title": "policy to be applied to the Service Account if any"
+        },
+        "secretKey": {
+          "type": "string"
+        }
+      }
+    },
     "serviceAccounts": {
       "type": "array",
       "items": {
@@ -6955,6 +5186,9 @@ func init() {
     "sessionResponse": {
       "type": "object",
       "properties": {
+        "distributedMode": {
+          "type": "boolean"
+        },
         "features": {
           "type": "array",
           "items": {
@@ -6969,6 +5203,10 @@ func init() {
           "items": {
             "type": "string"
           }
+        },
+        "policy": {
+          "type": "object",
+          "$ref": "#/definitions/iamPolicy"
         },
         "status": {
           "type": "string",
@@ -7071,7 +5309,7 @@ func init() {
         }
       }
     },
-    "setPolicyMultipleRequest": {
+    "setPolicyMultipleNameRequest": {
       "type": "object",
       "properties": {
         "groups": {
@@ -7080,10 +5318,38 @@ func init() {
             "$ref": "#/definitions/iamEntity"
           }
         },
+        "name": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
         "users": {
           "type": "array",
           "items": {
             "$ref": "#/definitions/iamEntity"
+          }
+        }
+      }
+    },
+    "setPolicyNameRequest": {
+      "type": "object",
+      "required": [
+        "name",
+        "entityType",
+        "entityName"
+      ],
+      "properties": {
+        "entityName": {
+          "type": "string"
+        },
+        "entityType": {
+          "$ref": "#/definitions/policyEntity"
+        },
+        "name": {
+          "type": "array",
+          "items": {
+            "type": "string"
           }
         }
       }
@@ -7130,254 +5396,6 @@ func init() {
           "type": "integer",
           "format": "int64",
           "title": "number of start results"
-        }
-      }
-    },
-    "subscriptionValidateRequest": {
-      "type": "object",
-      "properties": {
-        "email": {
-          "type": "string"
-        },
-        "license": {
-          "type": "string"
-        },
-        "password": {
-          "type": "string"
-        }
-      }
-    },
-    "tenant": {
-      "type": "object",
-      "properties": {
-        "consoleEnabled": {
-          "type": "boolean"
-        },
-        "consoleTLS": {
-          "type": "boolean"
-        },
-        "console_image": {
-          "type": "string"
-        },
-        "creation_date": {
-          "type": "string"
-        },
-        "currentState": {
-          "type": "string"
-        },
-        "deletion_date": {
-          "type": "string"
-        },
-        "enable_prometheus": {
-          "type": "boolean"
-        },
-        "encryptionEnabled": {
-          "type": "boolean"
-        },
-        "endpoints": {
-          "type": "object",
-          "properties": {
-            "console": {
-              "type": "string"
-            },
-            "minio": {
-              "type": "string"
-            }
-          }
-        },
-        "idpAdEnabled": {
-          "type": "boolean"
-        },
-        "idpOicEnabled": {
-          "type": "boolean"
-        },
-        "image": {
-          "type": "string"
-        },
-        "logEnabled": {
-          "type": "boolean"
-        },
-        "minioTLS": {
-          "type": "boolean"
-        },
-        "monitoringEnabled": {
-          "type": "boolean"
-        },
-        "name": {
-          "type": "string"
-        },
-        "namespace": {
-          "type": "string"
-        },
-        "pools": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/pool"
-          }
-        },
-        "status": {
-          "$ref": "#/definitions/tenantStatus"
-        },
-        "subnet_license": {
-          "$ref": "#/definitions/license"
-        },
-        "total_size": {
-          "type": "integer",
-          "format": "int64"
-        }
-      }
-    },
-    "tenantList": {
-      "type": "object",
-      "properties": {
-        "creation_date": {
-          "type": "string"
-        },
-        "currentState": {
-          "type": "string"
-        },
-        "deletion_date": {
-          "type": "string"
-        },
-        "health_status": {
-          "type": "string"
-        },
-        "instance_count": {
-          "type": "integer"
-        },
-        "name": {
-          "type": "string"
-        },
-        "namespace": {
-          "type": "string"
-        },
-        "pool_count": {
-          "type": "integer"
-        },
-        "total_size": {
-          "type": "integer"
-        },
-        "volume_count": {
-          "type": "integer"
-        }
-      }
-    },
-    "tenantPod": {
-      "type": "object",
-      "required": [
-        "name"
-      ],
-      "properties": {
-        "name": {
-          "type": "string"
-        },
-        "node": {
-          "type": "string"
-        },
-        "podIP": {
-          "type": "string"
-        },
-        "restarts": {
-          "type": "integer"
-        },
-        "status": {
-          "type": "string"
-        },
-        "timeCreated": {
-          "type": "integer"
-        }
-      }
-    },
-    "tenantResponseItem": {
-      "type": "object",
-      "properties": {
-        "access_key": {
-          "type": "string"
-        },
-        "secret_key": {
-          "type": "string"
-        }
-      }
-    },
-    "tenantSecurityResponse": {
-      "type": "object",
-      "properties": {
-        "autoCert": {
-          "type": "boolean"
-        },
-        "customCertificates": {
-          "type": "object",
-          "properties": {
-            "console": {
-              "type": "array",
-              "items": {
-                "$ref": "#/definitions/certificateInfo"
-              }
-            },
-            "consoleCAs": {
-              "type": "array",
-              "items": {
-                "$ref": "#/definitions/certificateInfo"
-              }
-            },
-            "minio": {
-              "type": "array",
-              "items": {
-                "$ref": "#/definitions/certificateInfo"
-              }
-            },
-            "minioCAs": {
-              "type": "array",
-              "items": {
-                "$ref": "#/definitions/certificateInfo"
-              }
-            }
-          }
-        }
-      }
-    },
-    "tenantStatus": {
-      "type": "object",
-      "properties": {
-        "drives_healing": {
-          "type": "integer",
-          "format": "int32"
-        },
-        "drives_offline": {
-          "type": "integer",
-          "format": "int32"
-        },
-        "drives_online": {
-          "type": "integer",
-          "format": "int32"
-        },
-        "health_status": {
-          "type": "string"
-        },
-        "write_quorum": {
-          "type": "integer",
-          "format": "int32"
-        }
-      }
-    },
-    "tenantUsage": {
-      "type": "object",
-      "properties": {
-        "disk_used": {
-          "type": "integer",
-          "format": "int64"
-        },
-        "used": {
-          "type": "integer",
-          "format": "int64"
-        }
-      }
-    },
-    "tenantYAML": {
-      "type": "object",
-      "properties": {
-        "yaml": {
-          "type": "string"
         }
       }
     },
@@ -7511,33 +5529,6 @@ func init() {
         }
       }
     },
-    "tlsConfiguration": {
-      "type": "object",
-      "properties": {
-        "ca_certificates": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "console": {
-          "type": "object",
-          "$ref": "#/definitions/keyPairConfiguration"
-        },
-        "console_ca_certificates": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "minio": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/keyPairConfiguration"
-          }
-        }
-      }
-    },
     "transitionResponse": {
       "type": "object",
       "properties": {
@@ -7582,71 +5573,6 @@ func init() {
         }
       }
     },
-    "updateTenantRequest": {
-      "type": "object",
-      "properties": {
-        "console_image": {
-          "type": "string",
-          "pattern": "^((.*?)/(.*?):(.+))$"
-        },
-        "enable_prometheus": {
-          "type": "boolean"
-        },
-        "image": {
-          "type": "string",
-          "pattern": "^((.*?)/(.*?):(.+))$"
-        },
-        "image_pull_secret": {
-          "type": "string"
-        },
-        "image_registry": {
-          "$ref": "#/definitions/imageRegistry"
-        }
-      }
-    },
-    "updateTenantSecurityRequest": {
-      "type": "object",
-      "properties": {
-        "autoCert": {
-          "type": "boolean"
-        },
-        "customCertificates": {
-          "type": "object",
-          "properties": {
-            "console": {
-              "type": "array",
-              "items": {
-                "$ref": "#/definitions/keyPairConfiguration"
-              }
-            },
-            "consoleCAs": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
-            },
-            "minio": {
-              "type": "array",
-              "items": {
-                "$ref": "#/definitions/keyPairConfiguration"
-              }
-            },
-            "minioCAs": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
-            },
-            "secretsToBeDeleted": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
-            }
-          }
-        }
-      }
-    },
     "updateUser": {
       "type": "object",
       "required": [
@@ -7685,6 +5611,9 @@ func init() {
         "accessKey": {
           "type": "string"
         },
+        "hasPolicy": {
+          "type": "boolean"
+        },
         "memberOf": {
           "type": "array",
           "items": {
@@ -7699,72 +5628,6 @@ func init() {
         },
         "status": {
           "type": "string"
-        }
-      }
-    },
-    "vaultConfiguration": {
-      "type": "object",
-      "required": [
-        "endpoint",
-        "approle"
-      ],
-      "properties": {
-        "approle": {
-          "type": "object",
-          "required": [
-            "id",
-            "secret"
-          ],
-          "properties": {
-            "engine": {
-              "type": "string"
-            },
-            "id": {
-              "type": "string"
-            },
-            "retry": {
-              "type": "integer",
-              "format": "int64"
-            },
-            "secret": {
-              "type": "string"
-            }
-          }
-        },
-        "endpoint": {
-          "type": "string"
-        },
-        "engine": {
-          "type": "string"
-        },
-        "namespace": {
-          "type": "string"
-        },
-        "prefix": {
-          "type": "string"
-        },
-        "status": {
-          "type": "object",
-          "properties": {
-            "ping": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        },
-        "tls": {
-          "type": "object",
-          "properties": {
-            "ca": {
-              "type": "string"
-            },
-            "crt": {
-              "type": "string"
-            },
-            "key": {
-              "type": "string"
-            }
-          }
         }
       }
     },
@@ -7908,11 +5771,8 @@ func init() {
           }
         ],
         "responses": {
-          "201": {
-            "description": "A successful login.",
-            "schema": {
-              "$ref": "#/definitions/loginResponse"
-            }
+          "204": {
+            "description": "A successful login."
           },
           "default": {
             "description": "Generic error response.",
@@ -7983,6 +5843,14 @@ func init() {
         ],
         "summary": "Returns information about the deployment",
         "operationId": "AdminInfo",
+        "parameters": [
+          {
+            "type": "boolean",
+            "default": false,
+            "name": "defaultOnly",
+            "in": "query"
+          }
+        ],
         "responses": {
           "200": {
             "description": "A successful response.",
@@ -8330,6 +6198,123 @@ func init() {
         }
       }
     },
+    "/bucket/{bucket}/access-rules": {
+      "get": {
+        "tags": [
+          "AdminAPI"
+        ],
+        "summary": "List Access Rules With Given Bucket",
+        "operationId": "ListAccessRulesWithBucket",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "bucket",
+            "in": "path",
+            "required": true
+          },
+          {
+            "type": "integer",
+            "format": "int32",
+            "name": "offset",
+            "in": "query"
+          },
+          {
+            "type": "integer",
+            "format": "int32",
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/listAccessRulesResponse"
+            }
+          },
+          "default": {
+            "description": "Generic error response.",
+            "schema": {
+              "$ref": "#/definitions/error"
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "AdminAPI"
+        ],
+        "summary": "Add Access Rule To Given Bucket",
+        "operationId": "SetAccessRuleWithBucket",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "bucket",
+            "in": "path",
+            "required": true
+          },
+          {
+            "name": "prefixaccess",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/prefixAccessPair"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          "default": {
+            "description": "Generic error response.",
+            "schema": {
+              "$ref": "#/definitions/error"
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "AdminAPI"
+        ],
+        "summary": "Delete Access Rule From Given Bucket",
+        "operationId": "DeleteAccessRuleWithBucket",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "bucket",
+            "in": "path",
+            "required": true
+          },
+          {
+            "name": "prefix",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/prefixWrapper"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          "default": {
+            "description": "Generic error response.",
+            "schema": {
+              "$ref": "#/definitions/error"
+            }
+          }
+        }
+      }
+    },
     "/buckets": {
       "get": {
         "tags": [
@@ -8423,6 +6408,45 @@ func init() {
             "schema": {
               "$ref": "#/definitions/multiBucketResponseState"
             }
+          },
+          "default": {
+            "description": "Generic error response.",
+            "schema": {
+              "$ref": "#/definitions/error"
+            }
+          }
+        }
+      }
+    },
+    "/buckets/{bucket_name}/delete-objects": {
+      "post": {
+        "tags": [
+          "UserAPI"
+        ],
+        "summary": "Delete Multiple Objects",
+        "operationId": "DeleteMultipleObjects",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "bucket_name",
+            "in": "path",
+            "required": true
+          },
+          {
+            "name": "files",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/deleteFile"
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A successful response."
           },
           "default": {
             "description": "Generic error response.",
@@ -8813,6 +6837,11 @@ func init() {
             "type": "boolean",
             "name": "with_versions",
             "in": "query"
+          },
+          {
+            "type": "boolean",
+            "name": "with_metadata",
+            "in": "query"
           }
         ],
         "responses": {
@@ -8900,6 +6929,12 @@ func init() {
             "type": "string",
             "name": "version_id",
             "in": "query"
+          },
+          {
+            "type": "boolean",
+            "default": false,
+            "name": "preview",
+            "in": "query"
           }
         ],
         "responses": {
@@ -8951,6 +6986,46 @@ func init() {
             "schema": {
               "$ref": "#/definitions/putObjectLegalHoldRequest"
             }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A successful response."
+          },
+          "default": {
+            "description": "Generic error response.",
+            "schema": {
+              "$ref": "#/definitions/error"
+            }
+          }
+        }
+      }
+    },
+    "/buckets/{bucket_name}/objects/restore": {
+      "put": {
+        "tags": [
+          "UserAPI"
+        ],
+        "summary": "Restore Object to a selected version",
+        "operationId": "PutObjectRestore",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "bucket_name",
+            "in": "path",
+            "required": true
+          },
+          {
+            "type": "string",
+            "name": "prefix",
+            "in": "query",
+            "required": true
+          },
+          {
+            "type": "string",
+            "name": "version_id",
+            "in": "query",
+            "required": true
           }
         ],
         "responses": {
@@ -9355,6 +7430,42 @@ func init() {
         }
       }
     },
+    "/buckets/{bucket_name}/tags": {
+      "put": {
+        "tags": [
+          "UserAPI"
+        ],
+        "summary": "Put Bucket's tags",
+        "operationId": "PutBucketTags",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "bucket_name",
+            "in": "path",
+            "required": true
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/putBucketTagsRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A successful response."
+          },
+          "default": {
+            "description": "Generic error response.",
+            "schema": {
+              "$ref": "#/definitions/error"
+            }
+          }
+        }
+      }
+    },
     "/buckets/{bucket_name}/versioning": {
       "get": {
         "tags": [
@@ -9584,39 +7695,6 @@ func init() {
         }
       }
     },
-    "/cluster/max-allocatable-memory": {
-      "get": {
-        "tags": [
-          "AdminAPI"
-        ],
-        "summary": "Get maximum allocatable memory for given number of nodes",
-        "operationId": "GetMaxAllocatableMem",
-        "parameters": [
-          {
-            "minimum": 1,
-            "type": "integer",
-            "format": "int32",
-            "name": "num_nodes",
-            "in": "query",
-            "required": true
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/maxAllocatableMemResponse"
-            }
-          },
-          "default": {
-            "description": "Generic error response.",
-            "schema": {
-              "$ref": "#/definitions/error"
-            }
-          }
-        }
-      }
-    },
     "/configs": {
       "get": {
         "tags": [
@@ -9722,30 +7800,26 @@ func init() {
         }
       }
     },
-    "/direct-csi/drives": {
+    "/group": {
       "get": {
         "tags": [
           "AdminAPI"
         ],
-        "summary": "Get direct-csi drives list",
-        "operationId": "GetDirectCSIDriveList",
+        "summary": "Group info",
+        "operationId": "GroupInfo",
         "parameters": [
           {
             "type": "string",
-            "name": "nodes",
-            "in": "query"
-          },
-          {
-            "type": "string",
-            "name": "drives",
-            "in": "query"
+            "name": "name",
+            "in": "query",
+            "required": true
           }
         ],
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/getDirectCSIDriveListResponse"
+              "$ref": "#/definitions/group"
             }
           },
           "default": {
@@ -9755,22 +7829,26 @@ func init() {
             }
           }
         }
-      }
-    },
-    "/direct-csi/drives/format": {
-      "post": {
+      },
+      "put": {
         "tags": [
           "AdminAPI"
         ],
-        "summary": "Format direct-csi drives from a list",
-        "operationId": "DirectCSIFormatDrive",
+        "summary": "Update Group Members or Status",
+        "operationId": "UpdateGroup",
         "parameters": [
+          {
+            "type": "string",
+            "name": "name",
+            "in": "query",
+            "required": true
+          },
           {
             "name": "body",
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/formatConfiguration"
+              "$ref": "#/definitions/updateGroupRequest"
             }
           }
         ],
@@ -9778,7 +7856,7 @@ func init() {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/formatDirectCSIDrivesResponse"
+              "$ref": "#/definitions/group"
             }
           },
           "default": {
@@ -9788,72 +7866,24 @@ func init() {
             }
           }
         }
-      }
-    },
-    "/direct-csi/volumes": {
-      "get": {
+      },
+      "delete": {
         "tags": [
           "AdminAPI"
         ],
-        "summary": "Get direct-csi volumes list",
-        "operationId": "GetDirectCSIVolumeList",
+        "summary": "Remove group",
+        "operationId": "RemoveGroup",
         "parameters": [
           {
             "type": "string",
-            "name": "nodes",
-            "in": "query"
-          },
-          {
-            "type": "string",
-            "name": "drives",
-            "in": "query"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/getDirectCSIVolumeListResponse"
-            }
-          },
-          "default": {
-            "description": "Generic error response.",
-            "schema": {
-              "$ref": "#/definitions/error"
-            }
-          }
-        }
-      }
-    },
-    "/get-parity/{nodes}/{disksPerNode}": {
-      "get": {
-        "tags": [
-          "AdminAPI"
-        ],
-        "summary": "Gets parity by sending number of nodes \u0026 number of disks",
-        "operationId": "GetParity",
-        "parameters": [
-          {
-            "minimum": 2,
-            "type": "integer",
-            "name": "nodes",
-            "in": "path",
-            "required": true
-          },
-          {
-            "minimum": 1,
-            "type": "integer",
-            "name": "disksPerNode",
-            "in": "path",
+            "name": "name",
+            "in": "query",
             "required": true
           }
         ],
         "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/parityResponse"
-            }
+          "204": {
+            "description": "A successful response."
           },
           "default": {
             "description": "Generic error response.",
@@ -9918,100 +7948,6 @@ func init() {
         ],
         "responses": {
           "201": {
-            "description": "A successful response."
-          },
-          "default": {
-            "description": "Generic error response.",
-            "schema": {
-              "$ref": "#/definitions/error"
-            }
-          }
-        }
-      }
-    },
-    "/groups/{name}": {
-      "get": {
-        "tags": [
-          "AdminAPI"
-        ],
-        "summary": "Group info",
-        "operationId": "GroupInfo",
-        "parameters": [
-          {
-            "type": "string",
-            "name": "name",
-            "in": "path",
-            "required": true
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/group"
-            }
-          },
-          "default": {
-            "description": "Generic error response.",
-            "schema": {
-              "$ref": "#/definitions/error"
-            }
-          }
-        }
-      },
-      "put": {
-        "tags": [
-          "AdminAPI"
-        ],
-        "summary": "Update Group Members or Status",
-        "operationId": "UpdateGroup",
-        "parameters": [
-          {
-            "type": "string",
-            "name": "name",
-            "in": "path",
-            "required": true
-          },
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/updateGroupRequest"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/group"
-            }
-          },
-          "default": {
-            "description": "Generic error response.",
-            "schema": {
-              "$ref": "#/definitions/error"
-            }
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "AdminAPI"
-        ],
-        "summary": "Remove group",
-        "operationId": "RemoveGroup",
-        "parameters": [
-          {
-            "type": "string",
-            "name": "name",
-            "in": "path",
-            "required": true
-          }
-        ],
-        "responses": {
-          "204": {
             "description": "A successful response."
           },
           "default": {
@@ -10089,29 +8025,6 @@ func init() {
         }
       }
     },
-    "/list-pvcs": {
-      "get": {
-        "tags": [
-          "AdminAPI"
-        ],
-        "summary": "List all PVCs from namespaces that the user has access to",
-        "operationId": "ListPVCs",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/listPVCsResponse"
-            }
-          },
-          "default": {
-            "description": "Generic error response.",
-            "schema": {
-              "$ref": "#/definitions/error"
-            }
-          }
-        }
-      }
-    },
     "/login": {
       "get": {
         "security": [],
@@ -10153,11 +8066,8 @@ func init() {
           }
         ],
         "responses": {
-          "201": {
-            "description": "A successful login.",
-            "schema": {
-              "$ref": "#/definitions/loginResponse"
-            }
+          "204": {
+            "description": "A successful login."
           },
           "default": {
             "description": "Generic error response.",
@@ -10187,45 +8097,8 @@ func init() {
           }
         ],
         "responses": {
-          "201": {
-            "description": "A successful login.",
-            "schema": {
-              "$ref": "#/definitions/loginResponse"
-            }
-          },
-          "default": {
-            "description": "Generic error response.",
-            "schema": {
-              "$ref": "#/definitions/error"
-            }
-          }
-        }
-      }
-    },
-    "/login/operator": {
-      "post": {
-        "security": [],
-        "tags": [
-          "UserAPI"
-        ],
-        "summary": "Login to Operator Console.",
-        "operationId": "LoginOperator",
-        "parameters": [
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/loginOperatorRequest"
-            }
-          }
-        ],
-        "responses": {
-          "201": {
-            "description": "A successful login.",
-            "schema": {
-              "$ref": "#/definitions/loginResponse"
-            }
+          "204": {
+            "description": "A successful login."
           },
           "default": {
             "description": "Generic error response.",
@@ -10309,843 +8182,6 @@ func init() {
             "description": "A successful response.",
             "schema": {
               "$ref": "#/definitions/logSearchResponse"
-            }
-          },
-          "default": {
-            "description": "Generic error response.",
-            "schema": {
-              "$ref": "#/definitions/error"
-            }
-          }
-        }
-      }
-    },
-    "/namespace": {
-      "post": {
-        "tags": [
-          "AdminAPI"
-        ],
-        "summary": "Creates a new Namespace with given information",
-        "operationId": "CreateNamespace",
-        "parameters": [
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/namespace"
-            }
-          }
-        ],
-        "responses": {
-          "201": {
-            "description": "A successful response."
-          },
-          "default": {
-            "description": "Generic error response.",
-            "schema": {
-              "$ref": "#/definitions/error"
-            }
-          }
-        }
-      }
-    },
-    "/namespaces/{namespace}/resourcequotas/{resource-quota-name}": {
-      "get": {
-        "tags": [
-          "AdminAPI"
-        ],
-        "summary": "Get Resource Quota",
-        "operationId": "GetResourceQuota",
-        "parameters": [
-          {
-            "type": "string",
-            "name": "namespace",
-            "in": "path",
-            "required": true
-          },
-          {
-            "type": "string",
-            "name": "resource-quota-name",
-            "in": "path",
-            "required": true
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/resourceQuota"
-            }
-          },
-          "default": {
-            "description": "Generic error response.",
-            "schema": {
-              "$ref": "#/definitions/error"
-            }
-          }
-        }
-      }
-    },
-    "/namespaces/{namespace}/tenants": {
-      "get": {
-        "tags": [
-          "AdminAPI"
-        ],
-        "summary": "List Tenants by Namespace",
-        "operationId": "ListTenants",
-        "parameters": [
-          {
-            "type": "string",
-            "name": "namespace",
-            "in": "path",
-            "required": true
-          },
-          {
-            "type": "string",
-            "name": "sort_by",
-            "in": "query"
-          },
-          {
-            "type": "integer",
-            "format": "int32",
-            "name": "offset",
-            "in": "query"
-          },
-          {
-            "type": "integer",
-            "format": "int32",
-            "name": "limit",
-            "in": "query"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/listTenantsResponse"
-            }
-          },
-          "default": {
-            "description": "Generic error response.",
-            "schema": {
-              "$ref": "#/definitions/error"
-            }
-          }
-        }
-      }
-    },
-    "/namespaces/{namespace}/tenants/{tenant}": {
-      "get": {
-        "tags": [
-          "AdminAPI"
-        ],
-        "summary": "Tenant Details",
-        "operationId": "TenantDetails",
-        "parameters": [
-          {
-            "type": "string",
-            "name": "namespace",
-            "in": "path",
-            "required": true
-          },
-          {
-            "type": "string",
-            "name": "tenant",
-            "in": "path",
-            "required": true
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/tenant"
-            }
-          },
-          "default": {
-            "description": "Generic error response.",
-            "schema": {
-              "$ref": "#/definitions/error"
-            }
-          }
-        }
-      },
-      "put": {
-        "tags": [
-          "AdminAPI"
-        ],
-        "summary": "Update Tenant",
-        "operationId": "UpdateTenant",
-        "parameters": [
-          {
-            "type": "string",
-            "name": "namespace",
-            "in": "path",
-            "required": true
-          },
-          {
-            "type": "string",
-            "name": "tenant",
-            "in": "path",
-            "required": true
-          },
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/updateTenantRequest"
-            }
-          }
-        ],
-        "responses": {
-          "201": {
-            "description": "A successful response."
-          },
-          "default": {
-            "description": "Generic error response.",
-            "schema": {
-              "$ref": "#/definitions/error"
-            }
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "AdminAPI"
-        ],
-        "summary": "Delete tenant and underlying pvcs",
-        "operationId": "DeleteTenant",
-        "parameters": [
-          {
-            "type": "string",
-            "name": "namespace",
-            "in": "path",
-            "required": true
-          },
-          {
-            "type": "string",
-            "name": "tenant",
-            "in": "path",
-            "required": true
-          },
-          {
-            "name": "body",
-            "in": "body",
-            "schema": {
-              "$ref": "#/definitions/deleteTenantRequest"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "A successful response."
-          },
-          "default": {
-            "description": "Generic error response.",
-            "schema": {
-              "$ref": "#/definitions/error"
-            }
-          }
-        }
-      }
-    },
-    "/namespaces/{namespace}/tenants/{tenant}/certificates": {
-      "put": {
-        "tags": [
-          "AdminAPI"
-        ],
-        "summary": "Tenant Update Certificates",
-        "operationId": "TenantUpdateCertificate",
-        "parameters": [
-          {
-            "type": "string",
-            "name": "namespace",
-            "in": "path",
-            "required": true
-          },
-          {
-            "type": "string",
-            "name": "tenant",
-            "in": "path",
-            "required": true
-          },
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/tlsConfiguration"
-            }
-          }
-        ],
-        "responses": {
-          "201": {
-            "description": "A successful response."
-          },
-          "default": {
-            "description": "Generic error response.",
-            "schema": {
-              "$ref": "#/definitions/error"
-            }
-          }
-        }
-      }
-    },
-    "/namespaces/{namespace}/tenants/{tenant}/encryption": {
-      "put": {
-        "tags": [
-          "AdminAPI"
-        ],
-        "summary": "Tenant Update Encryption",
-        "operationId": "TenantUpdateEncryption",
-        "parameters": [
-          {
-            "type": "string",
-            "name": "namespace",
-            "in": "path",
-            "required": true
-          },
-          {
-            "type": "string",
-            "name": "tenant",
-            "in": "path",
-            "required": true
-          },
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/encryptionConfiguration"
-            }
-          }
-        ],
-        "responses": {
-          "201": {
-            "description": "A successful response."
-          },
-          "default": {
-            "description": "Generic error response.",
-            "schema": {
-              "$ref": "#/definitions/error"
-            }
-          }
-        }
-      }
-    },
-    "/namespaces/{namespace}/tenants/{tenant}/info": {
-      "get": {
-        "tags": [
-          "AdminAPI"
-        ],
-        "summary": "Tenant Info",
-        "operationId": "TenantInfo",
-        "parameters": [
-          {
-            "type": "string",
-            "name": "namespace",
-            "in": "path",
-            "required": true
-          },
-          {
-            "type": "string",
-            "name": "tenant",
-            "in": "path",
-            "required": true
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/adminInfoResponse"
-            }
-          },
-          "default": {
-            "description": "Generic error response.",
-            "schema": {
-              "$ref": "#/definitions/error"
-            }
-          }
-        }
-      }
-    },
-    "/namespaces/{namespace}/tenants/{tenant}/info/widgets/{widgetId}": {
-      "get": {
-        "tags": [
-          "AdminAPI"
-        ],
-        "summary": "Returns information about a tenant deployment",
-        "operationId": "TenantWidgetDetails",
-        "parameters": [
-          {
-            "type": "string",
-            "name": "namespace",
-            "in": "path",
-            "required": true
-          },
-          {
-            "type": "string",
-            "name": "tenant",
-            "in": "path",
-            "required": true
-          },
-          {
-            "type": "integer",
-            "format": "int32",
-            "name": "widgetId",
-            "in": "path",
-            "required": true
-          },
-          {
-            "type": "integer",
-            "name": "start",
-            "in": "query"
-          },
-          {
-            "type": "integer",
-            "name": "end",
-            "in": "query"
-          },
-          {
-            "type": "integer",
-            "format": "int32",
-            "name": "step",
-            "in": "query"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/widgetDetails"
-            }
-          },
-          "default": {
-            "description": "Generic error response.",
-            "schema": {
-              "$ref": "#/definitions/error"
-            }
-          }
-        }
-      }
-    },
-    "/namespaces/{namespace}/tenants/{tenant}/pods": {
-      "get": {
-        "tags": [
-          "AdminAPI"
-        ],
-        "summary": "Get Pods For The Tenant",
-        "operationId": "GetTenantPods",
-        "parameters": [
-          {
-            "type": "string",
-            "name": "namespace",
-            "in": "path",
-            "required": true
-          },
-          {
-            "type": "string",
-            "name": "tenant",
-            "in": "path",
-            "required": true
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "type": "array",
-              "items": {
-                "$ref": "#/definitions/tenantPod"
-              }
-            }
-          },
-          "default": {
-            "description": "Generic error response.",
-            "schema": {
-              "$ref": "#/definitions/error"
-            }
-          }
-        }
-      }
-    },
-    "/namespaces/{namespace}/tenants/{tenant}/pods/{podName}": {
-      "get": {
-        "tags": [
-          "AdminAPI"
-        ],
-        "summary": "Get Logs for Pod",
-        "operationId": "GetPodLogs",
-        "parameters": [
-          {
-            "type": "string",
-            "name": "namespace",
-            "in": "path",
-            "required": true
-          },
-          {
-            "type": "string",
-            "name": "tenant",
-            "in": "path",
-            "required": true
-          },
-          {
-            "type": "string",
-            "name": "podName",
-            "in": "path",
-            "required": true
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "type": "string"
-            }
-          },
-          "default": {
-            "description": "Generic error response.",
-            "schema": {
-              "$ref": "#/definitions/error"
-            }
-          }
-        }
-      }
-    },
-    "/namespaces/{namespace}/tenants/{tenant}/pods/{podName}/events": {
-      "get": {
-        "tags": [
-          "AdminAPI"
-        ],
-        "summary": "Get Events for Pod",
-        "operationId": "GetPodEvents",
-        "parameters": [
-          {
-            "type": "string",
-            "name": "namespace",
-            "in": "path",
-            "required": true
-          },
-          {
-            "type": "string",
-            "name": "tenant",
-            "in": "path",
-            "required": true
-          },
-          {
-            "type": "string",
-            "name": "podName",
-            "in": "path",
-            "required": true
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/eventListWrapper"
-            }
-          },
-          "default": {
-            "description": "Generic error response.",
-            "schema": {
-              "$ref": "#/definitions/error"
-            }
-          }
-        }
-      }
-    },
-    "/namespaces/{namespace}/tenants/{tenant}/pools": {
-      "put": {
-        "tags": [
-          "AdminAPI"
-        ],
-        "summary": "Tenant Update Pools",
-        "operationId": "TenantUpdatePools",
-        "parameters": [
-          {
-            "type": "string",
-            "name": "namespace",
-            "in": "path",
-            "required": true
-          },
-          {
-            "type": "string",
-            "name": "tenant",
-            "in": "path",
-            "required": true
-          },
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/poolUpdateRequest"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/tenant"
-            }
-          },
-          "default": {
-            "description": "Generic error response.",
-            "schema": {
-              "$ref": "#/definitions/error"
-            }
-          }
-        }
-      },
-      "post": {
-        "tags": [
-          "AdminAPI"
-        ],
-        "summary": "Tenant Add Pool",
-        "operationId": "TenantAddPool",
-        "parameters": [
-          {
-            "type": "string",
-            "name": "namespace",
-            "in": "path",
-            "required": true
-          },
-          {
-            "type": "string",
-            "name": "tenant",
-            "in": "path",
-            "required": true
-          },
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/pool"
-            }
-          }
-        ],
-        "responses": {
-          "201": {
-            "description": "A successful response."
-          },
-          "default": {
-            "description": "Generic error response.",
-            "schema": {
-              "$ref": "#/definitions/error"
-            }
-          }
-        }
-      }
-    },
-    "/namespaces/{namespace}/tenants/{tenant}/security": {
-      "get": {
-        "tags": [
-          "AdminAPI"
-        ],
-        "summary": "Tenant Security",
-        "operationId": "TenantSecurity",
-        "parameters": [
-          {
-            "type": "string",
-            "name": "namespace",
-            "in": "path",
-            "required": true
-          },
-          {
-            "type": "string",
-            "name": "tenant",
-            "in": "path",
-            "required": true
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/tenantSecurityResponse"
-            }
-          },
-          "default": {
-            "description": "Generic error response.",
-            "schema": {
-              "$ref": "#/definitions/error"
-            }
-          }
-        }
-      },
-      "post": {
-        "tags": [
-          "AdminAPI"
-        ],
-        "summary": "Update Tenant Security",
-        "operationId": "UpdateTenantSecurity",
-        "parameters": [
-          {
-            "type": "string",
-            "name": "namespace",
-            "in": "path",
-            "required": true
-          },
-          {
-            "type": "string",
-            "name": "tenant",
-            "in": "path",
-            "required": true
-          },
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/updateTenantSecurityRequest"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "A successful response."
-          },
-          "default": {
-            "description": "Generic error response.",
-            "schema": {
-              "$ref": "#/definitions/error"
-            }
-          }
-        }
-      }
-    },
-    "/namespaces/{namespace}/tenants/{tenant}/usage": {
-      "get": {
-        "tags": [
-          "AdminAPI"
-        ],
-        "summary": "Get Usage For The Tenant",
-        "operationId": "GetTenantUsage",
-        "parameters": [
-          {
-            "type": "string",
-            "name": "namespace",
-            "in": "path",
-            "required": true
-          },
-          {
-            "type": "string",
-            "name": "tenant",
-            "in": "path",
-            "required": true
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/tenantUsage"
-            }
-          },
-          "default": {
-            "description": "Generic error response.",
-            "schema": {
-              "$ref": "#/definitions/error"
-            }
-          }
-        }
-      }
-    },
-    "/namespaces/{namespace}/tenants/{tenant}/yaml": {
-      "get": {
-        "tags": [
-          "AdminAPI"
-        ],
-        "summary": "Get the Tenant YAML",
-        "operationId": "GetTenantYAML",
-        "parameters": [
-          {
-            "type": "string",
-            "name": "namespace",
-            "in": "path",
-            "required": true
-          },
-          {
-            "type": "string",
-            "name": "tenant",
-            "in": "path",
-            "required": true
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/tenantYAML"
-            }
-          },
-          "default": {
-            "description": "Generic error response.",
-            "schema": {
-              "$ref": "#/definitions/error"
-            }
-          }
-        }
-      },
-      "put": {
-        "tags": [
-          "AdminAPI"
-        ],
-        "summary": "Put the Tenant YAML",
-        "operationId": "PutTenantYAML",
-        "parameters": [
-          {
-            "type": "string",
-            "name": "namespace",
-            "in": "path",
-            "required": true
-          },
-          {
-            "type": "string",
-            "name": "tenant",
-            "in": "path",
-            "required": true
-          },
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/tenantYAML"
-            }
-          }
-        ],
-        "responses": {
-          "201": {
-            "description": "A successful response."
-          },
-          "default": {
-            "description": "Generic error response.",
-            "schema": {
-              "$ref": "#/definitions/error"
-            }
-          }
-        }
-      }
-    },
-    "/nodes/labels": {
-      "get": {
-        "tags": [
-          "OperatorAPI"
-        ],
-        "summary": "List node labels",
-        "operationId": "ListNodeLabels",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/nodeLabels"
             }
           },
           "default": {
@@ -11525,6 +8561,39 @@ func init() {
         }
       }
     },
+    "/service-account-credentials": {
+      "post": {
+        "tags": [
+          "AdminAPI"
+        ],
+        "summary": "Create Service Account With Credentials",
+        "operationId": "CreateServiceAccountCreds",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/serviceAccountRequestCreds"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/serviceAccountCreds"
+            }
+          },
+          "default": {
+            "description": "Generic error response.",
+            "schema": {
+              "$ref": "#/definitions/error"
+            }
+          }
+        }
+      }
+    },
     "/service-accounts": {
       "get": {
         "tags": [
@@ -11664,26 +8733,20 @@ func init() {
         }
       }
     },
-    "/set-policy-multi/{name}": {
+    "/set-policy": {
       "put": {
         "tags": [
           "AdminAPI"
         ],
-        "summary": "Set policy to multiple users/groups",
-        "operationId": "SetPolicyMultiple",
+        "summary": "Set policy",
+        "operationId": "SetPolicy",
         "parameters": [
-          {
-            "type": "string",
-            "name": "name",
-            "in": "path",
-            "required": true
-          },
           {
             "name": "body",
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/setPolicyMultipleRequest"
+              "$ref": "#/definitions/setPolicyNameRequest"
             }
           }
         ],
@@ -11700,26 +8763,20 @@ func init() {
         }
       }
     },
-    "/set-policy/{name}": {
+    "/set-policy-multi": {
       "put": {
         "tags": [
           "AdminAPI"
         ],
-        "summary": "Set policy",
-        "operationId": "SetPolicy",
+        "summary": "Set policy to multiple users/groups",
+        "operationId": "SetPolicyMultiple",
         "parameters": [
-          {
-            "type": "string",
-            "name": "name",
-            "in": "path",
-            "required": true
-          },
           {
             "name": "body",
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/setPolicyRequest"
+              "$ref": "#/definitions/setPolicyMultipleNameRequest"
             }
           }
         ],
@@ -11759,24 +8816,84 @@ func init() {
         }
       }
     },
-    "/subscription/namespaces/{namespace}/tenants/{tenant}/activate": {
-      "post": {
+    "/user": {
+      "get": {
         "tags": [
           "AdminAPI"
         ],
-        "summary": "Activate a particular tenant using the existing subscription license",
-        "operationId": "SubscriptionActivate",
+        "summary": "Get User Info",
+        "operationId": "GetUserInfo",
         "parameters": [
           {
             "type": "string",
-            "name": "namespace",
-            "in": "path",
+            "name": "name",
+            "in": "query",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/user"
+            }
+          },
+          "default": {
+            "description": "Generic error response.",
+            "schema": {
+              "$ref": "#/definitions/error"
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "AdminAPI"
+        ],
+        "summary": "Update User Info",
+        "operationId": "UpdateUserInfo",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "name",
+            "in": "query",
             "required": true
           },
           {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/updateUser"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/user"
+            }
+          },
+          "default": {
+            "description": "Generic error response.",
+            "schema": {
+              "$ref": "#/definitions/error"
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "AdminAPI"
+        ],
+        "summary": "Remove user",
+        "operationId": "RemoveUser",
+        "parameters": [
+          {
             "type": "string",
-            "name": "tenant",
-            "in": "path",
+            "name": "name",
+            "in": "query",
             "required": true
           }
         ],
@@ -11793,43 +8910,26 @@ func init() {
         }
       }
     },
-    "/subscription/refresh": {
-      "post": {
+    "/user/groups": {
+      "put": {
         "tags": [
           "AdminAPI"
         ],
-        "summary": "Refresh existing subscription license",
-        "operationId": "SubscriptionRefresh",
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/license"
-            }
-          },
-          "default": {
-            "description": "Generic error response.",
-            "schema": {
-              "$ref": "#/definitions/error"
-            }
-          }
-        }
-      }
-    },
-    "/subscription/validate": {
-      "post": {
-        "tags": [
-          "AdminAPI"
-        ],
-        "summary": "Validates subscription license",
-        "operationId": "SubscriptionValidate",
+        "summary": "Update Groups for a user",
+        "operationId": "UpdateUserGroups",
         "parameters": [
+          {
+            "type": "string",
+            "name": "name",
+            "in": "query",
+            "required": true
+          },
           {
             "name": "body",
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/subscriptionValidateRequest"
+              "$ref": "#/definitions/updateUserGroups"
             }
           }
         ],
@@ -11837,7 +8937,7 @@ func init() {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/license"
+              "$ref": "#/definitions/user"
             }
           },
           "default": {
@@ -11849,37 +8949,65 @@ func init() {
         }
       }
     },
-    "/tenants": {
+    "/user/{name}/service-account-credentials": {
+      "post": {
+        "tags": [
+          "AdminAPI"
+        ],
+        "summary": "Create Service Account for User With Credentials",
+        "operationId": "CreateServiceAccountCredentials",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "name",
+            "in": "path",
+            "required": true
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/serviceAccountRequestCreds"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/serviceAccountCreds"
+            }
+          },
+          "default": {
+            "description": "Generic error response.",
+            "schema": {
+              "$ref": "#/definitions/error"
+            }
+          }
+        }
+      }
+    },
+    "/user/{name}/service-accounts": {
       "get": {
         "tags": [
           "AdminAPI"
         ],
-        "summary": "List Tenant of All Namespaces",
-        "operationId": "ListAllTenants",
+        "summary": "returns a list of service accounts for a user",
+        "operationId": "ListAUserServiceAccounts",
         "parameters": [
           {
             "type": "string",
-            "name": "sort_by",
-            "in": "query"
-          },
-          {
-            "type": "integer",
-            "format": "int32",
-            "name": "offset",
-            "in": "query"
-          },
-          {
-            "type": "integer",
-            "format": "int32",
-            "name": "limit",
-            "in": "query"
+            "name": "name",
+            "in": "path",
+            "required": true
           }
         ],
         "responses": {
           "200": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/listTenantsResponse"
+              "$ref": "#/definitions/serviceAccounts"
             }
           },
           "default": {
@@ -11894,23 +9022,29 @@ func init() {
         "tags": [
           "AdminAPI"
         ],
-        "summary": "Create Tenant",
-        "operationId": "CreateTenant",
+        "summary": "Create Service Account for User",
+        "operationId": "CreateAUserServiceAccount",
         "parameters": [
+          {
+            "type": "string",
+            "name": "name",
+            "in": "path",
+            "required": true
+          },
           {
             "name": "body",
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/createTenantRequest"
+              "$ref": "#/definitions/serviceAccountRequest"
             }
           }
         ],
         "responses": {
-          "200": {
+          "201": {
             "description": "A successful response.",
             "schema": {
-              "$ref": "#/definitions/createTenantResponse"
+              "$ref": "#/definitions/serviceAccountCreds"
             }
           },
           "default": {
@@ -12019,820 +9153,72 @@ func init() {
           }
         }
       }
-    },
-    "/users/{name}": {
-      "get": {
-        "tags": [
-          "AdminAPI"
-        ],
-        "summary": "Get User Info",
-        "operationId": "GetUserInfo",
-        "parameters": [
-          {
-            "type": "string",
-            "name": "name",
-            "in": "path",
-            "required": true
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/user"
-            }
-          },
-          "default": {
-            "description": "Generic error response.",
-            "schema": {
-              "$ref": "#/definitions/error"
-            }
-          }
-        }
-      },
-      "put": {
-        "tags": [
-          "AdminAPI"
-        ],
-        "summary": "Update User Info",
-        "operationId": "UpdateUserInfo",
-        "parameters": [
-          {
-            "type": "string",
-            "name": "name",
-            "in": "path",
-            "required": true
-          },
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/updateUser"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/user"
-            }
-          },
-          "default": {
-            "description": "Generic error response.",
-            "schema": {
-              "$ref": "#/definitions/error"
-            }
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "AdminAPI"
-        ],
-        "summary": "Remove user",
-        "operationId": "RemoveUser",
-        "parameters": [
-          {
-            "type": "string",
-            "name": "name",
-            "in": "path",
-            "required": true
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "A successful response."
-          },
-          "default": {
-            "description": "Generic error response.",
-            "schema": {
-              "$ref": "#/definitions/error"
-            }
-          }
-        }
-      }
-    },
-    "/users/{name}/groups": {
-      "put": {
-        "tags": [
-          "AdminAPI"
-        ],
-        "summary": "Update Groups for a user",
-        "operationId": "UpdateUserGroups",
-        "parameters": [
-          {
-            "type": "string",
-            "name": "name",
-            "in": "path",
-            "required": true
-          },
-          {
-            "name": "body",
-            "in": "body",
-            "required": true,
-            "schema": {
-              "$ref": "#/definitions/updateUserGroups"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/user"
-            }
-          },
-          "default": {
-            "description": "Generic error response.",
-            "schema": {
-              "$ref": "#/definitions/error"
-            }
-          }
-        }
-      }
-    },
-    "/users/{name}/service-accounts": {
-      "get": {
-        "tags": [
-          "AdminAPI"
-        ],
-        "summary": "returns a list of service accounts for a user",
-        "operationId": "ListAUserServiceAccounts",
-        "parameters": [
-          {
-            "type": "string",
-            "name": "name",
-            "in": "path",
-            "required": true
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "A successful response.",
-            "schema": {
-              "$ref": "#/definitions/serviceAccounts"
-            }
-          },
-          "default": {
-            "description": "Generic error response.",
-            "schema": {
-              "$ref": "#/definitions/error"
-            }
-          }
-        }
-      }
     }
   },
   "definitions": {
-    "AwsConfigurationSecretsmanager": {
+    "BucketDetails": {
       "type": "object",
-      "required": [
-        "endpoint",
-        "region",
-        "credentials"
-      ],
       "properties": {
-        "credentials": {
-          "type": "object",
-          "required": [
-            "accesskey",
-            "secretkey"
-          ],
-          "properties": {
-            "accesskey": {
-              "type": "string"
-            },
-            "secretkey": {
-              "type": "string"
-            },
-            "token": {
-              "type": "string"
-            }
-          }
+        "locking": {
+          "type": "boolean"
         },
-        "endpoint": {
-          "type": "string"
-        },
-        "kmskey": {
-          "type": "string"
-        },
-        "region": {
-          "type": "string"
-        }
-      }
-    },
-    "AwsConfigurationSecretsmanagerCredentials": {
-      "type": "object",
-      "required": [
-        "accesskey",
-        "secretkey"
-      ],
-      "properties": {
-        "accesskey": {
-          "type": "string"
-        },
-        "secretkey": {
-          "type": "string"
-        },
-        "token": {
-          "type": "string"
-        }
-      }
-    },
-    "GcpConfigurationSecretmanager": {
-      "type": "object",
-      "required": [
-        "project_id"
-      ],
-      "properties": {
-        "credentials": {
+        "quota": {
           "type": "object",
           "properties": {
-            "client_email": {
-              "type": "string"
-            },
-            "client_id": {
-              "type": "string"
-            },
-            "private_key": {
-              "type": "string"
-            },
-            "private_key_id": {
-              "type": "string"
-            }
-          }
-        },
-        "endpoint": {
-          "type": "string"
-        },
-        "project_id": {
-          "type": "string"
-        }
-      }
-    },
-    "GcpConfigurationSecretmanagerCredentials": {
-      "type": "object",
-      "properties": {
-        "client_email": {
-          "type": "string"
-        },
-        "client_id": {
-          "type": "string"
-        },
-        "private_key": {
-          "type": "string"
-        },
-        "private_key_id": {
-          "type": "string"
-        }
-      }
-    },
-    "GemaltoConfigurationKeysecure": {
-      "type": "object",
-      "required": [
-        "endpoint",
-        "credentials"
-      ],
-      "properties": {
-        "credentials": {
-          "type": "object",
-          "required": [
-            "token",
-            "domain"
-          ],
-          "properties": {
-            "domain": {
-              "type": "string"
-            },
-            "retry": {
+            "quota": {
               "type": "integer",
               "format": "int64"
             },
-            "token": {
-              "type": "string"
+            "type": {
+              "type": "string",
+              "enum": [
+                "fifo",
+                "hard"
+              ]
             }
           }
         },
-        "endpoint": {
-          "type": "string"
-        },
-        "tls": {
-          "type": "object",
-          "required": [
-            "ca"
-          ],
-          "properties": {
-            "ca": {
-              "type": "string"
-            }
-          }
-        }
-      }
-    },
-    "GemaltoConfigurationKeysecureCredentials": {
-      "type": "object",
-      "required": [
-        "token",
-        "domain"
-      ],
-      "properties": {
-        "domain": {
-          "type": "string"
-        },
-        "retry": {
-          "type": "integer",
-          "format": "int64"
-        },
-        "token": {
-          "type": "string"
-        }
-      }
-    },
-    "GemaltoConfigurationKeysecureTLS": {
-      "type": "object",
-      "required": [
-        "ca"
-      ],
-      "properties": {
-        "ca": {
-          "type": "string"
-        }
-      }
-    },
-    "IdpConfigurationActiveDirectory": {
-      "type": "object",
-      "required": [
-        "url",
-        "username_format",
-        "user_search_filter"
-      ],
-      "properties": {
-        "group_name_attribute": {
-          "type": "string"
-        },
-        "group_search_base_dn": {
-          "type": "string"
-        },
-        "group_search_filter": {
-          "type": "string"
-        },
-        "server_insecure": {
+        "replication": {
           "type": "boolean"
         },
-        "skip_tls_verification": {
+        "tags": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "versioning": {
           "type": "boolean"
         },
-        "url": {
-          "type": "string"
-        },
-        "user_search_filter": {
-          "type": "string"
-        },
-        "username_format": {
-          "type": "string"
+        "versioningSuspended": {
+          "type": "boolean"
         }
       }
     },
-    "IdpConfigurationKeysItems0": {
-      "type": "object",
-      "required": [
-        "access_key",
-        "secret_key"
-      ],
-      "properties": {
-        "access_key": {
-          "type": "string"
-        },
-        "secret_key": {
-          "type": "string"
-        }
-      }
-    },
-    "IdpConfigurationOidc": {
-      "type": "object",
-      "required": [
-        "url",
-        "client_id",
-        "secret_id"
-      ],
-      "properties": {
-        "client_id": {
-          "type": "string"
-        },
-        "secret_id": {
-          "type": "string"
-        },
-        "url": {
-          "type": "string"
-        }
-      }
-    },
-    "NodeSelectorTermMatchExpressionsItems0": {
-      "description": "A node selector requirement is a selector that contains values, a key, and an operator that relates the key and values.",
-      "type": "object",
-      "required": [
-        "key",
-        "operator"
-      ],
-      "properties": {
-        "key": {
-          "description": "The label key that the selector applies to.",
-          "type": "string"
-        },
-        "operator": {
-          "description": "Represents a key's relationship to a set of values. Valid operators are In, NotIn, Exists, DoesNotExist. Gt, and Lt.",
-          "type": "string"
-        },
-        "values": {
-          "description": "An array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. If the operator is Gt or Lt, the values array must have a single element, which will be interpreted as an integer. This array is replaced during a strategic merge patch.",
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        }
-      }
-    },
-    "NodeSelectorTermMatchFieldsItems0": {
-      "description": "A node selector requirement is a selector that contains values, a key, and an operator that relates the key and values.",
-      "type": "object",
-      "required": [
-        "key",
-        "operator"
-      ],
-      "properties": {
-        "key": {
-          "description": "The label key that the selector applies to.",
-          "type": "string"
-        },
-        "operator": {
-          "description": "Represents a key's relationship to a set of values. Valid operators are In, NotIn, Exists, DoesNotExist. Gt, and Lt.",
-          "type": "string"
-        },
-        "values": {
-          "description": "An array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. If the operator is Gt or Lt, the values array must have a single element, which will be interpreted as an integer. This array is replaced during a strategic merge patch.",
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        }
-      }
-    },
-    "PodAffinityTermLabelSelector": {
-      "description": "A label query over a set of resources, in this case pods.",
+    "BucketDetailsQuota": {
       "type": "object",
       "properties": {
-        "matchExpressions": {
-          "description": "matchExpressions is a list of label selector requirements. The requirements are ANDed.",
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/PodAffinityTermLabelSelectorMatchExpressionsItems0"
-          }
-        },
-        "matchLabels": {
-          "description": "matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is \"key\", the operator is \"In\", and the values array contains only \"value\". The requirements are ANDed.",
-          "type": "object",
-          "additionalProperties": {
-            "type": "string"
-          }
-        }
-      }
-    },
-    "PodAffinityTermLabelSelectorMatchExpressionsItems0": {
-      "description": "A label selector requirement is a selector that contains values, a key, and an operator that relates the key and values.",
-      "type": "object",
-      "required": [
-        "key",
-        "operator"
-      ],
-      "properties": {
-        "key": {
-          "description": "key is the label key that the selector applies to.",
-          "type": "string"
-        },
-        "operator": {
-          "description": "operator represents a key's relationship to a set of values. Valid operators are In, NotIn, Exists and DoesNotExist.",
-          "type": "string"
-        },
-        "values": {
-          "description": "values is an array of string values. If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. This array is replaced during a strategic merge patch.",
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        }
-      }
-    },
-    "PoolAffinityNodeAffinity": {
-      "description": "Describes node affinity scheduling rules for the pod.",
-      "type": "object",
-      "properties": {
-        "preferredDuringSchedulingIgnoredDuringExecution": {
-          "description": "The scheduler will prefer to schedule pods to nodes that satisfy the affinity expressions specified by this field, but it may choose a node that violates one or more of the expressions. The node that is most preferred is the one with the greatest sum of weights, i.e. for each node that meets all of the scheduling requirements (resource request, requiredDuringScheduling affinity expressions, etc.), compute a sum by iterating through the elements of this field and adding \"weight\" to the sum if the node matches the corresponding matchExpressions; the node(s) with the highest sum are the most preferred.",
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/PoolAffinityNodeAffinityPreferredDuringSchedulingIgnoredDuringExecutionItems0"
-          }
-        },
-        "requiredDuringSchedulingIgnoredDuringExecution": {
-          "description": "If the affinity requirements specified by this field are not met at scheduling time, the pod will not be scheduled onto the node. If the affinity requirements specified by this field cease to be met at some point during pod execution (e.g. due to an update), the system may or may not try to eventually evict the pod from its node.",
-          "type": "object",
-          "required": [
-            "nodeSelectorTerms"
-          ],
-          "properties": {
-            "nodeSelectorTerms": {
-              "description": "Required. A list of node selector terms. The terms are ORed.",
-              "type": "array",
-              "items": {
-                "$ref": "#/definitions/nodeSelectorTerm"
-              }
-            }
-          }
-        }
-      }
-    },
-    "PoolAffinityNodeAffinityPreferredDuringSchedulingIgnoredDuringExecutionItems0": {
-      "description": "An empty preferred scheduling term matches all objects with implicit weight 0 (i.e. it's a no-op). A null preferred scheduling term matches no objects (i.e. is also a no-op).",
-      "type": "object",
-      "required": [
-        "preference",
-        "weight"
-      ],
-      "properties": {
-        "preference": {
-          "description": "A node selector term, associated with the corresponding weight.",
-          "type": "object",
-          "$ref": "#/definitions/nodeSelectorTerm"
-        },
-        "weight": {
-          "description": "Weight associated with matching the corresponding nodeSelectorTerm, in the range 1-100.",
-          "type": "integer",
-          "format": "int32"
-        }
-      }
-    },
-    "PoolAffinityNodeAffinityRequiredDuringSchedulingIgnoredDuringExecution": {
-      "description": "If the affinity requirements specified by this field are not met at scheduling time, the pod will not be scheduled onto the node. If the affinity requirements specified by this field cease to be met at some point during pod execution (e.g. due to an update), the system may or may not try to eventually evict the pod from its node.",
-      "type": "object",
-      "required": [
-        "nodeSelectorTerms"
-      ],
-      "properties": {
-        "nodeSelectorTerms": {
-          "description": "Required. A list of node selector terms. The terms are ORed.",
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/nodeSelectorTerm"
-          }
-        }
-      }
-    },
-    "PoolAffinityPodAffinity": {
-      "description": "Describes pod affinity scheduling rules (e.g. co-locate this pod in the same node, pool, etc. as some other pod(s)).",
-      "type": "object",
-      "properties": {
-        "preferredDuringSchedulingIgnoredDuringExecution": {
-          "description": "The scheduler will prefer to schedule pods to nodes that satisfy the affinity expressions specified by this field, but it may choose a node that violates one or more of the expressions. The node that is most preferred is the one with the greatest sum of weights, i.e. for each node that meets all of the scheduling requirements (resource request, requiredDuringScheduling affinity expressions, etc.), compute a sum by iterating through the elements of this field and adding \"weight\" to the sum if the node has pods which matches the corresponding podAffinityTerm; the node(s) with the highest sum are the most preferred.",
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/PoolAffinityPodAffinityPreferredDuringSchedulingIgnoredDuringExecutionItems0"
-          }
-        },
-        "requiredDuringSchedulingIgnoredDuringExecution": {
-          "description": "If the affinity requirements specified by this field are not met at scheduling time, the pod will not be scheduled onto the node. If the affinity requirements specified by this field cease to be met at some point during pod execution (e.g. due to a pod label update), the system may or may not try to eventually evict the pod from its node. When there are multiple elements, the lists of nodes corresponding to each podAffinityTerm are intersected, i.e. all terms must be satisfied.",
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/podAffinityTerm"
-          }
-        }
-      }
-    },
-    "PoolAffinityPodAffinityPreferredDuringSchedulingIgnoredDuringExecutionItems0": {
-      "description": "The weights of all of the matched WeightedPodAffinityTerm fields are added per-node to find the most preferred node(s)",
-      "type": "object",
-      "required": [
-        "podAffinityTerm",
-        "weight"
-      ],
-      "properties": {
-        "podAffinityTerm": {
-          "$ref": "#/definitions/podAffinityTerm"
-        },
-        "weight": {
-          "description": "weight associated with matching the corresponding podAffinityTerm, in the range 1-100.",
-          "type": "integer",
-          "format": "int32"
-        }
-      }
-    },
-    "PoolAffinityPodAntiAffinity": {
-      "description": "Describes pod anti-affinity scheduling rules (e.g. avoid putting this pod in the same node, pool, etc. as some other pod(s)).",
-      "type": "object",
-      "properties": {
-        "preferredDuringSchedulingIgnoredDuringExecution": {
-          "description": "The scheduler will prefer to schedule pods to nodes that satisfy the anti-affinity expressions specified by this field, but it may choose a node that violates one or more of the expressions. The node that is most preferred is the one with the greatest sum of weights, i.e. for each node that meets all of the scheduling requirements (resource request, requiredDuringScheduling anti-affinity expressions, etc.), compute a sum by iterating through the elements of this field and adding \"weight\" to the sum if the node has pods which matches the corresponding podAffinityTerm; the node(s) with the highest sum are the most preferred.",
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/PoolAffinityPodAntiAffinityPreferredDuringSchedulingIgnoredDuringExecutionItems0"
-          }
-        },
-        "requiredDuringSchedulingIgnoredDuringExecution": {
-          "description": "If the anti-affinity requirements specified by this field are not met at scheduling time, the pod will not be scheduled onto the node. If the anti-affinity requirements specified by this field cease to be met at some point during pod execution (e.g. due to a pod label update), the system may or may not try to eventually evict the pod from its node. When there are multiple elements, the lists of nodes corresponding to each podAffinityTerm are intersected, i.e. all terms must be satisfied.",
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/podAffinityTerm"
-          }
-        }
-      }
-    },
-    "PoolAffinityPodAntiAffinityPreferredDuringSchedulingIgnoredDuringExecutionItems0": {
-      "description": "The weights of all of the matched WeightedPodAffinityTerm fields are added per-node to find the most preferred node(s)",
-      "type": "object",
-      "required": [
-        "podAffinityTerm",
-        "weight"
-      ],
-      "properties": {
-        "podAffinityTerm": {
-          "$ref": "#/definitions/podAffinityTerm"
-        },
-        "weight": {
-          "description": "weight associated with matching the corresponding podAffinityTerm, in the range 1-100.",
-          "type": "integer",
-          "format": "int32"
-        }
-      }
-    },
-    "PoolTolerationsItems0": {
-      "description": "The pod this Toleration is attached to tolerates any taint that matches the triple \u003ckey,value,effect\u003e using the matching operator \u003coperator\u003e.",
-      "type": "object",
-      "properties": {
-        "effect": {
-          "description": "Effect indicates the taint effect to match. Empty means match all taint effects. When specified, allowed values are NoSchedule, PreferNoSchedule and NoExecute.",
-          "type": "string"
-        },
-        "key": {
-          "description": "Key is the taint key that the toleration applies to. Empty means match all taint keys. If the key is empty, operator must be Exists; this combination means to match all values and all keys.",
-          "type": "string"
-        },
-        "operator": {
-          "description": "Operator represents a key's relationship to the value. Valid operators are Exists and Equal. Defaults to Equal. Exists is equivalent to wildcard for value, so that a pod can tolerate all taints of a particular category.",
-          "type": "string"
-        },
-        "tolerationSeconds": {
-          "$ref": "#/definitions/poolTolerationSeconds"
-        },
-        "value": {
-          "description": "Value is the taint value the toleration matches to. If the operator is Exists, the value should be empty, otherwise just a regular string.",
-          "type": "string"
-        }
-      }
-    },
-    "PoolVolumeConfiguration": {
-      "type": "object",
-      "required": [
-        "size"
-      ],
-      "properties": {
-        "annotations": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "string"
-          }
-        },
-        "labels": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "string"
-          }
-        },
-        "size": {
-          "type": "integer"
-        },
-        "storage_class_name": {
-          "type": "string"
-        }
-      }
-    },
-    "TenantEndpoints": {
-      "type": "object",
-      "properties": {
-        "console": {
-          "type": "string"
-        },
-        "minio": {
-          "type": "string"
-        }
-      }
-    },
-    "TenantSecurityResponseCustomCertificates": {
-      "type": "object",
-      "properties": {
-        "console": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/certificateInfo"
-          }
-        },
-        "consoleCAs": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/certificateInfo"
-          }
-        },
-        "minio": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/certificateInfo"
-          }
-        },
-        "minioCAs": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/certificateInfo"
-          }
-        }
-      }
-    },
-    "UpdateTenantSecurityRequestCustomCertificates": {
-      "type": "object",
-      "properties": {
-        "console": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/keyPairConfiguration"
-          }
-        },
-        "consoleCAs": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "minio": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/keyPairConfiguration"
-          }
-        },
-        "minioCAs": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "secretsToBeDeleted": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        }
-      }
-    },
-    "VaultConfigurationApprole": {
-      "type": "object",
-      "required": [
-        "id",
-        "secret"
-      ],
-      "properties": {
-        "engine": {
-          "type": "string"
-        },
-        "id": {
-          "type": "string"
-        },
-        "retry": {
+        "quota": {
           "type": "integer",
           "format": "int64"
         },
-        "secret": {
-          "type": "string"
+        "type": {
+          "type": "string",
+          "enum": [
+            "fifo",
+            "hard"
+          ]
         }
       }
     },
-    "VaultConfigurationStatus": {
+    "BucketRwAccess": {
       "type": "object",
       "properties": {
-        "ping": {
-          "type": "integer",
-          "format": "int64"
-        }
-      }
-    },
-    "VaultConfigurationTLS": {
-      "type": "object",
-      "properties": {
-        "ca": {
-          "type": "string"
+        "read": {
+          "type": "boolean"
         },
-        "crt": {
-          "type": "string"
-        },
-        "key": {
-          "type": "string"
+        "write": {
+          "type": "boolean"
         }
       }
     },
@@ -12887,6 +9273,17 @@ func init() {
           "items": {
             "type": "string"
           }
+        }
+      }
+    },
+    "accessRule": {
+      "type": "object",
+      "properties": {
+        "access": {
+          "type": "string"
+        },
+        "prefix": {
+          "type": "string"
         }
       }
     },
@@ -13015,13 +9412,20 @@ func init() {
       "required": [
         "accessKey",
         "secretKey",
-        "groups"
+        "groups",
+        "policies"
       ],
       "properties": {
         "accessKey": {
           "type": "string"
         },
         "groups": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "policies": {
           "type": "array",
           "items": {
             "type": "string"
@@ -13040,6 +9444,12 @@ func init() {
         },
         "objects": {
           "type": "integer"
+        },
+        "servers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/serverProperties"
+          }
         },
         "usage": {
           "type": "integer"
@@ -13063,51 +9473,6 @@ func init() {
         }
       }
     },
-    "awsConfiguration": {
-      "type": "object",
-      "required": [
-        "secretsmanager"
-      ],
-      "properties": {
-        "secretsmanager": {
-          "type": "object",
-          "required": [
-            "endpoint",
-            "region",
-            "credentials"
-          ],
-          "properties": {
-            "credentials": {
-              "type": "object",
-              "required": [
-                "accesskey",
-                "secretkey"
-              ],
-              "properties": {
-                "accesskey": {
-                  "type": "string"
-                },
-                "secretkey": {
-                  "type": "string"
-                },
-                "token": {
-                  "type": "string"
-                }
-              }
-            },
-            "endpoint": {
-              "type": "string"
-            },
-            "kmskey": {
-              "type": "string"
-            },
-            "region": {
-              "type": "string"
-            }
-          }
-        }
-      }
-    },
     "bucket": {
       "type": "object",
       "required": [
@@ -13117,12 +9482,75 @@ func init() {
         "access": {
           "$ref": "#/definitions/bucketAccess"
         },
+        "allowedActions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
         "creation_date": {
           "type": "string"
+        },
+        "details": {
+          "type": "object",
+          "properties": {
+            "locking": {
+              "type": "boolean"
+            },
+            "quota": {
+              "type": "object",
+              "properties": {
+                "quota": {
+                  "type": "integer",
+                  "format": "int64"
+                },
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "fifo",
+                    "hard"
+                  ]
+                }
+              }
+            },
+            "replication": {
+              "type": "boolean"
+            },
+            "tags": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              }
+            },
+            "versioning": {
+              "type": "boolean"
+            },
+            "versioningSuspended": {
+              "type": "boolean"
+            }
+          }
+        },
+        "manage": {
+          "type": "boolean"
         },
         "name": {
           "type": "string",
           "minLength": 3
+        },
+        "objects": {
+          "type": "integer",
+          "format": "int64"
+        },
+        "rw_access": {
+          "type": "object",
+          "properties": {
+            "read": {
+              "type": "boolean"
+            },
+            "write": {
+              "type": "boolean"
+            }
+          }
         },
         "size": {
           "type": "integer",
@@ -13226,6 +9654,12 @@ func init() {
         "legal_hold_status": {
           "type": "string"
         },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
         "name": {
           "type": "string"
         },
@@ -13240,6 +9674,12 @@ func init() {
           "format": "int64"
         },
         "tags": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "user_metadata": {
           "type": "object",
           "additionalProperties": {
             "type": "string"
@@ -13370,26 +9810,6 @@ func init() {
         }
       }
     },
-    "certificateInfo": {
-      "type": "object",
-      "properties": {
-        "domains": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "expiry": {
-          "type": "string"
-        },
-        "name": {
-          "type": "string"
-        },
-        "serialNumber": {
-          "type": "string"
-        }
-      }
-    },
     "changeUserPasswordRequest": {
       "type": "object",
       "required": [
@@ -13441,21 +9861,6 @@ func init() {
         }
       }
     },
-    "consoleConfiguration": {
-      "allOf": [
-        {
-          "$ref": "#/definitions/metadataFields"
-        },
-        {
-          "type": "object",
-          "properties": {
-            "image": {
-              "type": "string"
-            }
-          }
-        }
-      ]
-    },
     "createRemoteBucket": {
       "required": [
         "accessKey",
@@ -13503,270 +9908,37 @@ func init() {
         }
       }
     },
-    "createTenantRequest": {
+    "deleteFile": {
       "type": "object",
-      "required": [
-        "name",
-        "namespace",
-        "pools"
-      ],
       "properties": {
-        "access_key": {
+        "path": {
           "type": "string"
         },
-        "annotations": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "string"
-          }
-        },
-        "console": {
-          "type": "object",
-          "$ref": "#/definitions/consoleConfiguration"
-        },
-        "console_image": {
-          "type": "string"
-        },
-        "enable_console": {
-          "type": "boolean",
-          "default": true
-        },
-        "enable_prometheus": {
-          "type": "boolean",
-          "default": false
-        },
-        "enable_tls": {
-          "type": "boolean",
-          "default": true
-        },
-        "encryption": {
-          "type": "object",
-          "$ref": "#/definitions/encryptionConfiguration"
-        },
-        "erasureCodingParity": {
-          "type": "integer"
-        },
-        "expose_console": {
+        "recursive": {
           "type": "boolean"
         },
-        "expose_minio": {
-          "type": "boolean"
-        },
-        "idp": {
-          "type": "object",
-          "$ref": "#/definitions/idpConfiguration"
-        },
-        "image": {
-          "type": "string"
-        },
-        "image_pull_secret": {
-          "type": "string"
-        },
-        "image_registry": {
-          "$ref": "#/definitions/imageRegistry"
-        },
-        "labels": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "string"
-          }
-        },
-        "logSearchConfiguration": {
-          "$ref": "#/definitions/logSearchConfiguration"
-        },
-        "mounth_path": {
-          "type": "string"
-        },
-        "name": {
-          "type": "string",
-          "pattern": "^[a-z0-9-]{3,63}$"
-        },
-        "namespace": {
-          "type": "string"
-        },
-        "pools": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/pool"
-          }
-        },
-        "prometheusConfiguration": {
-          "$ref": "#/definitions/prometheusConfiguration"
-        },
-        "secret_key": {
-          "type": "string"
-        },
-        "tls": {
-          "type": "object",
-          "$ref": "#/definitions/tlsConfiguration"
-        }
-      }
-    },
-    "createTenantResponse": {
-      "type": "object",
-      "properties": {
-        "console": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/tenantResponseItem"
-          }
-        }
-      }
-    },
-    "csiFormatErrorResponse": {
-      "type": "object",
-      "properties": {
-        "drive": {
-          "type": "string"
-        },
-        "error": {
-          "type": "string"
-        },
-        "node": {
+        "versionID": {
           "type": "string"
         }
       }
-    },
-    "deleteTenantRequest": {
-      "type": "object",
-      "properties": {
-        "delete_pvcs": {
-          "type": "boolean"
-        }
-      }
-    },
-    "directCSIDriveInfo": {
-      "type": "object",
-      "properties": {
-        "allocated": {
-          "type": "number",
-          "format": "int64"
-        },
-        "capacity": {
-          "type": "number",
-          "format": "int64"
-        },
-        "drive": {
-          "type": "string"
-        },
-        "message": {
-          "type": "string"
-        },
-        "node": {
-          "type": "string"
-        },
-        "status": {
-          "type": "string"
-        },
-        "volumes": {
-          "type": "number",
-          "format": "int64"
-        }
-      }
-    },
-    "directCSIVolumeInfo": {
-      "type": "object",
-      "properties": {
-        "capacity": {
-          "type": "number",
-          "format": "int64"
-        },
-        "drive": {
-          "type": "string"
-        },
-        "node": {
-          "type": "string"
-        },
-        "volume": {
-          "type": "string"
-        }
-      }
-    },
-    "encryptionConfiguration": {
-      "allOf": [
-        {
-          "$ref": "#/definitions/metadataFields"
-        },
-        {
-          "type": "object",
-          "properties": {
-            "aws": {
-              "type": "object",
-              "$ref": "#/definitions/awsConfiguration"
-            },
-            "client": {
-              "type": "object",
-              "$ref": "#/definitions/keyPairConfiguration"
-            },
-            "gcp": {
-              "type": "object",
-              "$ref": "#/definitions/gcpConfiguration"
-            },
-            "gemalto": {
-              "type": "object",
-              "$ref": "#/definitions/gemaltoConfiguration"
-            },
-            "image": {
-              "type": "string"
-            },
-            "replicas": {
-              "type": "string"
-            },
-            "server": {
-              "type": "object",
-              "$ref": "#/definitions/keyPairConfiguration"
-            },
-            "vault": {
-              "type": "object",
-              "$ref": "#/definitions/vaultConfiguration"
-            }
-          }
-        }
-      ]
     },
     "error": {
       "type": "object",
       "required": [
-        "message"
+        "message",
+        "detailedMessage"
       ],
       "properties": {
         "code": {
           "type": "integer",
           "format": "int32"
         },
+        "detailedMessage": {
+          "type": "string"
+        },
         "message": {
           "type": "string"
         }
-      }
-    },
-    "eventListElement": {
-      "type": "object",
-      "properties": {
-        "event_type": {
-          "type": "string"
-        },
-        "last_seen": {
-          "type": "integer",
-          "format": "int64"
-        },
-        "message": {
-          "type": "string"
-        },
-        "namespace": {
-          "type": "string"
-        },
-        "object": {
-          "type": "string"
-        },
-        "reason": {
-          "type": "string"
-        }
-      }
-    },
-    "eventListWrapper": {
-      "type": "array",
-      "items": {
-        "$ref": "#/definitions/eventListElement"
       }
     },
     "expirationResponse": {
@@ -13784,125 +9956,6 @@ func init() {
         }
       }
     },
-    "formatConfiguration": {
-      "type": "object",
-      "required": [
-        "drives",
-        "force"
-      ],
-      "properties": {
-        "drives": {
-          "type": "array",
-          "minLength": 1,
-          "items": {
-            "type": "string"
-          }
-        },
-        "force": {
-          "type": "boolean"
-        }
-      }
-    },
-    "formatDirectCSIDrivesResponse": {
-      "type": "object",
-      "properties": {
-        "formatIssuesList": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/csiFormatErrorResponse"
-          }
-        }
-      }
-    },
-    "gcpConfiguration": {
-      "type": "object",
-      "required": [
-        "secretmanager"
-      ],
-      "properties": {
-        "secretmanager": {
-          "type": "object",
-          "required": [
-            "project_id"
-          ],
-          "properties": {
-            "credentials": {
-              "type": "object",
-              "properties": {
-                "client_email": {
-                  "type": "string"
-                },
-                "client_id": {
-                  "type": "string"
-                },
-                "private_key": {
-                  "type": "string"
-                },
-                "private_key_id": {
-                  "type": "string"
-                }
-              }
-            },
-            "endpoint": {
-              "type": "string"
-            },
-            "project_id": {
-              "type": "string"
-            }
-          }
-        }
-      }
-    },
-    "gemaltoConfiguration": {
-      "type": "object",
-      "required": [
-        "keysecure"
-      ],
-      "properties": {
-        "keysecure": {
-          "type": "object",
-          "required": [
-            "endpoint",
-            "credentials"
-          ],
-          "properties": {
-            "credentials": {
-              "type": "object",
-              "required": [
-                "token",
-                "domain"
-              ],
-              "properties": {
-                "domain": {
-                  "type": "string"
-                },
-                "retry": {
-                  "type": "integer",
-                  "format": "int64"
-                },
-                "token": {
-                  "type": "string"
-                }
-              }
-            },
-            "endpoint": {
-              "type": "string"
-            },
-            "tls": {
-              "type": "object",
-              "required": [
-                "ca"
-              ],
-              "properties": {
-                "ca": {
-                  "type": "string"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "getBucketRetentionConfig": {
       "type": "object",
       "properties": {
@@ -13915,28 +9968,6 @@ func init() {
         "validity": {
           "type": "integer",
           "format": "int32"
-        }
-      }
-    },
-    "getDirectCSIDriveListResponse": {
-      "type": "object",
-      "properties": {
-        "drives": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/directCSIDriveInfo"
-          }
-        }
-      }
-    },
-    "getDirectCSIVolumeListResponse": {
-      "type": "object",
-      "properties": {
-        "volumes": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/directCSIVolumeInfo"
-          }
         }
       }
     },
@@ -13986,101 +10017,43 @@ func init() {
       "type": "string",
       "pattern": "^[\\w+=,.@-]{1,64}$"
     },
-    "idpConfiguration": {
+    "iamPolicy": {
       "type": "object",
       "properties": {
-        "active_directory": {
-          "type": "object",
-          "required": [
-            "url",
-            "username_format",
-            "user_search_filter"
-          ],
-          "properties": {
-            "group_name_attribute": {
-              "type": "string"
-            },
-            "group_search_base_dn": {
-              "type": "string"
-            },
-            "group_search_filter": {
-              "type": "string"
-            },
-            "server_insecure": {
-              "type": "boolean"
-            },
-            "skip_tls_verification": {
-              "type": "boolean"
-            },
-            "url": {
-              "type": "string"
-            },
-            "user_search_filter": {
-              "type": "string"
-            },
-            "username_format": {
-              "type": "string"
-            }
-          }
-        },
-        "keys": {
+        "statement": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/IdpConfigurationKeysItems0"
+            "$ref": "#/definitions/iamPolicyStatement"
           }
         },
-        "oidc": {
+        "version": {
+          "type": "string"
+        }
+      }
+    },
+    "iamPolicyStatement": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "condition": {
           "type": "object",
-          "required": [
-            "url",
-            "client_id",
-            "secret_id"
-          ],
-          "properties": {
-            "client_id": {
-              "type": "string"
-            },
-            "secret_id": {
-              "type": "string"
-            },
-            "url": {
-              "type": "string"
-            }
+          "additionalProperties": {
+            "type": "object"
           }
-        }
-      }
-    },
-    "imageRegistry": {
-      "type": "object",
-      "required": [
-        "registry",
-        "username",
-        "password"
-      ],
-      "properties": {
-        "password": {
+        },
+        "effect": {
           "type": "string"
         },
-        "registry": {
-          "type": "string"
-        },
-        "username": {
-          "type": "string"
-        }
-      }
-    },
-    "keyPairConfiguration": {
-      "type": "object",
-      "required": [
-        "crt",
-        "key"
-      ],
-      "properties": {
-        "crt": {
-          "type": "string"
-        },
-        "key": {
-          "type": "string"
+        "resource": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         }
       }
     },
@@ -14118,6 +10091,23 @@ func init() {
         }
       }
     },
+    "listAccessRulesResponse": {
+      "type": "object",
+      "properties": {
+        "accessRules": {
+          "type": "array",
+          "title": "list of policies",
+          "items": {
+            "$ref": "#/definitions/accessRule"
+          }
+        },
+        "total": {
+          "type": "integer",
+          "format": "int64",
+          "title": "total number of policies"
+        }
+      }
+    },
     "listBucketEventsResponse": {
       "type": "object",
       "properties": {
@@ -14147,7 +10137,7 @@ func init() {
         "total": {
           "type": "integer",
           "format": "int64",
-          "title": "number of buckets accessible to tenant user"
+          "title": "number of buckets accessible to the user"
         }
       }
     },
@@ -14228,17 +10218,6 @@ func init() {
         }
       }
     },
-    "listPVCsResponse": {
-      "type": "object",
-      "properties": {
-        "pvcs": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/pvcsListResponse"
-          }
-        }
-      }
-    },
     "listPoliciesResponse": {
       "type": "object",
       "properties": {
@@ -14273,23 +10252,6 @@ func init() {
         }
       }
     },
-    "listTenantsResponse": {
-      "type": "object",
-      "properties": {
-        "tenants": {
-          "type": "array",
-          "title": "list of resulting tenants",
-          "items": {
-            "$ref": "#/definitions/tenantList"
-          }
-        },
-        "total": {
-          "type": "integer",
-          "format": "int64",
-          "title": "number of tenants accessible to tenant user"
-        }
-      }
-    },
     "listUsersResponse": {
       "type": "object",
       "properties": {
@@ -14299,25 +10261,6 @@ func init() {
           "items": {
             "$ref": "#/definitions/user"
           }
-        }
-      }
-    },
-    "logSearchConfiguration": {
-      "type": "object",
-      "properties": {
-        "image": {
-          "type": "string"
-        },
-        "postgres_image": {
-          "type": "string"
-        },
-        "storageClass": {
-          "type": "string",
-          "default": ""
-        },
-        "storageSize": {
-          "type": "number",
-          "default": 5
         }
       }
     },
@@ -14357,17 +10300,6 @@ func init() {
           "type": "string"
         },
         "state": {
-          "type": "string"
-        }
-      }
-    },
-    "loginOperatorRequest": {
-      "type": "object",
-      "required": [
-        "jwt"
-      ],
-      "properties": {
-        "jwt": {
           "type": "string"
         }
       }
@@ -14415,38 +10347,6 @@ func init() {
         },
         "versioning": {
           "type": "boolean"
-        }
-      }
-    },
-    "maxAllocatableMemResponse": {
-      "type": "object",
-      "properties": {
-        "max_memory": {
-          "type": "integer",
-          "format": "int64"
-        }
-      }
-    },
-    "metadataFields": {
-      "type": "object",
-      "properties": {
-        "annotations": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "string"
-          }
-        },
-        "labels": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "string"
-          }
-        },
-        "node_selector": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "string"
-          }
         }
       }
     },
@@ -14545,46 +10445,6 @@ func init() {
         },
         "originBucket": {
           "type": "string"
-        }
-      }
-    },
-    "namespace": {
-      "type": "object",
-      "required": [
-        "name"
-      ],
-      "properties": {
-        "name": {
-          "type": "string"
-        }
-      }
-    },
-    "nodeLabels": {
-      "type": "object",
-      "additionalProperties": {
-        "type": "array",
-        "items": {
-          "type": "string"
-        }
-      }
-    },
-    "nodeSelectorTerm": {
-      "description": "A null or empty node selector term matches no objects. The requirements of them are ANDed. The TopologySelectorTerm type implements a subset of the NodeSelectorTerm.",
-      "type": "object",
-      "properties": {
-        "matchExpressions": {
-          "description": "A list of node selector requirements by node's labels.",
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/NodeSelectorTermMatchExpressionsItems0"
-          }
-        },
-        "matchFields": {
-          "description": "A list of node selector requirements by node's fields.",
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/NodeSelectorTermMatchFieldsItems0"
-          }
         }
       }
     },
@@ -14760,12 +10620,6 @@ func init() {
         "years"
       ]
     },
-    "parityResponse": {
-      "type": "array",
-      "items": {
-        "type": "string"
-      }
-    },
     "permissionAction": {
       "type": "object",
       "properties": {
@@ -14773,46 +10627,6 @@ func init() {
           "type": "boolean"
         },
         "id": {
-          "type": "string"
-        }
-      }
-    },
-    "podAffinityTerm": {
-      "description": "Required. A pod affinity term, associated with the corresponding weight.",
-      "type": "object",
-      "required": [
-        "topologyKey"
-      ],
-      "properties": {
-        "labelSelector": {
-          "description": "A label query over a set of resources, in this case pods.",
-          "type": "object",
-          "properties": {
-            "matchExpressions": {
-              "description": "matchExpressions is a list of label selector requirements. The requirements are ANDed.",
-              "type": "array",
-              "items": {
-                "$ref": "#/definitions/PodAffinityTermLabelSelectorMatchExpressionsItems0"
-              }
-            },
-            "matchLabels": {
-              "description": "matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels map is equivalent to an element of matchExpressions, whose key field is \"key\", the operator is \"In\", and the values array contains only \"value\". The requirements are ANDed.",
-              "type": "object",
-              "additionalProperties": {
-                "type": "string"
-              }
-            }
-          }
-        },
-        "namespaces": {
-          "description": "namespaces specifies which namespaces the labelSelector applies to (matches against); null or empty list means \"this pod's namespace\"",
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "topologyKey": {
-          "description": "This pod should be co-located (affinity) or not co-located (anti-affinity) with the pods matching the labelSelector in the specified namespaces, where co-located is defined as running on a node whose value of the label with key topologyKey matches that of any node on which any of the selected pods is running. Empty topologyKey is not allowed.",
           "type": "string"
         }
       }
@@ -14850,196 +10664,22 @@ func init() {
         "group"
       ]
     },
-    "pool": {
+    "prefixAccessPair": {
       "type": "object",
-      "required": [
-        "servers",
-        "volumes_per_server",
-        "volume_configuration"
-      ],
       "properties": {
-        "affinity": {
-          "$ref": "#/definitions/poolAffinity"
-        },
-        "name": {
+        "access": {
           "type": "string"
         },
-        "node_selector": {
-          "description": "NodeSelector is a selector which must be true for the pod to fit on a node. Selector which must match a node's labels for the pod to be scheduled on that node. More info: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/",
-          "type": "object",
-          "additionalProperties": {
-            "type": "string"
-          }
-        },
-        "resources": {
-          "$ref": "#/definitions/poolResources"
-        },
-        "servers": {
-          "type": "integer"
-        },
-        "tolerations": {
-          "$ref": "#/definitions/poolTolerations"
-        },
-        "volume_configuration": {
-          "type": "object",
-          "required": [
-            "size"
-          ],
-          "properties": {
-            "annotations": {
-              "type": "object",
-              "additionalProperties": {
-                "type": "string"
-              }
-            },
-            "labels": {
-              "type": "object",
-              "additionalProperties": {
-                "type": "string"
-              }
-            },
-            "size": {
-              "type": "integer"
-            },
-            "storage_class_name": {
-              "type": "string"
-            }
-          }
-        },
-        "volumes_per_server": {
-          "type": "integer",
-          "format": "int32"
+        "prefix": {
+          "type": "string"
         }
       }
     },
-    "poolAffinity": {
-      "description": "If specified, affinity will define the pod's scheduling constraints",
+    "prefixWrapper": {
       "type": "object",
       "properties": {
-        "nodeAffinity": {
-          "description": "Describes node affinity scheduling rules for the pod.",
-          "type": "object",
-          "properties": {
-            "preferredDuringSchedulingIgnoredDuringExecution": {
-              "description": "The scheduler will prefer to schedule pods to nodes that satisfy the affinity expressions specified by this field, but it may choose a node that violates one or more of the expressions. The node that is most preferred is the one with the greatest sum of weights, i.e. for each node that meets all of the scheduling requirements (resource request, requiredDuringScheduling affinity expressions, etc.), compute a sum by iterating through the elements of this field and adding \"weight\" to the sum if the node matches the corresponding matchExpressions; the node(s) with the highest sum are the most preferred.",
-              "type": "array",
-              "items": {
-                "$ref": "#/definitions/PoolAffinityNodeAffinityPreferredDuringSchedulingIgnoredDuringExecutionItems0"
-              }
-            },
-            "requiredDuringSchedulingIgnoredDuringExecution": {
-              "description": "If the affinity requirements specified by this field are not met at scheduling time, the pod will not be scheduled onto the node. If the affinity requirements specified by this field cease to be met at some point during pod execution (e.g. due to an update), the system may or may not try to eventually evict the pod from its node.",
-              "type": "object",
-              "required": [
-                "nodeSelectorTerms"
-              ],
-              "properties": {
-                "nodeSelectorTerms": {
-                  "description": "Required. A list of node selector terms. The terms are ORed.",
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/definitions/nodeSelectorTerm"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "podAffinity": {
-          "description": "Describes pod affinity scheduling rules (e.g. co-locate this pod in the same node, pool, etc. as some other pod(s)).",
-          "type": "object",
-          "properties": {
-            "preferredDuringSchedulingIgnoredDuringExecution": {
-              "description": "The scheduler will prefer to schedule pods to nodes that satisfy the affinity expressions specified by this field, but it may choose a node that violates one or more of the expressions. The node that is most preferred is the one with the greatest sum of weights, i.e. for each node that meets all of the scheduling requirements (resource request, requiredDuringScheduling affinity expressions, etc.), compute a sum by iterating through the elements of this field and adding \"weight\" to the sum if the node has pods which matches the corresponding podAffinityTerm; the node(s) with the highest sum are the most preferred.",
-              "type": "array",
-              "items": {
-                "$ref": "#/definitions/PoolAffinityPodAffinityPreferredDuringSchedulingIgnoredDuringExecutionItems0"
-              }
-            },
-            "requiredDuringSchedulingIgnoredDuringExecution": {
-              "description": "If the affinity requirements specified by this field are not met at scheduling time, the pod will not be scheduled onto the node. If the affinity requirements specified by this field cease to be met at some point during pod execution (e.g. due to a pod label update), the system may or may not try to eventually evict the pod from its node. When there are multiple elements, the lists of nodes corresponding to each podAffinityTerm are intersected, i.e. all terms must be satisfied.",
-              "type": "array",
-              "items": {
-                "$ref": "#/definitions/podAffinityTerm"
-              }
-            }
-          }
-        },
-        "podAntiAffinity": {
-          "description": "Describes pod anti-affinity scheduling rules (e.g. avoid putting this pod in the same node, pool, etc. as some other pod(s)).",
-          "type": "object",
-          "properties": {
-            "preferredDuringSchedulingIgnoredDuringExecution": {
-              "description": "The scheduler will prefer to schedule pods to nodes that satisfy the anti-affinity expressions specified by this field, but it may choose a node that violates one or more of the expressions. The node that is most preferred is the one with the greatest sum of weights, i.e. for each node that meets all of the scheduling requirements (resource request, requiredDuringScheduling anti-affinity expressions, etc.), compute a sum by iterating through the elements of this field and adding \"weight\" to the sum if the node has pods which matches the corresponding podAffinityTerm; the node(s) with the highest sum are the most preferred.",
-              "type": "array",
-              "items": {
-                "$ref": "#/definitions/PoolAffinityPodAntiAffinityPreferredDuringSchedulingIgnoredDuringExecutionItems0"
-              }
-            },
-            "requiredDuringSchedulingIgnoredDuringExecution": {
-              "description": "If the anti-affinity requirements specified by this field are not met at scheduling time, the pod will not be scheduled onto the node. If the anti-affinity requirements specified by this field cease to be met at some point during pod execution (e.g. due to a pod label update), the system may or may not try to eventually evict the pod from its node. When there are multiple elements, the lists of nodes corresponding to each podAffinityTerm are intersected, i.e. all terms must be satisfied.",
-              "type": "array",
-              "items": {
-                "$ref": "#/definitions/podAffinityTerm"
-              }
-            }
-          }
-        }
-      }
-    },
-    "poolResources": {
-      "description": "If provided, use these requests and limit for cpu/memory resource allocation",
-      "type": "object",
-      "properties": {
-        "limits": {
-          "description": "Limits describes the maximum amount of compute resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/",
-          "type": "object",
-          "additionalProperties": {
-            "type": "integer",
-            "format": "int64"
-          }
-        },
-        "requests": {
-          "description": "Requests describes the minimum amount of compute resources required. If Requests is omitted for a container, it defaults to Limits if that is explicitly specified, otherwise to an implementation-defined value. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/",
-          "type": "object",
-          "additionalProperties": {
-            "type": "integer",
-            "format": "int64"
-          }
-        }
-      }
-    },
-    "poolTolerationSeconds": {
-      "description": "TolerationSeconds represents the period of time the toleration (which must be of effect NoExecute, otherwise this field is ignored) tolerates the taint. By default, it is not set, which means tolerate the taint forever (do not evict). Zero and negative values will be treated as 0 (evict immediately) by the system.",
-      "type": "object",
-      "required": [
-        "seconds"
-      ],
-      "properties": {
-        "seconds": {
-          "type": "integer",
-          "format": "int64"
-        }
-      }
-    },
-    "poolTolerations": {
-      "description": "Tolerations allows users to set entries like effect, key, operator, value.",
-      "type": "array",
-      "items": {
-        "$ref": "#/definitions/PoolTolerationsItems0"
-      }
-    },
-    "poolUpdateRequest": {
-      "type": "object",
-      "required": [
-        "pools"
-      ],
-      "properties": {
-        "pools": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/pool"
-          }
+        "prefix": {
+          "type": "string"
         }
       }
     },
@@ -15057,12 +10697,6 @@ func init() {
         },
         "accountAccessKey": {
           "type": "string"
-        },
-        "actions": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
         }
       }
     },
@@ -15089,22 +10723,6 @@ func init() {
         }
       }
     },
-    "prometheusConfiguration": {
-      "type": "object",
-      "properties": {
-        "image": {
-          "type": "string"
-        },
-        "storageClass": {
-          "type": "string",
-          "default": ""
-        },
-        "storageSize": {
-          "type": "number",
-          "default": 5
-        }
-      }
-    },
     "putBucketRetentionRequest": {
       "type": "object",
       "required": [
@@ -15122,6 +10740,16 @@ func init() {
         "validity": {
           "type": "integer",
           "format": "int32"
+        }
+      }
+    },
+    "putBucketTagsRequest": {
+      "type": "object",
+      "properties": {
+        "tags": {
+          "additionalProperties": {
+            "type": "string"
+          }
         }
       }
     },
@@ -15161,32 +10789,6 @@ func init() {
           "additionalProperties": {
             "type": "string"
           }
-        }
-      }
-    },
-    "pvcsListResponse": {
-      "type": "object",
-      "properties": {
-        "age": {
-          "type": "string"
-        },
-        "capacity": {
-          "type": "string"
-        },
-        "name": {
-          "type": "string"
-        },
-        "namespace": {
-          "type": "string"
-        },
-        "status": {
-          "type": "string"
-        },
-        "storageClass": {
-          "type": "string"
-        },
-        "volume": {
-          "type": "string"
         }
       }
     },
@@ -15236,36 +10838,6 @@ func init() {
         },
         "targetURL": {
           "type": "string"
-        }
-      }
-    },
-    "resourceQuota": {
-      "type": "object",
-      "properties": {
-        "elements": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/resourceQuotaElement"
-          }
-        },
-        "name": {
-          "type": "string"
-        }
-      }
-    },
-    "resourceQuotaElement": {
-      "type": "object",
-      "properties": {
-        "hard": {
-          "type": "integer",
-          "format": "int64"
-        },
-        "name": {
-          "type": "string"
-        },
-        "used": {
-          "type": "integer",
-          "format": "int64"
         }
       }
     },
@@ -15321,6 +10893,76 @@ func init() {
         }
       }
     },
+    "serverDrives": {
+      "type": "object",
+      "properties": {
+        "availableSpace": {
+          "type": "integer"
+        },
+        "drivePath": {
+          "type": "string"
+        },
+        "endpoint": {
+          "type": "string"
+        },
+        "healing": {
+          "type": "boolean"
+        },
+        "model": {
+          "type": "string"
+        },
+        "rootDisk": {
+          "type": "boolean"
+        },
+        "state": {
+          "type": "string"
+        },
+        "totalSpace": {
+          "type": "integer"
+        },
+        "usedSpace": {
+          "type": "integer"
+        },
+        "uuid": {
+          "type": "string"
+        }
+      }
+    },
+    "serverProperties": {
+      "type": "object",
+      "properties": {
+        "commitID": {
+          "type": "string"
+        },
+        "drives": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/serverDrives"
+          }
+        },
+        "endpoint": {
+          "type": "string"
+        },
+        "network": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "poolNumber": {
+          "type": "integer"
+        },
+        "state": {
+          "type": "string"
+        },
+        "uptime": {
+          "type": "integer"
+        },
+        "version": {
+          "type": "string"
+        }
+      }
+    },
     "serviceAccountCreds": {
       "type": "object",
       "properties": {
@@ -15341,6 +10983,21 @@ func init() {
         }
       }
     },
+    "serviceAccountRequestCreds": {
+      "type": "object",
+      "properties": {
+        "accessKey": {
+          "type": "string"
+        },
+        "policy": {
+          "type": "string",
+          "title": "policy to be applied to the Service Account if any"
+        },
+        "secretKey": {
+          "type": "string"
+        }
+      }
+    },
     "serviceAccounts": {
       "type": "array",
       "items": {
@@ -15350,6 +11007,9 @@ func init() {
     "sessionResponse": {
       "type": "object",
       "properties": {
+        "distributedMode": {
+          "type": "boolean"
+        },
         "features": {
           "type": "array",
           "items": {
@@ -15364,6 +11024,10 @@ func init() {
           "items": {
             "type": "string"
           }
+        },
+        "policy": {
+          "type": "object",
+          "$ref": "#/definitions/iamPolicy"
         },
         "status": {
           "type": "string",
@@ -15466,7 +11130,7 @@ func init() {
         }
       }
     },
-    "setPolicyMultipleRequest": {
+    "setPolicyMultipleNameRequest": {
       "type": "object",
       "properties": {
         "groups": {
@@ -15475,10 +11139,38 @@ func init() {
             "$ref": "#/definitions/iamEntity"
           }
         },
+        "name": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
         "users": {
           "type": "array",
           "items": {
             "$ref": "#/definitions/iamEntity"
+          }
+        }
+      }
+    },
+    "setPolicyNameRequest": {
+      "type": "object",
+      "required": [
+        "name",
+        "entityType",
+        "entityName"
+      ],
+      "properties": {
+        "entityName": {
+          "type": "string"
+        },
+        "entityType": {
+          "$ref": "#/definitions/policyEntity"
+        },
+        "name": {
+          "type": "array",
+          "items": {
+            "type": "string"
           }
         }
       }
@@ -15525,254 +11217,6 @@ func init() {
           "type": "integer",
           "format": "int64",
           "title": "number of start results"
-        }
-      }
-    },
-    "subscriptionValidateRequest": {
-      "type": "object",
-      "properties": {
-        "email": {
-          "type": "string"
-        },
-        "license": {
-          "type": "string"
-        },
-        "password": {
-          "type": "string"
-        }
-      }
-    },
-    "tenant": {
-      "type": "object",
-      "properties": {
-        "consoleEnabled": {
-          "type": "boolean"
-        },
-        "consoleTLS": {
-          "type": "boolean"
-        },
-        "console_image": {
-          "type": "string"
-        },
-        "creation_date": {
-          "type": "string"
-        },
-        "currentState": {
-          "type": "string"
-        },
-        "deletion_date": {
-          "type": "string"
-        },
-        "enable_prometheus": {
-          "type": "boolean"
-        },
-        "encryptionEnabled": {
-          "type": "boolean"
-        },
-        "endpoints": {
-          "type": "object",
-          "properties": {
-            "console": {
-              "type": "string"
-            },
-            "minio": {
-              "type": "string"
-            }
-          }
-        },
-        "idpAdEnabled": {
-          "type": "boolean"
-        },
-        "idpOicEnabled": {
-          "type": "boolean"
-        },
-        "image": {
-          "type": "string"
-        },
-        "logEnabled": {
-          "type": "boolean"
-        },
-        "minioTLS": {
-          "type": "boolean"
-        },
-        "monitoringEnabled": {
-          "type": "boolean"
-        },
-        "name": {
-          "type": "string"
-        },
-        "namespace": {
-          "type": "string"
-        },
-        "pools": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/pool"
-          }
-        },
-        "status": {
-          "$ref": "#/definitions/tenantStatus"
-        },
-        "subnet_license": {
-          "$ref": "#/definitions/license"
-        },
-        "total_size": {
-          "type": "integer",
-          "format": "int64"
-        }
-      }
-    },
-    "tenantList": {
-      "type": "object",
-      "properties": {
-        "creation_date": {
-          "type": "string"
-        },
-        "currentState": {
-          "type": "string"
-        },
-        "deletion_date": {
-          "type": "string"
-        },
-        "health_status": {
-          "type": "string"
-        },
-        "instance_count": {
-          "type": "integer"
-        },
-        "name": {
-          "type": "string"
-        },
-        "namespace": {
-          "type": "string"
-        },
-        "pool_count": {
-          "type": "integer"
-        },
-        "total_size": {
-          "type": "integer"
-        },
-        "volume_count": {
-          "type": "integer"
-        }
-      }
-    },
-    "tenantPod": {
-      "type": "object",
-      "required": [
-        "name"
-      ],
-      "properties": {
-        "name": {
-          "type": "string"
-        },
-        "node": {
-          "type": "string"
-        },
-        "podIP": {
-          "type": "string"
-        },
-        "restarts": {
-          "type": "integer"
-        },
-        "status": {
-          "type": "string"
-        },
-        "timeCreated": {
-          "type": "integer"
-        }
-      }
-    },
-    "tenantResponseItem": {
-      "type": "object",
-      "properties": {
-        "access_key": {
-          "type": "string"
-        },
-        "secret_key": {
-          "type": "string"
-        }
-      }
-    },
-    "tenantSecurityResponse": {
-      "type": "object",
-      "properties": {
-        "autoCert": {
-          "type": "boolean"
-        },
-        "customCertificates": {
-          "type": "object",
-          "properties": {
-            "console": {
-              "type": "array",
-              "items": {
-                "$ref": "#/definitions/certificateInfo"
-              }
-            },
-            "consoleCAs": {
-              "type": "array",
-              "items": {
-                "$ref": "#/definitions/certificateInfo"
-              }
-            },
-            "minio": {
-              "type": "array",
-              "items": {
-                "$ref": "#/definitions/certificateInfo"
-              }
-            },
-            "minioCAs": {
-              "type": "array",
-              "items": {
-                "$ref": "#/definitions/certificateInfo"
-              }
-            }
-          }
-        }
-      }
-    },
-    "tenantStatus": {
-      "type": "object",
-      "properties": {
-        "drives_healing": {
-          "type": "integer",
-          "format": "int32"
-        },
-        "drives_offline": {
-          "type": "integer",
-          "format": "int32"
-        },
-        "drives_online": {
-          "type": "integer",
-          "format": "int32"
-        },
-        "health_status": {
-          "type": "string"
-        },
-        "write_quorum": {
-          "type": "integer",
-          "format": "int32"
-        }
-      }
-    },
-    "tenantUsage": {
-      "type": "object",
-      "properties": {
-        "disk_used": {
-          "type": "integer",
-          "format": "int64"
-        },
-        "used": {
-          "type": "integer",
-          "format": "int64"
-        }
-      }
-    },
-    "tenantYAML": {
-      "type": "object",
-      "properties": {
-        "yaml": {
-          "type": "string"
         }
       }
     },
@@ -15906,33 +11350,6 @@ func init() {
         }
       }
     },
-    "tlsConfiguration": {
-      "type": "object",
-      "properties": {
-        "ca_certificates": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "console": {
-          "type": "object",
-          "$ref": "#/definitions/keyPairConfiguration"
-        },
-        "console_ca_certificates": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "minio": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/keyPairConfiguration"
-          }
-        }
-      }
-    },
     "transitionResponse": {
       "type": "object",
       "properties": {
@@ -15977,71 +11394,6 @@ func init() {
         }
       }
     },
-    "updateTenantRequest": {
-      "type": "object",
-      "properties": {
-        "console_image": {
-          "type": "string",
-          "pattern": "^((.*?)/(.*?):(.+))$"
-        },
-        "enable_prometheus": {
-          "type": "boolean"
-        },
-        "image": {
-          "type": "string",
-          "pattern": "^((.*?)/(.*?):(.+))$"
-        },
-        "image_pull_secret": {
-          "type": "string"
-        },
-        "image_registry": {
-          "$ref": "#/definitions/imageRegistry"
-        }
-      }
-    },
-    "updateTenantSecurityRequest": {
-      "type": "object",
-      "properties": {
-        "autoCert": {
-          "type": "boolean"
-        },
-        "customCertificates": {
-          "type": "object",
-          "properties": {
-            "console": {
-              "type": "array",
-              "items": {
-                "$ref": "#/definitions/keyPairConfiguration"
-              }
-            },
-            "consoleCAs": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
-            },
-            "minio": {
-              "type": "array",
-              "items": {
-                "$ref": "#/definitions/keyPairConfiguration"
-              }
-            },
-            "minioCAs": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
-            },
-            "secretsToBeDeleted": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
-            }
-          }
-        }
-      }
-    },
     "updateUser": {
       "type": "object",
       "required": [
@@ -16080,6 +11432,9 @@ func init() {
         "accessKey": {
           "type": "string"
         },
+        "hasPolicy": {
+          "type": "boolean"
+        },
         "memberOf": {
           "type": "array",
           "items": {
@@ -16094,72 +11449,6 @@ func init() {
         },
         "status": {
           "type": "string"
-        }
-      }
-    },
-    "vaultConfiguration": {
-      "type": "object",
-      "required": [
-        "endpoint",
-        "approle"
-      ],
-      "properties": {
-        "approle": {
-          "type": "object",
-          "required": [
-            "id",
-            "secret"
-          ],
-          "properties": {
-            "engine": {
-              "type": "string"
-            },
-            "id": {
-              "type": "string"
-            },
-            "retry": {
-              "type": "integer",
-              "format": "int64"
-            },
-            "secret": {
-              "type": "string"
-            }
-          }
-        },
-        "endpoint": {
-          "type": "string"
-        },
-        "engine": {
-          "type": "string"
-        },
-        "namespace": {
-          "type": "string"
-        },
-        "prefix": {
-          "type": "string"
-        },
-        "status": {
-          "type": "object",
-          "properties": {
-            "ping": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        },
-        "tls": {
-          "type": "object",
-          "properties": {
-            "ca": {
-              "type": "string"
-            },
-            "crt": {
-              "type": "string"
-            },
-            "key": {
-              "type": "string"
-            }
-          }
         }
       }
     },

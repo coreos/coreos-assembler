@@ -41,7 +41,7 @@ func registerAccountHandlers(api *operations.ConsoleAPI) {
 		return middleware.ResponderFunc(func(w http.ResponseWriter, p runtime.Producer) {
 			cookie := NewSessionCookieForConsole(changePasswordResponse.SessionID)
 			http.SetCookie(w, &cookie)
-			user_api.NewLoginCreated().WithPayload(changePasswordResponse).WriteResponse(w, p)
+			user_api.NewLoginNoContent().WriteResponse(w, p)
 		})
 	})
 	// Checks if user can perform an action
@@ -68,7 +68,7 @@ func getChangePasswordResponse(session *models.Principal, params user_api.Accoun
 
 	// changePassword operations requires an AdminClient initialized with parent account credentials not
 	// STS credentials
-	parentAccountClient, err := newAdminClient(&models.Principal{
+	parentAccountClient, err := NewMinioAdminClient(&models.Principal{
 		STSAccessKeyID:     session.AccountAccessKey,
 		STSSecretAccessKey: *params.Body.CurrentSecretKey,
 	})
@@ -76,7 +76,7 @@ func getChangePasswordResponse(session *models.Principal, params user_api.Accoun
 		return nil, prepareError(err)
 	}
 	// parentAccountClient will contain access and secret key credentials for the user
-	userClient := adminClient{client: parentAccountClient}
+	userClient := AdminClient{Client: parentAccountClient}
 	accessKey := session.AccountAccessKey
 	newSecretKey := *params.Body.NewSecretKey
 
@@ -86,7 +86,7 @@ func getChangePasswordResponse(session *models.Principal, params user_api.Accoun
 	}
 	// user credentials are updated at this point, we need to generate a new admin client and authenticate using
 	// the new credentials
-	credentials, err := getConsoleCredentials(ctx, accessKey, newSecretKey)
+	credentials, err := getConsoleCredentials(accessKey, newSecretKey)
 	if err != nil {
 		return nil, prepareError(errInvalidCredentials, nil, err)
 	}
@@ -106,13 +106,13 @@ func getUserHasPermissionsResponse(session *models.Principal, params user_api.Ha
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*20)
 	defer cancel()
 
-	mAdmin, err := newAdminClient(session)
+	mAdmin, err := NewMinioAdminClient(session)
 	if err != nil {
 		return nil, prepareError(err)
 	}
 	// create a minioClient interface implementation
 	// defining the client to be used
-	adminClient := adminClient{client: mAdmin}
+	adminClient := AdminClient{Client: mAdmin}
 
 	userPolicy, err := getAccountPolicy(ctx, adminClient)
 	if err != nil {
@@ -123,8 +123,7 @@ func getUserHasPermissionsResponse(session *models.Principal, params user_api.Ha
 
 	for _, p := range params.Body.Actions {
 		canPerform := userCanDo(iampolicy.Args{
-			Action:     iampolicy.Action(p.Action),
-			BucketName: p.BucketName,
+			Action: iampolicy.Action(p.Action),
 		}, userPolicy)
 		perms = append(perms, &models.PermissionAction{
 			Can: canPerform,
@@ -140,7 +139,10 @@ func getUserHasPermissionsResponse(session *models.Principal, params user_api.Ha
 func userCanDo(arg iampolicy.Args, userPolicy *iampolicy.Policy) bool {
 	// check in all the statements if any allows the passed action
 	for _, stmt := range userPolicy.Statements {
-		if stmt.IsAllowed(arg) {
+		// We only care about actions to match -
+		// if resources match or not we do not
+		// care since those are dynamic entities.
+		if stmt.Actions.Match(arg.Action) {
 			return true
 		}
 	}

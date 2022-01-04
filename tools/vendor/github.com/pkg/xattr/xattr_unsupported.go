@@ -1,10 +1,13 @@
-// +build !linux,!freebsd,!netbsd,!darwin
+// +build !linux,!freebsd,!netbsd,!darwin,!solaris
 
 package xattr
 
 import (
 	"os"
 )
+
+// XATTR_SUPPORTED will be true if the current platform is supported
+const XATTR_SUPPORTED = false
 
 func getxattr(path string, name string, data []byte) (int, error) {
 	return 0, nil

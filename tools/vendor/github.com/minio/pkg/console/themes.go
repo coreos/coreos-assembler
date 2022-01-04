@@ -17,11 +17,15 @@
 
 package console
 
-import "github.com/fatih/color"
+import (
+	"sync"
+
+	"github.com/fatih/color"
+)
 
 var (
 	// Theme contains default color mapping.
-	Theme = map[string]*color.Color{
+	theme = map[string]*color.Color{
 		"Debug":  color.New(color.FgWhite, color.Faint, color.Italic),
 		"Fatal":  color.New(color.FgRed, color.Italic, color.Bold),
 		"Error":  color.New(color.FgYellow, color.Italic),
@@ -30,7 +34,21 @@ var (
 		"PrintB": color.New(color.FgBlue, color.Bold),
 		"PrintC": color.New(color.FgGreen, color.Bold),
 	}
+
+	themeMu sync.Mutex
 )
+
+func getThemeColor(tag string) *color.Color {
+	themeMu.Lock()
+	defer themeMu.Unlock()
+	return theme[tag]
+}
+
+func setThemeColor(tag string, cl *color.Color) {
+	themeMu.Lock()
+	defer themeMu.Unlock()
+	theme[tag] = cl
+}
 
 // SetColorOff disables coloring for the entire session.
 func SetColorOff() {
@@ -48,8 +66,6 @@ func SetColorOn() {
 
 // SetColor sets a color for a particular tag.
 func SetColor(tag string, cl *color.Color) {
-	privateMutex.Lock()
-	defer privateMutex.Unlock()
 	// add new theme
-	Theme[tag] = cl
+	setThemeColor(tag, cl)
 }

@@ -47,6 +47,7 @@ type okpPrivateKey struct {
 	x509URL                *string           // https://tools.ietf.org/html/rfc7515#section-4.1.5
 	privateParams          map[string]interface{}
 	mu                     *sync.RWMutex
+	dc                     DecodeCtx
 }
 
 func NewOKPPrivateKey() OKPPrivateKey {
@@ -388,6 +389,18 @@ func (k *okpPrivateKey) Clone() (Key, error) {
 	return cloneKey(k)
 }
 
+func (k *okpPrivateKey) DecodeCtx() DecodeCtx {
+	k.mu.RLock()
+	defer k.mu.RUnlock()
+	return k.dc
+}
+
+func (k *okpPrivateKey) SetDecodeCtx(dc DecodeCtx) {
+	k.mu.Lock()
+	defer k.mu.Unlock()
+	k.dc = dc
+}
+
 func (h *okpPrivateKey) UnmarshalJSON(buf []byte) error {
 	h.algorithm = nil
 	h.crv = nil
@@ -477,11 +490,21 @@ LOOP:
 					return errors.Wrapf(err, `failed to decode value for key %s`, X509URLKey)
 				}
 			default:
-				decoded, err := registry.Decode(dec, tok)
-				if err != nil {
-					return err
+				if dc := h.dc; dc != nil {
+					if localReg := dc.Registry(); localReg != nil {
+						decoded, err := localReg.Decode(dec, tok)
+						if err == nil {
+							h.setNoLock(tok, decoded)
+							continue
+						}
+					}
 				}
-				h.setNoLock(tok, decoded)
+				decoded, err := registry.Decode(dec, tok)
+				if err == nil {
+					h.setNoLock(tok, decoded)
+					continue
+				}
+				return errors.Wrapf(err, `could not decode field %s`, tok)
 			}
 		default:
 			return errors.Errorf(`invalid token %T`, tok)
@@ -500,12 +523,9 @@ LOOP:
 }
 
 func (h okpPrivateKey) MarshalJSON() ([]byte, error) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 	data := make(map[string]interface{})
 	fields := make([]string, 0, 11)
-	for iter := h.Iterate(ctx); iter.Next(ctx); {
-		pair := iter.Pair()
+	for _, pair := range h.makePairs() {
 		fields = append(fields, pair.Key.(string))
 		data[pair.Key.(string)] = pair.Value
 	}
@@ -585,6 +605,7 @@ type okpPublicKey struct {
 	x509URL                *string           // https://tools.ietf.org/html/rfc7515#section-4.1.5
 	privateParams          map[string]interface{}
 	mu                     *sync.RWMutex
+	dc                     DecodeCtx
 }
 
 func NewOKPPublicKey() OKPPublicKey {
@@ -906,6 +927,18 @@ func (k *okpPublicKey) Clone() (Key, error) {
 	return cloneKey(k)
 }
 
+func (k *okpPublicKey) DecodeCtx() DecodeCtx {
+	k.mu.RLock()
+	defer k.mu.RUnlock()
+	return k.dc
+}
+
+func (k *okpPublicKey) SetDecodeCtx(dc DecodeCtx) {
+	k.mu.Lock()
+	defer k.mu.Unlock()
+	k.dc = dc
+}
+
 func (h *okpPublicKey) UnmarshalJSON(buf []byte) error {
 	h.algorithm = nil
 	h.crv = nil
@@ -990,11 +1023,21 @@ LOOP:
 					return errors.Wrapf(err, `failed to decode value for key %s`, X509URLKey)
 				}
 			default:
-				decoded, err := registry.Decode(dec, tok)
-				if err != nil {
-					return err
+				if dc := h.dc; dc != nil {
+					if localReg := dc.Registry(); localReg != nil {
+						decoded, err := localReg.Decode(dec, tok)
+						if err == nil {
+							h.setNoLock(tok, decoded)
+							continue
+						}
+					}
 				}
-				h.setNoLock(tok, decoded)
+				decoded, err := registry.Decode(dec, tok)
+				if err == nil {
+					h.setNoLock(tok, decoded)
+					continue
+				}
+				return errors.Wrapf(err, `could not decode field %s`, tok)
 			}
 		default:
 			return errors.Errorf(`invalid token %T`, tok)
@@ -1010,12 +1053,9 @@ LOOP:
 }
 
 func (h okpPublicKey) MarshalJSON() ([]byte, error) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 	data := make(map[string]interface{})
 	fields := make([]string, 0, 10)
-	for iter := h.Iterate(ctx); iter.Next(ctx); {
-		pair := iter.Pair()
+	for _, pair := range h.makePairs() {
 		fields = append(fields, pair.Key.(string))
 		data[pair.Key.(string)] = pair.Value
 	}

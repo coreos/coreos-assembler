@@ -36,15 +36,6 @@ import (
 // swagger:model tenant
 type Tenant struct {
 
-	// console enabled
-	ConsoleEnabled bool `json:"consoleEnabled,omitempty"`
-
-	// console TLS
-	ConsoleTLS bool `json:"consoleTLS,omitempty"`
-
-	// console image
-	ConsoleImage string `json:"console_image,omitempty"`
-
 	// creation date
 	CreationDate string `json:"creation_date,omitempty"`
 
@@ -66,8 +57,8 @@ type Tenant struct {
 	// idp ad enabled
 	IdpAdEnabled bool `json:"idpAdEnabled,omitempty"`
 
-	// idp oic enabled
-	IdpOicEnabled bool `json:"idpOicEnabled,omitempty"`
+	// idp oidc enabled
+	IdpOidcEnabled bool `json:"idpOidcEnabled,omitempty"`
 
 	// image
 	Image string `json:"image,omitempty"`

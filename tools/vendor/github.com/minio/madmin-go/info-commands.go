@@ -185,6 +185,9 @@ type DataUsageInfo struct {
 	// - object size histogram per bucket
 	BucketsUsage map[string]BucketUsageInfo `json:"bucketsUsageInfo"`
 
+	// TierStats holds per-tier stats like bytes tiered, etc.
+	TierStats map[string]TierStats `json:"tierStats"`
+
 	// Deprecated kept here for backward compatibility reasons.
 	BucketSizes map[string]uint64 `json:"bucketsSizes"`
 }
@@ -251,6 +254,14 @@ type Objects struct {
 type Usage struct {
 	Size  uint64 `json:"size"`
 	Error string `json:"error,omitempty"`
+}
+
+// TierStats contains per-tier statistics like total size, number of
+// objects/versions transitioned, etc.
+type TierStats struct {
+	TotalSize   uint64 `json:"totalSize"`
+	NumVersions int    `json:"numVersions"`
+	NumObjects  int    `json:"numObjects"`
 }
 
 // KMS contains KMS status information

@@ -229,22 +229,22 @@ var fsCompleter = fsComplete{}
 // with their bash completer function
 var completeCmds = map[string]complete.Predictor{
 	// S3 API level commands
-	"/ls":     complete.PredictOr(s3Completer, fsCompleter),
-	"/cp":     complete.PredictOr(s3Completer, fsCompleter),
-	"/mv":     complete.PredictOr(s3Completer, fsCompleter),
-	"/rm":     complete.PredictOr(s3Completer, fsCompleter),
-	"/rb":     complete.PredictOr(s3Complete{deepLevel: 2}, fsCompleter),
-	"/cat":    complete.PredictOr(s3Completer, fsCompleter),
-	"/head":   complete.PredictOr(s3Completer, fsCompleter),
-	"/diff":   complete.PredictOr(s3Completer, fsCompleter),
-	"/find":   complete.PredictOr(s3Completer, fsCompleter),
-	"/mirror": complete.PredictOr(s3Completer, fsCompleter),
-	"/pipe":   complete.PredictOr(s3Completer, fsCompleter),
-	"/stat":   complete.PredictOr(s3Completer, fsCompleter),
-	"/watch":  complete.PredictOr(s3Completer, fsCompleter),
-	"/policy": complete.PredictOr(s3Completer, fsCompleter),
-	"/tree":   complete.PredictOr(s3Complete{deepLevel: 2}, fsCompleter),
-	"/du":     complete.PredictOr(s3Complete{deepLevel: 2}, fsCompleter),
+	"/ls":        complete.PredictOr(s3Completer, fsCompleter),
+	"/cp":        complete.PredictOr(s3Completer, fsCompleter),
+	"/mv":        complete.PredictOr(s3Completer, fsCompleter),
+	"/rm":        complete.PredictOr(s3Completer, fsCompleter),
+	"/rb":        complete.PredictOr(s3Complete{deepLevel: 2}, fsCompleter),
+	"/cat":       complete.PredictOr(s3Completer, fsCompleter),
+	"/head":      complete.PredictOr(s3Completer, fsCompleter),
+	"/diff":      complete.PredictOr(s3Completer, fsCompleter),
+	"/find":      complete.PredictOr(s3Completer, fsCompleter),
+	"/mirror":    complete.PredictOr(s3Completer, fsCompleter),
+	"/pipe":      complete.PredictOr(s3Completer, fsCompleter),
+	"/stat":      complete.PredictOr(s3Completer, fsCompleter),
+	"/watch":     complete.PredictOr(s3Completer, fsCompleter),
+	"/anonymous": complete.PredictOr(s3Completer, fsCompleter),
+	"/tree":      complete.PredictOr(s3Complete{deepLevel: 2}, fsCompleter),
+	"/du":        complete.PredictOr(s3Complete{deepLevel: 2}, fsCompleter),
 
 	"/retention/set":   s3Completer,
 	"/retention/clear": s3Completer,
@@ -291,12 +291,13 @@ var completeCmds = map[string]complete.Predictor{
 	"/share/list":     nil,
 	"/share/upload":   s3Completer,
 
-	"/ilm/ls":     s3Complete{deepLevel: 2},
-	"/ilm/add":    s3Complete{deepLevel: 2},
-	"/ilm/edit":   s3Complete{deepLevel: 2},
-	"/ilm/rm":     s3Complete{deepLevel: 2},
-	"/ilm/export": s3Complete{deepLevel: 2},
-	"/ilm/import": s3Complete{deepLevel: 2},
+	"/ilm/ls":      s3Complete{deepLevel: 2},
+	"/ilm/add":     s3Complete{deepLevel: 2},
+	"/ilm/edit":    s3Complete{deepLevel: 2},
+	"/ilm/rm":      s3Complete{deepLevel: 2},
+	"/ilm/export":  s3Complete{deepLevel: 2},
+	"/ilm/import":  s3Complete{deepLevel: 2},
+	"/ilm/restore": s3Completer,
 
 	"/undo": s3Completer,
 
@@ -314,8 +315,10 @@ var completeCmds = map[string]complete.Predictor{
 	"/admin/config/restore": aliasCompleter,
 
 	"/admin/trace":     aliasCompleter,
+	"/admin/speedtest": aliasCompleter,
 	"/admin/console":   aliasCompleter,
 	"/admin/update":    aliasCompleter,
+	"/admin/inspect":   s3Completer,
 	"/admin/top/locks": aliasCompleter,
 
 	"/admin/service/stop":    aliasCompleter,
@@ -343,7 +346,7 @@ var completeCmds = map[string]complete.Predictor{
 	"/admin/user/policy":  aliasCompleter,
 
 	"/admin/user/svcacct/add":     aliasCompleter,
-	"/admin/user/svcacct/ls":      aliasCompleter,
+	"/admin/user/svcacct/list":    aliasCompleter,
 	"/admin/user/svcacct/rm":      aliasCompleter,
 	"/admin/user/svcacct/info":    aliasCompleter,
 	"/admin/user/svcacct/set":     aliasCompleter,
@@ -367,11 +370,15 @@ var completeCmds = map[string]complete.Predictor{
 	"/admin/kms/key/create": aliasCompleter,
 	"/admin/kms/key/status": aliasCompleter,
 
-	"/admin/subnet/health": aliasCompleter,
+	"/admin/subnet/health":   aliasCompleter,
+	"/admin/subnet/register": aliasCompleter,
 
 	"/admin/tier/add":  nil,
 	"/admin/tier/edit": nil,
 	"/admin/tier/ls":   nil,
+
+	"/admin/replicate/add":  aliasCompleter,
+	"/admin/replicate/info": aliasCompleter,
 
 	"/alias/set":    nil,
 	"/alias/list":   aliasCompleter,

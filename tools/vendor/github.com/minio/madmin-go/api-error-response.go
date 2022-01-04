@@ -17,9 +17,14 @@
 package madmin
 
 import (
+	"encoding/hex"
+	"encoding/json"
 	"encoding/xml"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"net/http"
+	"unicode/utf8"
 )
 
 /* **** SAMPLE ERROR RESPONSE ****
@@ -61,20 +66,42 @@ const (
 // httpRespToErrorResponse returns a new encoded ErrorResponse
 // structure as error.
 func httpRespToErrorResponse(resp *http.Response) error {
-	if resp == nil {
+	if resp == nil || resp.Body == nil {
 		msg := "Response is empty. " + reportIssue
 		return ErrInvalidArgument(msg)
 	}
-	var errResp ErrorResponse
-	// Decode the json error
-	err := jsonDecoder(resp.Body, &errResp)
+
+	defer closeResponse(resp)
+	// Limit to 100K
+	body, err := ioutil.ReadAll(io.LimitReader(resp.Body, 100<<10))
 	if err != nil {
 		return ErrorResponse{
 			Code:    resp.Status,
-			Message: fmt.Sprintf("Failed to parse server response: %s.", err),
+			Message: fmt.Sprintf("Failed to read server response: %s.", err),
 		}
 	}
-	closeResponse(resp)
+
+	var errResp ErrorResponse
+	// Decode the json error
+	err = json.Unmarshal(body, &errResp)
+	if err != nil {
+		// We might get errors as XML, try that.
+		xmlErr := xml.Unmarshal(body, &errResp)
+
+		if xmlErr != nil {
+			bodyString := string(body)
+			if !utf8.Valid(body) {
+				bodyString = hex.EncodeToString(body)
+			}
+			if len(bodyString) > 1024 {
+				bodyString = bodyString[:1021] + "..."
+			}
+			return ErrorResponse{
+				Code:    resp.Status,
+				Message: fmt.Sprintf("Failed to parse server response (%s): %s", err.Error(), bodyString),
+			}
+		}
+	}
 	return errResp
 }
 

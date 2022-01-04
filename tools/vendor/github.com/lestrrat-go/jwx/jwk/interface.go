@@ -9,6 +9,7 @@ import (
 	"github.com/lestrrat-go/iter/arrayiter"
 	"github.com/lestrrat-go/iter/mapiter"
 	"github.com/lestrrat-go/jwx/internal/iter"
+	"github.com/lestrrat-go/jwx/internal/json"
 )
 
 // KeyUsageType is used to denote what this key should be used for
@@ -77,11 +78,15 @@ type Set interface {
 
 	// Iterate creates an iterator to iterate through all keys in the set.
 	Iterate(context.Context) KeyIterator
+
+	// Clone create a new set with identical keys. Keys themselves are not cloned.
+	Clone() (Set, error)
 }
 
 type set struct {
 	keys []Key
 	mu   sync.RWMutex
+	dc   DecodeCtx
 }
 
 type HeaderVisitor = iter.MapVisitor
@@ -102,4 +107,12 @@ type PublicKeyer interface {
 // fetching tools.
 type HTTPClient interface {
 	Do(*http.Request) (*http.Response, error)
+}
+
+type DecodeCtx = json.DecodeCtx
+type KeyWithDecodeCtx = json.DecodeCtxContainer
+
+type AutoRefreshError struct {
+	Error error
+	URL   string
 }

@@ -77,13 +77,13 @@ func getNotificationEndpoints(ctx context.Context, client MinioAdmin) (*models.N
 
 // getNotificationEndpointsResponse returns a list of notification endpoints in the instance
 func getNotificationEndpointsResponse(session *models.Principal) (*models.NotifEndpointResponse, *models.Error) {
-	mAdmin, err := newAdminClient(session)
+	mAdmin, err := NewMinioAdminClient(session)
 	if err != nil {
 		return nil, prepareError(err)
 	}
 	// create a minioClient interface implementation
 	// defining the client to be used
-	adminClient := adminClient{client: mAdmin}
+	adminClient := AdminClient{Client: mAdmin}
 	// 20 seconds timeout
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
@@ -148,13 +148,13 @@ func addNotificationEndpoint(ctx context.Context, client MinioAdmin, params *adm
 
 // getNotificationEndpointsResponse returns a list of notification endpoints in the instance
 func getAddNotificationEndpointResponse(session *models.Principal, params *admin_api.AddNotificationEndpointParams) (*models.SetNotificationEndpointResponse, *models.Error) {
-	mAdmin, err := newAdminClient(session)
+	mAdmin, err := NewMinioAdminClient(session)
 	if err != nil {
 		return nil, prepareError(err)
 	}
 	// create a minioClient interface implementation
 	// defining the client to be used
-	adminClient := adminClient{client: mAdmin}
+	adminClient := AdminClient{Client: mAdmin}
 	// 20 seconds timeout
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()

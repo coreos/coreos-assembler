@@ -128,3 +128,42 @@ func (adm *AdminClient) EditTier(ctx context.Context, tierName string, creds Tie
 
 	return nil
 }
+
+// TierInfo contains tier name, type and statistics
+type TierInfo struct {
+	Name  string
+	Type  string
+	Stats TierStats
+}
+
+// TierStats returns per-tier stats of all configured tiers (incl. internal
+// hot-tier)
+func (adm *AdminClient) TierStats(ctx context.Context) ([]TierInfo, error) {
+	reqData := requestData{
+		relPath: path.Join(adminAPIPrefix, "tier-stats"),
+	}
+
+	// Execute GET on /minio/admin/v3/tier-stats to list tier-stats.
+	resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
+	defer closeResponse(resp)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, httpRespToErrorResponse(resp)
+	}
+
+	var tierInfos []TierInfo
+	b, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return tierInfos, err
+	}
+
+	err = json.Unmarshal(b, &tierInfos)
+	if err != nil {
+		return tierInfos, err
+	}
+
+	return tierInfos, nil
+}

@@ -43,9 +43,6 @@ const (
 	DirLast
 )
 
-// Default number of multipart workers for a Put operation.
-const defaultMultipartThreadsNum = 4
-
 // GetOptions holds options of the GET operation
 type GetOptions struct {
 	SSE       encrypt.ServerSide
@@ -59,6 +56,8 @@ type PutOptions struct {
 	md5, disableMultipart bool
 	isPreserve            bool
 	storageClass          string
+	multipartSize         uint64
+	multipartThreads      uint
 }
 
 // StatOptions holds options of the HEAD operation
@@ -102,6 +101,8 @@ type Client interface {
 
 	// Bucket operations
 	MakeBucket(ctx context.Context, region string, ignoreExisting, withLock bool) *probe.Error
+	RemoveBucket(ctx context.Context, forceRemove bool) *probe.Error
+
 	// Object lock config
 	SetObjectLockConfig(ctx context.Context, mode minio.RetentionMode, validity uint64, unit minio.ValidityUnit) *probe.Error
 	GetObjectLockConfig(ctx context.Context) (status string, mode minio.RetentionMode, validity uint64, unit minio.ValidityUnit, perr *probe.Error)
@@ -159,13 +160,16 @@ type Client interface {
 	SetReplication(ctx context.Context, cfg *replication.Config, opts replication.Options) *probe.Error
 	RemoveReplication(ctx context.Context) *probe.Error
 	GetReplicationMetrics(ctx context.Context) (replication.Metrics, *probe.Error)
-	ResetReplication(ctx context.Context, before time.Duration) (string, *probe.Error)
+	ResetReplication(ctx context.Context, before time.Duration, arn string) (replication.ResyncTargetsInfo, *probe.Error)
 	// Encryption operations
 	GetEncryption(ctx context.Context) (string, string, *probe.Error)
 	SetEncryption(ctx context.Context, algorithm, kmsKeyID string) *probe.Error
 	DeleteEncryption(ctx context.Context) *probe.Error
 	// Bucket info operation
 	GetBucketInfo(ctx context.Context) (BucketInfo, *probe.Error)
+
+	// Restore an object
+	Restore(ctx context.Context, versionID string, days int) *probe.Error
 }
 
 // ClientContent - Content container for content metadata
@@ -193,7 +197,10 @@ type ClientContent struct {
 	IsDeleteMarker    bool
 	IsLatest          bool
 	ReplicationStatus string
-	Err               *probe.Error
+
+	Restore *minio.RestoreInfo
+
+	Err *probe.Error
 }
 
 // Config - see http://docs.amazonwebservices.com/AmazonS3/latest/dev/index.html?RESTAuthentication.html

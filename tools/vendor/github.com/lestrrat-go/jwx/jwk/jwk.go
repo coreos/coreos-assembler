@@ -134,11 +134,15 @@ func New(key interface{}) (Key, error) {
 func PublicSetOf(v Set) (Set, error) {
 	newSet := NewSet()
 
-	for iter := v.Iterate(context.TODO()); iter.Next(context.TODO()); {
-		pair := iter.Pair()
-		pubKey, err := PublicKeyOf(pair.Value.(Key))
+	n := v.Len()
+	for i := 0; i < n; i++ {
+		k, ok := v.Get(i)
+		if !ok {
+			return nil, errors.New("key not found")
+		}
+		pubKey, err := PublicKeyOf(k)
 		if err != nil {
-			return nil, errors.Wrapf(err, `failed to get public key of %T`, pair.Value)
+			return nil, errors.Wrapf(err, `failed to get public key of %T`, k)
 		}
 		newSet.Add(pubKey)
 	}
@@ -153,22 +157,42 @@ func PublicSetOf(v Set) (Set, error) {
 // If `v` is a private key type that has a `PublicKey()` method, be aware
 // that all fields will be copied onto the new public key. It is the caller's
 // responsibility to remove any fields, if necessary
-func PublicKeyOf(v Key) (Key, error) {
-	switch v := v.(type) {
-	case PublicKeyer:
-		return v.PublicKey()
-	default:
-		return nil, errors.Errorf(`unknown jwk.Key type %T`, v)
+//
+// If `v` is a raw key, the key is first converted to a `jwk.Key`
+func PublicKeyOf(v interface{}) (Key, error) {
+	if pk, ok := v.(PublicKeyer); ok {
+		return pk.PublicKey()
 	}
+
+	jk, err := New(v)
+	if err != nil {
+		return nil, errors.Wrapf(err, `failed to convert key into JWK`)
+	}
+
+	return jk.PublicKey()
 }
 
 // PublicRawKeyOf returns the corresponding public key of the given
 // value `v` (e.g. given *rsa.PrivateKey, *rsa.PublicKey is returned)
 // If `v` is already a public key, the key itself is returned.
+//
 // The returned value will always be a pointer to the public key,
 // except when a []byte (e.g. symmetric key, ed25519 key) is passed to `v`.
 // In this case, the same []byte value is returned.
 func PublicRawKeyOf(v interface{}) (interface{}, error) {
+	if pk, ok := v.(PublicKeyer); ok {
+		pubk, err := pk.PublicKey()
+		if err != nil {
+			return nil, errors.Wrapf(err, `failed to obtain public key from %T`, v)
+		}
+
+		var raw interface{}
+		if err := pubk.Raw(&raw); err != nil {
+			return nil, errors.Wrapf(err, `failed to obtain raw key from %T`, pubk)
+		}
+		return raw, nil
+	}
+
 	// This may be a silly idea, but if the user gave us a non-pointer value...
 	var ptr interface{}
 	switch v := v.(type) {
@@ -356,11 +380,23 @@ func parsePEMEncodedRawKey(src []byte) (interface{}, []byte, error) {
 // parameters are performed, etc.
 func ParseKey(data []byte, options ...ParseOption) (Key, error) {
 	var parsePEM bool
+	var localReg *json.Registry
 	for _, option := range options {
 		//nolint:forcetypeassert
 		switch option.Ident() {
 		case identPEM{}:
 			parsePEM = option.Value().(bool)
+		case identLocalRegistry{}:
+			// in reality you can only pass either withLocalRegistry or
+			// WithTypedField, but since withLocalRegistry is used only by us,
+			// we skip checking
+			localReg = option.Value().(*json.Registry)
+		case identTypedField{}:
+			pair := option.Value().(typedFieldPair)
+			if localReg == nil {
+				localReg = json.NewRegistry()
+			}
+			localReg.Register(pair.Name, pair.Value)
 		}
 	}
 
@@ -407,6 +443,16 @@ func ParseKey(data []byte, options ...ParseOption) (Key, error) {
 		return nil, errors.Errorf(`invalid key type from JSON (%s)`, hint.Kty)
 	}
 
+	if localReg != nil {
+		dcKey, ok := key.(KeyWithDecodeCtx)
+		if !ok {
+			return nil, errors.Errorf(`typed field was requested, but the key (%T) does not support DecodeCtx`, key)
+		}
+		dc := json.NewDecodeCtx(localReg)
+		dcKey.SetDecodeCtx(dc)
+		defer func() { dcKey.SetDecodeCtx(nil) }()
+	}
+
 	if err := json.Unmarshal(data, key); err != nil {
 		return nil, errors.Wrapf(err, `failed to unmarshal JSON into key (%T)`, key)
 	}
@@ -430,15 +476,23 @@ func ParseKey(data []byte, options ...ParseOption) (Key, error) {
 // for `jwk.ParseKey()`.
 func Parse(src []byte, options ...ParseOption) (Set, error) {
 	var parsePEM bool
+	var localReg *json.Registry
 	for _, option := range options {
 		//nolint:forcetypeassert
 		switch option.Ident() {
 		case identPEM{}:
 			parsePEM = option.Value().(bool)
+		case identTypedField{}:
+			pair := option.Value().(typedFieldPair)
+			if localReg == nil {
+				localReg = json.NewRegistry()
+			}
+			localReg.Register(pair.Name, pair.Value)
 		}
 	}
 
 	s := NewSet()
+
 	if parsePEM {
 		src = bytes.TrimSpace(src)
 		for len(src) > 0 {
@@ -454,6 +508,16 @@ func Parse(src []byte, options ...ParseOption) (Set, error) {
 			src = bytes.TrimSpace(rest)
 		}
 		return s, nil
+	}
+
+	if localReg != nil {
+		dcKs, ok := s.(KeyWithDecodeCtx)
+		if !ok {
+			return nil, errors.Errorf(`typed field was requested, but the key set (%T) does not support DecodeCtx`, s)
+		}
+		dc := json.NewDecodeCtx(localReg)
+		dcKs.SetDecodeCtx(dc)
+		defer func() { dcKs.SetDecodeCtx(nil) }()
 	}
 
 	if err := json.Unmarshal(src, s); err != nil {
@@ -529,9 +593,7 @@ func cloneKey(src Key) (Key, error) {
 		return nil, errors.Errorf(`unknown key type %T`, src)
 	}
 
-	ctx := context.Background()
-	for iter := src.Iterate(ctx); iter.Next(ctx); {
-		pair := iter.Pair()
+	for _, pair := range src.makePairs() {
 		if err := dst.Set(pair.Key.(string), pair.Value); err != nil {
 			return nil, errors.Wrapf(err, `failed to set %s`, pair.Key.(string))
 		}

@@ -21,6 +21,7 @@ import (
 	"context"
 	"encoding/json"
 	"sort"
+	"strings"
 
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/minio/console/models"
@@ -63,14 +64,14 @@ func registersPoliciesHandler(api *operations.ConsoleAPI) {
 	})
 	// Set Policy
 	api.AdminAPISetPolicyHandler = admin_api.SetPolicyHandlerFunc(func(params admin_api.SetPolicyParams, session *models.Principal) middleware.Responder {
-		if err := getSetPolicyResponse(session, params.Name, params.Body); err != nil {
+		if err := getSetPolicyResponse(session, params.Body); err != nil {
 			return admin_api.NewSetPolicyDefault(int(err.Code)).WithPayload(err)
 		}
 		return admin_api.NewSetPolicyNoContent()
 	})
 	// Set Policy Multiple User/Groups
 	api.AdminAPISetPolicyMultipleHandler = admin_api.SetPolicyMultipleHandlerFunc(func(params admin_api.SetPolicyMultipleParams, session *models.Principal) middleware.Responder {
-		if err := getSetPolicyMultipleResponse(session, params.Name, params.Body); err != nil {
+		if err := getSetPolicyMultipleResponse(session, params.Body); err != nil {
 			return admin_api.NewSetPolicyMultipleDefault(int(err.Code)).WithPayload(err)
 		}
 		return admin_api.NewSetPolicyMultipleNoContent()
@@ -81,6 +82,27 @@ func registersPoliciesHandler(api *operations.ConsoleAPI) {
 			return admin_api.NewListPoliciesWithBucketDefault(int(err.Code)).WithPayload(err)
 		}
 		return admin_api.NewListPoliciesWithBucketOK().WithPayload(policyResponse)
+	})
+	api.AdminAPIListAccessRulesWithBucketHandler = admin_api.ListAccessRulesWithBucketHandlerFunc(func(params admin_api.ListAccessRulesWithBucketParams, session *models.Principal) middleware.Responder {
+		policyResponse, err := getListAccessRulesWithBucketResponse(session, params.Bucket)
+		if err != nil {
+			return admin_api.NewListAccessRulesWithBucketDefault(int(err.Code)).WithPayload(err)
+		}
+		return admin_api.NewListAccessRulesWithBucketOK().WithPayload(policyResponse)
+	})
+	api.AdminAPISetAccessRuleWithBucketHandler = admin_api.SetAccessRuleWithBucketHandlerFunc(func(params admin_api.SetAccessRuleWithBucketParams, session *models.Principal) middleware.Responder {
+		policyResponse, err := getSetAccessRuleWithBucketResponse(session, params.Bucket, params.Prefixaccess)
+		if err != nil {
+			return admin_api.NewSetAccessRuleWithBucketDefault(int(err.Code)).WithPayload(err)
+		}
+		return admin_api.NewSetAccessRuleWithBucketOK().WithPayload(policyResponse)
+	})
+	api.AdminAPIDeleteAccessRuleWithBucketHandler = admin_api.DeleteAccessRuleWithBucketHandlerFunc(func(params admin_api.DeleteAccessRuleWithBucketParams, session *models.Principal) middleware.Responder {
+		policyResponse, err := getDeleteAccessRuleWithBucketResponse(session, params.Bucket, params.Prefix)
+		if err != nil {
+			return admin_api.NewDeleteAccessRuleWithBucketDefault(int(err.Code)).WithPayload(err)
+		}
+		return admin_api.NewDeleteAccessRuleWithBucketOK().WithPayload(policyResponse)
 	})
 	api.AdminAPIListUsersForPolicyHandler = admin_api.ListUsersForPolicyHandlerFunc(func(params admin_api.ListUsersForPolicyParams, session *models.Principal) middleware.Responder {
 		policyUsersResponse, err := getListUsersForPolicyResponse(session, params.Policy)
@@ -98,15 +120,55 @@ func registersPoliciesHandler(api *operations.ConsoleAPI) {
 	})
 }
 
+func getListAccessRulesWithBucketResponse(session *models.Principal, bucket string) (*models.ListAccessRulesResponse, *models.Error) {
+	ctx := context.Background()
+	client, err := newS3BucketClient(session, bucket, "")
+	if err != nil {
+		return nil, prepareError(err)
+	}
+	accessRules, _ := client.GetAccessRules(ctx)
+	var accessRuleList []*models.AccessRule
+	for k, v := range accessRules {
+		accessRuleList = append(accessRuleList, &models.AccessRule{Prefix: k[len(bucket)+1 : len(k)-1], Access: v})
+	}
+	return &models.ListAccessRulesResponse{AccessRules: accessRuleList}, nil
+}
+
+func getSetAccessRuleWithBucketResponse(session *models.Principal, bucket string, prefixAccess *models.PrefixAccessPair) (bool, *models.Error) {
+	ctx := context.Background()
+	client, err := newS3BucketClient(session, bucket, prefixAccess.Prefix)
+	if err != nil {
+		return false, prepareError(err)
+	}
+	errorVal := client.SetAccess(ctx, prefixAccess.Access, false)
+	if errorVal != nil {
+		return false, prepareError(errorVal.Cause)
+	}
+	return true, nil
+}
+
+func getDeleteAccessRuleWithBucketResponse(session *models.Principal, bucket string, prefix *models.PrefixWrapper) (bool, *models.Error) {
+	ctx := context.Background()
+	client, err := newS3BucketClient(session, bucket, prefix.Prefix)
+	if err != nil {
+		return false, prepareError(err)
+	}
+	errorVal := client.SetAccess(ctx, "none", false)
+	if errorVal != nil {
+		return false, prepareError(errorVal.Cause)
+	}
+	return true, nil
+}
+
 func getListPoliciesWithBucketResponse(session *models.Principal, bucket string) (*models.ListPoliciesResponse, *models.Error) {
 	ctx := context.Background()
-	mAdmin, err := newAdminClient(session)
+	mAdmin, err := NewMinioAdminClient(session)
 	if err != nil {
 		return nil, prepareError(err)
 	}
 	// create a MinIO Admin Client interface implementation
 	// defining the client to be used
-	adminClient := adminClient{client: mAdmin}
+	adminClient := AdminClient{Client: mAdmin}
 
 	policies, err := listPoliciesWithBucket(ctx, bucket, adminClient)
 	if err != nil {
@@ -178,13 +240,13 @@ func listPolicies(ctx context.Context, client MinioAdmin) ([]*models.Policy, err
 // getListPoliciesResponse performs listPolicies() and serializes it to the handler's output
 func getListPoliciesResponse(session *models.Principal) (*models.ListPoliciesResponse, *models.Error) {
 	ctx := context.Background()
-	mAdmin, err := newAdminClient(session)
+	mAdmin, err := NewMinioAdminClient(session)
 	if err != nil {
 		return nil, prepareError(err)
 	}
 	// create a MinIO Admin Client interface implementation
 	// defining the client to be used
-	adminClient := adminClient{client: mAdmin}
+	adminClient := AdminClient{Client: mAdmin}
 
 	policies, err := listPolicies(ctx, adminClient)
 	if err != nil {
@@ -201,13 +263,13 @@ func getListPoliciesResponse(session *models.Principal) (*models.ListPoliciesRes
 // getListUsersForPoliciesResponse performs lists users affected by a given policy.
 func getListUsersForPolicyResponse(session *models.Principal, policy string) ([]string, *models.Error) {
 	ctx := context.Background()
-	mAdmin, err := newAdminClient(session)
+	mAdmin, err := NewMinioAdminClient(session)
 	if err != nil {
 		return nil, prepareError(err)
 	}
 	// create a minioClient interface implementation
 	// defining the client to be used
-	adminClient := adminClient{client: mAdmin}
+	adminClient := AdminClient{Client: mAdmin}
 
 	users, err := listUsers(ctx, adminClient)
 	if err != nil {
@@ -229,13 +291,13 @@ func getListUsersForPolicyResponse(session *models.Principal, policy string) ([]
 
 func getListGroupsForPolicyResponse(session *models.Principal, policy string) ([]string, *models.Error) {
 	ctx := context.Background()
-	mAdmin, err := newAdminClient(session)
+	mAdmin, err := NewMinioAdminClient(session)
 	if err != nil {
 		return nil, prepareError(err)
 	}
 	// create a minioClient interface implementation
 	// defining the client to be used
-	adminClient := adminClient{client: mAdmin}
+	adminClient := AdminClient{Client: mAdmin}
 
 	groups, err := adminClient.listGroups(ctx)
 	if err != nil {
@@ -271,13 +333,13 @@ func getRemovePolicyResponse(session *models.Principal, params admin_api.RemoveP
 	if params.Name == "" {
 		return prepareError(errPolicyNameNotInRequest)
 	}
-	mAdmin, err := newAdminClient(session)
+	mAdmin, err := NewMinioAdminClient(session)
 	if err != nil {
 		return prepareError(err)
 	}
 	// create a MinIO Admin Client interface implementation
 	// defining the client to be used
-	adminClient := adminClient{client: mAdmin}
+	adminClient := AdminClient{Client: mAdmin}
 
 	if err := removePolicy(ctx, adminClient, params.Name); err != nil {
 		return prepareError(err)
@@ -311,13 +373,13 @@ func getAddPolicyResponse(session *models.Principal, params *models.AddPolicyReq
 		return nil, prepareError(errPolicyBodyNotInRequest)
 	}
 
-	mAdmin, err := newAdminClient(session)
+	mAdmin, err := NewMinioAdminClient(session)
 	if err != nil {
 		return nil, prepareError(err)
 	}
 	// create a MinIO Admin Client interface implementation
 	// defining the client to be used
-	adminClient := adminClient{client: mAdmin}
+	adminClient := AdminClient{Client: mAdmin}
 	policy, err := addPolicy(ctx, adminClient, *params.Name, *params.Policy)
 	if err != nil {
 		return nil, prepareError(err)
@@ -344,13 +406,13 @@ func policyInfo(ctx context.Context, client MinioAdmin, name string) (*models.Po
 // getPolicyInfoResponse performs policyInfo() and serializes it to the handler's output
 func getPolicyInfoResponse(session *models.Principal, params admin_api.PolicyInfoParams) (*models.Policy, *models.Error) {
 	ctx := context.Background()
-	mAdmin, err := newAdminClient(session)
+	mAdmin, err := NewMinioAdminClient(session)
 	if err != nil {
 		return nil, prepareError(err)
 	}
 	// create a MinIO Admin Client interface implementation
 	// defining the client to be used
-	adminClient := adminClient{client: mAdmin}
+	adminClient := AdminClient{Client: mAdmin}
 	policy, err := policyInfo(ctx, adminClient, params.Name)
 	if err != nil {
 		return nil, prepareError(err)
@@ -368,36 +430,37 @@ func setPolicy(ctx context.Context, client MinioAdmin, name, entityName string, 
 }
 
 // getSetPolicyResponse() performs setPolicy() and serializes it to the handler's output
-func getSetPolicyResponse(session *models.Principal, name string, params *models.SetPolicyRequest) *models.Error {
+func getSetPolicyResponse(session *models.Principal, params *models.SetPolicyNameRequest) *models.Error {
 	ctx := context.Background()
-	if name == "" {
-		return prepareError(errPolicyNameNotInRequest)
-	}
-	mAdmin, err := newAdminClient(session)
+	// if len(params.Name) == 0 {
+	//   return prepareError(errPolicyNameNotInRequest)
+	// }
+	// Removing this section
+	mAdmin, err := NewMinioAdminClient(session)
 	if err != nil {
 		return prepareError(err)
 	}
 	// create a MinIO Admin Client interface implementation
 	// defining the client to be used
-	adminClient := adminClient{client: mAdmin}
+	adminClient := AdminClient{Client: mAdmin}
 
-	if err := setPolicy(ctx, adminClient, name, *params.EntityName, *params.EntityType); err != nil {
+	if err := setPolicy(ctx, adminClient, strings.Join(params.Name, ","), *params.EntityName, *params.EntityType); err != nil {
 		return prepareError(err)
 	}
 	return nil
 }
 
-func getSetPolicyMultipleResponse(session *models.Principal, name string, params *models.SetPolicyMultipleRequest) *models.Error {
+func getSetPolicyMultipleResponse(session *models.Principal, params *models.SetPolicyMultipleNameRequest) *models.Error {
 	ctx := context.Background()
-	mAdmin, err := newAdminClient(session)
+	mAdmin, err := NewMinioAdminClient(session)
 	if err != nil {
 		return prepareError(err)
 	}
 	// create a MinIO Admin Client interface implementation
 	// defining the client to be used
-	adminClient := adminClient{client: mAdmin}
+	adminClient := AdminClient{Client: mAdmin}
 
-	if err := setPolicyMultipleEntities(ctx, adminClient, name, params.Users, params.Groups); err != nil {
+	if err := setPolicyMultipleEntities(ctx, adminClient, strings.Join(params.Name, ","), params.Users, params.Groups); err != nil {
 		return prepareError(err)
 	}
 	return nil

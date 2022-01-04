@@ -296,14 +296,31 @@ func (adm *AdminClient) Heal(ctx context.Context, bucket, prefix string,
 	return healStart, healTaskStatus, nil
 }
 
+// MRFStatus exposes MRF metrics of a server
+type MRFStatus struct {
+	BytesHealed uint64 `json:"bytes_healed"`
+	ItemsHealed uint64 `json:"items_healed"`
+
+	TotalItems uint64 `json:"total_items"`
+	TotalBytes uint64 `json:"total_bytes"`
+
+	Started time.Time `json:"started"`
+}
+
 // BgHealState represents the status of the background heal
 type BgHealState struct {
+	// List of offline endpoints with no background heal state info
+	OfflineEndpoints []string `json:"offline_nodes"`
+	// Total items scanned by the continous background healing
 	ScannedItemsCount int64
-
+	// Disks currently in heal states
 	HealDisks []string
-
 	// SetStatus contains information for each set.
 	Sets []SetStatus `json:"sets"`
+	// Endpoint -> MRF Status
+	MRF map[string]MRFStatus `json:"mrf"`
+	// Parity per storage class
+	SCParity map[string]int `json:"sc_parity"`
 }
 
 // SetStatus contains information about the heal status of a set.
@@ -313,6 +330,7 @@ type SetStatus struct {
 	SetIndex     int    `json:"set_index"`
 	HealStatus   string `json:"heal_status"`
 	HealPriority string `json:"heal_priority"`
+	TotalObjects int    `json:"total_objects"`
 	Disks        []Disk `json:"disks"`
 }
 
@@ -321,18 +339,25 @@ type HealingDisk struct {
 	// Copied from cmd/background-newdisks-heal-ops.go
 	// When adding new field, update (*healingTracker).toHealingDisk
 
-	ID            string    `json:"id"`
-	PoolIndex     int       `json:"pool_index"`
-	SetIndex      int       `json:"set_index"`
-	DiskIndex     int       `json:"disk_index"`
-	Endpoint      string    `json:"endpoint"`
-	Path          string    `json:"path"`
-	Started       time.Time `json:"started"`
-	LastUpdate    time.Time `json:"last_update"`
-	ObjectsHealed uint64    `json:"objects_healed"`
-	ObjectsFailed uint64    `json:"objects_failed"`
-	BytesDone     uint64    `json:"bytes_done"`
-	BytesFailed   uint64    `json:"bytes_failed"`
+	ID         string    `json:"id"`
+	PoolIndex  int       `json:"pool_index"`
+	SetIndex   int       `json:"set_index"`
+	DiskIndex  int       `json:"disk_index"`
+	Endpoint   string    `json:"endpoint"`
+	Path       string    `json:"path"`
+	Started    time.Time `json:"started"`
+	LastUpdate time.Time `json:"last_update"`
+
+	ObjectsTotalCount uint64 `json:"objects_total_count"`
+	ObjectsTotalSize  uint64 `json:"objects_total_size"`
+
+	ItemsHealed uint64 `json:"items_healed"`
+	ItemsFailed uint64 `json:"items_failed"`
+	BytesDone   uint64 `json:"bytes_done"`
+	BytesFailed uint64 `json:"bytes_failed"`
+
+	ObjectsHealed uint64 `json:"objects_healed"` // Deprecated July 2021
+	ObjectsFailed uint64 `json:"objects_failed"` // Deprecated July 2021
 
 	// Last object scanned.
 	Bucket string `json:"current_bucket"`
@@ -348,7 +373,24 @@ type HealingDisk struct {
 
 // Merge others into b.
 func (b *BgHealState) Merge(others ...BgHealState) {
+	// SCParity is the same from all nodes, just pick
+	// the information from the first node.
+	if b.SCParity == nil && len(others) > 0 {
+		b.SCParity = make(map[string]int)
+		for k, v := range others[0].SCParity {
+			b.SCParity[k] = v
+		}
+	}
+	if b.MRF == nil {
+		b.MRF = make(map[string]MRFStatus)
+	}
 	for _, other := range others {
+		for _, offlineEndpoint := range other.OfflineEndpoints {
+			b.OfflineEndpoints = append(b.OfflineEndpoints, offlineEndpoint)
+		}
+		for k, v := range other.MRF {
+			b.MRF[k] = v
+		}
 		b.ScannedItemsCount += other.ScannedItemsCount
 		if len(b.Sets) == 0 {
 			b.Sets = make([]SetStatus, len(other.Sets))

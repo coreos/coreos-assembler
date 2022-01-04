@@ -86,7 +86,7 @@ func isNotSupported(e error) bool {
 	}
 
 	// check if filesystem supports extended attributes
-	return errno.Err == syscall.Errno(syscall.ENOTSUP) || errno.Err == syscall.Errno(syscall.EOPNOTSUPP)
+	return errno.Err == syscall.ENOTSUP || errno.Err == syscall.EOPNOTSUPP
 }
 
 // isIgnoredFile returns true if 'filename' is on the exclude list.
@@ -455,6 +455,9 @@ func deleteFile(deletePath string) error {
 		if isSysErrNotEmpty(e) {
 			return nil
 		}
+		if os.IsNotExist(e) {
+			return nil
+		}
 		return e
 	}
 
@@ -783,6 +786,10 @@ func (f *fsClient) listRecursiveInRoutine(contentCh chan *ClientContent, isMetad
 	var dirName string
 	var filePrefix string
 	pathURL := *f.PathURL
+	if runtime.GOOS == "windows" {
+		pathURL.Path = filepath.FromSlash(pathURL.Path)
+		pathURL.Separator = os.PathSeparator
+	}
 	visitFS := func(fp string, fi os.FileInfo, e error) error {
 		// If file path ends with filepath.Separator and equals to root path, skip it.
 		if strings.HasSuffix(fp, string(pathURL.Separator)) {
@@ -866,7 +873,7 @@ func (f *fsClient) listRecursiveInRoutine(contentCh chan *ClientContent, isMetad
 		dirName = filepath.Dir(pathURL.Path)
 		if !strings.HasSuffix(dirName, string(pathURL.Separator)) {
 			// basepath truncates the filepath.Separator,
-			// add it deligently useful for trimming file path inside WalkFunc
+			// add it diligently useful for trimming file path inside WalkFunc
 			dirName = dirName + string(pathURL.Separator)
 		}
 		// filePrefix is kept for filtering incoming contents through WalkFunc.
@@ -892,6 +899,17 @@ func (f *fsClient) MakeBucket(ctx context.Context, region string, ignoreExisting
 		return probe.NewError(e)
 	}
 	return nil
+}
+
+// RemoveBucket - remove a bucket
+func (f *fsClient) RemoveBucket(ctx context.Context, forceRemove bool) *probe.Error {
+	var e error
+	if forceRemove {
+		e = os.RemoveAll(f.PathURL.Path)
+	} else {
+		e = os.Remove(f.PathURL.Path)
+	}
+	return probe.NewError(e)
 }
 
 // Set object lock configuration of bucket.
@@ -1173,8 +1191,8 @@ func (f *fsClient) GetReplicationMetrics(ctx context.Context) (replication.Metri
 
 // ResetReplication - kicks off replication again on previously replicated objects if existing object
 // replication is enabled in the replication config, not implemented
-func (f *fsClient) ResetReplication(ctx context.Context, before time.Duration) (string, *probe.Error) {
-	return "", probe.NewError(APINotImplemented{
+func (f *fsClient) ResetReplication(ctx context.Context, before time.Duration, arn string) (rinfo replication.ResyncTargetsInfo, err *probe.Error) {
+	return rinfo, probe.NewError(APINotImplemented{
 		API:     "ResetReplication",
 		APIType: "filesystem",
 	})
@@ -1208,6 +1226,14 @@ func (f *fsClient) DeleteEncryption(ctx context.Context) *probe.Error {
 func (f *fsClient) GetBucketInfo(ctx context.Context) (BucketInfo, *probe.Error) {
 	return BucketInfo{}, probe.NewError(APINotImplemented{
 		API:     "GetBucketInfo",
+		APIType: "filesystem",
+	})
+}
+
+// Restore object - not implemented
+func (f *fsClient) Restore(_ context.Context, _ string, _ int) *probe.Error {
+	return probe.NewError(APINotImplemented{
+		API:     "Restore",
 		APIType: "filesystem",
 	})
 }

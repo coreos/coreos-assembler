@@ -18,11 +18,8 @@
 package cmd
 
 import (
-	"bytes"
 	"context"
-	"io"
 	"net/url"
-	"os"
 	"strings"
 
 	"github.com/fatih/color"
@@ -46,6 +43,7 @@ var policyCmd = cli.Command{
 	Name:         "policy",
 	Usage:        "manage anonymous access to buckets and objects",
 	Action:       mainPolicy,
+	Hidden:       true,
 	OnUsageError: onUsageError,
 	Before:       setGlobalsFromContext,
 	Flags:        append(policyFlags, globalFlags...),
@@ -164,7 +162,7 @@ type policyLinksMessage struct {
 
 // String colorized access message.
 func (s policyLinksMessage) String() string {
-	return console.Colorize("Policy", string(s.URL))
+	return console.Colorize("Policy", s.URL)
 }
 
 // JSON jsonified policy message.
@@ -202,7 +200,7 @@ func checkPolicySyntax(ctx *cli.Context) {
 			accessPerms(secondArg) != accessUpload &&
 			accessPerms(secondArg) != accessPublic {
 			fatalIf(errDummy().Trace(),
-				"Unrecognized permission `"+string(secondArg)+"`. Allowed values are [none, download, upload, public].")
+				"Unrecognized permission `"+secondArg+"`. Allowed values are [none, download, upload, public].")
 		}
 
 	case "set-json":
@@ -228,107 +226,6 @@ func checkPolicySyntax(ctx *cli.Context) {
 	default:
 		cli.ShowCommandHelpAndExit(ctx, "policy", 1)
 	}
-}
-
-// Convert an accessPerms to a string recognizable by minio-go
-func accessPermToString(perm accessPerms) string {
-	policy := ""
-	switch perm {
-	case accessNone:
-		policy = "none"
-	case accessDownload:
-		policy = "readonly"
-	case accessUpload:
-		policy = "writeonly"
-	case accessPublic:
-		policy = "readwrite"
-	case accessCustom:
-		policy = "custom"
-	}
-	return policy
-}
-
-// doSetAccess do set access.
-func doSetAccess(ctx context.Context, targetURL string, targetPERMS accessPerms) *probe.Error {
-	clnt, err := newClient(targetURL)
-	if err != nil {
-		return err.Trace(targetURL)
-	}
-	policy := accessPermToString(targetPERMS)
-	if err = clnt.SetAccess(ctx, policy, false); err != nil {
-		return err.Trace(targetURL, string(targetPERMS))
-	}
-	return nil
-}
-
-// doSetAccessJSON do set access JSON.
-func doSetAccessJSON(ctx context.Context, targetURL string, targetPERMS accessPerms) *probe.Error {
-	clnt, err := newClient(targetURL)
-	if err != nil {
-		return err.Trace(targetURL)
-	}
-	fileReader, e := os.Open(string(targetPERMS))
-	if e != nil {
-		fatalIf(probe.NewError(e).Trace(), "Unable to set policy for `"+targetURL+"`.")
-	}
-	defer fileReader.Close()
-
-	const maxJSONSize = 120 * 1024 // 120KiB
-	configBuf := make([]byte, maxJSONSize+1)
-
-	n, e := io.ReadFull(fileReader, configBuf)
-	if e == nil {
-		return probe.NewError(bytes.ErrTooLarge).Trace(targetURL)
-	}
-	if e != io.ErrUnexpectedEOF {
-		return probe.NewError(e).Trace(targetURL)
-	}
-
-	configBytes := configBuf[:n]
-	if err = clnt.SetAccess(ctx, string(configBytes), true); err != nil {
-		return err.Trace(targetURL, string(targetPERMS))
-	}
-	return nil
-}
-
-// Convert a minio-go permission to accessPerms type
-func stringToAccessPerm(perm string) accessPerms {
-	var policy accessPerms
-	switch perm {
-	case "none":
-		policy = accessNone
-	case "readonly":
-		policy = accessDownload
-	case "writeonly":
-		policy = accessUpload
-	case "readwrite":
-		policy = accessPublic
-	case "custom":
-		policy = accessCustom
-	}
-	return policy
-}
-
-// doGetAccess do get access.
-func doGetAccess(ctx context.Context, targetURL string) (perms accessPerms, policyStr string, err *probe.Error) {
-	clnt, err := newClient(targetURL)
-	if err != nil {
-		return "", "", err.Trace(targetURL)
-	}
-	perm, policyJSON, err := clnt.GetAccess(ctx)
-	if err != nil {
-		return "", "", err.Trace(targetURL)
-	}
-	return stringToAccessPerm(perm), policyJSON, nil
-}
-
-// doGetAccessRules do get access rules.
-func doGetAccessRules(ctx context.Context, targetURL string) (r map[string]string, err *probe.Error) {
-	clnt, err := newClient(targetURL)
-	if err != nil {
-		return map[string]string{}, err.Trace(targetURL)
-	}
-	return clnt.GetAccessRules(ctx)
 }
 
 // Run policy list command

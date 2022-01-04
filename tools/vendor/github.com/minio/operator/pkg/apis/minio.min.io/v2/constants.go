@@ -51,9 +51,8 @@ const CSRNameSuffix = "-csr"
 // MinIOCertPath is the path where all MinIO certs are mounted
 const MinIOCertPath = "/tmp/certs"
 
-// OperatorLabel denotes the version of the Tenant operator
-// running in the cluster.
-const OperatorLabel = "v1.min.io/version"
+// TmpPath /tmp path inside the container file system
+const TmpPath = "/tmp"
 
 // TenantLabel is applied to all components of a Tenant cluster
 const TenantLabel = "v1.min.io/tenant"
@@ -92,7 +91,7 @@ const MinIOVolumeMountPath = "/export"
 const MinIOVolumeSubPath = ""
 
 // DefaultMinIOImage specifies the default MinIO Docker hub image
-const DefaultMinIOImage = "minio/minio:RELEASE.2021-06-07T21-40-51Z"
+const DefaultMinIOImage = "minio/minio:RELEASE.2021-10-06T23-36-31Z"
 
 // DefaultMinIOUpdateURL specifies the default MinIO URL where binaries are
 // pulled from during MinIO upgrades
@@ -113,7 +112,7 @@ const DefaultPoolName = "pool-0"
 // Console Related Constants
 
 // DefaultConsoleImage specifies the latest Console Docker hub image
-const DefaultConsoleImage = "minio/console:v0.7.4"
+const DefaultConsoleImage = "minio/console:v0.10.3"
 
 // ConsoleTenantLabel is applied to the Console pods of a Tenant cluster
 const ConsoleTenantLabel = "v1.min.io/console"
@@ -161,7 +160,7 @@ const PrometheusImage = "quay.io/prometheus/prometheus:latest"
 const PrometheusSideCarImage = "alpine"
 
 // PrometheusInitImage specifies the init container image for prometheus server
-const PrometheusInitImage = "busybox"
+const PrometheusInitImage = "busybox:1.33.1"
 
 // PrometheusInstanceLabel is applied to the prometheus server pod
 const PrometheusInstanceLabel = "v1.min.io/prometheus"
@@ -182,10 +181,10 @@ const PrometheusServiceMonitorSecretKey = "token"
 // Log related constants
 
 // DefaultLogSearchAPIImage specifies the latest logsearchapi container image
-const DefaultLogSearchAPIImage = "minio/logsearchapi:v4.1.1"
+const DefaultLogSearchAPIImage = "minio/logsearchapi:v4.2.14"
 
 // LogPgImage specifies the latest Postgres container image
-const LogPgImage = "library/postgres"
+const LogPgImage = "library/postgres:13"
 
 // LogDBInstanceLabel is applied to the Log (Postgres server) pods
 const LogDBInstanceLabel = "v1.min.io/log-pg"
@@ -200,7 +199,7 @@ const LogPgPort = 5432
 const LogSearchAPIPort = 8080
 
 // LogPgPortName specifies the default Log Service Postgres server's port name.
-const LogPgPortName = "http-log-pg"
+const LogPgPortName = "tcp-log-pg"
 
 // LogSearchAPIPortName specifies the default Log Search API server's port name.
 const LogSearchAPIPortName = "http-logsearchapi"
@@ -232,10 +231,10 @@ const LogAuditTokenKey = "LOGSEARCH_AUDIT_AUTH_TOKEN"
 
 // LogQueryTokenKey is the k8s secret/environment variable key name referring to
 // the token used to perform search query on audit logs persisted.
-const LogQueryTokenKey = "LOGSEARCH_QUERY_AUTH_TOKEN"
+const LogQueryTokenKey = "MINIO_LOG_QUERY_AUTH_TOKEN"
 
 // ConsolePrometheusURL is the url to the prometheus the console should use to pull metrics from.
-const ConsolePrometheusURL = "CONSOLE_PROMETHEUS_URL"
+const ConsolePrometheusURL = "MINIO_PROMETHEUS_URL"
 
 // PrometheusAPIPort specifies the default Prometheus API Service's port number.
 const PrometheusAPIPort = 9090
@@ -247,7 +246,7 @@ const LogSearchDiskCapacityGB = "LOGSEARCH_DISK_CAPACITY_GB"
 // KES Related Constants
 
 // DefaultKESImage specifies the latest KES Docker hub image
-const DefaultKESImage = "minio/kes:v0.14.0"
+const DefaultKESImage = "minio/kes:v0.16.1"
 
 // KESInstanceLabel is applied to the KES pods of a Tenant cluster
 const KESInstanceLabel = "v1.min.io/kes"

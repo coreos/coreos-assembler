@@ -1,4 +1,4 @@
-# github.com/lestrrat-go/jwx/jwk [![Go Reference](https://pkg.go.dev/badge/github.com/lestrrat-go/jwx/jwk.svg)](https://pkg.go.dev/github.com/lestrrat-go/jwx/jwk)
+# JWK [![Go Reference](https://pkg.go.dev/badge/github.com/lestrrat-go/jwx/jwk.svg)](https://pkg.go.dev/github.com/lestrrat-go/jwx/jwk)
 
 Package jwk implements JWK as described in [RFC7517](https://tools.ietf.org/html/rfc7517)
 
@@ -6,6 +6,8 @@ Package jwk implements JWK as described in [RFC7517](https://tools.ietf.org/html
   * Convert to and from JSON
   * Convert to and from raw key types (e.g. *rsa.PrivateKey)
 * Ability to keep a JWKS fresh.
+
+How-to style documentation can be found in the [docs directory](../docs).
 
 Examples are located in the examples directory ([jwk_example_test.go](../examples/jwk_example_test.go))
 

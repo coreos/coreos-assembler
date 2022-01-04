@@ -1,4 +1,4 @@
-# Secure [![GoDoc](https://godoc.org/github.com/unrolled/secure?status.svg)](http://godoc.org/github.com/unrolled/secure) [![Build Status](https://travis-ci.org/unrolled/secure.svg)](https://travis-ci.org/unrolled/secure)
+# Secure [![GoDoc](https://godoc.org/github.com/unrolled/secure?status.svg)](http://godoc.org/github.com/unrolled/secure) [![Test](https://github.com/unrolled/secure/workflows/Test/badge.svg?branch=v1)](https://github.com/unrolled/secure/actions)
 
 Secure is an HTTP middleware for Go that facilitates some quick security wins. It's a standard net/http [Handler](http://golang.org/pkg/net/http/#Handler), and can be used with many [frameworks](#integration-examples) or directly with Go's net/http package.
 
@@ -33,7 +33,6 @@ func main() {
         ContentTypeNosniff:    true,
         BrowserXssFilter:      true,
         ContentSecurityPolicy: "script-src $NONCE",
-        PublicKey:             `pin-sha256="base64+primary=="; pin-sha256="base64+backup=="; max-age=5184000; includeSubdomains; report-uri="https://www.example.com/hpkp-report"`,
     })
 
     app := secureMiddleware.Handler(myHandler)
@@ -51,7 +50,6 @@ X-Frame-Options: DENY
 X-Content-Type-Options: nosniff
 X-XSS-Protection: 1; mode=block
 Content-Security-Policy: script-src 'nonce-a2ZobGFoZg=='
-PublicKey: pin-sha256="base64+primary=="; pin-sha256="base64+backup=="; max-age=5184000; includeSubdomains; report-uri="https://www.example.com/hpkp-report"
 ~~~
 
 ### Set the `IsDevelopment` option to `true` when developing!
@@ -81,9 +79,10 @@ s := secure.New(secure.Options{
     BrowserXssFilter: true, // If BrowserXssFilter is true, adds the X-XSS-Protection header with the value `1; mode=block`. Default is false.
     CustomBrowserXssValue: "1; report=https://example.com/xss-report", // CustomBrowserXssValue allows the X-XSS-Protection header value to be set with a custom value. This overrides the BrowserXssFilter option. Default is "".
     ContentSecurityPolicy: "default-src 'self'", // ContentSecurityPolicy allows the Content-Security-Policy header value to be set with a custom value. Default is "". Passing a template string will replace `$NONCE` with a dynamic nonce value of 16 bytes for each request which can be later retrieved using the Nonce function.
-    PublicKey: `pin-sha256="base64+primary=="; pin-sha256="base64+backup=="; max-age=5184000; includeSubdomains; report-uri="https://www.example.com/hpkp-report"`, // PublicKey implements HPKP to prevent MITM attacks with forged certificates. Default is "".
+    PublicKey: `pin-sha256="base64+primary=="; pin-sha256="base64+backup=="; max-age=5184000; includeSubdomains; report-uri="https://www.example.com/hpkp-report"`, // Deprecated: This feature is no longer recommended. PublicKey implements HPKP to prevent MITM attacks with forged certificates. Default is "".
     ReferrerPolicy: "same-origin", // ReferrerPolicy allows the Referrer-Policy header with the value to be set with a custom value. Default is "".
-    FeaturePolicy: "vibrate 'none';", // FeaturePolicy allows the Feature-Policy header with the value to be set with a custom value. Default is "".
+    FeaturePolicy: "vibrate 'none';", // Deprecated: this header has been renamed to PermissionsPolicy. FeaturePolicy allows the Feature-Policy header with the value to be set with a custom value. Default is "".
+    PermissionsPolicy: "fullscreen=(), geolocation=()", // PermissionsPolicy allows the Permissions-Policy header with the value to be set with a custom value. Default is "".
     ExpectCTHeader: `enforce, max-age=30, report-uri="https://www.example.com/ct-report"`,
 
     IsDevelopment: true, // This will cause the AllowedHosts, SSLRedirect, and STSSeconds/STSIncludeSubdomains options to be ignored during development. When deploying to production, be sure to set this to false.
@@ -119,6 +118,7 @@ l := secure.New(secure.Options{
     PublicKey: "",
     ReferrerPolicy: "",
     FeaturePolicy: "",
+    PermissionsPolicy: "",
     ExpectCTHeader: "",
     IsDevelopment: false,
 })
@@ -195,11 +195,11 @@ func main() {
     })
 
     r := chi.NewRouter()
+    r.Use(secureMiddleware.Handler)
 
     r.Get("/", func(w http.ResponseWriter, r *http.Request) {
         w.Write([]byte("X-Frame-Options header is now `DENY`."))
     })
-    r.Use(secureMiddleware.Handler)
 
     http.ListenAndServe("127.0.0.1:3000", r)
 }
@@ -306,31 +306,35 @@ func main() {
 package main
 
 import (
-    "github.com/kataras/iris"
+    "github.com/kataras/iris/v12"
     "github.com/unrolled/secure" // or "gopkg.in/unrolled/secure.v1"
 )
 
 func main() {
+    app := iris.New()
+
     secureMiddleware := secure.New(secure.Options{
         FrameDeny: true,
     })
 
-    iris.UseFunc(func(c *iris.Context) {
-        err := secureMiddleware.Process(c.ResponseWriter, c.Request)
+    app.Use(iris.FromStd(secureMiddleware.HandlerFuncWithNext))
+    // Identical to:
+    // app.Use(func(ctx iris.Context) {
+    //     err := secureMiddleware.Process(ctx.ResponseWriter(), ctx.Request())
+    //
+    //     // If there was an error, do not continue.
+    //     if err != nil {
+    //         return
+    //     }
+    //
+    //     ctx.Next()
+    // })
 
-        // If there was an error, do not continue.
-        if err != nil {
-            return
-        }
-
-        c.Next()
+    app.Get("/home", func(ctx iris.Context) {
+        ctx.Writef("X-Frame-Options header is now `%s`.", "DENY")
     })
 
-    iris.Get("/home", func(c *iris.Context) {
-        c.SendStatus(200, "X-Frame-Options header is now `DENY`.")
-    })
-
-    iris.Listen(":8080")
+    app.Listen(":8080")
 }
 ~~~
 
@@ -342,7 +346,7 @@ package main
 import (
     "log"
     "net/http"
-    
+
     "github.com/gorilla/mux"
     "github.com/unrolled/secure" // or "gopkg.in/unrolled/secure.v1"
 )
@@ -351,7 +355,7 @@ func main() {
     secureMiddleware := secure.New(secure.Options{
         FrameDeny: true,
     })
-    
+
     r := mux.NewRouter()
     r.Use(secureMiddleware.Handler)
     http.Handle("/", r)
@@ -359,7 +363,7 @@ func main() {
 }
 ~~~
 
-### [Negroni](https://github.com/codegangsta/negroni)
+### [Negroni](https://github.com/urfave/negroni)
 Note this implementation has a special helper function called `HandlerFuncWithNext`.
 ~~~ go
 // main.go
@@ -368,7 +372,7 @@ package main
 import (
     "net/http"
 
-    "github.com/codegangsta/negroni"
+    "github.com/urfave/negroni"
     "github.com/unrolled/secure" // or "gopkg.in/unrolled/secure.v1"
 )
 

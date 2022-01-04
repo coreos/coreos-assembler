@@ -20,9 +20,11 @@ import (
 	"crypto/x509"
 	"io/ioutil"
 	"net"
+	"net/url"
 	"strconv"
 	"strings"
-	"time"
+
+	miniov2 "github.com/minio/operator/pkg/apis/minio.min.io/v2"
 
 	xcerts "github.com/minio/pkg/certs"
 	"github.com/minio/pkg/env"
@@ -43,50 +45,30 @@ var (
 
 	// TLSRedirect console tls redirect rule
 	TLSRedirect = "on"
-
-	// SessionDuration cookie validity duration
-	SessionDuration = 45 * time.Minute
-
-	// LicenseKey in memory license key used by console ui
-	LicenseKey = ""
 )
-
-var consoleImage string
-
-func init() {
-	consoleImage = env.Get(ConsoleOperatorConsoleImage, ConsoleImageDefaultVersion)
-}
 
 func getMinIOServer() string {
 	return strings.TrimSpace(env.Get(ConsoleMinIOServer, "http://localhost:9000"))
 }
 
-func getMinIORegion() string {
+func GetMinIORegion() string {
 	return strings.TrimSpace(env.Get(ConsoleMinIORegion, ""))
 }
 
 func getMinIOEndpoint() string {
-	server := getMinIOServer()
-	if strings.Contains(server, "://") {
-		parts := strings.Split(server, "://")
-		if len(parts) > 1 {
-			server = parts[1]
-		}
+	u, err := url.Parse(getMinIOServer())
+	if err != nil {
+		panic(err)
 	}
-	return server
+	return u.Host
 }
 
 func getMinIOEndpointIsSecure() bool {
-	server := getMinIOServer()
-	if strings.Contains(server, "://") {
-		parts := strings.Split(server, "://")
-		if len(parts) > 1 {
-			if parts[0] == "https" {
-				return true
-			}
-		}
+	u, err := url.Parse(getMinIOServer())
+	if err != nil {
+		panic(err)
 	}
-	return false
+	return u.Scheme == "https"
 }
 
 // GetHostname gets console hostname set on env variable,
@@ -127,7 +109,7 @@ func GetTLSRedirect() string {
 }
 
 // Get secure middleware env variable configurations
-func getSecureAllowedHosts() []string {
+func GetSecureAllowedHosts() []string {
 	allowedHosts := env.Get(ConsoleSecureAllowedHosts, "")
 	if allowedHosts != "" {
 		return strings.Split(allowedHosts, ",")
@@ -136,39 +118,39 @@ func getSecureAllowedHosts() []string {
 }
 
 // AllowedHostsAreRegex determines, if the provided AllowedHosts slice contains valid regular expressions. Default is false.
-func getSecureAllowedHostsAreRegex() bool {
+func GetSecureAllowedHostsAreRegex() bool {
 	return strings.ToLower(env.Get(ConsoleSecureAllowedHostsAreRegex, "off")) == "on"
 }
 
 // If FrameDeny is set to true, adds the X-Frame-Options header with the value of `DENY`. Default is true.
-func getSecureFrameDeny() bool {
+func GetSecureFrameDeny() bool {
 	return strings.ToLower(env.Get(ConsoleSecureFrameDeny, "on")) == "on"
 }
 
 // If ContentTypeNosniff is true, adds the X-Content-Type-Options header with the value `nosniff`. Default is true.
-func getSecureContentTypeNonSniff() bool {
+func GetSecureContentTypeNonSniff() bool {
 	return strings.ToLower(env.Get(ConsoleSecureContentTypeNoSniff, "on")) == "on"
 }
 
 // If BrowserXssFilter is true, adds the X-XSS-Protection header with the value `1; mode=block`. Default is true.
-func getSecureBrowserXSSFilter() bool {
+func GetSecureBrowserXSSFilter() bool {
 	return strings.ToLower(env.Get(ConsoleSecureBrowserXSSFilter, "on")) == "on"
 }
 
 // ContentSecurityPolicy allows the Content-Security-Policy header value to be set with a custom value. Default is "".
 // Passing a template string will replace `$NONCE` with a dynamic nonce value of 16 bytes for each request which can be
 // later retrieved using the Nonce function.
-func getSecureContentSecurityPolicy() string {
+func GetSecureContentSecurityPolicy() string {
 	return env.Get(ConsoleSecureContentSecurityPolicy, "")
 }
 
 // ContentSecurityPolicyReportOnly allows the Content-Security-Policy-Report-Only header value to be set with a custom value. Default is "".
-func getSecureContentSecurityPolicyReportOnly() string {
+func GetSecureContentSecurityPolicyReportOnly() string {
 	return env.Get(ConsoleSecureContentSecurityPolicyReportOnly, "")
 }
 
 // HostsProxyHeaders is a set of header keys that may hold a proxied hostname value for the request.
-func getSecureHostsProxyHeaders() []string {
+func GetSecureHostsProxyHeaders() []string {
 	allowedHosts := env.Get(ConsoleSecureHostsProxyHeaders, "")
 	if allowedHosts != "" {
 		return strings.Split(allowedHosts, ",")
@@ -177,12 +159,16 @@ func getSecureHostsProxyHeaders() []string {
 }
 
 // TLSHost is the host name that is used to redirect HTTP requests to HTTPS. Default is "", which indicates to use the same host.
-func getSecureTLSHost() string {
-	return env.Get(ConsoleSecureTLSHost, net.JoinHostPort(Hostname, TLSPort))
+func GetSecureTLSHost() string {
+	tlsHost := env.Get(ConsoleSecureTLSHost, "")
+	if tlsHost == "" && Hostname != "" {
+		return net.JoinHostPort(Hostname, TLSPort)
+	}
+	return ""
 }
 
 // STSSeconds is the max-age of the Strict-Transport-Security header. Default is 0, which would NOT include the header.
-func getSecureSTSSeconds() int64 {
+func GetSecureSTSSeconds() int64 {
 	seconds, err := strconv.Atoi(env.Get(ConsoleSecureSTSSeconds, "0"))
 	if err != nil {
 		seconds = 0
@@ -191,41 +177,41 @@ func getSecureSTSSeconds() int64 {
 }
 
 // If STSIncludeSubdomains is set to true, the `includeSubdomains` will be appended to the Strict-Transport-Security header. Default is false.
-func getSecureSTSIncludeSubdomains() bool {
+func GetSecureSTSIncludeSubdomains() bool {
 	return strings.ToLower(env.Get(ConsoleSecureSTSIncludeSubdomains, "off")) == "on"
 }
 
 // If STSPreload is set to true, the `preload` flag will be appended to the Strict-Transport-Security header. Default is false.
-func getSecureSTSPreload() bool {
+func GetSecureSTSPreload() bool {
 	return strings.ToLower(env.Get(ConsoleSecureSTSPreload, "off")) == "on"
 }
 
 // If TLSTemporaryRedirect is true, the a 302 will be used while redirecting. Default is false (301).
-func getSecureTLSTemporaryRedirect() bool {
+func GetSecureTLSTemporaryRedirect() bool {
 	return strings.ToLower(env.Get(ConsoleSecureTLSTemporaryRedirect, "off")) == "on"
 }
 
 // STS header is only included when the connection is HTTPS.
-func getSecureForceSTSHeader() bool {
+func GetSecureForceSTSHeader() bool {
 	return strings.ToLower(env.Get(ConsoleSecureForceSTSHeader, "off")) == "on"
 }
 
 // PublicKey implements HPKP to prevent MITM attacks with forged certificates. Default is "".
-func getSecurePublicKey() string {
+func GetSecurePublicKey() string {
 	return env.Get(ConsoleSecurePublicKey, "")
 }
 
 // ReferrerPolicy allows the Referrer-Policy header with the value to be set with a custom value. Default is "".
-func getSecureReferrerPolicy() string {
+func GetSecureReferrerPolicy() string {
 	return env.Get(ConsoleSecureReferrerPolicy, "")
 }
 
 // FeaturePolicy allows the Feature-Policy header with the value to be set with a custom value. Default is "".
-func getSecureFeaturePolicy() string {
+func GetSecureFeaturePolicy() string {
 	return env.Get(ConsoleSecureFeaturePolicy, "")
 }
 
-func getSecureExpectCTHeader() string {
+func GetSecureExpectCTHeader() string {
 	return env.Get(ConsoleSecureExpectCTHeader, "")
 }
 
@@ -237,7 +223,7 @@ func getLogSearchAPIToken() string {
 }
 
 func getLogSearchURL() string {
-	return env.Get(ConsoleLogQueryURL, "http://localhost:8080")
+	return env.Get(ConsoleLogQueryURL, "")
 }
 
 func getPrometheusURL() string {
@@ -250,13 +236,19 @@ func getPrometheusJobID() string {
 
 // GetSubnetLicense returns the current subnet jwt license
 func GetSubnetLicense() string {
-	// if we have a license key in memory return that
-	if LicenseKey != "" {
-		return LicenseKey
+	// if this is running on embedded console try to get the license from the MinIO tenant configuration
+	minioConfigPath := env.Get(MinIOConfigEnvFile, "")
+	if minioConfigPath != "" {
+		dat, err := ioutil.ReadFile(minioConfigPath)
+		if err == nil {
+			minioConfiguration := miniov2.ParseRawConfiguration(dat)
+			if val, ok := minioConfiguration[MinIOSubnetLicense]; ok {
+				return string(val)
+			}
+		}
 	}
-	// return license configured via environment variable
-	LicenseKey = env.Get(ConsoleSubnetLicense, "")
-	return LicenseKey
+	// fallback to console license env variable
+	return env.Get(ConsoleSubnetLicense, "")
 }
 
 var (
@@ -267,17 +259,3 @@ var (
 	// GlobalTLSCertsManager custom TLS Manager for SNI support
 	GlobalTLSCertsManager *xcerts.Manager
 )
-
-// getK8sSAToken assumes the plugin is running inside a k8s pod and extract the current service account from the
-// /var/run/secrets/kubernetes.io/serviceaccount/token file
-func getK8sSAToken() string {
-	dat, err := ioutil.ReadFile("/var/run/secrets/kubernetes.io/serviceaccount/token")
-	if err != nil {
-		return env.Get(ConsoleOperatorSAToken, "")
-	}
-	return string(dat)
-}
-
-func getConsoleImage() string {
-	return consoleImage
-}

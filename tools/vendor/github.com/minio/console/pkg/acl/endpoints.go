@@ -23,31 +23,44 @@ import (
 // endpoints definition
 var (
 	configuration               = "/settings"
+	configurationItem           = "/settings/:option"
+	notificationEndpoints       = "/notification-endpoints"
+	notificationEndpointsAddAny = "/notification-endpoints/add/:service"
+	notificationEndpointsAdd    = "/notification-endpoints/add"
+	tiers                       = "/tiers"
+	tiersAddAny                 = "/tiers/add/:service"
+	tiersAdd                    = "/tiers/add"
 	users                       = "/users"
-	usersDetail                 = "/users/:userName"
+	usersDetail                 = "/users/:userName+"
 	groups                      = "/groups"
+	groupsDetails               = "/groups/:groupName+"
 	iamPolicies                 = "/policies"
-	policiesDetail              = "/policies/:policyName"
+	policiesDetail              = "/policies/*"
 	dashboard                   = "/dashboard"
+	metrics                     = "/metrics"
 	profiling                   = "/profiling"
+	addBucket                   = "/add-bucket"
 	buckets                     = "/buckets"
-	bucketsDetail               = "/buckets/:bucketName"
-	bucketsDetailSummary        = "/buckets/:bucketName/summary"
-	bucketsDetailEvents         = "/buckets/:bucketName/events"
-	bucketsDetailReplication    = "/buckets/:bucketName/replication"
-	bucketsDetailLifecycle      = "/buckets/:bucketName/lifecycle"
-	bucketsDetailAccess         = "/buckets/:bucketName/access"
-	bucketsDetailAccessPolicies = "/buckets/:bucketName/access/policies"
-	bucketsDetailAccessUsers    = "/buckets/:bucketName/access/users"
+	bucketsGeneral              = "/buckets/*"
+	bucketsAdmin                = "/buckets/:bucketName/admin/*"
+	bucketsAdminMain            = "/buckets/:bucketName/admin"
+	bucketsBrowserMenu          = "/buckets"
+	bucketsBrowserList          = "/buckets/*"
+	bucketsBrowser              = "/buckets/:bucketName/browse/*"
+	bucketsBrowserMain          = "/buckets/:bucketName/browse"
 	serviceAccounts             = "/account"
 	changePassword              = "/account/change-password"
 	tenants                     = "/tenants"
+	tenantsAdd                  = "/tenants/add"
+	tenantsAddSub               = "/tenants/add/*"
 	tenantsDetail               = "/namespaces/:tenantNamespace/tenants/:tenantName"
+	tenantHop                   = "/namespaces/:tenantNamespace/tenants/:tenantName/hop"
 	podsDetail                  = "/namespaces/:tenantNamespace/tenants/:tenantName/pods/:podName"
 	tenantsDetailSummary        = "/namespaces/:tenantNamespace/tenants/:tenantName/summary"
 	tenantsDetailMetrics        = "/namespaces/:tenantNamespace/tenants/:tenantName/metrics"
 	tenantsDetailPods           = "/namespaces/:tenantNamespace/tenants/:tenantName/pods"
 	tenantsDetailPools          = "/namespaces/:tenantNamespace/tenants/:tenantName/pools"
+	tenantsDetailVolumes        = "/namespaces/:tenantNamespace/tenants/:tenantName/volumes"
 	tenantsDetailLicense        = "/namespaces/:tenantNamespace/tenants/:tenantName/license"
 	tenantsDetailSecurity       = "/namespaces/:tenantNamespace/tenants/:tenantName/security"
 	storage                     = "/storage"
@@ -55,15 +68,15 @@ var (
 	storageDrives               = "/storage/drives"
 	remoteBuckets               = "/remote-buckets"
 	replication                 = "/replication"
-	objectBrowser               = "/object-browser/:bucket/*"
-	objectBrowserBucket         = "/object-browser/:bucket"
-	mainObjectBrowser           = "/object-browser"
 	license                     = "/license"
-	watch                       = "/watch"
-	heal                        = "/heal"
-	trace                       = "/trace"
-	logs                        = "/logs"
-	healthInfo                  = "/health-info"
+	watch                       = "/tools/watch"
+	heal                        = "/tools/heal"
+	trace                       = "/tools/trace"
+	tools                       = "/tools"
+	logs                        = "/tools/logs"
+	auditLogs                   = "/tools/audit-logs"
+	speedtest                   = "/tools/speedtest"
+	healthInfo                  = "/tools/diagnostics"
 )
 
 type ConfigurationActionSet struct {
@@ -178,12 +191,8 @@ var serviceAccountsActionSet = ConfigurationActionSet{
 
 // changePasswordActionSet requires admin:CreateUser policy permission
 var changePasswordActionSet = ConfigurationActionSet{
-	actionTypes: iampolicy.NewActionSet(
-		iampolicy.AllAdminActions,
-	),
-	actions: iampolicy.NewActionSet(
-		iampolicy.CreateUserAdminAction,
-	),
+	actionTypes: iampolicy.NewActionSet(),
+	actions:     iampolicy.NewActionSet(),
 }
 
 // tenantsActionSet temporally no actions needed for tenants sections to work
@@ -257,6 +266,16 @@ var logsActionSet = ConfigurationActionSet{
 	),
 }
 
+// toolsActionSet contains the list of admin actions required for this endpoint to work
+var toolsActionSet = ConfigurationActionSet{
+	actionTypes: iampolicy.NewActionSet(
+		iampolicy.AllAdminActions,
+	),
+	actions: iampolicy.NewActionSet(
+		iampolicy.ConsoleLogAdminAction,
+	),
+}
+
 // traceActionSet contains the list of admin actions required for this endpoint to work
 var traceActionSet = ConfigurationActionSet{
 	actionTypes: iampolicy.NewActionSet(
@@ -269,6 +288,16 @@ var traceActionSet = ConfigurationActionSet{
 
 // healthInfoActionSet contains the list of admin actions required for this endpoint to work
 var healthInfoActionSet = ConfigurationActionSet{
+	actionTypes: iampolicy.NewActionSet(
+		iampolicy.AllAdminActions,
+	),
+	actions: iampolicy.NewActionSet(
+		iampolicy.HealthInfoAdminAction,
+	),
+}
+
+// logsActionSet contains the list of admin actions required for this endpoint to work
+var speedtestActionSet = ConfigurationActionSet{
 	actionTypes: iampolicy.NewActionSet(
 		iampolicy.AllAdminActions,
 	),
@@ -291,45 +320,58 @@ var displayRules = map[string]func() bool{
 // endpointRules contains the mapping between endpoints and ActionSets, additional rules can be added here
 var endpointRules = map[string]ConfigurationActionSet{
 	configuration:               configurationActionSet,
+	configurationItem:           configurationActionSet,
+	notificationEndpoints:       configurationActionSet,
+	notificationEndpointsAdd:    configurationActionSet,
+	notificationEndpointsAddAny: configurationActionSet,
+	tiers:                       configurationActionSet,
+	tiersAdd:                    configurationActionSet,
+	tiersAddAny:                 configurationActionSet,
 	users:                       usersActionSet,
 	usersDetail:                 usersActionSet,
 	groups:                      groupsActionSet,
+	groupsDetails:               groupsActionSet,
 	iamPolicies:                 iamPoliciesActionSet,
 	policiesDetail:              iamPoliciesActionSet,
 	dashboard:                   dashboardActionSet,
+	metrics:                     dashboardActionSet,
 	profiling:                   profilingActionSet,
+	addBucket:                   bucketsActionSet,
 	buckets:                     bucketsActionSet,
-	bucketsDetail:               bucketsActionSet,
-	bucketsDetailSummary:        bucketsActionSet,
-	bucketsDetailEvents:         bucketsActionSet,
-	bucketsDetailReplication:    bucketsActionSet,
-	bucketsDetailLifecycle:      bucketsActionSet,
-	bucketsDetailAccess:         bucketsActionSet,
-	bucketsDetailAccessPolicies: bucketsActionSet,
-	bucketsDetailAccessUsers:    bucketsActionSet,
+	bucketsGeneral:              bucketsActionSet,
+	bucketsAdmin:                bucketsActionSet,
+	bucketsAdminMain:            bucketsActionSet,
 	serviceAccounts:             serviceAccountsActionSet,
 	changePassword:              changePasswordActionSet,
 	remoteBuckets:               remoteBucketsActionSet,
 	replication:                 replicationActionSet,
-	objectBrowser:               objectBrowserActionSet,
-	mainObjectBrowser:           objectBrowserActionSet,
-	objectBrowserBucket:         objectBrowserActionSet,
+	bucketsBrowser:              objectBrowserActionSet,
+	bucketsBrowserMenu:          objectBrowserActionSet,
+	bucketsBrowserList:          objectBrowserActionSet,
+	bucketsBrowserMain:          objectBrowserActionSet,
 	license:                     licenseActionSet,
 	watch:                       watchActionSet,
 	heal:                        healActionSet,
 	trace:                       traceActionSet,
 	logs:                        logsActionSet,
+	auditLogs:                   logsActionSet,
+	tools:                       toolsActionSet,
 	healthInfo:                  healthInfoActionSet,
+	speedtest:                   speedtestActionSet,
 }
 
 // operatorRules contains the mapping between endpoints and ActionSets for operator only mode
 var operatorRules = map[string]ConfigurationActionSet{
 	tenants:               tenantsActionSet,
+	tenantsAdd:            tenantsActionSet,
+	tenantsAddSub:         tenantsActionSet,
 	tenantsDetail:         tenantsActionSet,
+	tenantHop:             tenantsActionSet,
 	tenantsDetailSummary:  tenantsActionSet,
 	tenantsDetailMetrics:  tenantsActionSet,
 	tenantsDetailPods:     tenantsActionSet,
 	tenantsDetailPools:    tenantsActionSet,
+	tenantsDetailVolumes:  tenantsActionSet,
 	tenantsDetailLicense:  tenantsActionSet,
 	tenantsDetailSecurity: tenantsActionSet,
 	podsDetail:            tenantsActionSet,
@@ -396,7 +438,6 @@ func GetAuthorizedEndpoints(actions []string) []string {
 	if operatorOnly {
 		rangeTake = operatorRules
 	}
-
 	// Prepare new ActionSet structure that will hold all the user actions
 	userAllowedAction := actionsStringToActionSet(actions)
 	var allowedEndpoints []string

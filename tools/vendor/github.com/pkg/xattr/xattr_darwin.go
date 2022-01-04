@@ -11,6 +11,9 @@ import (
 
 // See https://opensource.apple.com/source/xnu/xnu-1504.15.3/bsd/sys/xattr.h.auto.html
 const (
+	// XATTR_SUPPORTED will be true if the current platform is supported
+	XATTR_SUPPORTED = true
+
 	XATTR_NOFOLLOW        = 0x0001
 	XATTR_CREATE          = 0x0002
 	XATTR_REPLACE         = 0x0004

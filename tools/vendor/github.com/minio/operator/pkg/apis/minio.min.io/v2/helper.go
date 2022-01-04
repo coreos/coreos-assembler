@@ -19,6 +19,7 @@ package v2
 
 import (
 	"archive/tar"
+	"bufio"
 	"bytes"
 	"compress/gzip"
 	"context"
@@ -45,7 +46,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/klog/v2"
 
-	jwtgo "github.com/dgrijalva/jwt-go"
+	"github.com/golang-jwt/jwt"
 	"github.com/minio/madmin-go"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 )
@@ -133,7 +134,13 @@ func genEllipsis(start, end int) string {
 // HasCredsSecret returns true if the user has provided a secret
 // for a Tenant else false
 func (t *Tenant) HasCredsSecret() bool {
-	return t.Spec.CredsSecret != nil
+	return t.Spec.CredsSecret != nil && t.Spec.CredsSecret.Name != ""
+}
+
+// HasConfigurationSecret returns true if the user has provided a configuration
+// for a Tenant else false
+func (t *Tenant) HasConfigurationSecret() bool {
+	return t.Spec.Configuration != nil && t.Spec.Configuration.Name != ""
 }
 
 // HasCertConfig returns true if the user has provided a certificate
@@ -145,7 +152,7 @@ func (t *Tenant) HasCertConfig() bool {
 // ExternalCert returns true is the user has provided a secret
 // that contains CA cert, server cert and server key
 func (t *Tenant) ExternalCert() bool {
-	return t.Spec.ExternalCertSecret != nil
+	return len(t.Spec.ExternalCertSecret) > 0
 }
 
 // ExternalCaCerts returns true is the user has provided a
@@ -157,31 +164,19 @@ func (t *Tenant) ExternalCaCerts() bool {
 // ExternalClientCert returns true is the user has provided a secret
 // that contains CA client cert, server cert and server key
 func (t *Tenant) ExternalClientCert() bool {
-	return t.Spec.ExternalClientCertSecret != nil
+	return t.Spec.ExternalClientCertSecret != nil && t.Spec.ExternalClientCertSecret.Name != ""
 }
 
 // KESExternalCert returns true is the user has provided a secret
 // that contains CA cert, server cert and server key for KES pods
 func (t *Tenant) KESExternalCert() bool {
-	return t.Spec.KES != nil && t.Spec.KES.ExternalCertSecret != nil
+	return t.Spec.KES != nil && t.Spec.KES.ExternalCertSecret != nil && t.Spec.KES.ExternalCertSecret.Name != ""
 }
 
 // KESClientCert returns true is the user has provided a secret
 // that contains CA cert, client cert and client key for KES pods
 func (t *Tenant) KESClientCert() bool {
-	return t.Spec.KES != nil && t.Spec.KES.ClientCertSecret != nil
-}
-
-// ConsoleExternalCert returns true is the user has provided a secret
-// that contains CA cert, server cert and server key for Console pods
-func (t *Tenant) ConsoleExternalCert() bool {
-	return t.Spec.Console != nil && t.Spec.Console.ExternalCertSecret != nil
-}
-
-// ConsoleExternalCaCerts returns true is the user has provided a
-// additional CA certificates for Console
-func (t *Tenant) ConsoleExternalCaCerts() bool {
-	return t.Spec.Console != nil && len(t.Spec.Console.ExternalCaCertSecret) > 0
+	return t.Spec.KES != nil && t.Spec.KES.ClientCertSecret != nil && t.Spec.KES.ClientCertSecret.Name != ""
 }
 
 // AutoCert is enabled by default, otherwise we return the user provided value
@@ -344,18 +339,6 @@ func (t *Tenant) EnsureDefaults() *Tenant {
 		}
 	}
 
-	if t.HasConsoleEnabled() {
-		if t.Spec.Console.Image == "" {
-			t.Spec.Console.Image = GetTenantConsoleImage()
-		}
-		if t.Spec.Console.Replicas == 0 {
-			t.Spec.Console.Replicas = DefaultConsoleReplicas
-		}
-		if t.Spec.Console.ImagePullPolicy == "" {
-			t.Spec.Console.ImagePullPolicy = DefaultImagePullPolicy
-		}
-	}
-
 	if t.HasKESEnabled() {
 		if t.Spec.KES.Image == "" {
 			t.Spec.KES.Image = GetTenantKesImage()
@@ -387,6 +370,14 @@ func (t *Tenant) EnsureDefaults() *Tenant {
 		if t.Spec.Log.Image == "" {
 			t.Spec.Log.Image = DefaultLogSearchAPIImage
 		}
+		if t.Spec.Log.Db != nil {
+			if t.Spec.Log.Db.Image == "" {
+				t.Spec.Log.Db.Image = LogPgImage
+			}
+			if t.Spec.Log.Db.InitImage == "" {
+				t.Spec.Log.Db.InitImage = InitContainerImage
+			}
+		}
 	}
 
 	return t
@@ -412,7 +403,7 @@ func (t *Tenant) MinIOEndpoints(hostsTemplate string) (endpoints []string) {
 
 // GenBearerToken returns the JWT token for current Tenant for Prometheus authentication
 func (t *Tenant) GenBearerToken(accessKey, secretKey string) string {
-	jwt := jwtgo.NewWithClaims(jwtgo.SigningMethodHS512, jwtgo.StandardClaims{
+	jwt := jwt.NewWithClaims(jwt.SigningMethodHS512, jwt.StandardClaims{
 		ExpiresAt: time.Now().UTC().Add(defaultPrometheusJWTExpiry).Unix(),
 		Subject:   accessKey,
 		Issuer:    "prometheus",
@@ -502,7 +493,7 @@ func (t *Tenant) MinIOHeadlessServiceHost() string {
 // KESHosts returns the host names created for current KES StatefulSet
 func (t *Tenant) KESHosts() []string {
 	hosts := make([]string, 0)
-	var i int32 = 0
+	var i int32
 	for i < t.Spec.KES.Replicas {
 		hosts = append(hosts, fmt.Sprintf("%s-"+strconv.Itoa(int(i))+".%s.%s.svc.%s", t.KESStatefulSetName(), t.KESHLServiceName(), t.Namespace, GetClusterDomain()))
 		i++
@@ -550,24 +541,9 @@ func (t *Tenant) HasPrometheusSMEnabled() bool {
 	return t.Spec.PrometheusOperator != nil
 }
 
-// HasConsoleEnabled checks if the console has been enabled by the user
-func (t *Tenant) HasConsoleEnabled() bool {
-	return t.Spec.Console != nil
-}
-
-// HasConsoleSecret returns true if the user has provided an console secret
-// for a Tenant else false
-func (t *Tenant) HasConsoleSecret() bool {
-	return t.Spec.Console != nil && t.Spec.Console.ConsoleSecret != nil
-}
-
-// GetConsoleEnvVars returns the environment variables for the console
-// deployment of a particular tenant
-func (t *Tenant) GetConsoleEnvVars() (env []corev1.EnvVar) {
-	if t.Spec.Console != nil {
-		return t.Spec.Console.Env
-	}
-	return env
+// GetEnvVars returns the environment variables for tenant deployment.
+func (t *Tenant) GetEnvVars() (env []corev1.EnvVar) {
+	return t.Spec.Env
 }
 
 // UpdateURL returns the URL for the sha256sum location of the new binary
@@ -711,8 +687,8 @@ func (t *Tenant) NewMinIOAdminForAddress(address string, minioSecret map[string]
 	return madmClnt, nil
 }
 
-// CreateConsoleUser function creates an admin users
-func (t *Tenant) CreateConsoleUser(madmClnt *madmin.AdminClient, userCredentialSecrets []*corev1.Secret, skipCreateUser bool) error {
+// CreateUsers creates a list of admin users on MinIO, optionally creating users is disabled.
+func (t *Tenant) CreateUsers(madmClnt *madmin.AdminClient, userCredentialSecrets []*corev1.Secret, skipCreateUser bool) error {
 	// add user with a 20 seconds timeout
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*20)
 	defer cancel()
@@ -721,17 +697,22 @@ func (t *Tenant) CreateConsoleUser(madmClnt *madmin.AdminClient, userCredentialS
 		if !ok {
 			return errors.New("CONSOLE_ACCESS_KEY not provided")
 		}
-		// skipCreateUser handles the scenario of LDAP users that are not created in MinIO but still need to have a policy assigned
+		// remove spaces and line breaks from access key
+		userAccessKey := strings.TrimSpace(string(consoleAccessKey))
+		// skipCreateUser handles the scenario of LDAP users that are
+		// not created in MinIO but still need to have a policy assigned
 		if !skipCreateUser {
 			consoleSecretKey, ok := secret.Data["CONSOLE_SECRET_KEY"]
+			// remove spaces and line breaks from secret key
+			userSecretKey := strings.TrimSpace(string(consoleSecretKey))
 			if !ok {
 				return errors.New("CONSOLE_SECRET_KEY not provided")
 			}
-			if err := madmClnt.AddUser(ctx, string(consoleAccessKey), string(consoleSecretKey)); err != nil {
+			if err := madmClnt.AddUser(ctx, userAccessKey, userSecretKey); err != nil {
 				return err
 			}
 		}
-		if err := madmClnt.SetPolicy(context.Background(), ConsoleAdminPolicyName, string(consoleAccessKey), false); err != nil {
+		if err := madmClnt.SetPolicy(context.Background(), ConsoleAdminPolicyName, userAccessKey, false); err != nil {
 			return err
 		}
 	}
@@ -936,4 +917,32 @@ func (t *Tenant) GetTenantServiceURL() (svcURL string) {
 	}
 	svc := t.MinIOServerHostAddress()
 	return fmt.Sprintf("%s://%s", scheme, svc)
+}
+
+// ParseRawConfiguration map[string][]byte representation of the MinIO config.env file
+func ParseRawConfiguration(configuration []byte) (config map[string][]byte) {
+	config = map[string][]byte{}
+	if configuration != nil {
+		scanner := bufio.NewScanner(strings.NewReader(string(configuration)))
+		for scanner.Scan() {
+			line := scanner.Text()
+			// parse only exported environment variables and ignore everything else
+			if strings.HasPrefix(line, "export") {
+				envVar := strings.Split(line, "=")
+				if len(envVar) == 2 {
+					// extract env variable key
+					confKey := strings.TrimSpace(strings.TrimPrefix(envVar[0], "export"))
+					// remove first and last quotes from value and trim spaces
+					confValue := strings.TrimSpace(strings.TrimSuffix(strings.TrimPrefix(envVar[1], "\""), "\""))
+					config[confKey] = []byte(confValue)
+					if confKey == "MINIO_ROOT_USER" || confKey == "MINIO_ACCESS_KEY" {
+						config["accesskey"] = config[confKey]
+					} else if confKey == "MINIO_ROOT_PASSWORD" || confKey == "MINIO_SECRET_KEY" {
+						config["secretkey"] = config[confKey]
+					}
+				}
+			}
+		}
+	}
+	return config
 }

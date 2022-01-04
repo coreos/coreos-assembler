@@ -41,93 +41,93 @@ var (
 
 	// Print prints a message.
 	Print = func(data ...interface{}) {
-		consolePrint("Print", Theme["Print"], data...)
+		consolePrint("Print", getThemeColor("Print"), data...)
 	}
 
 	// PrintC prints a message with color.
 	PrintC = func(data ...interface{}) {
-		consolePrint("PrintC", Theme["PrintC"], data...)
+		consolePrint("PrintC", getThemeColor("PrintC"), data...)
 	}
 
 	// Printf prints a formatted message.
 	Printf = func(format string, data ...interface{}) {
-		consolePrintf("Print", Theme["Print"], format, data...)
+		consolePrintf("Print", getThemeColor("Print"), format, data...)
 	}
 
 	// Println prints a message with a newline.
 	Println = func(data ...interface{}) {
-		consolePrintln("Print", Theme["Print"], data...)
+		consolePrintln("Print", getThemeColor("Print"), data...)
 	}
 
 	// Fatal print a error message and exit.
 	Fatal = func(data ...interface{}) {
-		consolePrint("Fatal", Theme["Fatal"], data...)
+		consolePrint("Fatal", getThemeColor("Fatal"), data...)
 		os.Exit(1)
 	}
 
 	// Fatalf print a error message with a format specified and exit.
 	Fatalf = func(format string, data ...interface{}) {
-		consolePrintf("Fatal", Theme["Fatal"], format, data...)
+		consolePrintf("Fatal", getThemeColor("Fatal"), format, data...)
 		os.Exit(1)
 	}
 
 	// Fatalln print a error message with a new line and exit.
 	Fatalln = func(data ...interface{}) {
-		consolePrintln("Fatal", Theme["Fatal"], data...)
+		consolePrintln("Fatal", getThemeColor("Fatal"), data...)
 		os.Exit(1)
 	}
 
 	// Error prints a error message.
 	Error = func(data ...interface{}) {
-		consolePrint("Error", Theme["Error"], data...)
+		consolePrint("Error", getThemeColor("Error"), data...)
 	}
 
 	// Errorf print a error message with a format specified.
 	Errorf = func(format string, data ...interface{}) {
-		consolePrintf("Error", Theme["Error"], format, data...)
+		consolePrintf("Error", getThemeColor("Error"), format, data...)
 	}
 
 	// Errorln prints a error message with a new line.
 	Errorln = func(data ...interface{}) {
-		consolePrintln("Error", Theme["Error"], data...)
+		consolePrintln("Error", getThemeColor("Error"), data...)
 	}
 
 	// Info prints a informational message.
 	Info = func(data ...interface{}) {
-		consolePrint("Info", Theme["Info"], data...)
+		consolePrint("Info", getThemeColor("Info"), data...)
 	}
 
 	// Infof prints a informational message in custom format.
 	Infof = func(format string, data ...interface{}) {
-		consolePrintf("Info", Theme["Info"], format, data...)
+		consolePrintf("Info", getThemeColor("Info"), format, data...)
 	}
 
 	// Infoln prints a informational message with a new line.
 	Infoln = func(data ...interface{}) {
-		consolePrintln("Info", Theme["Info"], data...)
+		consolePrintln("Info", getThemeColor("Info"), data...)
 	}
 
 	// Debug prints a debug message without a new line
 	// Debug prints a debug message.
 	Debug = func(data ...interface{}) {
-		consolePrint("Debug", Theme["Debug"], data...)
+		consolePrint("Debug", getThemeColor("Debug"), data...)
 	}
 
 	// Debugf prints a debug message with a new line.
 	Debugf = func(format string, data ...interface{}) {
-		consolePrintf("Debug", Theme["Debug"], format, data...)
+		consolePrintf("Debug", getThemeColor("Debug"), format, data...)
 	}
 
 	// Debugln prints a debug message with a new line.
 	Debugln = func(data ...interface{}) {
-		consolePrintln("Debug", Theme["Debug"], data...)
+		consolePrintln("Debug", getThemeColor("Debug"), data...)
 	}
 
 	// Colorize prints message in a colorized form, dictated by the corresponding tag argument.
 	Colorize = func(tag string, data interface{}) string {
 		if isatty.IsTerminal(os.Stdout.Fd()) {
-			colorized, ok := Theme[tag]
-			if ok {
+			colorized := getThemeColor(tag)
+			if colorized != nil {
 				return colorized.SprintFunc()(data)
 			} // else: No theme found. Return as string.
 		}
@@ -136,8 +136,8 @@ var (
 
 	// Eraseline Print in new line and adjust to top so that we don't print over the ongoing progress bar.
 	Eraseline = func() {
-		consolePrintf("Print", Theme["Print"], "%c[2K\n", 27)
-		consolePrintf("Print", Theme["Print"], "%c[A", 27)
+		consolePrintf("Print", getThemeColor("Print"), "%c[2K\n", 27)
+		consolePrintf("Print", getThemeColor("Print"), "%c[A", 27)
 	}
 )
 

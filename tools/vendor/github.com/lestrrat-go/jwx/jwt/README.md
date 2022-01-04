@@ -1,4 +1,4 @@
-# github.com/lestrrat-go/jwx/jwt [![Go Reference](https://pkg.go.dev/badge/github.com/lestrrat-go/jwx/jwt.svg)](https://pkg.go.dev/github.com/lestrrat-go/jwx/jwt)
+# JWT [![Go Reference](https://pkg.go.dev/badge/github.com/lestrrat-go/jwx/jwt.svg)](https://pkg.go.dev/github.com/lestrrat-go/jwx/jwt)
 
 Package jwt implements JSON Web Tokens as described in [RFC7519](https://tools.ietf.org/html/rfc7519).
 
@@ -8,12 +8,15 @@ Package jwt implements JSON Web Tokens as described in [RFC7519](https://tools.i
 * Conversion to and from JSON
 * Generate signed tokens
 * Verify signed tokens
+* Extra support for OpenID tokens via [github.com/lestrrat-go/jwx/jwt/openid](./jwt/openid)
 
-# SYNOPSIS
+How-to style documentation can be found in the [docs directory](../docs).
 
 More examples are located in the examples directory ([jwt_example_test.go](../examples/jwt_example_test.go))
 
-# Verify a signed JWT
+# SYNOPSIS
+
+## Verify a signed JWT
 
 ```go
   token, err := jwt.Parse(bytes.NewReader(payload), jwt.WithKeySet(keyset))
@@ -22,7 +25,7 @@ More examples are located in the examples directory ([jwt_example_test.go](../ex
   }
 ```
 
-# Token Usage
+## Token Usage
 
 ```go
 func ExampleJWT() {
@@ -82,11 +85,11 @@ func ExampleJWT() {
 }
 ```
 
-# OpenID Claims
+## OpenID Claims
 
 `jwt` package can work with token types other than the default one.
 For OpenID claims, use the token created by `openid.New()`, or
-use the `jwt.WithOpenIDClaims()`. If you need to use other specialized
+use the `jwt.WithToken(openid.New())`. If you need to use other specialized
 claims, use `jwt.WithToken()` to specify the exact token type
 
 ```go
@@ -114,13 +117,13 @@ func Example_openid() {
   }
   fmt.Printf("%s\n", buf)
 
-  t2, err := jwt.ParseBytes(buf, jwt.WithOpenIDClaims())
+  t2, err := jwt.ParseBytes(buf, jwt.WithToken(openid.New())
   if err != nil {
     fmt.Printf("failed to parse JSON: %s\n", err)
     return
   }
   if _, ok := t2.(openid.Token); !ok {
-    fmt.Printf("using jwt.WithOpenIDClaims() creates an openid.Token instance")
+    fmt.Printf("using jwt.WithToken(openid.New()) creates an openid.Token instance")
     return
   }
 }
