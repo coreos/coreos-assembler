@@ -20,6 +20,7 @@ import (
 
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/platform/api/esx"
+	"github.com/coreos/mantle/platform/conf"
 )
 
 const (
@@ -54,6 +55,12 @@ func NewFlight(opts *esx.Options) (platform.Flight, error) {
 	}
 
 	return ef, nil
+}
+
+func (af *flight) ConfigTooLarge(ud conf.UserData) bool {
+
+	// not implemented
+	return false
 }
 
 // NewCluster creates an instance of a Cluster suitable for spawning

@@ -20,6 +20,7 @@ import (
 
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/platform/api/packet"
+	"github.com/coreos/mantle/platform/conf"
 )
 
 const (
@@ -83,6 +84,12 @@ func (pf *flight) NewCluster(rconf *platform.RuntimeConfig) (platform.Cluster, e
 	pf.AddCluster(pc)
 
 	return pc, nil
+}
+
+func (af *flight) ConfigTooLarge(ud conf.UserData) bool {
+
+	// not implemented
+	return false
 }
 
 func (pf *flight) Destroy() {

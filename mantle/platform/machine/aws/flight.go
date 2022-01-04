@@ -16,10 +16,13 @@
 package aws
 
 import (
+	"encoding/base64"
+
 	"github.com/coreos/pkg/capnslog"
 
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/platform/api/aws"
+	"github.com/coreos/mantle/platform/conf"
 )
 
 const (
@@ -95,6 +98,30 @@ func (af *flight) NewCluster(rconf *platform.RuntimeConfig) (platform.Cluster, e
 	af.AddCluster(ac)
 
 	return ac, nil
+}
+
+func (af *flight) ConfigTooLarge(ud conf.UserData) bool {
+	config, err := ud.Render()
+	if err != nil {
+		return true
+	}
+	configData := config.String()
+	encoding := base64.StdEncoding.EncodeToString([]byte(configData))
+	if len([]byte(encoding)) > MaxUserDataSize {
+		configData, err = config.MaybeCompress()
+		if err != nil {
+			return true
+		}
+		// Check if config is still too large
+		encoding = base64.StdEncoding.EncodeToString([]byte(configData))
+		if len([]byte(encoding)) > MaxUserDataSize {
+			// Config is too large
+			return true
+		}
+	}
+
+	// Config is not too large
+	return false
 }
 
 func (af *flight) Destroy() {

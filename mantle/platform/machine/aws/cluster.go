@@ -30,7 +30,7 @@ type cluster struct {
 	flight *flight
 }
 
-const maxUserDataSize = 16384
+const MaxUserDataSize = 16384
 
 func (ac *cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error) {
 	return ac.NewMachineWithOptions(userdata, platform.MachineOptions{})
@@ -68,15 +68,15 @@ func (ac *cluster) NewMachineWithOptions(userdata *conf.UserData, options platfo
 	// Compress via gzip if needed
 	ud := conf.String()
 	encoding := base64.StdEncoding.EncodeToString([]byte(ud))
-	if len([]byte(encoding)) > maxUserDataSize {
+	if len([]byte(encoding)) > MaxUserDataSize {
 		ud, err = conf.MaybeCompress()
 		if err != nil {
 			return nil, err
 		}
 		// Check if config is still too large
 		encoding = base64.StdEncoding.EncodeToString([]byte(ud))
-		if len([]byte(encoding)) > maxUserDataSize {
-			fmt.Printf("WARNING: compressed userdata exceeds expected limit of %d\n", maxUserDataSize)
+		if len([]byte(encoding)) > MaxUserDataSize {
+			fmt.Printf("WARNING: compressed userdata exceeds expected limit of %d\n", MaxUserDataSize)
 		}
 	}
 	instances, err := ac.flight.api.CreateInstances(ac.Name(), keyname, ud, 1, int64(options.MinDiskSize))

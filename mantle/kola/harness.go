@@ -591,11 +591,34 @@ func runProvidedTests(testsBank map[string]*register.Test, patterns []string, mu
 
 	if len(nonExclusiveTests) > 0 {
 		buckets := createTestBuckets(nonExclusiveTests)
-		for i, bucket := range buckets {
+		numBuckets := len(buckets)
+		for i := 0; i < numBuckets; {
 			// This test does not need to be registered since it is temporarily
 			// created to be used as a wrapper
-			nonExclusiveWrapper := makeNonExclusiveTest(i, bucket, flight)
-			tests[nonExclusiveWrapper.Name] = &nonExclusiveWrapper
+			nonExclusiveWrapper := makeNonExclusiveTest(i, buckets[i], flight)
+			if flight.ConfigTooLarge(*nonExclusiveWrapper.UserData) {
+				// Since the merged config size is too large, we will split the bucket into
+				// two buckets
+				numTests := len(buckets[i])
+				if numTests == 1 {
+					// This test bucket cannot be split further so the single test config
+					// must be too large
+					err = fmt.Errorf("test %v has a config that is too large", buckets[i][0].Name)
+					plog.Fatal(err)
+				}
+				newBucket1 := buckets[i][:numTests/2]
+				newBucket2 := buckets[i][numTests/2:]
+				buckets[i] = newBucket1
+				buckets = append(buckets, newBucket2)
+				// Since we're adding a bucket we'll bump the numBuckets and not
+				// bump `i` during this loop iteration because we want to run through
+				// the check again for the current bucket which should now have half
+				// the tests, but may still have a config that's too large.
+				numBuckets++
+			} else {
+				tests[nonExclusiveWrapper.Name] = &nonExclusiveWrapper
+				i++ // Move to the next bucket to evaluate
+			}
 		}
 	}
 
