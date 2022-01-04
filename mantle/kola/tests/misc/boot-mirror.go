@@ -26,6 +26,7 @@ import (
 	"github.com/coreos/mantle/platform/conf"
 	"github.com/coreos/mantle/platform/machine/unprivqemu"
 	"github.com/coreos/mantle/system"
+	ut "github.com/coreos/mantle/util"
 )
 
 var (
@@ -205,6 +206,14 @@ func detachPrimaryBlockDevice(c cluster.TestCluster, m platform.Machine) {
 	c.Run("detach-primary", func(c cluster.TestCluster) {
 		if err := m.(platform.QEMUMachine).RemovePrimaryBlockDevice(); err != nil {
 			c.Fatalf("failed to delete the first boot disk: %v", err)
+		}
+		// Check if we can still SSH into the machine. We've noticed sometimes
+		// that after removing the primary device, we lose connectivity.
+		if err := ut.Retry(5, 3*time.Second, func() error {
+			_, err2 := platform.GetMachineBootId(m)
+			return err2
+		}); err != nil {
+			c.Fatalf("Failed to retrieve boot ID: %v", err)
 		}
 		err := m.Reboot()
 		if err != nil {
