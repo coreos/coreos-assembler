@@ -18,6 +18,7 @@ import (
 	"github.com/coreos/pkg/capnslog"
 
 	"github.com/coreos/mantle/platform"
+	"github.com/coreos/mantle/platform/conf"
 )
 
 const (
@@ -56,6 +57,12 @@ func NewFlight(opts *Options) (platform.Flight, error) {
 	}
 
 	return qf, nil
+}
+
+func (af *flight) ConfigTooLarge(ud conf.UserData) bool {
+
+	// not implemented
+	return false
 }
 
 // NewCluster creates a Cluster instance, suitable for running virtual

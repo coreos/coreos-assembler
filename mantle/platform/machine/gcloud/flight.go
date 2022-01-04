@@ -21,6 +21,7 @@ import (
 
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/platform/api/gcloud"
+	"github.com/coreos/mantle/platform/conf"
 )
 
 type flight struct {
@@ -53,6 +54,12 @@ func NewFlight(opts *gcloud.Options) (platform.Flight, error) {
 	}
 
 	return gf, nil
+}
+
+func (af *flight) ConfigTooLarge(ud conf.UserData) bool {
+
+	// not implemented
+	return false
 }
 
 func (gf *flight) NewCluster(rconf *platform.RuntimeConfig) (platform.Cluster, error) {

@@ -19,6 +19,7 @@ import (
 
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/platform/api/openstack"
+	"github.com/coreos/mantle/platform/conf"
 )
 
 const (
@@ -84,6 +85,12 @@ func (of *flight) NewCluster(rconf *platform.RuntimeConfig) (platform.Cluster, e
 	of.AddCluster(oc)
 
 	return oc, nil
+}
+
+func (af *flight) ConfigTooLarge(ud conf.UserData) bool {
+
+	// not implemented
+	return false
 }
 
 func (of *flight) Destroy() {

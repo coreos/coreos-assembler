@@ -142,6 +142,10 @@ type Flight interface {
 	// Clusters returns a slice of the active Clusters.
 	Clusters() []Cluster
 
+	// ConfigTooLarge returns true iff the config is too
+	// large for the platform
+	ConfigTooLarge(ud conf.UserData) bool
+
 	// Destroy terminates each cluster and frees any other associated
 	// resources.  It should log any failures; since they are not
 	// actionable, it does not return an error.
