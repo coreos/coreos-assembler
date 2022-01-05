@@ -20,7 +20,6 @@ require (
 	k8s.io/api v0.21.1
 	k8s.io/apimachinery v0.21.1
 	k8s.io/client-go v0.21.1
-	k8s.io/kubernetes v1.13.0
 )
 
 replace github.com/coreos/coreos-assembler-schema => ../schema

@@ -20,7 +20,6 @@ import (
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/kubernetes/pkg/client/conditions"
 )
 
 const (
@@ -409,7 +408,7 @@ func clusterRunner(term termChan, cp CosaPodder, envVars []v1.EnvVar) error {
 				status := resp.Status
 				l := log.WithFields(log.Fields{"phase": status.Phase})
 
-				// OCP 3 hack: conditions.PodRunning() does not return false
+				// OCP 3 hack: PodRunning() does not return false
 				//             with OCP if the conditions show completed.
 				for _, v := range resp.Status.ContainerStatuses {
 					if v.State.Terminated != nil && v.State.Terminated.ExitCode > 0 {
@@ -429,9 +428,9 @@ func clusterRunner(term termChan, cp CosaPodder, envVars []v1.EnvVar) error {
 					}
 				}
 				// Check for running
-				running, err := conditions.PodRunning(events)
+				running, err := PodRunning(events)
 				if err != nil {
-					if err == conditions.ErrPodCompleted {
+					if err == ErrPodCompleted {
 						retCh <- nil
 						return
 					}
@@ -452,7 +451,7 @@ func clusterRunner(term termChan, cp CosaPodder, envVars []v1.EnvVar) error {
 
 				// A pod can be running and completed, so do this _last_
 				// in case the pod has completed
-				completed, err := conditions.PodCompleted(events)
+				completed, err := PodCompleted(events)
 				if err != nil {
 					l.WithError(err).Error("Pod was deleted")
 					retCh <- err
