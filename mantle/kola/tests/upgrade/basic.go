@@ -17,7 +17,6 @@ package upgrade
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"net/http"
 	"path/filepath"
 	"strconv"
@@ -32,7 +31,6 @@ import (
 	"github.com/coreos/mantle/kola/tests/util"
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/platform/conf"
-	mantleUtil "github.com/coreos/mantle/util"
 )
 
 const workdir = "/var/srv/upgrade"
@@ -331,27 +329,6 @@ func runFnAndWaitForRebootIntoVersion(c cluster.TestCluster, m platform.Machine,
 	}
 }
 
-// ensureZincatiUpdatesEnabled checks Zincati metrics to make sure that
-// auto-updates logic is enabled.
-func ensureZincatiUpdatesEnabled(c cluster.TestCluster, m platform.Machine) error {
-	metricsCheck := func() error {
-		metrics, err := c.SSHf(m, "sudo socat - UNIX-CONNECT:%s", zincatiMetricsSocket)
-		if err != nil {
-			return err
-		}
-		if strings.Contains(string(metrics), "zincati_update_agent_updates_enabled 1") {
-			return nil
-		}
-		return errors.New("failed to find 'zincati_update_agent_updates_enabled 1' on Zincati metrics.promsock")
-	}
-
-	if err := mantleUtil.Retry(120, time.Second, metricsCheck); err != nil {
-		return err
-	}
-
-	return nil
-}
-
 func waitForUpgradeToVersion(c cluster.TestCluster, m platform.Machine, version string) {
 	// we have to do this every time in case e.g. we've just rebased from an
 	// official pipeline build to a developer build
@@ -360,11 +337,6 @@ func waitForUpgradeToVersion(c cluster.TestCluster, m platform.Machine, version 
 	runFnAndWaitForRebootIntoVersion(c, m, version, func() {
 		// XXX: update to use https://github.com/coreos/zincati/issues/203
 		c.RunCmdSync(m, "sudo systemctl start zincati.service")
-
-		// sanity-check that Zincati has updates enabled
-		if err := ensureZincatiUpdatesEnabled(c, m); err != nil {
-			c.Fatalf("%s", err)
-		}
 	})
 }
 
