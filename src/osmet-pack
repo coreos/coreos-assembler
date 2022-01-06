@@ -79,7 +79,7 @@ esac
 
 # We don't want double quotes (for both `coreinst` and `fast`, which may be '')
 # shellcheck disable=SC2086
-RUST_BACKTRACE=full ${coreinst} osmet pack /dev/disk/by-id/virtio-osmet \
+RUST_BACKTRACE=full ${coreinst} pack osmet /dev/disk/by-id/virtio-osmet \
     --description "${description}" \
     --checksum "${checksum}" \
     --output /tmp/osmet.bin $fast
