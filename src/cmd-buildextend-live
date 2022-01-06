@@ -733,7 +733,7 @@ boot
             print(f'Embedded {ignition_img_size} bytes Ignition config space at {offset}')
 
     # this consumes the minimal image
-    run_verbose(['coreos-installer', 'iso', 'extract', 'pack-minimal-iso',
+    run_verbose(['coreos-installer', 'pack', 'minimal-iso',
                  tmpisofile, f'{tmpisofile}.minimal', "--consume"])
 
     buildmeta['images'].update({
