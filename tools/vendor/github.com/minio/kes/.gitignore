@@ -1,9 +1,0 @@
-*~
-*.cert
-*.key
-*.crt
-.idea
-kes
-!kes/
-*.test
-dist/
