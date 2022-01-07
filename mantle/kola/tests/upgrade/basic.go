@@ -150,7 +150,7 @@ func fcosUpgradeBasic(c cluster.TestCluster) {
 			tmprepo := workdir + "/repo-bare"
 			// TODO: https://github.com/ostreedev/ostree-rs-ext/issues/34
 			c.RunCmdSyncf(m, "ostree --repo=%s init --mode=bare-user", tmprepo)
-			c.RunCmdSyncf(m, "rpm-ostree ex-container import --repo=%s --write-ref %s ostree-unverified-image:oci-archive:%s:latest", tmprepo, ostreeref, ostreeblob)
+			c.RunCmdSyncf(m, "ostree container import --repo=%s --write-ref %s ostree-unverified-image:oci-archive:%s:latest", tmprepo, ostreeref, ostreeblob)
 			c.RunCmdSyncf(m, "ostree --repo=%s init --mode=archive", ostreeRepo)
 			c.RunCmdSyncf(m, "ostree --repo=%s pull-local %s %s", ostreeRepo, tmprepo, ostreeref)
 		} else {

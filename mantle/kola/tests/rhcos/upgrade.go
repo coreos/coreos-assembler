@@ -114,6 +114,7 @@ func setup(c cluster.TestCluster) {
 		outputOstreeTarName := "tmp/ " + strings.Replace(ostreeTarName, ".ociarchive", ".tar", 1)
 		// We also right now need a dance to write to a bare-user repo until
 		// the object writing path can directly write to archive repos.
+		// TODO change this to "ostree container" once we have at least rpm-ostree v2022.1
 		cmd := exec.Command("/bin/bash", "-c", fmt.Sprintf(`set -euo pipefail;
 			tarname="%s"
 			outputname="%s"

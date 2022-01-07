@@ -184,7 +184,7 @@ def robosign_ostree(args, s3, build, gpgkey):
             # accidental mutation.  Remove the existing one because otherwise
             # we'll try to `open(O_TRUNC)` it and fail.
             os.unlink(exported_ostree_path)
-            subprocess.check_call(['rpm-ostree', 'ex-container', 'export', '--repo=tmp/repo', checksum, f'oci-archive:{exported_ostree_path}:latest'])
+            subprocess.check_call(['ostree', 'container', 'export', '--repo=tmp/repo', checksum, f'oci-archive:{exported_ostree_path}:latest'])
         else:
             tmp_tar = os.path.join(d, ostree_image['path'])
             # To make things a bit more efficient, append the commitmeta at
