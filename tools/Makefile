@@ -1,33 +1,26 @@
 PREFIX ?= /usr
 DESTDIR ?=
-toolsLong=$(shell cd .. && $ git log -n 1 --date=short --pretty=format:%H -- tools)
-toolsShort=$(shell cd .. && $ git log -n 1 --date=short --pretty=format:%h -- tools)
-toolsVersion=$(shell cd .. && $ git log -n 1 --date=short --pretty=format:%cs~%h -- tools)
-minioFlags := -X github.com/minio/minio/cmd.Version=$(toolsVersion) -X github.com/minio/minio/cmd.ReleaseTag=COSA-$(toolsVersion) -X github.com/minio/minio/cmd.CommitID=cosa-$(toolsLong) -X github.com/minio/minio/cmd.ShortCommitID=cosa-$(toolsShort)
 
 export GO11MODULE=on
 export GOOS=linux
 export CGO_ENABLED=0
+export GOPATH=$(shell readlink -f .)
+GOARCH := $(shell go env GOARCH)
 build:
 	mkdir -p bin
 	test -e bin/golangci-lint || \
-	go build -mod=vendor -o bin/golangci-lint github.com/golangci/golangci-lint/cmd/golangci-lint
-	test -e bin/gosec || \
-	go build -mod=vendor -o bin/gosec github.com/securego/gosec/cmd/gosec
+		curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(GOPATH)/bin
 	test -f bin/schematyper || \
-	go build -mod=vendor -o bin/schematyper github.com/idubinskiy/schematyper
+		go install github.com/idubinskiy/schematyper@latest
 	test -e bin/gomarkdoc || \
-	go build -mod=vendor -o bin/gomarkdoc github.com/princjef/gomarkdoc/cmd/gomarkdoc
+		go install github.com/princjef/gomarkdoc/cmd/gomarkdoc@latest
 	test -e bin/minio || \
-	go build -mod=vendor -tags kqueue -trimpath --ldflags "$(minioFlags)" -o bin/minio github.com/minio/minio
+		curl -sSfLO --output-dir $(GOPATH)/bin https://dl.min.io/server/minio/release/linux-$(GOARCH)/minio && chmod +x $(GOPATH)/bin/minio
+	rm -rf pkg
 
 clean:
 	rm -rfv bin
+	rm -rfv pkg
 
-install: bin/minio bin/golangci-lint bin/gosec bin/schematyper bin/gomarkdoc
-	install -v -D -t $(DESTDIR)$(PREFIX)/bin bin/{minio,golangci-lint,gosec}
-
-go-deps:
-	go mod tidy
-	go mod download
-	go mod vendor
+install: bin/golangci-lint bin/gomarkdoc bin/minio bin/schematyper
+	install -v -D -t $(DESTDIR)$(PREFIX)/bin bin/{golangci-lint,gomarkdoc,minio,schematyper}
