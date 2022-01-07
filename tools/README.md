@@ -1,14 +1,9 @@
 # Tools
 
-This directory contains Golang Tools that are needed:
+This directory contains Golang Tools that are needed for building/using
+`gangplank`, generating schemas, or generating Markdown documentation.
+
 - golangci-lint
+- gomarkdoc
 - minio
-- gosec
-
-## Minio
-
-Minio is an S3-API object that is used by entrypoint.
-
-## golangci-lint and gosec
-
-Linters used to check code quality.
+- schematyper
