@@ -119,7 +119,7 @@ func setup(c cluster.TestCluster) {
 			outputname="%s"
 			commit="%s"
 			ostree --repo=tmp/repo-cache init --mode=bare-user
-			rpm-ostree ex-container import --repo=tmp/repo ostree-unverified-image:oci-archive:$tarname:latest
+			ostree container import --repo=tmp/repo ostree-unverified-image:oci-archive:$tarname:latest
 			ostree --repo=tmp/repo pull-local tmp/repo-cache "$commit"
 			tar -cf "$outputname" -C tmp/repo .
 			rm tmp/repo-cache -rf
