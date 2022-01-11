@@ -157,6 +157,10 @@ func WaitForMachineReboot(m Machine, j *Journal, timeout time.Duration, oldBootI
 		} else if strings.Contains(err.Error(), "handshake failed: EOF") {
 			// This can also happen if we're killed during handshake
 			c <- nil
+		} else if strings.Contains(err.Error(), "dial tcp") {
+			// Catch "dial tcp xx.xx.xx.xx:xx: connect: connection refused"
+			// error which occcurs when rebooting on online platforms.
+			c <- nil
 		} else {
 			c <- fmt.Errorf("waiting for reboot failed: %s: %s: %s", out, err, stderr)
 		}
