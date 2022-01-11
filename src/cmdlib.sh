@@ -381,7 +381,7 @@ EOF
             fi
             local bn ovlname
             bn=$(basename "${n}")
-            ovlname="${name}-config-overlay-${bn}"
+            ovlname="overlay/${bn}"
             commit_overlay "${ovlname}" "${n}"
             layers="${layers} ${ovlname}"
         done
