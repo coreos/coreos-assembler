@@ -21,7 +21,6 @@ import (
 )
 
 // AuthorizeSecurityGroupEgress invokes the ecs.AuthorizeSecurityGroupEgress API synchronously
-// api document: https://help.aliyun.com/api/ecs/authorizesecuritygroupegress.html
 func (client *Client) AuthorizeSecurityGroupEgress(request *AuthorizeSecurityGroupEgressRequest) (response *AuthorizeSecurityGroupEgressResponse, err error) {
 	response = CreateAuthorizeSecurityGroupEgressResponse()
 	err = client.DoAction(request, response)
@@ -29,8 +28,6 @@ func (client *Client) AuthorizeSecurityGroupEgress(request *AuthorizeSecurityGro
 }
 
 // AuthorizeSecurityGroupEgressWithChan invokes the ecs.AuthorizeSecurityGroupEgress API asynchronously
-// api document: https://help.aliyun.com/api/ecs/authorizesecuritygroupegress.html
-// asynchronous document: https://help.aliyun.com/document_detail/66220.html
 func (client *Client) AuthorizeSecurityGroupEgressWithChan(request *AuthorizeSecurityGroupEgressRequest) (<-chan *AuthorizeSecurityGroupEgressResponse, <-chan error) {
 	responseChan := make(chan *AuthorizeSecurityGroupEgressResponse, 1)
 	errChan := make(chan error, 1)
@@ -53,8 +50,6 @@ func (client *Client) AuthorizeSecurityGroupEgressWithChan(request *AuthorizeSec
 }
 
 // AuthorizeSecurityGroupEgressWithCallback invokes the ecs.AuthorizeSecurityGroupEgress API asynchronously
-// api document: https://help.aliyun.com/api/ecs/authorizesecuritygroupegress.html
-// asynchronous document: https://help.aliyun.com/document_detail/66220.html
 func (client *Client) AuthorizeSecurityGroupEgressWithCallback(request *AuthorizeSecurityGroupEgressRequest, callback func(response *AuthorizeSecurityGroupEgressResponse, err error)) <-chan int {
 	result := make(chan int, 1)
 	err := client.AddAsyncTask(func() {
@@ -80,6 +75,7 @@ type AuthorizeSecurityGroupEgressRequest struct {
 	ResourceOwnerId       requests.Integer `position:"Query" name:"ResourceOwnerId"`
 	SourcePortRange       string           `position:"Query" name:"SourcePortRange"`
 	ClientToken           string           `position:"Query" name:"ClientToken"`
+	DestPrefixListId      string           `position:"Query" name:"DestPrefixListId"`
 	SecurityGroupId       string           `position:"Query" name:"SecurityGroupId"`
 	Description           string           `position:"Query" name:"Description"`
 	Ipv6DestCidrIp        string           `position:"Query" name:"Ipv6DestCidrIp"`
@@ -110,6 +106,7 @@ func CreateAuthorizeSecurityGroupEgressRequest() (request *AuthorizeSecurityGrou
 		RpcRequest: &requests.RpcRequest{},
 	}
 	request.InitWithApiInfo("Ecs", "2014-05-26", "AuthorizeSecurityGroupEgress", "ecs", "openAPI")
+	request.Method = requests.POST
 	return
 }
 

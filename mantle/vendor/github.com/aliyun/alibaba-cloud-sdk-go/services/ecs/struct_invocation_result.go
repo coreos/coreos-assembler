@@ -17,12 +17,19 @@ package ecs
 
 // InvocationResult is a nested struct in ecs response
 type InvocationResult struct {
+	InvocationStatus   string `json:"InvocationStatus" xml:"InvocationStatus"`
+	Repeats            int    `json:"Repeats" xml:"Repeats"`
 	CommandId          string `json:"CommandId" xml:"CommandId"`
-	InvokeId           string `json:"InvokeId" xml:"InvokeId"`
 	InstanceId         string `json:"InstanceId" xml:"InstanceId"`
-	StartTime          string `json:"StartTime" xml:"StartTime"`
-	FinishedTime       string `json:"FinishedTime" xml:"FinishedTime"`
 	Output             string `json:"Output" xml:"Output"`
-	InvokeRecordStatus string `json:"InvokeRecordStatus" xml:"InvokeRecordStatus"`
+	Dropped            int    `json:"Dropped" xml:"Dropped"`
+	StopTime           string `json:"StopTime" xml:"StopTime"`
 	ExitCode           int64  `json:"ExitCode" xml:"ExitCode"`
+	StartTime          string `json:"StartTime" xml:"StartTime"`
+	ErrorInfo          string `json:"ErrorInfo" xml:"ErrorInfo"`
+	ErrorCode          string `json:"ErrorCode" xml:"ErrorCode"`
+	FinishedTime       string `json:"FinishedTime" xml:"FinishedTime"`
+	InvokeId           string `json:"InvokeId" xml:"InvokeId"`
+	InvokeRecordStatus string `json:"InvokeRecordStatus" xml:"InvokeRecordStatus"`
+	Username           string `json:"Username" xml:"Username"`
 }

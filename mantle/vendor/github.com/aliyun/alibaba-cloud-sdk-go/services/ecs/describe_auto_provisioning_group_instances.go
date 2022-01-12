@@ -21,7 +21,6 @@ import (
 )
 
 // DescribeAutoProvisioningGroupInstances invokes the ecs.DescribeAutoProvisioningGroupInstances API synchronously
-// api document: https://help.aliyun.com/api/ecs/describeautoprovisioninggroupinstances.html
 func (client *Client) DescribeAutoProvisioningGroupInstances(request *DescribeAutoProvisioningGroupInstancesRequest) (response *DescribeAutoProvisioningGroupInstancesResponse, err error) {
 	response = CreateDescribeAutoProvisioningGroupInstancesResponse()
 	err = client.DoAction(request, response)
@@ -29,8 +28,6 @@ func (client *Client) DescribeAutoProvisioningGroupInstances(request *DescribeAu
 }
 
 // DescribeAutoProvisioningGroupInstancesWithChan invokes the ecs.DescribeAutoProvisioningGroupInstances API asynchronously
-// api document: https://help.aliyun.com/api/ecs/describeautoprovisioninggroupinstances.html
-// asynchronous document: https://help.aliyun.com/document_detail/66220.html
 func (client *Client) DescribeAutoProvisioningGroupInstancesWithChan(request *DescribeAutoProvisioningGroupInstancesRequest) (<-chan *DescribeAutoProvisioningGroupInstancesResponse, <-chan error) {
 	responseChan := make(chan *DescribeAutoProvisioningGroupInstancesResponse, 1)
 	errChan := make(chan error, 1)
@@ -53,8 +50,6 @@ func (client *Client) DescribeAutoProvisioningGroupInstancesWithChan(request *De
 }
 
 // DescribeAutoProvisioningGroupInstancesWithCallback invokes the ecs.DescribeAutoProvisioningGroupInstances API asynchronously
-// api document: https://help.aliyun.com/api/ecs/describeautoprovisioninggroupinstances.html
-// asynchronous document: https://help.aliyun.com/document_detail/66220.html
 func (client *Client) DescribeAutoProvisioningGroupInstancesWithCallback(request *DescribeAutoProvisioningGroupInstancesRequest, callback func(response *DescribeAutoProvisioningGroupInstancesResponse, err error)) <-chan int {
 	result := make(chan int, 1)
 	err := client.AddAsyncTask(func() {
@@ -88,10 +83,10 @@ type DescribeAutoProvisioningGroupInstancesRequest struct {
 // DescribeAutoProvisioningGroupInstancesResponse is the response struct for api DescribeAutoProvisioningGroupInstances
 type DescribeAutoProvisioningGroupInstancesResponse struct {
 	*responses.BaseResponse
-	RequestId  string                                            `json:"RequestId" xml:"RequestId"`
-	TotalCount int                                               `json:"TotalCount" xml:"TotalCount"`
-	PageNumber int                                               `json:"PageNumber" xml:"PageNumber"`
 	PageSize   int                                               `json:"PageSize" xml:"PageSize"`
+	RequestId  string                                            `json:"RequestId" xml:"RequestId"`
+	PageNumber int                                               `json:"PageNumber" xml:"PageNumber"`
+	TotalCount int                                               `json:"TotalCount" xml:"TotalCount"`
 	Instances  InstancesInDescribeAutoProvisioningGroupInstances `json:"Instances" xml:"Instances"`
 }
 
@@ -101,6 +96,7 @@ func CreateDescribeAutoProvisioningGroupInstancesRequest() (request *DescribeAut
 		RpcRequest: &requests.RpcRequest{},
 	}
 	request.InitWithApiInfo("Ecs", "2014-05-26", "DescribeAutoProvisioningGroupInstances", "ecs", "openAPI")
+	request.Method = requests.POST
 	return
 }
 

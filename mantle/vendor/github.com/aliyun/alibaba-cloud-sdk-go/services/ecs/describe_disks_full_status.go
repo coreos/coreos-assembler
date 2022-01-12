@@ -21,7 +21,6 @@ import (
 )
 
 // DescribeDisksFullStatus invokes the ecs.DescribeDisksFullStatus API synchronously
-// api document: https://help.aliyun.com/api/ecs/describedisksfullstatus.html
 func (client *Client) DescribeDisksFullStatus(request *DescribeDisksFullStatusRequest) (response *DescribeDisksFullStatusResponse, err error) {
 	response = CreateDescribeDisksFullStatusResponse()
 	err = client.DoAction(request, response)
@@ -29,8 +28,6 @@ func (client *Client) DescribeDisksFullStatus(request *DescribeDisksFullStatusRe
 }
 
 // DescribeDisksFullStatusWithChan invokes the ecs.DescribeDisksFullStatus API asynchronously
-// api document: https://help.aliyun.com/api/ecs/describedisksfullstatus.html
-// asynchronous document: https://help.aliyun.com/document_detail/66220.html
 func (client *Client) DescribeDisksFullStatusWithChan(request *DescribeDisksFullStatusRequest) (<-chan *DescribeDisksFullStatusResponse, <-chan error) {
 	responseChan := make(chan *DescribeDisksFullStatusResponse, 1)
 	errChan := make(chan error, 1)
@@ -53,8 +50,6 @@ func (client *Client) DescribeDisksFullStatusWithChan(request *DescribeDisksFull
 }
 
 // DescribeDisksFullStatusWithCallback invokes the ecs.DescribeDisksFullStatus API asynchronously
-// api document: https://help.aliyun.com/api/ecs/describedisksfullstatus.html
-// asynchronous document: https://help.aliyun.com/document_detail/66220.html
 func (client *Client) DescribeDisksFullStatusWithCallback(request *DescribeDisksFullStatusRequest, callback func(response *DescribeDisksFullStatusResponse, err error)) <-chan int {
 	result := make(chan int, 1)
 	err := client.AddAsyncTask(func() {
@@ -76,28 +71,36 @@ func (client *Client) DescribeDisksFullStatusWithCallback(request *DescribeDisks
 // DescribeDisksFullStatusRequest is the request struct for api DescribeDisksFullStatus
 type DescribeDisksFullStatusRequest struct {
 	*requests.RpcRequest
-	EventId              *[]string        `position:"Query" name:"EventId"  type:"Repeated"`
-	ResourceOwnerId      requests.Integer `position:"Query" name:"ResourceOwnerId"`
-	PageNumber           requests.Integer `position:"Query" name:"PageNumber"`
-	EventTimeStart       string           `position:"Query" name:"EventTime.Start"`
-	PageSize             requests.Integer `position:"Query" name:"PageSize"`
-	DiskId               *[]string        `position:"Query" name:"DiskId"  type:"Repeated"`
-	ResourceOwnerAccount string           `position:"Query" name:"ResourceOwnerAccount"`
-	OwnerAccount         string           `position:"Query" name:"OwnerAccount"`
-	OwnerId              requests.Integer `position:"Query" name:"OwnerId"`
-	EventTimeEnd         string           `position:"Query" name:"EventTime.End"`
-	HealthStatus         string           `position:"Query" name:"HealthStatus"`
-	EventType            string           `position:"Query" name:"EventType"`
-	Status               string           `position:"Query" name:"Status"`
+	EventId              *[]string                     `position:"Query" name:"EventId"  type:"Repeated"`
+	ResourceOwnerId      requests.Integer              `position:"Query" name:"ResourceOwnerId"`
+	PageNumber           requests.Integer              `position:"Query" name:"PageNumber"`
+	EventTimeStart       string                        `position:"Query" name:"EventTime.Start"`
+	ResourceGroupId      string                        `position:"Query" name:"ResourceGroupId"`
+	PageSize             requests.Integer              `position:"Query" name:"PageSize"`
+	DiskId               *[]string                     `position:"Query" name:"DiskId"  type:"Repeated"`
+	Tag                  *[]DescribeDisksFullStatusTag `position:"Query" name:"Tag"  type:"Repeated"`
+	ResourceOwnerAccount string                        `position:"Query" name:"ResourceOwnerAccount"`
+	OwnerAccount         string                        `position:"Query" name:"OwnerAccount"`
+	OwnerId              requests.Integer              `position:"Query" name:"OwnerId"`
+	EventTimeEnd         string                        `position:"Query" name:"EventTime.End"`
+	HealthStatus         string                        `position:"Query" name:"HealthStatus"`
+	EventType            string                        `position:"Query" name:"EventType"`
+	Status               string                        `position:"Query" name:"Status"`
+}
+
+// DescribeDisksFullStatusTag is a repeated param struct in DescribeDisksFullStatusRequest
+type DescribeDisksFullStatusTag struct {
+	Key   string `name:"Key"`
+	Value string `name:"Value"`
 }
 
 // DescribeDisksFullStatusResponse is the response struct for api DescribeDisksFullStatus
 type DescribeDisksFullStatusResponse struct {
 	*responses.BaseResponse
-	RequestId         string            `json:"RequestId" xml:"RequestId"`
-	TotalCount        int               `json:"TotalCount" xml:"TotalCount"`
-	PageNumber        int               `json:"PageNumber" xml:"PageNumber"`
 	PageSize          int               `json:"PageSize" xml:"PageSize"`
+	RequestId         string            `json:"RequestId" xml:"RequestId"`
+	PageNumber        int               `json:"PageNumber" xml:"PageNumber"`
+	TotalCount        int               `json:"TotalCount" xml:"TotalCount"`
 	DiskFullStatusSet DiskFullStatusSet `json:"DiskFullStatusSet" xml:"DiskFullStatusSet"`
 }
 
@@ -107,6 +110,7 @@ func CreateDescribeDisksFullStatusRequest() (request *DescribeDisksFullStatusReq
 		RpcRequest: &requests.RpcRequest{},
 	}
 	request.InitWithApiInfo("Ecs", "2014-05-26", "DescribeDisksFullStatus", "ecs", "openAPI")
+	request.Method = requests.POST
 	return
 }
 

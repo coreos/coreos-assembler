@@ -21,7 +21,6 @@ import (
 )
 
 // CreateNetworkInterface invokes the ecs.CreateNetworkInterface API synchronously
-// api document: https://help.aliyun.com/api/ecs/createnetworkinterface.html
 func (client *Client) CreateNetworkInterface(request *CreateNetworkInterfaceRequest) (response *CreateNetworkInterfaceResponse, err error) {
 	response = CreateCreateNetworkInterfaceResponse()
 	err = client.DoAction(request, response)
@@ -29,8 +28,6 @@ func (client *Client) CreateNetworkInterface(request *CreateNetworkInterfaceRequ
 }
 
 // CreateNetworkInterfaceWithChan invokes the ecs.CreateNetworkInterface API asynchronously
-// api document: https://help.aliyun.com/api/ecs/createnetworkinterface.html
-// asynchronous document: https://help.aliyun.com/document_detail/66220.html
 func (client *Client) CreateNetworkInterfaceWithChan(request *CreateNetworkInterfaceRequest) (<-chan *CreateNetworkInterfaceResponse, <-chan error) {
 	responseChan := make(chan *CreateNetworkInterfaceResponse, 1)
 	errChan := make(chan error, 1)
@@ -53,8 +50,6 @@ func (client *Client) CreateNetworkInterfaceWithChan(request *CreateNetworkInter
 }
 
 // CreateNetworkInterfaceWithCallback invokes the ecs.CreateNetworkInterface API asynchronously
-// api document: https://help.aliyun.com/api/ecs/createnetworkinterface.html
-// asynchronous document: https://help.aliyun.com/document_detail/66220.html
 func (client *Client) CreateNetworkInterfaceWithCallback(request *CreateNetworkInterfaceRequest, callback func(response *CreateNetworkInterfaceResponse, err error)) <-chan int {
 	result := make(chan int, 1)
 	err := client.AddAsyncTask(func() {
@@ -76,20 +71,29 @@ func (client *Client) CreateNetworkInterfaceWithCallback(request *CreateNetworkI
 // CreateNetworkInterfaceRequest is the request struct for api CreateNetworkInterface
 type CreateNetworkInterfaceRequest struct {
 	*requests.RpcRequest
-	ResourceOwnerId      requests.Integer             `position:"Query" name:"ResourceOwnerId"`
-	ClientToken          string                       `position:"Query" name:"ClientToken"`
-	SecurityGroupId      string                       `position:"Query" name:"SecurityGroupId"`
-	Description          string                       `position:"Query" name:"Description"`
-	BusinessType         string                       `position:"Query" name:"BusinessType"`
-	ResourceGroupId      string                       `position:"Query" name:"ResourceGroupId"`
-	Tag                  *[]CreateNetworkInterfaceTag `position:"Query" name:"Tag"  type:"Repeated"`
-	NetworkInterfaceName string                       `position:"Query" name:"NetworkInterfaceName"`
-	Visible              requests.Boolean             `position:"Query" name:"Visible"`
-	ResourceOwnerAccount string                       `position:"Query" name:"ResourceOwnerAccount"`
-	OwnerAccount         string                       `position:"Query" name:"OwnerAccount"`
-	OwnerId              requests.Integer             `position:"Query" name:"OwnerId"`
-	VSwitchId            string                       `position:"Query" name:"VSwitchId"`
-	PrimaryIpAddress     string                       `position:"Query" name:"PrimaryIpAddress"`
+	QueueNumber                    requests.Integer             `position:"Query" name:"QueueNumber"`
+	ResourceOwnerId                requests.Integer             `position:"Query" name:"ResourceOwnerId"`
+	ClientToken                    string                       `position:"Query" name:"ClientToken"`
+	SecurityGroupId                string                       `position:"Query" name:"SecurityGroupId"`
+	Description                    string                       `position:"Query" name:"Description"`
+	SecondaryPrivateIpAddressCount requests.Integer             `position:"Query" name:"SecondaryPrivateIpAddressCount"`
+	BusinessType                   string                       `position:"Query" name:"BusinessType"`
+	ResourceGroupId                string                       `position:"Query" name:"ResourceGroupId"`
+	InstanceType                   string                       `position:"Query" name:"InstanceType"`
+	Tag                            *[]CreateNetworkInterfaceTag `position:"Query" name:"Tag"  type:"Repeated"`
+	NetworkInterfaceName           string                       `position:"Query" name:"NetworkInterfaceName"`
+	Visible                        requests.Boolean             `position:"Query" name:"Visible"`
+	ResourceOwnerAccount           string                       `position:"Query" name:"ResourceOwnerAccount"`
+	Ipv6AddressCount               requests.Integer             `position:"Query" name:"Ipv6AddressCount"`
+	OwnerAccount                   string                       `position:"Query" name:"OwnerAccount"`
+	QueuePairNumber                requests.Integer             `position:"Query" name:"QueuePairNumber"`
+	OwnerId                        requests.Integer             `position:"Query" name:"OwnerId"`
+	SecurityGroupIds               *[]string                    `position:"Query" name:"SecurityGroupIds"  type:"Repeated"`
+	NetworkInterfaceTrafficMode    string                       `position:"Query" name:"NetworkInterfaceTrafficMode"`
+	VSwitchId                      string                       `position:"Query" name:"VSwitchId"`
+	PrivateIpAddress               *[]string                    `position:"Query" name:"PrivateIpAddress"  type:"Repeated"`
+	PrimaryIpAddress               string                       `position:"Query" name:"PrimaryIpAddress"`
+	Ipv6Address                    *[]string                    `position:"Query" name:"Ipv6Address"  type:"Repeated"`
 }
 
 // CreateNetworkInterfaceTag is a repeated param struct in CreateNetworkInterfaceRequest
@@ -101,8 +105,25 @@ type CreateNetworkInterfaceTag struct {
 // CreateNetworkInterfaceResponse is the response struct for api CreateNetworkInterface
 type CreateNetworkInterfaceResponse struct {
 	*responses.BaseResponse
-	RequestId          string `json:"RequestId" xml:"RequestId"`
-	NetworkInterfaceId string `json:"NetworkInterfaceId" xml:"NetworkInterfaceId"`
+	Status               string                                   `json:"Status" xml:"Status"`
+	Type                 string                                   `json:"Type" xml:"Type"`
+	VpcId                string                                   `json:"VpcId" xml:"VpcId"`
+	NetworkInterfaceName string                                   `json:"NetworkInterfaceName" xml:"NetworkInterfaceName"`
+	MacAddress           string                                   `json:"MacAddress" xml:"MacAddress"`
+	NetworkInterfaceId   string                                   `json:"NetworkInterfaceId" xml:"NetworkInterfaceId"`
+	ServiceID            int64                                    `json:"ServiceID" xml:"ServiceID"`
+	OwnerId              string                                   `json:"OwnerId" xml:"OwnerId"`
+	ServiceManaged       bool                                     `json:"ServiceManaged" xml:"ServiceManaged"`
+	VSwitchId            string                                   `json:"VSwitchId" xml:"VSwitchId"`
+	RequestId            string                                   `json:"RequestId" xml:"RequestId"`
+	Description          string                                   `json:"Description" xml:"Description"`
+	ResourceGroupId      string                                   `json:"ResourceGroupId" xml:"ResourceGroupId"`
+	ZoneId               string                                   `json:"ZoneId" xml:"ZoneId"`
+	PrivateIpAddress     string                                   `json:"PrivateIpAddress" xml:"PrivateIpAddress"`
+	SecurityGroupIds     SecurityGroupIdsInCreateNetworkInterface `json:"SecurityGroupIds" xml:"SecurityGroupIds"`
+	PrivateIpSets        PrivateIpSetsInCreateNetworkInterface    `json:"PrivateIpSets" xml:"PrivateIpSets"`
+	Tags                 TagsInCreateNetworkInterface             `json:"Tags" xml:"Tags"`
+	Ipv6Sets             Ipv6SetsInCreateNetworkInterface         `json:"Ipv6Sets" xml:"Ipv6Sets"`
 }
 
 // CreateCreateNetworkInterfaceRequest creates a request to invoke CreateNetworkInterface API
@@ -111,6 +132,7 @@ func CreateCreateNetworkInterfaceRequest() (request *CreateNetworkInterfaceReque
 		RpcRequest: &requests.RpcRequest{},
 	}
 	request.InitWithApiInfo("Ecs", "2014-05-26", "CreateNetworkInterface", "ecs", "openAPI")
+	request.Method = requests.POST
 	return
 }
 

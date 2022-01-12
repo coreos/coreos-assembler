@@ -21,7 +21,6 @@ import (
 )
 
 // DescribeAutoProvisioningGroupHistory invokes the ecs.DescribeAutoProvisioningGroupHistory API synchronously
-// api document: https://help.aliyun.com/api/ecs/describeautoprovisioninggrouphistory.html
 func (client *Client) DescribeAutoProvisioningGroupHistory(request *DescribeAutoProvisioningGroupHistoryRequest) (response *DescribeAutoProvisioningGroupHistoryResponse, err error) {
 	response = CreateDescribeAutoProvisioningGroupHistoryResponse()
 	err = client.DoAction(request, response)
@@ -29,8 +28,6 @@ func (client *Client) DescribeAutoProvisioningGroupHistory(request *DescribeAuto
 }
 
 // DescribeAutoProvisioningGroupHistoryWithChan invokes the ecs.DescribeAutoProvisioningGroupHistory API asynchronously
-// api document: https://help.aliyun.com/api/ecs/describeautoprovisioninggrouphistory.html
-// asynchronous document: https://help.aliyun.com/document_detail/66220.html
 func (client *Client) DescribeAutoProvisioningGroupHistoryWithChan(request *DescribeAutoProvisioningGroupHistoryRequest) (<-chan *DescribeAutoProvisioningGroupHistoryResponse, <-chan error) {
 	responseChan := make(chan *DescribeAutoProvisioningGroupHistoryResponse, 1)
 	errChan := make(chan error, 1)
@@ -53,8 +50,6 @@ func (client *Client) DescribeAutoProvisioningGroupHistoryWithChan(request *Desc
 }
 
 // DescribeAutoProvisioningGroupHistoryWithCallback invokes the ecs.DescribeAutoProvisioningGroupHistory API asynchronously
-// api document: https://help.aliyun.com/api/ecs/describeautoprovisioninggrouphistory.html
-// asynchronous document: https://help.aliyun.com/document_detail/66220.html
 func (client *Client) DescribeAutoProvisioningGroupHistoryWithCallback(request *DescribeAutoProvisioningGroupHistoryRequest, callback func(response *DescribeAutoProvisioningGroupHistoryResponse, err error)) <-chan int {
 	result := make(chan int, 1)
 	err := client.AddAsyncTask(func() {
@@ -90,10 +85,10 @@ type DescribeAutoProvisioningGroupHistoryRequest struct {
 // DescribeAutoProvisioningGroupHistoryResponse is the response struct for api DescribeAutoProvisioningGroupHistory
 type DescribeAutoProvisioningGroupHistoryResponse struct {
 	*responses.BaseResponse
-	RequestId                      string                         `json:"RequestId" xml:"RequestId"`
-	TotalCount                     int                            `json:"TotalCount" xml:"TotalCount"`
-	PageNumber                     int                            `json:"PageNumber" xml:"PageNumber"`
 	PageSize                       int                            `json:"PageSize" xml:"PageSize"`
+	RequestId                      string                         `json:"RequestId" xml:"RequestId"`
+	PageNumber                     int                            `json:"PageNumber" xml:"PageNumber"`
+	TotalCount                     int                            `json:"TotalCount" xml:"TotalCount"`
 	AutoProvisioningGroupHistories AutoProvisioningGroupHistories `json:"AutoProvisioningGroupHistories" xml:"AutoProvisioningGroupHistories"`
 }
 
@@ -103,6 +98,7 @@ func CreateDescribeAutoProvisioningGroupHistoryRequest() (request *DescribeAutoP
 		RpcRequest: &requests.RpcRequest{},
 	}
 	request.InitWithApiInfo("Ecs", "2014-05-26", "DescribeAutoProvisioningGroupHistory", "ecs", "openAPI")
+	request.Method = requests.POST
 	return
 }
 

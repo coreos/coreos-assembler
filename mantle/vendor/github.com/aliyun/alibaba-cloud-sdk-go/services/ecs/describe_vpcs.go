@@ -21,7 +21,6 @@ import (
 )
 
 // DescribeVpcs invokes the ecs.DescribeVpcs API synchronously
-// api document: https://help.aliyun.com/api/ecs/describevpcs.html
 func (client *Client) DescribeVpcs(request *DescribeVpcsRequest) (response *DescribeVpcsResponse, err error) {
 	response = CreateDescribeVpcsResponse()
 	err = client.DoAction(request, response)
@@ -29,8 +28,6 @@ func (client *Client) DescribeVpcs(request *DescribeVpcsRequest) (response *Desc
 }
 
 // DescribeVpcsWithChan invokes the ecs.DescribeVpcs API asynchronously
-// api document: https://help.aliyun.com/api/ecs/describevpcs.html
-// asynchronous document: https://help.aliyun.com/document_detail/66220.html
 func (client *Client) DescribeVpcsWithChan(request *DescribeVpcsRequest) (<-chan *DescribeVpcsResponse, <-chan error) {
 	responseChan := make(chan *DescribeVpcsResponse, 1)
 	errChan := make(chan error, 1)
@@ -53,8 +50,6 @@ func (client *Client) DescribeVpcsWithChan(request *DescribeVpcsRequest) (<-chan
 }
 
 // DescribeVpcsWithCallback invokes the ecs.DescribeVpcs API asynchronously
-// api document: https://help.aliyun.com/api/ecs/describevpcs.html
-// asynchronous document: https://help.aliyun.com/document_detail/66220.html
 func (client *Client) DescribeVpcsWithCallback(request *DescribeVpcsRequest, callback func(response *DescribeVpcsResponse, err error)) <-chan int {
 	result := make(chan int, 1)
 	err := client.AddAsyncTask(func() {
@@ -89,10 +84,10 @@ type DescribeVpcsRequest struct {
 // DescribeVpcsResponse is the response struct for api DescribeVpcs
 type DescribeVpcsResponse struct {
 	*responses.BaseResponse
-	RequestId  string `json:"RequestId" xml:"RequestId"`
-	TotalCount int    `json:"TotalCount" xml:"TotalCount"`
-	PageNumber int    `json:"PageNumber" xml:"PageNumber"`
 	PageSize   int    `json:"PageSize" xml:"PageSize"`
+	RequestId  string `json:"RequestId" xml:"RequestId"`
+	PageNumber int    `json:"PageNumber" xml:"PageNumber"`
+	TotalCount int    `json:"TotalCount" xml:"TotalCount"`
 	Vpcs       Vpcs   `json:"Vpcs" xml:"Vpcs"`
 }
 
@@ -102,6 +97,7 @@ func CreateDescribeVpcsRequest() (request *DescribeVpcsRequest) {
 		RpcRequest: &requests.RpcRequest{},
 	}
 	request.InitWithApiInfo("Ecs", "2014-05-26", "DescribeVpcs", "ecs", "openAPI")
+	request.Method = requests.POST
 	return
 }
 

@@ -21,7 +21,6 @@ import (
 )
 
 // CreateForwardEntry invokes the ecs.CreateForwardEntry API synchronously
-// api document: https://help.aliyun.com/api/ecs/createforwardentry.html
 func (client *Client) CreateForwardEntry(request *CreateForwardEntryRequest) (response *CreateForwardEntryResponse, err error) {
 	response = CreateCreateForwardEntryResponse()
 	err = client.DoAction(request, response)
@@ -29,8 +28,6 @@ func (client *Client) CreateForwardEntry(request *CreateForwardEntryRequest) (re
 }
 
 // CreateForwardEntryWithChan invokes the ecs.CreateForwardEntry API asynchronously
-// api document: https://help.aliyun.com/api/ecs/createforwardentry.html
-// asynchronous document: https://help.aliyun.com/document_detail/66220.html
 func (client *Client) CreateForwardEntryWithChan(request *CreateForwardEntryRequest) (<-chan *CreateForwardEntryResponse, <-chan error) {
 	responseChan := make(chan *CreateForwardEntryResponse, 1)
 	errChan := make(chan error, 1)
@@ -53,8 +50,6 @@ func (client *Client) CreateForwardEntryWithChan(request *CreateForwardEntryRequ
 }
 
 // CreateForwardEntryWithCallback invokes the ecs.CreateForwardEntry API asynchronously
-// api document: https://help.aliyun.com/api/ecs/createforwardentry.html
-// asynchronous document: https://help.aliyun.com/document_detail/66220.html
 func (client *Client) CreateForwardEntryWithCallback(request *CreateForwardEntryRequest, callback func(response *CreateForwardEntryResponse, err error)) <-chan int {
 	result := make(chan int, 1)
 	err := client.AddAsyncTask(func() {
@@ -91,8 +86,8 @@ type CreateForwardEntryRequest struct {
 // CreateForwardEntryResponse is the response struct for api CreateForwardEntry
 type CreateForwardEntryResponse struct {
 	*responses.BaseResponse
-	RequestId      string `json:"RequestId" xml:"RequestId"`
 	ForwardEntryId string `json:"ForwardEntryId" xml:"ForwardEntryId"`
+	RequestId      string `json:"RequestId" xml:"RequestId"`
 }
 
 // CreateCreateForwardEntryRequest creates a request to invoke CreateForwardEntry API
@@ -101,6 +96,7 @@ func CreateCreateForwardEntryRequest() (request *CreateForwardEntryRequest) {
 		RpcRequest: &requests.RpcRequest{},
 	}
 	request.InitWithApiInfo("Ecs", "2014-05-26", "CreateForwardEntry", "ecs", "openAPI")
+	request.Method = requests.POST
 	return
 }
 

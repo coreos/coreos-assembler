@@ -21,7 +21,6 @@ import (
 )
 
 // AuthorizeSecurityGroup invokes the ecs.AuthorizeSecurityGroup API synchronously
-// api document: https://help.aliyun.com/api/ecs/authorizesecuritygroup.html
 func (client *Client) AuthorizeSecurityGroup(request *AuthorizeSecurityGroupRequest) (response *AuthorizeSecurityGroupResponse, err error) {
 	response = CreateAuthorizeSecurityGroupResponse()
 	err = client.DoAction(request, response)
@@ -29,8 +28,6 @@ func (client *Client) AuthorizeSecurityGroup(request *AuthorizeSecurityGroupRequ
 }
 
 // AuthorizeSecurityGroupWithChan invokes the ecs.AuthorizeSecurityGroup API asynchronously
-// api document: https://help.aliyun.com/api/ecs/authorizesecuritygroup.html
-// asynchronous document: https://help.aliyun.com/document_detail/66220.html
 func (client *Client) AuthorizeSecurityGroupWithChan(request *AuthorizeSecurityGroupRequest) (<-chan *AuthorizeSecurityGroupResponse, <-chan error) {
 	responseChan := make(chan *AuthorizeSecurityGroupResponse, 1)
 	errChan := make(chan error, 1)
@@ -53,8 +50,6 @@ func (client *Client) AuthorizeSecurityGroupWithChan(request *AuthorizeSecurityG
 }
 
 // AuthorizeSecurityGroupWithCallback invokes the ecs.AuthorizeSecurityGroup API asynchronously
-// api document: https://help.aliyun.com/api/ecs/authorizesecuritygroup.html
-// asynchronous document: https://help.aliyun.com/document_detail/66220.html
 func (client *Client) AuthorizeSecurityGroupWithCallback(request *AuthorizeSecurityGroupRequest, callback func(response *AuthorizeSecurityGroupResponse, err error)) <-chan int {
 	result := make(chan int, 1)
 	err := client.AddAsyncTask(func() {
@@ -78,6 +73,7 @@ type AuthorizeSecurityGroupRequest struct {
 	*requests.RpcRequest
 	NicType                 string           `position:"Query" name:"NicType"`
 	ResourceOwnerId         requests.Integer `position:"Query" name:"ResourceOwnerId"`
+	SourcePrefixListId      string           `position:"Query" name:"SourcePrefixListId"`
 	SourcePortRange         string           `position:"Query" name:"SourcePortRange"`
 	ClientToken             string           `position:"Query" name:"ClientToken"`
 	SecurityGroupId         string           `position:"Query" name:"SecurityGroupId"`
@@ -110,6 +106,7 @@ func CreateAuthorizeSecurityGroupRequest() (request *AuthorizeSecurityGroupReque
 		RpcRequest: &requests.RpcRequest{},
 	}
 	request.InitWithApiInfo("Ecs", "2014-05-26", "AuthorizeSecurityGroup", "ecs", "openAPI")
+	request.Method = requests.POST
 	return
 }
 

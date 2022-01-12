@@ -8,9 +8,10 @@ require (
 	github.com/IBM-Cloud/bluemix-go v0.0.0-20210419045805-b50610722085
 	github.com/IBM/ibm-cos-sdk-go v1.6.1
 	github.com/Microsoft/azure-vhd-utils v0.0.0-20161127050200-43293b8d7646
-	github.com/aliyun/alibaba-cloud-sdk-go v0.0.0-20190929091402-5711055976b5
+	github.com/aliyun/alibaba-cloud-sdk-go v1.61.1442
 	github.com/aliyun/aliyun-oss-go-sdk v2.0.3+incompatible
 	github.com/aws/aws-sdk-go v1.34.28
+	github.com/baiyubin/aliyun-sts-go-sdk v0.0.0-20180326062324-cfa1a18b161f // indirect
 	github.com/coreos/butane v0.13.1
 	github.com/coreos/coreos-assembler-schema v0.0.0-00010101000000-000000000000
 	github.com/coreos/go-semver v0.3.0
@@ -33,6 +34,7 @@ require (
 	github.com/pborman/uuid v1.2.0
 	github.com/pin/tftp v2.1.0+incompatible
 	github.com/pkg/errors v0.9.1
+	github.com/satori/go.uuid v1.2.0 // indirect
 	github.com/spf13/cobra v0.0.6
 	github.com/spf13/pflag v1.0.6-0.20210604193023-d5e0c0615ace
 	github.com/ulikunitz/xz v0.5.10

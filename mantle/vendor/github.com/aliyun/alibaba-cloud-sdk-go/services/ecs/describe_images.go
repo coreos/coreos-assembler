@@ -21,7 +21,6 @@ import (
 )
 
 // DescribeImages invokes the ecs.DescribeImages API synchronously
-// api document: https://help.aliyun.com/api/ecs/describeimages.html
 func (client *Client) DescribeImages(request *DescribeImagesRequest) (response *DescribeImagesResponse, err error) {
 	response = CreateDescribeImagesResponse()
 	err = client.DoAction(request, response)
@@ -29,8 +28,6 @@ func (client *Client) DescribeImages(request *DescribeImagesRequest) (response *
 }
 
 // DescribeImagesWithChan invokes the ecs.DescribeImages API asynchronously
-// api document: https://help.aliyun.com/api/ecs/describeimages.html
-// asynchronous document: https://help.aliyun.com/document_detail/66220.html
 func (client *Client) DescribeImagesWithChan(request *DescribeImagesRequest) (<-chan *DescribeImagesResponse, <-chan error) {
 	responseChan := make(chan *DescribeImagesResponse, 1)
 	errChan := make(chan error, 1)
@@ -53,8 +50,6 @@ func (client *Client) DescribeImagesWithChan(request *DescribeImagesRequest) (<-
 }
 
 // DescribeImagesWithCallback invokes the ecs.DescribeImages API asynchronously
-// api document: https://help.aliyun.com/api/ecs/describeimages.html
-// asynchronous document: https://help.aliyun.com/document_detail/66220.html
 func (client *Client) DescribeImagesWithCallback(request *DescribeImagesRequest, callback func(response *DescribeImagesResponse, err error)) <-chan int {
 	result := make(chan int, 1)
 	err := client.AddAsyncTask(func() {
@@ -77,6 +72,7 @@ func (client *Client) DescribeImagesWithCallback(request *DescribeImagesRequest,
 type DescribeImagesRequest struct {
 	*requests.RpcRequest
 	ActionType           string                  `position:"Query" name:"ActionType"`
+	ImageOwnerId         requests.Integer        `position:"Query" name:"ImageOwnerId"`
 	ResourceOwnerId      requests.Integer        `position:"Query" name:"ResourceOwnerId"`
 	ImageId              string                  `position:"Query" name:"ImageId"`
 	SnapshotId           string                  `position:"Query" name:"SnapshotId"`
@@ -87,6 +83,7 @@ type DescribeImagesRequest struct {
 	IsSupportIoOptimized requests.Boolean        `position:"Query" name:"IsSupportIoOptimized"`
 	ImageName            string                  `position:"Query" name:"ImageName"`
 	IsSupportCloudinit   requests.Boolean        `position:"Query" name:"IsSupportCloudinit"`
+	IsPublic             requests.Boolean        `position:"Query" name:"IsPublic"`
 	PageSize             requests.Integer        `position:"Query" name:"PageSize"`
 	InstanceType         string                  `position:"Query" name:"InstanceType"`
 	Tag                  *[]DescribeImagesTag    `position:"Query" name:"Tag"  type:"Repeated"`
@@ -98,12 +95,13 @@ type DescribeImagesRequest struct {
 	OSType               string                  `position:"Query" name:"OSType"`
 	OwnerId              requests.Integer        `position:"Query" name:"OwnerId"`
 	Filter               *[]DescribeImagesFilter `position:"Query" name:"Filter"  type:"Repeated"`
+	ImageFamily          string                  `position:"Query" name:"ImageFamily"`
 	Status               string                  `position:"Query" name:"Status"`
 }
 
 // DescribeImagesTag is a repeated param struct in DescribeImagesRequest
 type DescribeImagesTag struct {
-	Value string `name:"Value"`
+	Value string `name:"value"`
 	Key   string `name:"Key"`
 }
 
@@ -116,11 +114,11 @@ type DescribeImagesFilter struct {
 // DescribeImagesResponse is the response struct for api DescribeImages
 type DescribeImagesResponse struct {
 	*responses.BaseResponse
-	RequestId  string `json:"RequestId" xml:"RequestId"`
-	RegionId   string `json:"RegionId" xml:"RegionId"`
-	TotalCount int    `json:"TotalCount" xml:"TotalCount"`
-	PageNumber int    `json:"PageNumber" xml:"PageNumber"`
 	PageSize   int    `json:"PageSize" xml:"PageSize"`
+	PageNumber int    `json:"PageNumber" xml:"PageNumber"`
+	RequestId  string `json:"RequestId" xml:"RequestId"`
+	TotalCount int    `json:"TotalCount" xml:"TotalCount"`
+	RegionId   string `json:"RegionId" xml:"RegionId"`
 	Images     Images `json:"Images" xml:"Images"`
 }
 
@@ -130,6 +128,7 @@ func CreateDescribeImagesRequest() (request *DescribeImagesRequest) {
 		RpcRequest: &requests.RpcRequest{},
 	}
 	request.InitWithApiInfo("Ecs", "2014-05-26", "DescribeImages", "ecs", "openAPI")
+	request.Method = requests.POST
 	return
 }
 
