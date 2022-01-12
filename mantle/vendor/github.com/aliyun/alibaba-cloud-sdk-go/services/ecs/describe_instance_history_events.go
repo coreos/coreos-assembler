@@ -21,7 +21,6 @@ import (
 )
 
 // DescribeInstanceHistoryEvents invokes the ecs.DescribeInstanceHistoryEvents API synchronously
-// api document: https://help.aliyun.com/api/ecs/describeinstancehistoryevents.html
 func (client *Client) DescribeInstanceHistoryEvents(request *DescribeInstanceHistoryEventsRequest) (response *DescribeInstanceHistoryEventsResponse, err error) {
 	response = CreateDescribeInstanceHistoryEventsResponse()
 	err = client.DoAction(request, response)
@@ -29,8 +28,6 @@ func (client *Client) DescribeInstanceHistoryEvents(request *DescribeInstanceHis
 }
 
 // DescribeInstanceHistoryEventsWithChan invokes the ecs.DescribeInstanceHistoryEvents API asynchronously
-// api document: https://help.aliyun.com/api/ecs/describeinstancehistoryevents.html
-// asynchronous document: https://help.aliyun.com/document_detail/66220.html
 func (client *Client) DescribeInstanceHistoryEventsWithChan(request *DescribeInstanceHistoryEventsRequest) (<-chan *DescribeInstanceHistoryEventsResponse, <-chan error) {
 	responseChan := make(chan *DescribeInstanceHistoryEventsResponse, 1)
 	errChan := make(chan error, 1)
@@ -53,8 +50,6 @@ func (client *Client) DescribeInstanceHistoryEventsWithChan(request *DescribeIns
 }
 
 // DescribeInstanceHistoryEventsWithCallback invokes the ecs.DescribeInstanceHistoryEvents API asynchronously
-// api document: https://help.aliyun.com/api/ecs/describeinstancehistoryevents.html
-// asynchronous document: https://help.aliyun.com/document_detail/66220.html
 func (client *Client) DescribeInstanceHistoryEventsWithCallback(request *DescribeInstanceHistoryEventsRequest, callback func(response *DescribeInstanceHistoryEventsResponse, err error)) <-chan int {
 	result := make(chan int, 1)
 	err := client.AddAsyncTask(func() {
@@ -76,31 +71,42 @@ func (client *Client) DescribeInstanceHistoryEventsWithCallback(request *Describ
 // DescribeInstanceHistoryEventsRequest is the request struct for api DescribeInstanceHistoryEvents
 type DescribeInstanceHistoryEventsRequest struct {
 	*requests.RpcRequest
-	EventId                  *[]string        `position:"Query" name:"EventId"  type:"Repeated"`
-	ResourceOwnerId          requests.Integer `position:"Query" name:"ResourceOwnerId"`
-	EventCycleStatus         string           `position:"Query" name:"EventCycleStatus"`
-	PageNumber               requests.Integer `position:"Query" name:"PageNumber"`
-	PageSize                 requests.Integer `position:"Query" name:"PageSize"`
-	InstanceEventCycleStatus *[]string        `position:"Query" name:"InstanceEventCycleStatus"  type:"Repeated"`
-	EventPublishTimeEnd      string           `position:"Query" name:"EventPublishTime.End"`
-	InstanceEventType        *[]string        `position:"Query" name:"InstanceEventType"  type:"Repeated"`
-	ResourceOwnerAccount     string           `position:"Query" name:"ResourceOwnerAccount"`
-	OwnerAccount             string           `position:"Query" name:"OwnerAccount"`
-	NotBeforeStart           string           `position:"Query" name:"NotBefore.Start"`
-	OwnerId                  requests.Integer `position:"Query" name:"OwnerId"`
-	EventPublishTimeStart    string           `position:"Query" name:"EventPublishTime.Start"`
-	InstanceId               string           `position:"Query" name:"InstanceId"`
-	NotBeforeEnd             string           `position:"Query" name:"NotBefore.End"`
-	EventType                string           `position:"Query" name:"EventType"`
+	EventId                  *[]string                           `position:"Query" name:"EventId"  type:"Repeated"`
+	ResourceOwnerId          requests.Integer                    `position:"Query" name:"ResourceOwnerId"`
+	EventCycleStatus         string                              `position:"Query" name:"EventCycleStatus"`
+	PageNumber               requests.Integer                    `position:"Query" name:"PageNumber"`
+	ImpactLevel              string                              `position:"Query" name:"ImpactLevel"`
+	ResourceGroupId          string                              `position:"Query" name:"ResourceGroupId"`
+	PageSize                 requests.Integer                    `position:"Query" name:"PageSize"`
+	InstanceEventCycleStatus *[]string                           `position:"Query" name:"InstanceEventCycleStatus"  type:"Repeated"`
+	Tag                      *[]DescribeInstanceHistoryEventsTag `position:"Query" name:"Tag"  type:"Repeated"`
+	EventPublishTimeEnd      string                              `position:"Query" name:"EventPublishTime.End"`
+	ResourceId               *[]string                           `position:"Query" name:"ResourceId"  type:"Repeated"`
+	InstanceEventType        *[]string                           `position:"Query" name:"InstanceEventType"  type:"Repeated"`
+	ResourceOwnerAccount     string                              `position:"Query" name:"ResourceOwnerAccount"`
+	OwnerAccount             string                              `position:"Query" name:"OwnerAccount"`
+	NotBeforeStart           string                              `position:"Query" name:"NotBefore.Start"`
+	OwnerId                  requests.Integer                    `position:"Query" name:"OwnerId"`
+	ResourceType             string                              `position:"Query" name:"ResourceType"`
+	EventPublishTimeStart    string                              `position:"Query" name:"EventPublishTime.Start"`
+	InstanceId               string                              `position:"Query" name:"InstanceId"`
+	NotBeforeEnd             string                              `position:"Query" name:"NotBefore.End"`
+	EventType                string                              `position:"Query" name:"EventType"`
+}
+
+// DescribeInstanceHistoryEventsTag is a repeated param struct in DescribeInstanceHistoryEventsRequest
+type DescribeInstanceHistoryEventsTag struct {
+	Key   string `name:"Key"`
+	Value string `name:"Value"`
 }
 
 // DescribeInstanceHistoryEventsResponse is the response struct for api DescribeInstanceHistoryEvents
 type DescribeInstanceHistoryEventsResponse struct {
 	*responses.BaseResponse
-	RequestId              string                 `json:"RequestId" xml:"RequestId"`
-	TotalCount             int                    `json:"TotalCount" xml:"TotalCount"`
-	PageNumber             int                    `json:"PageNumber" xml:"PageNumber"`
 	PageSize               int                    `json:"PageSize" xml:"PageSize"`
+	RequestId              string                 `json:"RequestId" xml:"RequestId"`
+	PageNumber             int                    `json:"PageNumber" xml:"PageNumber"`
+	TotalCount             int                    `json:"TotalCount" xml:"TotalCount"`
 	InstanceSystemEventSet InstanceSystemEventSet `json:"InstanceSystemEventSet" xml:"InstanceSystemEventSet"`
 }
 
@@ -110,6 +116,7 @@ func CreateDescribeInstanceHistoryEventsRequest() (request *DescribeInstanceHist
 		RpcRequest: &requests.RpcRequest{},
 	}
 	request.InitWithApiInfo("Ecs", "2014-05-26", "DescribeInstanceHistoryEvents", "ecs", "openAPI")
+	request.Method = requests.POST
 	return
 }
 

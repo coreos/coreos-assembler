@@ -21,7 +21,6 @@ import (
 )
 
 // DescribeDemands invokes the ecs.DescribeDemands API synchronously
-// api document: https://help.aliyun.com/api/ecs/describedemands.html
 func (client *Client) DescribeDemands(request *DescribeDemandsRequest) (response *DescribeDemandsResponse, err error) {
 	response = CreateDescribeDemandsResponse()
 	err = client.DoAction(request, response)
@@ -29,8 +28,6 @@ func (client *Client) DescribeDemands(request *DescribeDemandsRequest) (response
 }
 
 // DescribeDemandsWithChan invokes the ecs.DescribeDemands API asynchronously
-// api document: https://help.aliyun.com/api/ecs/describedemands.html
-// asynchronous document: https://help.aliyun.com/document_detail/66220.html
 func (client *Client) DescribeDemandsWithChan(request *DescribeDemandsRequest) (<-chan *DescribeDemandsResponse, <-chan error) {
 	responseChan := make(chan *DescribeDemandsResponse, 1)
 	errChan := make(chan error, 1)
@@ -53,8 +50,6 @@ func (client *Client) DescribeDemandsWithChan(request *DescribeDemandsRequest) (
 }
 
 // DescribeDemandsWithCallback invokes the ecs.DescribeDemands API asynchronously
-// api document: https://help.aliyun.com/api/ecs/describedemands.html
-// asynchronous document: https://help.aliyun.com/document_detail/66220.html
 func (client *Client) DescribeDemandsWithCallback(request *DescribeDemandsRequest, callback func(response *DescribeDemandsResponse, err error)) <-chan int {
 	result := make(chan int, 1)
 	err := client.AddAsyncTask(func() {
@@ -88,7 +83,9 @@ type DescribeDemandsRequest struct {
 	InstanceTypeFamily   string                `position:"Query" name:"InstanceTypeFamily"`
 	OwnerId              requests.Integer      `position:"Query" name:"OwnerId"`
 	DemandStatus         *[]string             `position:"Query" name:"DemandStatus"  type:"Repeated"`
+	DemandId             string                `position:"Query" name:"DemandId"`
 	ZoneId               string                `position:"Query" name:"ZoneId"`
+	DemandType           string                `position:"Query" name:"DemandType"`
 }
 
 // DescribeDemandsTag is a repeated param struct in DescribeDemandsRequest
@@ -100,10 +97,10 @@ type DescribeDemandsTag struct {
 // DescribeDemandsResponse is the response struct for api DescribeDemands
 type DescribeDemandsResponse struct {
 	*responses.BaseResponse
+	PageSize   int     `json:"PageSize" xml:"PageSize"`
+	PageNumber int     `json:"PageNumber" xml:"PageNumber"`
 	RequestId  string  `json:"RequestId" xml:"RequestId"`
 	TotalCount int     `json:"TotalCount" xml:"TotalCount"`
-	PageNumber int     `json:"PageNumber" xml:"PageNumber"`
-	PageSize   int     `json:"PageSize" xml:"PageSize"`
 	RegionId   string  `json:"RegionId" xml:"RegionId"`
 	Demands    Demands `json:"Demands" xml:"Demands"`
 }
@@ -114,6 +111,7 @@ func CreateDescribeDemandsRequest() (request *DescribeDemandsRequest) {
 		RpcRequest: &requests.RpcRequest{},
 	}
 	request.InitWithApiInfo("Ecs", "2014-05-26", "DescribeDemands", "ecs", "openAPI")
+	request.Method = requests.POST
 	return
 }
 

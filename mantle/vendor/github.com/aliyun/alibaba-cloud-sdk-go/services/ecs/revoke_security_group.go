@@ -21,7 +21,6 @@ import (
 )
 
 // RevokeSecurityGroup invokes the ecs.RevokeSecurityGroup API synchronously
-// api document: https://help.aliyun.com/api/ecs/revokesecuritygroup.html
 func (client *Client) RevokeSecurityGroup(request *RevokeSecurityGroupRequest) (response *RevokeSecurityGroupResponse, err error) {
 	response = CreateRevokeSecurityGroupResponse()
 	err = client.DoAction(request, response)
@@ -29,8 +28,6 @@ func (client *Client) RevokeSecurityGroup(request *RevokeSecurityGroupRequest) (
 }
 
 // RevokeSecurityGroupWithChan invokes the ecs.RevokeSecurityGroup API asynchronously
-// api document: https://help.aliyun.com/api/ecs/revokesecuritygroup.html
-// asynchronous document: https://help.aliyun.com/document_detail/66220.html
 func (client *Client) RevokeSecurityGroupWithChan(request *RevokeSecurityGroupRequest) (<-chan *RevokeSecurityGroupResponse, <-chan error) {
 	responseChan := make(chan *RevokeSecurityGroupResponse, 1)
 	errChan := make(chan error, 1)
@@ -53,8 +50,6 @@ func (client *Client) RevokeSecurityGroupWithChan(request *RevokeSecurityGroupRe
 }
 
 // RevokeSecurityGroupWithCallback invokes the ecs.RevokeSecurityGroup API asynchronously
-// api document: https://help.aliyun.com/api/ecs/revokesecuritygroup.html
-// asynchronous document: https://help.aliyun.com/document_detail/66220.html
 func (client *Client) RevokeSecurityGroupWithCallback(request *RevokeSecurityGroupRequest, callback func(response *RevokeSecurityGroupResponse, err error)) <-chan int {
 	result := make(chan int, 1)
 	err := client.AddAsyncTask(func() {
@@ -78,6 +73,7 @@ type RevokeSecurityGroupRequest struct {
 	*requests.RpcRequest
 	NicType                 string           `position:"Query" name:"NicType"`
 	ResourceOwnerId         requests.Integer `position:"Query" name:"ResourceOwnerId"`
+	SourcePrefixListId      string           `position:"Query" name:"SourcePrefixListId"`
 	SourcePortRange         string           `position:"Query" name:"SourcePortRange"`
 	ClientToken             string           `position:"Query" name:"ClientToken"`
 	SecurityGroupId         string           `position:"Query" name:"SecurityGroupId"`
@@ -110,6 +106,7 @@ func CreateRevokeSecurityGroupRequest() (request *RevokeSecurityGroupRequest) {
 		RpcRequest: &requests.RpcRequest{},
 	}
 	request.InitWithApiInfo("Ecs", "2014-05-26", "RevokeSecurityGroup", "ecs", "openAPI")
+	request.Method = requests.POST
 	return
 }
 

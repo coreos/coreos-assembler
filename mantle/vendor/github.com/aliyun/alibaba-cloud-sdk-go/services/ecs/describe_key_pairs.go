@@ -21,7 +21,6 @@ import (
 )
 
 // DescribeKeyPairs invokes the ecs.DescribeKeyPairs API synchronously
-// api document: https://help.aliyun.com/api/ecs/describekeypairs.html
 func (client *Client) DescribeKeyPairs(request *DescribeKeyPairsRequest) (response *DescribeKeyPairsResponse, err error) {
 	response = CreateDescribeKeyPairsResponse()
 	err = client.DoAction(request, response)
@@ -29,8 +28,6 @@ func (client *Client) DescribeKeyPairs(request *DescribeKeyPairsRequest) (respon
 }
 
 // DescribeKeyPairsWithChan invokes the ecs.DescribeKeyPairs API asynchronously
-// api document: https://help.aliyun.com/api/ecs/describekeypairs.html
-// asynchronous document: https://help.aliyun.com/document_detail/66220.html
 func (client *Client) DescribeKeyPairsWithChan(request *DescribeKeyPairsRequest) (<-chan *DescribeKeyPairsResponse, <-chan error) {
 	responseChan := make(chan *DescribeKeyPairsResponse, 1)
 	errChan := make(chan error, 1)
@@ -53,8 +50,6 @@ func (client *Client) DescribeKeyPairsWithChan(request *DescribeKeyPairsRequest)
 }
 
 // DescribeKeyPairsWithCallback invokes the ecs.DescribeKeyPairs API asynchronously
-// api document: https://help.aliyun.com/api/ecs/describekeypairs.html
-// asynchronous document: https://help.aliyun.com/document_detail/66220.html
 func (client *Client) DescribeKeyPairsWithCallback(request *DescribeKeyPairsRequest, callback func(response *DescribeKeyPairsResponse, err error)) <-chan int {
 	result := make(chan int, 1)
 	err := client.AddAsyncTask(func() {
@@ -96,10 +91,10 @@ type DescribeKeyPairsTag struct {
 // DescribeKeyPairsResponse is the response struct for api DescribeKeyPairs
 type DescribeKeyPairsResponse struct {
 	*responses.BaseResponse
-	RequestId  string   `json:"RequestId" xml:"RequestId"`
-	TotalCount int      `json:"TotalCount" xml:"TotalCount"`
-	PageNumber int      `json:"PageNumber" xml:"PageNumber"`
 	PageSize   int      `json:"PageSize" xml:"PageSize"`
+	RequestId  string   `json:"RequestId" xml:"RequestId"`
+	PageNumber int      `json:"PageNumber" xml:"PageNumber"`
+	TotalCount int      `json:"TotalCount" xml:"TotalCount"`
 	KeyPairs   KeyPairs `json:"KeyPairs" xml:"KeyPairs"`
 }
 
@@ -109,6 +104,7 @@ func CreateDescribeKeyPairsRequest() (request *DescribeKeyPairsRequest) {
 		RpcRequest: &requests.RpcRequest{},
 	}
 	request.InitWithApiInfo("Ecs", "2014-05-26", "DescribeKeyPairs", "ecs", "openAPI")
+	request.Method = requests.POST
 	return
 }
 

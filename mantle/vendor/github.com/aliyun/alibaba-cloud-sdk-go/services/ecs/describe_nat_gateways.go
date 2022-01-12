@@ -21,7 +21,6 @@ import (
 )
 
 // DescribeNatGateways invokes the ecs.DescribeNatGateways API synchronously
-// api document: https://help.aliyun.com/api/ecs/describenatgateways.html
 func (client *Client) DescribeNatGateways(request *DescribeNatGatewaysRequest) (response *DescribeNatGatewaysResponse, err error) {
 	response = CreateDescribeNatGatewaysResponse()
 	err = client.DoAction(request, response)
@@ -29,8 +28,6 @@ func (client *Client) DescribeNatGateways(request *DescribeNatGatewaysRequest) (
 }
 
 // DescribeNatGatewaysWithChan invokes the ecs.DescribeNatGateways API asynchronously
-// api document: https://help.aliyun.com/api/ecs/describenatgateways.html
-// asynchronous document: https://help.aliyun.com/document_detail/66220.html
 func (client *Client) DescribeNatGatewaysWithChan(request *DescribeNatGatewaysRequest) (<-chan *DescribeNatGatewaysResponse, <-chan error) {
 	responseChan := make(chan *DescribeNatGatewaysResponse, 1)
 	errChan := make(chan error, 1)
@@ -53,8 +50,6 @@ func (client *Client) DescribeNatGatewaysWithChan(request *DescribeNatGatewaysRe
 }
 
 // DescribeNatGatewaysWithCallback invokes the ecs.DescribeNatGateways API asynchronously
-// api document: https://help.aliyun.com/api/ecs/describenatgateways.html
-// asynchronous document: https://help.aliyun.com/document_detail/66220.html
 func (client *Client) DescribeNatGatewaysWithCallback(request *DescribeNatGatewaysRequest, callback func(response *DescribeNatGatewaysResponse, err error)) <-chan int {
 	result := make(chan int, 1)
 	err := client.AddAsyncTask(func() {
@@ -89,10 +84,10 @@ type DescribeNatGatewaysRequest struct {
 // DescribeNatGatewaysResponse is the response struct for api DescribeNatGateways
 type DescribeNatGatewaysResponse struct {
 	*responses.BaseResponse
-	RequestId   string      `json:"RequestId" xml:"RequestId"`
-	TotalCount  int         `json:"TotalCount" xml:"TotalCount"`
-	PageNumber  int         `json:"PageNumber" xml:"PageNumber"`
 	PageSize    int         `json:"PageSize" xml:"PageSize"`
+	RequestId   string      `json:"RequestId" xml:"RequestId"`
+	PageNumber  int         `json:"PageNumber" xml:"PageNumber"`
+	TotalCount  int         `json:"TotalCount" xml:"TotalCount"`
 	NatGateways NatGateways `json:"NatGateways" xml:"NatGateways"`
 }
 
@@ -102,6 +97,7 @@ func CreateDescribeNatGatewaysRequest() (request *DescribeNatGatewaysRequest) {
 		RpcRequest: &requests.RpcRequest{},
 	}
 	request.InitWithApiInfo("Ecs", "2014-05-26", "DescribeNatGateways", "ecs", "openAPI")
+	request.Method = requests.POST
 	return
 }
 

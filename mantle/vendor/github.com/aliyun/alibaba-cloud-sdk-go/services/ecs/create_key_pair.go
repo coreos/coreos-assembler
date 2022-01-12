@@ -21,7 +21,6 @@ import (
 )
 
 // CreateKeyPair invokes the ecs.CreateKeyPair API synchronously
-// api document: https://help.aliyun.com/api/ecs/createkeypair.html
 func (client *Client) CreateKeyPair(request *CreateKeyPairRequest) (response *CreateKeyPairResponse, err error) {
 	response = CreateCreateKeyPairResponse()
 	err = client.DoAction(request, response)
@@ -29,8 +28,6 @@ func (client *Client) CreateKeyPair(request *CreateKeyPairRequest) (response *Cr
 }
 
 // CreateKeyPairWithChan invokes the ecs.CreateKeyPair API asynchronously
-// api document: https://help.aliyun.com/api/ecs/createkeypair.html
-// asynchronous document: https://help.aliyun.com/document_detail/66220.html
 func (client *Client) CreateKeyPairWithChan(request *CreateKeyPairRequest) (<-chan *CreateKeyPairResponse, <-chan error) {
 	responseChan := make(chan *CreateKeyPairResponse, 1)
 	errChan := make(chan error, 1)
@@ -53,8 +50,6 @@ func (client *Client) CreateKeyPairWithChan(request *CreateKeyPairRequest) (<-ch
 }
 
 // CreateKeyPairWithCallback invokes the ecs.CreateKeyPair API asynchronously
-// api document: https://help.aliyun.com/api/ecs/createkeypair.html
-// asynchronous document: https://help.aliyun.com/document_detail/66220.html
 func (client *Client) CreateKeyPairWithCallback(request *CreateKeyPairRequest, callback func(response *CreateKeyPairResponse, err error)) <-chan int {
 	result := make(chan int, 1)
 	err := client.AddAsyncTask(func() {
@@ -93,11 +88,11 @@ type CreateKeyPairTag struct {
 // CreateKeyPairResponse is the response struct for api CreateKeyPair
 type CreateKeyPairResponse struct {
 	*responses.BaseResponse
-	RequestId          string `json:"RequestId" xml:"RequestId"`
-	KeyPairId          string `json:"KeyPairId" xml:"KeyPairId"`
-	KeyPairName        string `json:"KeyPairName" xml:"KeyPairName"`
-	KeyPairFingerPrint string `json:"KeyPairFingerPrint" xml:"KeyPairFingerPrint"`
 	PrivateKeyBody     string `json:"PrivateKeyBody" xml:"PrivateKeyBody"`
+	KeyPairName        string `json:"KeyPairName" xml:"KeyPairName"`
+	KeyPairId          string `json:"KeyPairId" xml:"KeyPairId"`
+	RequestId          string `json:"RequestId" xml:"RequestId"`
+	KeyPairFingerPrint string `json:"KeyPairFingerPrint" xml:"KeyPairFingerPrint"`
 }
 
 // CreateCreateKeyPairRequest creates a request to invoke CreateKeyPair API
@@ -106,6 +101,7 @@ func CreateCreateKeyPairRequest() (request *CreateKeyPairRequest) {
 		RpcRequest: &requests.RpcRequest{},
 	}
 	request.InitWithApiInfo("Ecs", "2014-05-26", "CreateKeyPair", "ecs", "openAPI")
+	request.Method = requests.POST
 	return
 }
 

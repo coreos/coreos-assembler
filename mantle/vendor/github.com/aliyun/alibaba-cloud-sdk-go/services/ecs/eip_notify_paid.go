@@ -21,7 +21,6 @@ import (
 )
 
 // EipNotifyPaid invokes the ecs.EipNotifyPaid API synchronously
-// api document: https://help.aliyun.com/api/ecs/eipnotifypaid.html
 func (client *Client) EipNotifyPaid(request *EipNotifyPaidRequest) (response *EipNotifyPaidResponse, err error) {
 	response = CreateEipNotifyPaidResponse()
 	err = client.DoAction(request, response)
@@ -29,8 +28,6 @@ func (client *Client) EipNotifyPaid(request *EipNotifyPaidRequest) (response *Ei
 }
 
 // EipNotifyPaidWithChan invokes the ecs.EipNotifyPaid API asynchronously
-// api document: https://help.aliyun.com/api/ecs/eipnotifypaid.html
-// asynchronous document: https://help.aliyun.com/document_detail/66220.html
 func (client *Client) EipNotifyPaidWithChan(request *EipNotifyPaidRequest) (<-chan *EipNotifyPaidResponse, <-chan error) {
 	responseChan := make(chan *EipNotifyPaidResponse, 1)
 	errChan := make(chan error, 1)
@@ -53,8 +50,6 @@ func (client *Client) EipNotifyPaidWithChan(request *EipNotifyPaidRequest) (<-ch
 }
 
 // EipNotifyPaidWithCallback invokes the ecs.EipNotifyPaid API asynchronously
-// api document: https://help.aliyun.com/api/ecs/eipnotifypaid.html
-// asynchronous document: https://help.aliyun.com/document_detail/66220.html
 func (client *Client) EipNotifyPaidWithCallback(request *EipNotifyPaidRequest, callback func(response *EipNotifyPaidResponse, err error)) <-chan int {
 	result := make(chan int, 1)
 	err := client.AddAsyncTask(func() {
@@ -88,11 +83,11 @@ type EipNotifyPaidRequest struct {
 // EipNotifyPaidResponse is the response struct for api EipNotifyPaid
 type EipNotifyPaidResponse struct {
 	*responses.BaseResponse
-	RequestId string `json:"requestId" xml:"requestId"`
-	Data      string `json:"data" xml:"data"`
 	Code      string `json:"code" xml:"code"`
-	Message   string `json:"message" xml:"message"`
 	Success   bool   `json:"success" xml:"success"`
+	Message   string `json:"message" xml:"message"`
+	Data      string `json:"data" xml:"data"`
+	RequestId string `json:"requestId" xml:"requestId"`
 }
 
 // CreateEipNotifyPaidRequest creates a request to invoke EipNotifyPaid API
@@ -101,6 +96,7 @@ func CreateEipNotifyPaidRequest() (request *EipNotifyPaidRequest) {
 		RpcRequest: &requests.RpcRequest{},
 	}
 	request.InitWithApiInfo("Ecs", "2014-05-26", "EipNotifyPaid", "ecs", "openAPI")
+	request.Method = requests.POST
 	return
 }
 

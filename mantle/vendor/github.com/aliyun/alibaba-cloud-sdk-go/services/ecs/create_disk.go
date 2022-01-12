@@ -21,7 +21,6 @@ import (
 )
 
 // CreateDisk invokes the ecs.CreateDisk API synchronously
-// api document: https://help.aliyun.com/api/ecs/createdisk.html
 func (client *Client) CreateDisk(request *CreateDiskRequest) (response *CreateDiskResponse, err error) {
 	response = CreateCreateDiskResponse()
 	err = client.DoAction(request, response)
@@ -29,8 +28,6 @@ func (client *Client) CreateDisk(request *CreateDiskRequest) (response *CreateDi
 }
 
 // CreateDiskWithChan invokes the ecs.CreateDisk API asynchronously
-// api document: https://help.aliyun.com/api/ecs/createdisk.html
-// asynchronous document: https://help.aliyun.com/document_detail/66220.html
 func (client *Client) CreateDiskWithChan(request *CreateDiskRequest) (<-chan *CreateDiskResponse, <-chan error) {
 	responseChan := make(chan *CreateDiskResponse, 1)
 	errChan := make(chan error, 1)
@@ -53,8 +50,6 @@ func (client *Client) CreateDiskWithChan(request *CreateDiskRequest) (<-chan *Cr
 }
 
 // CreateDiskWithCallback invokes the ecs.CreateDisk API asynchronously
-// api document: https://help.aliyun.com/api/ecs/createdisk.html
-// asynchronous document: https://help.aliyun.com/document_detail/66220.html
 func (client *Client) CreateDiskWithCallback(request *CreateDiskRequest, callback func(response *CreateDiskResponse, err error)) <-chan int {
 	result := make(chan int, 1)
 	err := client.AddAsyncTask(func() {
@@ -79,14 +74,16 @@ type CreateDiskRequest struct {
 	ResourceOwnerId           requests.Integer `position:"Query" name:"ResourceOwnerId"`
 	SnapshotId                string           `position:"Query" name:"SnapshotId"`
 	ClientToken               string           `position:"Query" name:"ClientToken"`
+	EncryptAlgorithm          string           `position:"Query" name:"EncryptAlgorithm"`
 	Description               string           `position:"Query" name:"Description"`
 	DiskName                  string           `position:"Query" name:"DiskName"`
 	ResourceGroupId           string           `position:"Query" name:"ResourceGroupId"`
 	DiskCategory              string           `position:"Query" name:"DiskCategory"`
 	StorageSetPartitionNumber requests.Integer `position:"Query" name:"StorageSetPartitionNumber"`
+	MultiAttach               string           `position:"Query" name:"MultiAttach"`
 	Tag                       *[]CreateDiskTag `position:"Query" name:"Tag"  type:"Repeated"`
-	Arn                       *[]CreateDiskArn `position:"Query" name:"Arn"  type:"Repeated"`
 	AdvancedFeatures          string           `position:"Query" name:"AdvancedFeatures"`
+	Arn                       *[]CreateDiskArn `position:"Query" name:"Arn"  type:"Repeated"`
 	ResourceOwnerAccount      string           `position:"Query" name:"ResourceOwnerAccount"`
 	PerformanceLevel          string           `position:"Query" name:"PerformanceLevel"`
 	OwnerAccount              string           `position:"Query" name:"OwnerAccount"`
@@ -96,12 +93,13 @@ type CreateDiskRequest struct {
 	Size                      requests.Integer `position:"Query" name:"Size"`
 	Encrypted                 requests.Boolean `position:"Query" name:"Encrypted"`
 	ZoneId                    string           `position:"Query" name:"ZoneId"`
+	StorageClusterId          string           `position:"Query" name:"StorageClusterId"`
 	KMSKeyId                  string           `position:"Query" name:"KMSKeyId"`
 }
 
 // CreateDiskTag is a repeated param struct in CreateDiskRequest
 type CreateDiskTag struct {
-	Value string `name:"Value"`
+	Value string `name:"value"`
 	Key   string `name:"Key"`
 }
 
@@ -115,8 +113,9 @@ type CreateDiskArn struct {
 // CreateDiskResponse is the response struct for api CreateDisk
 type CreateDiskResponse struct {
 	*responses.BaseResponse
-	RequestId string `json:"RequestId" xml:"RequestId"`
 	DiskId    string `json:"DiskId" xml:"DiskId"`
+	RequestId string `json:"RequestId" xml:"RequestId"`
+	OrderId   string `json:"OrderId" xml:"OrderId"`
 }
 
 // CreateCreateDiskRequest creates a request to invoke CreateDisk API
@@ -125,6 +124,7 @@ func CreateCreateDiskRequest() (request *CreateDiskRequest) {
 		RpcRequest: &requests.RpcRequest{},
 	}
 	request.InitWithApiInfo("Ecs", "2014-05-26", "CreateDisk", "ecs", "openAPI")
+	request.Method = requests.POST
 	return
 }
 

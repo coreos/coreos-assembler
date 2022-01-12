@@ -21,7 +21,6 @@ import (
 )
 
 // EipFillProduct invokes the ecs.EipFillProduct API synchronously
-// api document: https://help.aliyun.com/api/ecs/eipfillproduct.html
 func (client *Client) EipFillProduct(request *EipFillProductRequest) (response *EipFillProductResponse, err error) {
 	response = CreateEipFillProductResponse()
 	err = client.DoAction(request, response)
@@ -29,8 +28,6 @@ func (client *Client) EipFillProduct(request *EipFillProductRequest) (response *
 }
 
 // EipFillProductWithChan invokes the ecs.EipFillProduct API asynchronously
-// api document: https://help.aliyun.com/api/ecs/eipfillproduct.html
-// asynchronous document: https://help.aliyun.com/document_detail/66220.html
 func (client *Client) EipFillProductWithChan(request *EipFillProductRequest) (<-chan *EipFillProductResponse, <-chan error) {
 	responseChan := make(chan *EipFillProductResponse, 1)
 	errChan := make(chan error, 1)
@@ -53,8 +50,6 @@ func (client *Client) EipFillProductWithChan(request *EipFillProductRequest) (<-
 }
 
 // EipFillProductWithCallback invokes the ecs.EipFillProduct API asynchronously
-// api document: https://help.aliyun.com/api/ecs/eipfillproduct.html
-// asynchronous document: https://help.aliyun.com/document_detail/66220.html
 func (client *Client) EipFillProductWithCallback(request *EipFillProductRequest, callback func(response *EipFillProductResponse, err error)) <-chan int {
 	result := make(chan int, 1)
 	err := client.AddAsyncTask(func() {
@@ -88,11 +83,11 @@ type EipFillProductRequest struct {
 // EipFillProductResponse is the response struct for api EipFillProduct
 type EipFillProductResponse struct {
 	*responses.BaseResponse
-	RequestId string `json:"requestId" xml:"requestId"`
-	Data      string `json:"data" xml:"data"`
 	Code      string `json:"code" xml:"code"`
 	Success   bool   `json:"success" xml:"success"`
 	Message   string `json:"message" xml:"message"`
+	Data      string `json:"data" xml:"data"`
+	RequestId string `json:"requestId" xml:"requestId"`
 }
 
 // CreateEipFillProductRequest creates a request to invoke EipFillProduct API
@@ -101,6 +96,7 @@ func CreateEipFillProductRequest() (request *EipFillProductRequest) {
 		RpcRequest: &requests.RpcRequest{},
 	}
 	request.InitWithApiInfo("Ecs", "2014-05-26", "EipFillProduct", "ecs", "openAPI")
+	request.Method = requests.POST
 	return
 }
 

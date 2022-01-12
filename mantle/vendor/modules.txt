@@ -94,7 +94,7 @@ github.com/Microsoft/azure-vhd-utils/vhdcore/reader
 github.com/Microsoft/azure-vhd-utils/vhdcore/validator
 github.com/Microsoft/azure-vhd-utils/vhdcore/vhdfile
 github.com/Microsoft/azure-vhd-utils/vhdcore/writer
-# github.com/aliyun/alibaba-cloud-sdk-go v0.0.0-20190929091402-5711055976b5
+# github.com/aliyun/alibaba-cloud-sdk-go v1.61.1442
 github.com/aliyun/alibaba-cloud-sdk-go/sdk
 github.com/aliyun/alibaba-cloud-sdk-go/sdk/auth
 github.com/aliyun/alibaba-cloud-sdk-go/sdk/auth/credentials
@@ -567,7 +567,7 @@ google.golang.org/protobuf/runtime/protoimpl
 google.golang.org/protobuf/types/known/anypb
 google.golang.org/protobuf/types/known/durationpb
 google.golang.org/protobuf/types/known/timestamppb
-# gopkg.in/ini.v1 v1.57.0
+# gopkg.in/ini.v1 v1.66.2
 gopkg.in/ini.v1
 # gopkg.in/yaml.v2 v2.4.0
 gopkg.in/yaml.v2
