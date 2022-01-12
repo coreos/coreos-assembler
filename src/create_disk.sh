@@ -268,7 +268,7 @@ if test -n "${deploy_container}"; then
     do
         kargsargs+="--karg=$karg "
     done
-    ostree container image deploy --imgref "${deploy_container}" \
+    rpm-ostree ex-container image deploy --imgref "${deploy_container}" \
         ${container_imgref:+--target-imgref $container_imgref} \
         --stateroot "$os_name" --sysroot $rootfs $kargsargs
 else
