@@ -21,6 +21,12 @@ from cosalib.cmdlib import (
 
 DEFAULT_COMPRESSOR = 'gzip'
 
+cmd = sys.argv[0].rsplit("/", 1)[1]
+if cmd == "cmd-uncompress" or cmd == "cmd-decompress":
+    DEFAULT_MODE = 'uncompress'
+else:
+    DEFAULT_MODE = 'compress'
+
 parser = argparse.ArgumentParser()
 parser.add_argument("--build", help="Build ID")
 parser.add_argument("--artifact", default=[], action='append',
@@ -29,6 +35,10 @@ parser.add_argument("--compressor",
                     choices=['xz', 'gzip'],
                     default=DEFAULT_COMPRESSOR,
                     help=f"Compressor to use, default is {DEFAULT_COMPRESSOR}")
+parser.add_argument("--mode",
+                    choices=['compress', 'uncompress'],
+                    default=DEFAULT_MODE,
+                    help=f", default is {DEFAULT_MODE}")
 parser.add_argument("--fast", action='store_true',
                     help="Override compression to `gzip -1`")
 args = parser.parse_args()
@@ -57,6 +67,10 @@ print(f"Targeting build: {build}")
 def get_cpu_param(param):
     with open(f'/sys/fs/cgroup/cpu/cpu.{param}') as f:
         return int(f.read().strip())
+
+
+def strip_ext(path):
+    return path.rsplit(".", 1)[0]
 
 
 # XXX: should dedupe this with logic in cmdlib and put in the shared lib
@@ -150,10 +164,98 @@ def compress_one_builddir(builddir):
     return at_least_one
 
 
-changed = []
-for arch in builds.get_build_arches(build):
-    builddir = builds.get_build_dir(build, arch)
-    changed.append(compress_one_builddir(builddir))
+def uncompress_one_builddir(builddir):
+    # heavily based on the compress_one_builddir
+    print(f"Uncompressing: {builddir}")
+    buildmeta_path = os.path.join(builddir, 'meta.json')
+    with open(buildmeta_path) as f:
+        buildmeta = json.load(f)
 
-if not any(changed):
-    print("All builds already compressed")
+    tmpdir = 'tmp/uncompress'
+    if os.path.isdir(tmpdir):
+        shutil.rmtree(tmpdir)
+    os.mkdir(tmpdir)
+
+    # Note we mutate the build dir in place, similarly to the buildextend
+    # commands.  One cool approach here might be to `cp -al` the whole build
+    # dir, mutate it, then RENAME_EXCHANGE the two... though it doesn't seem
+    # Python exposes it yet so that'd require some hacking around. For now, we
+    # just guarantee that `compress` is idempotent and can resume from
+    # failures.
+
+    at_least_one = False
+
+    only_artifacts = None
+    if len(args.artifact) > 0:
+        only_artifacts = set(args.artifact)
+
+    for img_format, img in buildmeta['images'].items():
+        if img.get('skip-compression', False):
+            print(f"Skipping {img_format}")
+            continue
+        if only_artifacts is not None and img_format not in only_artifacts:
+            continue
+
+        file = img['path']
+        filepath = os.path.join(builddir, file)
+        # uncompress only compressed files
+        if file.endswith(tuple(ext_dict.values())):
+            tmpfile = os.path.join(tmpdir, strip_ext(file))
+            # SHA256 + size for uncompressed image was already calculated
+            # during 'build'
+            with open(tmpfile, 'wb') as f:
+                if file.endswith('xz'):
+                    t = xz_threads()
+                    run_verbose(['xz', '-dc', f'-T{t}', filepath], stdout=f)
+                elif file.endswith('gz'):
+                    run_verbose(['gzip', '-dc', filepath], stdout=f)
+                else:
+                    print(f"Unknown sufix of file {file}")
+            file_without_ext = strip_ext(file)
+            filepath_without_ext = strip_ext(filepath)
+            uncompressed_size = os.path.getsize(tmpfile)
+            uncompressed_sha256 = sha256sum_file(tmpfile)
+            # Check integrity of the uncompressed images
+            if uncompressed_sha256 != img['uncompressed-sha256']:
+                print(f"sha256 missmatch for {filepath_without_ext}")
+                print(f"{uncompressed_sha256}!={img['uncompressed-sha256']}")
+            if uncompressed_size != img['uncompressed-size']:
+                print("size missmatch for {filepath_without_ext}")
+                print(f"{uncompressed_size}!={img['size']}")
+
+            del img['uncompressed-sha256']
+            del img['uncompressed-size']
+            img['path'] = file_without_ext
+            img['sha256'] = uncompressed_sha256
+            img['size'] = uncompressed_size
+
+            # Just flush out after every image type, but unlink after writing.
+            # Then, we should be able to interrupt and restart from the last
+            # type.
+            shutil.move(tmpfile, filepath_without_ext)
+            write_json(buildmeta_path, buildmeta)
+            os.unlink(filepath)
+            at_least_one = True
+            print(f"Uncompressed: {file_without_ext}")
+        else:
+            # try to delete the original file if it's somehow still around
+            rm_allow_noent(filepath[:-3])
+
+    if at_least_one:
+        print(f"Updated: {buildmeta_path}")
+    return at_least_one
+
+
+changed = []
+if args.mode == "compress":
+    for arch in builds.get_build_arches(build):
+        builddir = builds.get_build_dir(build, arch)
+        changed.append(compress_one_builddir(builddir))
+        if not any(changed):
+            print("All builds already compressed")
+elif args.mode == "uncompress":
+    for arch in builds.get_build_arches(build):
+        builddir = builds.get_build_dir(build, arch)
+        changed.append(uncompress_one_builddir(builddir))
+        if not any(changed):
+            print("All builds already uncompressed")
