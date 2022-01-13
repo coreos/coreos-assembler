@@ -16,8 +16,9 @@ pod(image: imageName + ":latest", kvm: true, memory: "10Gi") {
     archiveArtifacts artifacts: 'rpmdb.txt'
 
     // Run stage Build FCOS (init, fetch and build)
-    fcosBuild(skipKola: 1, cosaDir: "/srv", noForce: true)
-
+    fcosBuild(skipKola: false, cosaDir: "/srv", noForce: true)
+    shwrap("""sed '15,16d' /srv/fedora-coreos-config/kola-denylist.yaml""")
+    fcosKola()
     // Run stage Kola QEMU (basic-qemu-scenarios, upgrade and self tests)
     fcosKola(cosaDir: "/srv", addExtTests: ["${env.WORKSPACE}/ci/run-kola-self-tests"])
 
