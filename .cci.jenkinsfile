@@ -17,7 +17,8 @@ pod(image: imageName + ":latest", kvm: true, memory: "10Gi") {
 
     // Run stage Build FCOS (init, fetch and build)
     fcosBuild(skipKola: 1, cosaDir: "/srv", noForce: true)
-
+    shwrap("pwd && ls /srv/src/")
+    shwrap("sed -i '15,16d' /srv/src/config/kola-denylist.yaml")
     // Run stage Kola QEMU (basic-qemu-scenarios, upgrade and self tests)
     fcosKola(cosaDir: "/srv", addExtTests: ["${env.WORKSPACE}/ci/run-kola-self-tests"])
 
