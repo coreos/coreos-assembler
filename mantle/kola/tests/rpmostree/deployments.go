@@ -111,7 +111,7 @@ func rpmOstreeUpgradeRollback(c cluster.TestCluster) {
 		// reboot into new deployment
 		rebootErr := m.Reboot()
 		if rebootErr != nil {
-			c.Fatalf("Failed to reboot machine: %v", err)
+			c.Fatalf("Failed to reboot machine: %v", rebootErr)
 		}
 
 		// get latest rpm-ostree status output
