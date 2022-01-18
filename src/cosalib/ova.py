@@ -115,3 +115,7 @@ class OVA(QemuVariantImage):
         # OVF descriptor must come first, then the manifest, then
         # References in order
         self.tar_members.insert(0, self.ovf_path)
+
+        return {
+            'skip-compression': True,
+        }

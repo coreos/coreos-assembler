@@ -739,7 +739,8 @@ boot
     buildmeta['images'].update({
         'live-iso': {
             'path': iso_name,
-            'sha256': sha256sum_file(tmpisofile)
+            'sha256': sha256sum_file(tmpisofile),
+            'skip-compression': True,
         }
     })
     shutil.move(tmpisofile, f"{builddir}/{iso_name}")
@@ -756,15 +757,18 @@ boot
     buildmeta['images'].update({
         'live-kernel': {
             'path': kernel_name,
-            'sha256': sha256sum_file(kernel_file)
+            'sha256': sha256sum_file(kernel_file),
+            'skip-compression': True,
         },
         'live-initramfs': {
             'path': initramfs_name,
-            'sha256': sha256sum_file(initramfs_file)
+            'sha256': sha256sum_file(initramfs_file),
+            'skip-compression': True,
         },
         'live-rootfs': {
             'path': rootfs_name,
-            'sha256': sha256sum_file(rootfs_file)
+            'sha256': sha256sum_file(rootfs_file),
+            'skip-compression': True,
         }
     })
 

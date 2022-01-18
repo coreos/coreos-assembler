@@ -291,6 +291,7 @@ class QemuVariantImage(_Build):
                 run_verbose(['gzip', '-9c', final_img], stdout=fh)
             shutil.move(temp_path, final_img)
             meta_patch.update({
+                'skip-compression': True,
                 'uncompressed-sha256': sha256,
                 'uncompressed-size': size,
             })
