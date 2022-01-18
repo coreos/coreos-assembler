@@ -18,9 +18,16 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/platform"
+	"github.com/coreos/mantle/util"
+	"github.com/coreos/pkg/capnslog"
+)
+
+var (
+	plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "kola/tests/util/rpmostree")
 )
 
 // RpmOstreeDeployment represents some of the data of an rpm-ostree deployment
@@ -54,7 +61,27 @@ type simplifiedRpmOstreeStatus struct {
 // a limited representation of the output of `rpm-ostree status --json`
 func GetRpmOstreeStatusJSON(c cluster.TestCluster, m platform.Machine) (simplifiedRpmOstreeStatus, error) {
 	target := simplifiedRpmOstreeStatus{}
-	rpmOstreeJSON := c.MustSSH(m, "rpm-ostree status --json")
+	// We have a case where the rpm-ostree status command is failing
+	// for the ostree.hotfix test and we don't know why:
+	// https://github.com/coreos/fedora-coreos-tracker/issues/942
+	// Let's run it once and check the failure. If it fails we will
+	// always return a failure because we want to know, but we will
+	// also run it with some retries to see if it succeeds in a
+	// successive try for some reason or if it continues to fail.
+	rpmOstreeJSON, err := c.SSH(m, "rpm-ostree status --json")
+	if err != nil {
+		retryStatus := func() error {
+			_, err := c.SSH(m, "rpm-ostree status --json")
+			return err
+		}
+		err2 := util.Retry(10, 10*time.Second, retryStatus)
+		if err2 != nil {
+			plog.Errorf("rpm-ostree status failed even after retries: %v", err2)
+		} else {
+			plog.Warning("rpm-ostree status succeeded after retries.")
+		}
+		return target, err // the original error
+	}
 
 	if err := json.Unmarshal(rpmOstreeJSON, &target); err != nil {
 		return target, fmt.Errorf("Couldn't umarshal the rpm-ostree status JSON data: %v", err)
