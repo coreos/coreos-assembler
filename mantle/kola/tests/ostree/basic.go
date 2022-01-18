@@ -132,7 +132,7 @@ func ostreeBasicTest(c cluster.TestCluster) {
 	}
 
 	// verify the output from `ostree admin status`
-	c.Run("admin status", func(c cluster.TestCluster) {
+	c.RunLogged("admin status", func(c cluster.TestCluster) {
 		if oas.Checksum != ros.Deployments[0].Checksum {
 			c.Fatalf(`Checksums do not match; expected %q, got %q`, ros.Deployments[0].Checksum, oas.Checksum)
 		}
@@ -147,13 +147,13 @@ func ostreeBasicTest(c cluster.TestCluster) {
 	// verify the output from `ostree rev-parse`
 	// this is kind of moot since the origin for RHCOS is just
 	// the checksum now
-	c.Run("rev-parse", func(c cluster.TestCluster) {
+	c.RunLogged("rev-parse", func(c cluster.TestCluster) {
 		// check the output of `ostree rev-parse`
 		c.AssertCmdOutputContains(m, ("ostree rev-parse " + oas.Origin), oas.Checksum)
 	})
 
 	// verify the output of 'ostree show'
-	c.Run("show", func(c cluster.TestCluster) {
+	c.RunLogged("show", func(c cluster.TestCluster) {
 		oShowOut := c.MustSSH(m, ("ostree show " + oas.Checksum))
 		oShowOutSplit := strings.Split(string(oShowOut), "\n")
 		// we need at least the first 4 lines (commit, ContentChecksum, Date, Version)
