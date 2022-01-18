@@ -180,6 +180,10 @@ func (t *TestCluster) MustSSHf(m platform.Machine, f string, args ...interface{}
 	return t.MustSSH(m, fmt.Sprintf(f, args...))
 }
 
+func (t *TestCluster) JournalLog(m platform.Machine, f string, args ...interface{}) []byte {
+	return t.MustSSH(m, fmt.Sprintf("logger --tag kola '%s'", fmt.Sprintf(f, args...)))
+}
+
 // RunCmdSync synchronously exectues a command, logging the output to the journal
 func (t *TestCluster) RunCmdSync(m platform.Machine, cmd string) {
 	t.LogJournal(m, "+ "+cmd)
