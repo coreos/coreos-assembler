@@ -107,14 +107,13 @@ def compress_one_builddir(builddir):
     if len(args.artifact) > 0:
         only_artifacts = set(args.artifact)
 
-    for img_format in buildmeta['images']:
+    for img_format, img in buildmeta['images'].items():
         if img_format in imgs_to_skip:
             print(f"Skipping {img_format}")
             continue
         if only_artifacts is not None and img_format not in only_artifacts:
             continue
 
-        img = buildmeta['images'][img_format]
         file = img['path']
         filepath = os.path.join(builddir, file)
         # check if it's not already compressed, even if with a different
