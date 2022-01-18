@@ -62,6 +62,16 @@ func (t *TestCluster) Run(name string, f func(c TestCluster)) bool {
 
 }
 
+// Same as Run, but logs a message in the machines' journal logs before and
+// after running the function.
+func (t *TestCluster) RunLogged(name string, f func(c TestCluster)) bool {
+	for _, m := range t.Machines() {
+		t.JournalLog(m, "=== RUN: %s/%s ===", t.H.Name(), name)
+		defer t.JournalLog(m, "=== DONE: %s/%s ===", t.H.Name(), name)
+	}
+	return t.Run(name, f)
+}
+
 // RunNative runs a registered NativeFunc on a remote machine
 func (t *TestCluster) RunNative(funcName string, m platform.Machine) bool {
 	command := fmt.Sprintf("./kolet run %q %q", t.H.Name(), funcName)

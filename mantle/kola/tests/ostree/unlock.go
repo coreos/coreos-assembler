@@ -189,7 +189,7 @@ func ostreeHotfixTest(c cluster.TestCluster) {
 	m := c.Machines()[0]
 
 	// unlock the deployment into "hotfix" mode
-	c.Run("unlock", func(c cluster.TestCluster) {
+	c.RunLogged("unlock", func(c cluster.TestCluster) {
 		unlockErr := ostreeAdminUnlock(c, m, true)
 		if unlockErr != nil {
 			c.Fatal(unlockErr)
@@ -197,7 +197,7 @@ func ostreeHotfixTest(c cluster.TestCluster) {
 	})
 
 	// try to install an RPM via HTTP
-	c.Run("install", func(c cluster.TestCluster) {
+	c.RunLogged("install", func(c cluster.TestCluster) {
 		rpmInstallErr := rpmInstallVerify(c, m, rpmUrl, rpmName)
 		if rpmInstallErr != nil {
 			c.Fatal(rpmInstallErr)
@@ -205,7 +205,7 @@ func ostreeHotfixTest(c cluster.TestCluster) {
 	})
 
 	// uninstall the RPM
-	c.Run("uninstall", func(c cluster.TestCluster) {
+	c.RunLogged("uninstall", func(c cluster.TestCluster) {
 		rpmUninstallErr := rpmUninstallVerify(c, m, rpmName)
 		if rpmUninstallErr != nil {
 			c.Fatal(rpmUninstallErr)
@@ -214,7 +214,7 @@ func ostreeHotfixTest(c cluster.TestCluster) {
 
 	// install the RPM again, reboot, verify it the "hotfix" deployment
 	// and RPM have persisted
-	c.Run("persist", func(c cluster.TestCluster) {
+	c.RunLogged("persist", func(c cluster.TestCluster) {
 		c.RunCmdSync(m, ("sudo rpm -i " + rpmUrl))
 
 		unlockRebootErr := m.Reboot()
@@ -237,7 +237,7 @@ func ostreeHotfixTest(c cluster.TestCluster) {
 	})
 
 	// roll back the deployment and verify the "hotfix" is no longer present
-	c.Run("rollback", func(c cluster.TestCluster) {
+	c.RunLogged("rollback", func(c cluster.TestCluster) {
 		c.RunCmdSync(m, "sudo rpm-ostree rollback")
 
 		rollbackRebootErr := m.Reboot()
