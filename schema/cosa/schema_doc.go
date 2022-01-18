@@ -411,6 +411,7 @@ var generatedSchemaJSON = `{
        "live-rootfs",
        "metal",
        "metal4k",
+       "nutanix",
        "openstack",
        "qemu",
        "vmware",
@@ -495,6 +496,12 @@ var generatedSchemaJSON = `{
          "title":"Live Rootfs",
          "$ref": "#/definitions/artifact"
         },
+        "nutanix": {
+          "$id":"#/properties/images/properties/nutanix",
+          "type":"object",
+          "title":"Nutanix",
+          "$ref": "#/definitions/artifact"
+         }, 
        "openstack": {
          "$id":"#/properties/images/properties/openstack",
          "type":"object",

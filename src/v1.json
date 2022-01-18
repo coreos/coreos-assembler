@@ -496,7 +496,7 @@
           "type":"object",
           "title":"Nutanix",
           "$ref": "#/definitions/artifact"
-         },
+         }, 
        "openstack": {
          "$id":"#/properties/images/properties/openstack",
          "type":"object",
