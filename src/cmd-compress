@@ -53,9 +53,6 @@ else:
 
 print(f"Targeting build: {build}")
 
-# Don't compress certain images
-imgs_to_skip = ["ostree", "live-iso", "vmware", "live-initramfs", "live-kernel", "live-rootfs"]
-
 
 def get_cpu_param(param):
     with open(f'/sys/fs/cgroup/cpu/cpu.{param}') as f:
@@ -108,7 +105,7 @@ def compress_one_builddir(builddir):
         only_artifacts = set(args.artifact)
 
     for img_format, img in buildmeta['images'].items():
-        if img_format in imgs_to_skip:
+        if img.get('skip-compression', False):
             print(f"Skipping {img_format}")
             continue
         if only_artifacts is not None and img_format not in only_artifacts:
@@ -116,10 +113,7 @@ def compress_one_builddir(builddir):
 
         file = img['path']
         filepath = os.path.join(builddir, file)
-        # check if it's not already compressed, even if with a different
-        # compressor (like for GCP, which needs .tar.gz, see:
-        # https://github.com/coreos/coreos-assembler/pull/1009)
-        if not file.endswith(tuple(ext_dict.values())):
+        if img.get('uncompressed-sha256') is None:
             tmpfile = os.path.join(tmpdir, (file + ext))
             # SHA256 + size for uncompressed image was already calculated
             # during 'build'
@@ -147,6 +141,7 @@ def compress_one_builddir(builddir):
             at_least_one = True
             print(f"Compressed: {file_with_ext}")
         else:
+            # we've already compressed this in a previous pass
             # try to delete the original file if it's somehow still around
             rm_allow_noent(filepath[:-3])
 

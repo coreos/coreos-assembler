@@ -23,6 +23,13 @@ var generatedSchemaJSON = `{
              "type":"number",
              "title":"Size in bytes"
             },
+           "skip-compression": {
+             "$id": "#/artifact/skip-compression",
+             "type":"boolean",
+             "title":"Skip compression",
+             "description":"Artifact should not be compressed or decompressed before use",
+             "default":false
+            },
            "uncompressed-sha256": {
              "$id": "#/artifact/uncompressed-sha256",
              "type":"string",
@@ -37,7 +44,8 @@ var generatedSchemaJSON = `{
           "optional": [
               "size",
               "uncompressed-sha256",
-              "uncompressed-size"
+              "uncompressed-size",
+              "skip-compression"
           ],
           "required": [
               "path",

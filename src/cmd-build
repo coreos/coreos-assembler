@@ -440,7 +440,8 @@ cat > tmp/images.json <<EOF
     "ostree": {
         "path": "${ostree_tarfile_path}",
         "sha256": "${ostree_tarfile_sha256}",
-        "size": ${ostree_tarfile_size}
+        "size": ${ostree_tarfile_size},
+        "skip-compression": true
     }
   }
 }
