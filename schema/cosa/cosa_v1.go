@@ -21,6 +21,7 @@ type Artifact struct {
 	Path               string  `json:"path"`
 	Sha256             string  `json:"sha256"`
 	SizeInBytes        float64 `json:"size,omitempty"`
+	SkipCompression    bool    `json:"skip-compression,omitempty"`
 	UncompressedSha256 string  `json:"uncompressed-sha256,omitempty"`
 	UncompressedSize   int     `json:"uncompressed-size,omitempty"`
 }
