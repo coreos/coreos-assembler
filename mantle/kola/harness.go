@@ -57,6 +57,7 @@ import (
 	"github.com/coreos/mantle/platform/machine/unprivqemu"
 	"github.com/coreos/mantle/sdk"
 	"github.com/coreos/mantle/system"
+	"github.com/coreos/mantle/util"
 )
 
 // InstalledTestsDir is a directory where "installed" external
@@ -1244,11 +1245,22 @@ func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flig
 			AppendKernelArgs: t.AppendKernelArgs,
 		}
 
-		_, err = platform.NewMachines(c, userdata, t.ClusterSize, options)
+		// Providers sometimes fail to bring up a machine within a
+		// reasonable time frame. Let's try twice and then bail if
+		// it doesn't work.
+		err := util.Retry(2, 1*time.Second, func() error {
+			var err error
+			_, err = platform.NewMachines(c, userdata, t.ClusterSize, options)
+			if err != nil {
+				plog.Warningf("retryloop: failed to bring up machines: %v", err)
+			}
+			return err
+		})
 		if err != nil {
 			h.Fatalf("Cluster failed starting machines: %v", err)
 		}
 	}
+
 	// Machines should now be up. Let's start the test execution timer.
 	// Each test is run via RunWithExecTimeoutCheck() in SSH() which
 	// will interrupt this function/goroutine if the timeout expires.
