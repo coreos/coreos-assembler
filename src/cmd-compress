@@ -54,7 +54,7 @@ else:
 print(f"Targeting build: {build}")
 
 # Don't compress certain images
-imgs_to_skip = ["ostree", "iso", "live-iso", "vmware", "initramfs", "live-initramfs", "kernel", "live-kernel", "live-rootfs"]
+imgs_to_skip = ["ostree", "live-iso", "vmware", "live-initramfs", "live-kernel", "live-rootfs"]
 
 
 def get_cpu_param(param):
