@@ -57,8 +57,6 @@ func WaitUntilReady(timeout, delay time.Duration, checkFunction func() (bool, er
 		default:
 		}
 
-		time.Sleep(delay)
-
 		// Log how long it took checkFunction to run. This will help gather information about
 		// how long it takes remote API requests (like provisioning machines) to finish.
 		start := time.Now()
@@ -67,10 +65,10 @@ func WaitUntilReady(timeout, delay time.Duration, checkFunction func() (bool, er
 		if err != nil {
 			return err
 		}
-
 		if done {
 			break
 		}
+		time.Sleep(delay)
 	}
 	return nil
 }
