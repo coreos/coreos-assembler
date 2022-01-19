@@ -35,12 +35,6 @@ import (
 	"github.com/coreos/mantle/util"
 )
 
-const (
-	// Encryption takes a long time--retry more before failing
-	sshRetries = 60
-	sshTimeout = 10 * time.Second
-)
-
 var (
 	plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "platform")
 )
@@ -452,7 +446,7 @@ func CheckMachine(ctx context.Context, m Machine) error {
 		return nil
 	}
 
-	if err := util.Retry(sshRetries, sshTimeout, sshChecker); err != nil {
+	if err := util.RetryUntilTimeout(10*time.Minute, 10*time.Second, sshChecker); err != nil {
 		return errors.Wrapf(err, "ssh unreachable")
 	}
 

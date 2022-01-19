@@ -48,6 +48,30 @@ func RetryConditional(attempts int, delay time.Duration, shouldRetry func(err er
 	return err
 }
 
+// RetryUntilTimeout calls function f until it succeeds or until
+// the given timeout is reached. It will wait a given amount of time
+// between each try based on the given delay.
+func RetryUntilTimeout(timeout, delay time.Duration, f func() error) error {
+	after := time.After(timeout)
+	for {
+		select {
+		case <-after:
+			return fmt.Errorf("time limit exceeded")
+		default:
+		}
+		// Log how long it took the function to run. This will help gather information about
+		// how long it takes remote network requests to finish.
+		start := time.Now()
+		err := f()
+		plog.Debugf("RetryUntilTimeout: f() took %v", time.Since(start))
+		if err == nil {
+			break
+		}
+		time.Sleep(delay)
+	}
+	return nil
+}
+
 func WaitUntilReady(timeout, delay time.Duration, checkFunction func() (bool, error)) error {
 	after := time.After(timeout)
 	for {
