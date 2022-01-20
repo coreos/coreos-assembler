@@ -29,7 +29,7 @@ gi.require_version('OSTree', '1.0')
 from gi.repository import GLib, Gio, OSTree
 
 # this is really the worst case scenario, it's usually pretty fast otherwise
-ROBOSIGNATORY_REQUEST_TIMEOUT_SEC = 60 * 60
+ROBOSIGNATORY_REQUEST_TIMEOUT_SEC = 60 * 60 * 4
 
 fedenv = 'prod'
 
