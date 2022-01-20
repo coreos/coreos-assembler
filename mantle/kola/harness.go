@@ -1141,16 +1141,15 @@ func makeNonExclusiveTest(tests []*register.Test, flight platform.Flight) regist
 			}
 		}
 
-		// We upgrade each config to V3.4exp so they can be merged into one config
-		conf, err := test.UserData.RenderToV34exp()
+		conf, err := test.UserData.Render()
 		if err != nil {
-			plog.Fatal(err)
+			plog.Fatalf("Error rendering config: %v", err)
 		}
 		nonExclusiveTestConfs = append(nonExclusiveTestConfs, conf)
 	}
 
 	// Merge configs together
-	mergedConfig, err := conf.MergeAllV34exp(nonExclusiveTestConfs)
+	mergedConfig, err := conf.MergeAllConfigs(nonExclusiveTestConfs)
 	if err != nil {
 		plog.Fatalf("Error merging configs: %v", err)
 	}
