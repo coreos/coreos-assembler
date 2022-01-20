@@ -285,46 +285,6 @@ func (u *UserData) Render() (*Conf, error) {
 	return c, nil
 }
 
-// Parse userdata into a V3.4 config
-func (u *UserData) RenderToV34exp() (*Conf, error) {
-
-	parseCompatible := func(raw []byte) (*Conf, error) {
-		config, report, err := v34exp.ParseCompatibleVersion(raw)
-		if err != nil {
-			return nil, err
-		}
-		if len(report.Entries) > 0 {
-			plog.Warningf("parsing ignition config to V3.4: %s", report)
-		}
-		return &Conf{ignitionV34exp: &config}, nil
-	}
-
-	var config *Conf
-	switch u.kind {
-	case kindEmpty:
-		// empty, noop
-	case kindIgnition:
-		config, err := parseCompatible([]byte(u.data))
-		return config, err
-	case kindButane:
-		ignc, report, err := butane.TranslateBytes([]byte(u.data), butaneCommon.TranslateBytesOptions{
-			Raw: true,
-		})
-		if err != nil {
-			return nil, err
-		}
-		if len(report.Entries) > 0 {
-			plog.Warningf("translating Butane config: %s", report)
-		}
-		config, err := parseCompatible(ignc)
-		return config, err
-	default:
-		return nil, errors.New("invalid kind")
-	}
-
-	return config, nil
-}
-
 // String returns the string representation of the userdata in Conf.
 func (c *Conf) String() string {
 	if c.ignitionV3 != nil {
@@ -377,21 +337,23 @@ func (c *Conf) MergeV34exp(newConfig v34exptypes.Config) {
 	c.ignitionV34exp = &mergeConfig
 }
 
-// Merge all configs into a V3.4 config
-// configs must be of type V34exp to merge
-func MergeAllV34exp(confObjs []*Conf) (*UserData, error) {
-	config := Conf{}
-	config.ignitionV34exp = &v34exptypes.Config{
-		Ignition: v34exptypes.Ignition{
-			Version: "3.4.0-experimental",
+// Merge all configs into a V3.3 config
+func MergeAllConfigs(confObjs []*Conf) (*UserData, error) {
+	config := Conf{
+		ignitionV33: &v33types.Config{
+			Ignition: v33types.Ignition{
+				Version: "3.3.0",
+			},
 		},
 	}
+	objectsToMerge := &config.ignitionV33.Ignition.Config.Merge
 	for _, conf := range confObjs {
-		if conf.ignitionV34exp == nil {
-			return nil, fmt.Errorf("configs must be V34exp to merge")
+		ud := conf.String()
+		url := dataurl.EncodeBytes([]byte(ud))
+		obj := v33types.Resource{
+			Source: &url,
 		}
-		mergedConfig := v34exp.Merge(*config.ignitionV34exp, *conf.ignitionV34exp)
-		config.ignitionV34exp = &mergedConfig
+		*objectsToMerge = append(*objectsToMerge, obj)
 	}
 
 	userData := Ignition(config.String())
