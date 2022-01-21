@@ -185,9 +185,13 @@ func (qc *Cluster) NewMachineWithQemuOptions(userdata *conf.UserData, options pl
 		return nil, err
 	}
 
-	if err := platform.StartMachine(qm, qm.journal); err != nil {
-		qm.Destroy()
-		return nil, err
+	// Run StartMachine, which blocks on the machine being booted up enough
+	// for SSH access, but only if the caller didn't tell us not to.
+	if !options.SkipStartMachine {
+		if err := platform.StartMachine(qm, qm.journal); err != nil {
+			qm.Destroy()
+			return nil, err
+		}
 	}
 
 	qc.AddMach(qm)

@@ -1243,6 +1243,7 @@ func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flig
 			MinDiskSize:      t.MinDiskSize,
 			AdditionalNics:   t.AdditionalNics,
 			AppendKernelArgs: t.AppendKernelArgs,
+			SkipStartMachine: true,
 		}
 
 		// Providers sometimes fail to bring up a machine within a
@@ -1261,13 +1262,6 @@ func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flig
 		}
 	}
 
-	// Machines should now be up. Let's start the test execution timer.
-	// Each test is run via RunWithExecTimeoutCheck() in SSH() which
-	// will interrupt this function/goroutine if the timeout expires.
-	// In the case of early return h.StopExecTimer can be called even
-	// if h.StartExecTimer has not been called
-	h.StartExecTimer()
-
 	// pass along all registered native functions
 	var names []string
 	for k := range t.NativeFuncs {
@@ -1280,6 +1274,29 @@ func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flig
 		Cluster:     c,
 		NativeFuncs: names,
 		FailFast:    t.FailFast,
+	}
+
+	// Note that we passed in SkipStartMachine=true in our machine
+	// options. This means NewMachines() didn't block on the machines
+	// being up with SSH access before returning; i.e. it skipped running
+	// platform.StartMachines(). The machines should now be booting.
+	// Let's start the test execution timer and then run mach.Start()
+	// (wrapper for platform.StartMachine()) which sets up the journal
+	// forwarding and runs machine checks, both of which require SSH
+	// to be up, which implies Ignition has completed successfully.
+	//
+	// We do all of this so that the time it takes to run Ignition can
+	// be included in our test execution timeout.
+	h.StartExecTimer()
+	for _, mach := range tcluster.Machines() {
+		plog.Debugf("Trying to StartMachine() %v", mach.ID())
+		var err error
+		tcluster.RunWithExecTimeoutCheck(func() {
+			err = mach.Start()
+		}, fmt.Sprintf("SSH unsuccessful within allotted timeframe for %v.", mach.ID()))
+		if err != nil {
+			h.Fatal(errors.Wrapf(err, "mach.Start() failed"))
+		}
 	}
 
 	// drop kolet binary on machines

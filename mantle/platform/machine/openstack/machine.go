@@ -87,6 +87,10 @@ func (om *machine) IgnitionError() error {
 	return nil
 }
 
+func (om *machine) Start() error {
+	return platform.StartMachine(om, om.journal)
+}
+
 func (om *machine) Reboot() error {
 	return platform.RebootMachine(om, om.journal)
 }
