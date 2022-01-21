@@ -21,6 +21,7 @@ import (
 	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/mantle/kola/tests/util"
 	"github.com/coreos/mantle/platform"
+	"github.com/coreos/mantle/platform/conf"
 )
 
 func init() {
@@ -39,6 +40,19 @@ func init() {
 		Name:        "ostree.hotfix",
 		FailFast:    true,
 		Tags:        []string{"ostree"},
+		// enable debugging for https://github.com/coreos/fedora-coreos-tracker/issues/942
+		// we can drop it once we resolved it
+		UserData: conf.Butane(`
+variant: fcos
+version: 1.4.0
+systemd:
+  units:
+  - name: rpm-ostreed.service
+    dropins:
+    - name: 10-debug.conf
+      contents: |-
+        [Service]
+        Environment=G_MESSAGES_DEBUG=all`),
 	})
 
 }
