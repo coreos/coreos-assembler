@@ -37,6 +37,23 @@ func (ec *cluster) vmname() string {
 }
 
 func (ec *cluster) NewMachine(userdata *platformConf.UserData) (platform.Machine, error) {
+	return ec.NewMachineWithOptions(userdata, platform.MachineOptions{})
+}
+
+func (ec *cluster) NewMachineWithOptions(userdata *platformConf.UserData, options platform.MachineOptions) (platform.Machine, error) {
+	if len(options.AdditionalDisks) > 0 {
+		return nil, errors.New("platform esx does not yet support additional disks")
+	}
+	if options.MultiPathDisk {
+		return nil, errors.New("platform esx does not support multipathed disks")
+	}
+	if options.AdditionalNics > 0 {
+		return nil, errors.New("platform esx does not support additional nics")
+	}
+	if options.AppendKernelArgs != "" {
+		return nil, errors.New("platform esx does not support appending kernel arguments")
+	}
+
 	conf, err := ec.RenderUserData(userdata, map[string]string{
 		"$public_ipv4":  "${COREOS_ESX_IPV4_PUBLIC_0}",
 		"$private_ipv4": "${COREOS_ESX_IPV4_PRIVATE_0}",
@@ -89,22 +106,6 @@ ExecStart=/usr/bin/bash -c 'echo "COREOS_ESX_IPV4_PRIVATE_0=$(ip addr show ens19
 	ec.AddMach(mach)
 
 	return mach, nil
-}
-
-func (ec *cluster) NewMachineWithOptions(userdata *platformConf.UserData, options platform.MachineOptions) (platform.Machine, error) {
-	if len(options.AdditionalDisks) > 0 {
-		return nil, errors.New("platform esx does not yet support additional disks")
-	}
-	if options.MultiPathDisk {
-		return nil, errors.New("platform esx does not support multipathed disks")
-	}
-	if options.AdditionalNics > 0 {
-		return nil, errors.New("platform esx does not support additional nics")
-	}
-	if options.AppendKernelArgs != "" {
-		return nil, errors.New("platform esx does not support appending kernel arguments")
-	}
-	return ec.NewMachine(userdata)
 }
 
 func (ec *cluster) Destroy() {

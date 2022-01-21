@@ -32,8 +32,24 @@ type cluster struct {
 	flight *flight
 }
 
-// Calling in parallel is ok
 func (gc *cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error) {
+	return gc.NewMachineWithOptions(userdata, platform.MachineOptions{})
+}
+
+func (gc *cluster) NewMachineWithOptions(userdata *conf.UserData, options platform.MachineOptions) (platform.Machine, error) {
+	if len(options.AdditionalDisks) > 0 {
+		return nil, errors.New("platform gce does not yet support additional disks")
+	}
+	if options.MultiPathDisk {
+		return nil, errors.New("platform gce does not support multipathed disks")
+	}
+	if options.AdditionalNics > 0 {
+		return nil, errors.New("platform gce does not support additional nics")
+	}
+	if options.AppendKernelArgs != "" {
+		return nil, errors.New("platform gce does not support appending kernel arguments")
+	}
+
 	conf, err := gc.RenderUserData(userdata, map[string]string{
 		"$public_ipv4":  "${COREOS_GCE_IP_EXTERNAL_0}",
 		"$private_ipv4": "${COREOS_GCE_IP_LOCAL_0}",
@@ -89,22 +105,6 @@ func (gc *cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error)
 	gc.AddMach(gm)
 
 	return gm, nil
-}
-
-func (gc *cluster) NewMachineWithOptions(userdata *conf.UserData, options platform.MachineOptions) (platform.Machine, error) {
-	if len(options.AdditionalDisks) > 0 {
-		return nil, errors.New("platform gce does not yet support additional disks")
-	}
-	if options.MultiPathDisk {
-		return nil, errors.New("platform gce does not support multipathed disks")
-	}
-	if options.AdditionalNics > 0 {
-		return nil, errors.New("platform gce does not support additional nics")
-	}
-	if options.AppendKernelArgs != "" {
-		return nil, errors.New("platform gce does not support appending kernel arguments")
-	}
-	return gc.NewMachine(userdata)
 }
 
 func (gc *cluster) Destroy() {

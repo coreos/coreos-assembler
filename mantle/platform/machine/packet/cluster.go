@@ -33,6 +33,23 @@ type cluster struct {
 }
 
 func (pc *cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error) {
+	return pc.NewMachineWithOptions(userdata, platform.MachineOptions{})
+}
+
+func (pc *cluster) NewMachineWithOptions(userdata *conf.UserData, options platform.MachineOptions) (platform.Machine, error) {
+	if len(options.AdditionalDisks) > 0 {
+		return nil, errors.New("platform packet does not yet support additional disks")
+	}
+	if options.MultiPathDisk {
+		return nil, errors.New("platform packet does not support multipathed disks")
+	}
+	if options.AdditionalNics > 0 {
+		return nil, errors.New("platform packet does not support additional nics")
+	}
+	if options.AppendKernelArgs != "" {
+		return nil, errors.New("platform packet does not support appending kernel arguments")
+	}
+
 	conf, err := pc.RenderUserData(userdata, map[string]string{
 		"$public_ipv4":  "${COREOS_PACKET_IPV4_PUBLIC_0}",
 		"$private_ipv4": "${COREOS_PACKET_IPV4_PRIVATE_0}",
@@ -110,22 +127,6 @@ func (pc *cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error)
 	pc.AddMach(mach)
 
 	return mach, nil
-}
-
-func (pc *cluster) NewMachineWithOptions(userdata *conf.UserData, options platform.MachineOptions) (platform.Machine, error) {
-	if len(options.AdditionalDisks) > 0 {
-		return nil, errors.New("platform packet does not yet support additional disks")
-	}
-	if options.MultiPathDisk {
-		return nil, errors.New("platform packet does not support multipathed disks")
-	}
-	if options.AdditionalNics > 0 {
-		return nil, errors.New("platform packet does not support additional nics")
-	}
-	if options.AppendKernelArgs != "" {
-		return nil, errors.New("platform packet does not support appending kernel arguments")
-	}
-	return pc.NewMachine(userdata)
 }
 
 func (pc *cluster) vmname() string {
