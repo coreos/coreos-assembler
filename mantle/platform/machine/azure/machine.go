@@ -88,6 +88,10 @@ func (am *machine) refetchIPs() error {
 	return nil
 }
 
+func (am *machine) Start() error {
+	return platform.StartMachine(am, am.journal)
+}
+
 func (am *machine) Reboot() error {
 	err := platform.RebootMachine(am, am.journal)
 	if err != nil {

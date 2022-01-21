@@ -65,6 +65,10 @@ func (dm *machine) IgnitionError() error {
 	return nil
 }
 
+func (dm *machine) Start() error {
+	return platform.StartMachine(dm, dm.journal)
+}
+
 func (dm *machine) Reboot() error {
 	return platform.RebootMachine(dm, dm.journal)
 }

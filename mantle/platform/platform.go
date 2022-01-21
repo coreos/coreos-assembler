@@ -68,6 +68,9 @@ type Machine interface {
 	// SSH runs a single command over a new SSH connection.
 	SSH(cmd string) ([]byte, []byte, error)
 
+	// Start sets up the journal and performs sanity checks via platform.StartMachine().
+	Start() error
+
 	// Reboot restarts the machine and waits for it to come back.
 	Reboot() error
 
@@ -152,6 +155,7 @@ type MachineOptions struct {
 	MinDiskSize      int
 	AdditionalNics   int
 	AppendKernelArgs string
+	SkipStartMachine bool // Skip platform.StartMachine on machine bringup
 }
 
 // SystemdDropin is a userdata type agnostic struct representing a systemd dropin

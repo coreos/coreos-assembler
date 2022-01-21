@@ -98,9 +98,13 @@ ExecStart=/usr/bin/bash -c 'echo "COREOS_ESX_IPV4_PRIVATE_0=$(ip addr show ens19
 		return nil, err
 	}
 
-	if err := platform.StartMachine(mach, mach.journal); err != nil {
-		mach.Destroy()
-		return nil, err
+	// Run StartMachine, which blocks on the machine being booted up enough
+	// for SSH access, but only if the caller didn't tell us not to.
+	if !options.SkipStartMachine {
+		if err := platform.StartMachine(mach, mach.journal); err != nil {
+			mach.Destroy()
+			return nil, err
+		}
 	}
 
 	ec.AddMach(mach)
