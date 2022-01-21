@@ -71,6 +71,10 @@ func ostreeAdminUnlock(c cluster.TestCluster, m platform.Machine, hotfix bool) e
 
 	c.RunCmdSync(m, unlockCmd)
 
+	// just sanity-check that SSH itself still works
+	// https://github.com/coreos/fedora-coreos-tracker/issues/942
+	c.RunCmdSync(m, "true")
+
 	status, err := util.GetRpmOstreeStatusJSON(c, m)
 	if err != nil {
 		c.Fatal(err)
