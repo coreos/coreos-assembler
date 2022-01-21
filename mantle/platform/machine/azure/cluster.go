@@ -40,6 +40,23 @@ func (ac *cluster) vmname() string {
 }
 
 func (ac *cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error) {
+	return ac.NewMachineWithOptions(userdata, platform.MachineOptions{})
+}
+
+func (ac *cluster) NewMachineWithOptions(userdata *conf.UserData, options platform.MachineOptions) (platform.Machine, error) {
+	if len(options.AdditionalDisks) > 0 {
+		return nil, errors.New("platform azure does not yet support additional disks")
+	}
+	if options.MultiPathDisk {
+		return nil, errors.New("platform azure does not support multipathed disks")
+	}
+	if options.AdditionalNics > 0 {
+		return nil, errors.New("platform azure does not support additional nics")
+	}
+	if options.AppendKernelArgs != "" {
+		return nil, errors.New("platform azure does not support appending kernel arguments")
+	}
+
 	conf, err := ac.RenderUserData(userdata, map[string]string{
 		"$private_ipv4": "${COREOS_AZURE_IPV4_DYNAMIC}",
 	})
@@ -87,22 +104,6 @@ func (ac *cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error)
 	ac.AddMach(mach)
 
 	return mach, nil
-}
-
-func (ac *cluster) NewMachineWithOptions(userdata *conf.UserData, options platform.MachineOptions) (platform.Machine, error) {
-	if len(options.AdditionalDisks) > 0 {
-		return nil, errors.New("platform azure does not yet support additional disks")
-	}
-	if options.MultiPathDisk {
-		return nil, errors.New("platform azure does not support multipathed disks")
-	}
-	if options.AdditionalNics > 0 {
-		return nil, errors.New("platform azure does not support additional nics")
-	}
-	if options.AppendKernelArgs != "" {
-		return nil, errors.New("platform azure does not support appending kernel arguments")
-	}
-	return ac.NewMachine(userdata)
 }
 
 func (ac *cluster) Destroy() {

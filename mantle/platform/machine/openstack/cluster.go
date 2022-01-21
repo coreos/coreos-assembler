@@ -31,6 +31,23 @@ type cluster struct {
 }
 
 func (oc *cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error) {
+	return oc.NewMachineWithOptions(userdata, platform.MachineOptions{})
+}
+
+func (oc *cluster) NewMachineWithOptions(userdata *conf.UserData, options platform.MachineOptions) (platform.Machine, error) {
+	if len(options.AdditionalDisks) > 0 {
+		return nil, errors.New("platform openstack does not yet support additional disks")
+	}
+	if options.MultiPathDisk {
+		return nil, errors.New("platform openstack does not support multipathed disks")
+	}
+	if options.AdditionalNics > 0 {
+		return nil, errors.New("platform openstack does not support additional nics")
+	}
+	if options.AppendKernelArgs != "" {
+		return nil, errors.New("platform openstack does not support appending kernel arguments")
+	}
+
 	conf, err := oc.RenderUserData(userdata, map[string]string{
 		"$public_ipv4":  "${COREOS_OPENSTACK_IPV4_PUBLIC}",
 		"$private_ipv4": "${COREOS_OPENSTACK_IPV4_LOCAL}",
@@ -78,22 +95,6 @@ func (oc *cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error)
 	oc.AddMach(mach)
 
 	return mach, nil
-}
-
-func (oc *cluster) NewMachineWithOptions(userdata *conf.UserData, options platform.MachineOptions) (platform.Machine, error) {
-	if len(options.AdditionalDisks) > 0 {
-		return nil, errors.New("platform openstack does not yet support additional disks")
-	}
-	if options.MultiPathDisk {
-		return nil, errors.New("platform openstack does not support multipathed disks")
-	}
-	if options.AdditionalNics > 0 {
-		return nil, errors.New("platform openstack does not support additional nics")
-	}
-	if options.AppendKernelArgs != "" {
-		return nil, errors.New("platform openstack does not support appending kernel arguments")
-	}
-	return oc.NewMachine(userdata)
 }
 
 func (oc *cluster) vmname() string {
