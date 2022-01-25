@@ -93,8 +93,8 @@ github.com/coreos/ioprogress v0.0.0-20151023204047-4637e494fd9b h1:mpeSDqY0vMUyJ
 github.com/coreos/ioprogress v0.0.0-20151023204047-4637e494fd9b/go.mod h1:JIWRG8HSwVYUrjdR/JsFg7DEby0nhQcWFPIQvXJyih8=
 github.com/coreos/pkg v0.0.0-20180928190104-399ea9e2e55f h1:lBNOc5arjvs8E5mO2tbpBpLoyyu8B6e44T7hJy6potg=
 github.com/coreos/pkg v0.0.0-20180928190104-399ea9e2e55f/go.mod h1:E3G3o1h8I7cfcXa63jLwjI0eiQQMgzzUDFVpN/nH/eA=
-github.com/coreos/stream-metadata-go v0.1.6 h1:UWoPNtMbs6q3aFaHksuqB6QtaRAic5feUioeclBM+vg=
-github.com/coreos/stream-metadata-go v0.1.6/go.mod h1:zxVoWUDB0H8+tZRhTs0LeLeR/QdmBsuo7FN1oOBrWTE=
+github.com/coreos/stream-metadata-go v0.1.7 h1:WlD8p2mcGZ/OtROJo0o4eJKK179p697wlVzipTv2Wjc=
+github.com/coreos/stream-metadata-go v0.1.7/go.mod h1:RTjQyHgO/G37oJ3qnqYK6Z4TPZ5EsaabOtfMjVXmgko=
 github.com/coreos/vcontext v0.0.0-20210407161507-4ee6c745c8bd/go.mod h1:z4pMVvaUrxs98RROlIYdAQCKhEicjnTirOaVyDRH5h8=
 github.com/coreos/vcontext v0.0.0-20211021162308-f1dbbca7bef4 h1:pfSsrvbjUFGINaPGy0mm2QKQKTdq7IcbUa+nQwsz2UM=
 github.com/coreos/vcontext v0.0.0-20211021162308-f1dbbca7bef4/go.mod h1:HckqHnP/HI41vS0bfVjJ20u6jD0biI5+68QwZm5Xb9U=
@@ -216,9 +216,6 @@ github.com/google/pprof v0.0.0-20200430221834-fc25d7d30c6d/go.mod h1:ZgVRPoUq/hf
 github.com/google/pprof v0.0.0-20200507031123-427632fa3b1c/go.mod h1:ZgVRPoUq/hfqzAqh7sHMqb3I9Rq5C59dIz2SbBwJ4eM=
 github.com/google/pprof v0.0.0-20200708004538-1a94d8640e99/go.mod h1:ZgVRPoUq/hfqzAqh7sHMqb3I9Rq5C59dIz2SbBwJ4eM=
 github.com/google/renameio v0.1.0/go.mod h1:KWCgfxg9yswjAJkECMjeO8J8rahYeXnNhOm40UhjYkI=
-github.com/google/renameio v1.0.0/go.mod h1:t/HQoYBZSsWSNK35C6CO/TpPLDVWvxOHboWUAweKUpk=
-github.com/google/renameio v1.0.1 h1:Lh/jXZmvZxb0BBeSY5VKEfidcbcbenKjZFzM/q0fSeU=
-github.com/google/renameio v1.0.1/go.mod h1:t/HQoYBZSsWSNK35C6CO/TpPLDVWvxOHboWUAweKUpk=
 github.com/google/uuid v1.0.0/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
 github.com/google/uuid v1.1.1 h1:Gkbcsh/GbpXz7lPftLA3P6TYMwjCLYm83jiFQZF/3gY=
 github.com/google/uuid v1.1.1/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
