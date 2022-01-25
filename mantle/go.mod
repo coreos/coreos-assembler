@@ -19,12 +19,11 @@ require (
 	github.com/coreos/ignition/v2 v2.13.0
 	github.com/coreos/ioprogress v0.0.0-20151023204047-4637e494fd9b
 	github.com/coreos/pkg v0.0.0-20180928190104-399ea9e2e55f
-	github.com/coreos/stream-metadata-go v0.1.6
+	github.com/coreos/stream-metadata-go v0.1.7
 	github.com/digitalocean/go-libvirt v0.0.0-20200810224808-b9c702499bf7 // indirect
 	github.com/digitalocean/go-qemu v0.0.0-20200529005954-1b453d036a9c
 	github.com/digitalocean/godo v1.33.0
 	github.com/dimchansky/utfbom v1.1.1 // indirect
-	github.com/google/renameio v1.0.1 // indirect
 	github.com/gophercloud/gophercloud v0.22.0
 	github.com/gophercloud/utils v0.0.0-20210323225332-7b186010c04f
 	github.com/kballard/go-shellquote v0.0.0-20150810074751-d8ec1a69a250
