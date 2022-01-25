@@ -21,6 +21,7 @@ type Artifact struct {
 	Path               string  `json:"path"`
 	Sha256             string  `json:"sha256"`
 	SizeInBytes        float64 `json:"size,omitempty"`
+	SkipCompression    bool    `json:"skip-compression,omitempty"`
 	UncompressedSha256 string  `json:"uncompressed-sha256,omitempty"`
 	UncompressedSize   int     `json:"uncompressed-size,omitempty"`
 }
@@ -93,6 +94,7 @@ type BuildArtifacts struct {
 	LiveRootfs         *Artifact `json:"live-rootfs,omitempty"`
 	Metal              *Artifact `json:"metal,omitempty"`
 	Metal4KNative      *Artifact `json:"metal4k,omitempty"`
+	Nutanix            *Artifact `json:"nutanix,omitempty"`
 	OpenStack          *Artifact `json:"openstack,omitempty"`
 	Ostree             Artifact  `json:"ostree"`
 	PowerVirtualServer *Artifact `json:"powervs,omitempty"`
