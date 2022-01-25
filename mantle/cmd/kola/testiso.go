@@ -72,7 +72,8 @@ const (
 	scenarioPXEInstall = "pxe-install"
 	scenarioISOInstall = "iso-install"
 
-	scenarioMinISOInstall = "miniso-install"
+	scenarioMinISOInstall   = "miniso-install"
+	scenarioMinISOInstallNm = "miniso-install-nm"
 
 	scenarioPXEOfflineInstall = "pxe-offline-install"
 	scenarioISOOfflineInstall = "iso-offline-install"
@@ -87,6 +88,7 @@ var allScenarios = map[string]bool{
 	scenarioISOInstall:        true,
 	scenarioISOOfflineInstall: true,
 	scenarioMinISOInstall:     true,
+	scenarioMinISOInstallNm:   true,
 	scenarioISOLiveLogin:      true,
 	scenarioISOAsDisk:         true,
 }
@@ -221,7 +223,7 @@ func init() {
 	cmdTestIso.Flags().BoolVar(&pxeAppendRootfs, "pxe-append-rootfs", false, "Append rootfs to PXE initrd instead of fetching at runtime")
 	cmdTestIso.Flags().StringSliceVar(&pxeKernelArgs, "pxe-kargs", nil, "Additional kernel arguments for PXE")
 	cmdTestIso.Flags().BoolVar(&addNmKeyfile, "add-nm-keyfile", false, "Add NetworkManager connection keyfile")
-	cmdTestIso.Flags().StringSliceVar(&scenarios, "scenarios", []string{scenarioPXEInstall, scenarioISOOfflineInstall, scenarioPXEOfflineInstall, scenarioISOLiveLogin, scenarioISOAsDisk, scenarioMinISOInstall}, fmt.Sprintf("Test scenarios (also available: %v)", []string{scenarioISOInstall}))
+	cmdTestIso.Flags().StringSliceVar(&scenarios, "scenarios", []string{scenarioPXEInstall, scenarioISOOfflineInstall, scenarioPXEOfflineInstall, scenarioISOLiveLogin, scenarioISOAsDisk, scenarioMinISOInstall, scenarioMinISOInstallNm}, fmt.Sprintf("Test scenarios (also available: %v)", []string{scenarioISOInstall}))
 	cmdTestIso.Args = cobra.ExactArgs(0)
 
 	root.AddCommand(cmdTestIso)
@@ -334,6 +336,7 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 		delete(targetScenarios, scenarioISOInstall)
 		delete(targetScenarios, scenarioISOOfflineInstall)
 		delete(targetScenarios, scenarioMinISOInstall)
+		delete(targetScenarios, scenarioMinISOInstallNm)
 		delete(targetScenarios, scenarioISOLiveLogin)
 	}
 
@@ -463,6 +466,18 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 			return errors.Wrapf(err, "scenario %s", scenarioMinISOInstall)
 		}
 		printSuccess(scenarioMinISOInstall)
+	}
+	if _, ok := targetScenarios[scenarioMinISOInstallNm]; ok {
+		if kola.CosaBuild.Meta.BuildArtifacts.LiveIso == nil {
+			return fmt.Errorf("build %s has no live ISO", kola.CosaBuild.Meta.Name)
+		}
+		ranTest = true
+		instIso := baseInst // Pretend this is Rust and I wrote .copy()
+		addNmKeyfile = true
+		if err := testLiveIso(ctx, instIso, filepath.Join(outputDir, scenarioMinISOInstallNm), false, true); err != nil {
+			return errors.Wrapf(err, "scenario %s", scenarioMinISOInstallNm)
+		}
+		printSuccess(scenarioMinISOInstallNm)
 	}
 
 	if !ranTest {
