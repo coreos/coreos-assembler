@@ -375,6 +375,9 @@ EOF
     fi
 
     if [ -d "${ovld}" ]; then
+        if [ -e "${ovld}/cosa-no-autolayer" ]; then
+            cosa_no_autolayer=1
+        fi
         for n in "${ovld}"/*; do
             if ! [ -d "${n}" ]; then
                 continue
@@ -383,6 +386,9 @@ EOF
             bn=$(basename "${n}")
             ovlname="overlay/${bn}"
             commit_overlay "${ovlname}" "${n}"
+            if [ -z "${cosa_no_autolayer:-}" ]; then
+                layers="${layers} ${ovlname}"
+            fi
         done
     fi
 
