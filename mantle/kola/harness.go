@@ -329,7 +329,8 @@ func parseDenyListYaml(pltfrm string) error {
 	}
 
 	stream := manifest.AddCommitMetadata.FcosStream
-	arch := system.RpmArch()
+	arch := Options.CosaBuildArch
+	plog.Debugf("Arch: %v detected.", arch)
 	today := time.Now()
 
 	// Accumulate patterns filtering by set policies
