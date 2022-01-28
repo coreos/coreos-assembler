@@ -99,8 +99,8 @@ func (ts TranslationSet) AddTranslation(from, to path.ContextPath) {
 func (ts TranslationSet) AddFromCommonSource(common path.ContextPath, toPrefix path.ContextPath, to interface{}) {
 	v := reflect.ValueOf(to)
 	vPaths := prefixPaths(getAllPaths(v, ts.ToTag, true), toPrefix.Path...)
-	for _, path := range vPaths {
-		ts.AddTranslation(common, path)
+	for _, toPath := range vPaths {
+		ts.AddTranslation(common, toPath)
 	}
 	ts.AddTranslation(common, toPrefix)
 }
@@ -165,9 +165,9 @@ OUTER:
 // error listing them.
 func (ts TranslationSet) DebugVerifyCoverage(v interface{}) error {
 	var missingPaths []string
-	for _, path := range getAllPaths(reflect.ValueOf(v), ts.ToTag, false) {
-		if _, ok := ts.Set[path.String()]; !ok {
-			missingPaths = append(missingPaths, path.String())
+	for _, pathToCheck := range getAllPaths(reflect.ValueOf(v), ts.ToTag, false) {
+		if _, ok := ts.Set[pathToCheck.String()]; !ok {
+			missingPaths = append(missingPaths, pathToCheck.String())
 		}
 	}
 	if len(missingPaths) > 0 {

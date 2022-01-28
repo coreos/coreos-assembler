@@ -20,7 +20,8 @@ import (
 
 type Config struct {
 	base.Config `yaml:",inline"`
-	BootDevice  BootDevice `yaml:"boot_device"`
+	BootDevice  BootDevice  `yaml:"boot_device"`
+	Extensions  []Extension `yaml:"extensions"`
 }
 
 type BootDevice struct {
@@ -37,4 +38,8 @@ type BootDeviceLuks struct {
 
 type BootDeviceMirror struct {
 	Devices []string `yaml:"devices"`
+}
+
+type Extension struct {
+	Name string `yaml:"name"`
 }

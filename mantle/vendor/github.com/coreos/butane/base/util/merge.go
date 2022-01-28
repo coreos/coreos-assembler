@@ -62,7 +62,7 @@ func MergeTranslatedConfigs(parent interface{}, parentTranslations translate.Tra
 			// probably a desugared config whose source is
 			// textually unrelated to the result config.
 			//
-			// Currently Ignition always reports parent before
+			// Currently, Ignition always reports parent before
 			// child, but that isn't necessarily contractual, so
 			// we don't assume it.  Here, we've found the second
 			// entry and it's not from the child; skip it.

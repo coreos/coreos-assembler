@@ -19,6 +19,7 @@ import (
 	cutil "github.com/coreos/butane/config/util"
 
 	"github.com/coreos/ignition/v2/config/v3_2/types"
+	"github.com/coreos/vcontext/path"
 	"github.com/coreos/vcontext/report"
 )
 
@@ -28,6 +29,7 @@ import (
 // an error is returned.
 func (c Config) ToIgn3_2(options common.TranslateOptions) (types.Config, report.Report, error) {
 	cfg, r, err := cutil.Translate(c, "ToIgn3_2Unvalidated", options)
+	r.AddOnWarn(path.New("yaml", "variant"), common.ErrRhcosVariantDeprecated)
 	return cfg.(types.Config), r, err
 }
 

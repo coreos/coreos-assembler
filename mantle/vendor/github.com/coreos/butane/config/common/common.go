@@ -24,5 +24,4 @@ type TranslateBytesOptions struct {
 	TranslateOptions
 	Pretty bool
 	Raw    bool // encode only the Ignition config, not any wrapper
-	Strict bool
 }

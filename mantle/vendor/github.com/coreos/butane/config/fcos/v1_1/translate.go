@@ -17,10 +17,39 @@ package v1_1
 import (
 	"github.com/coreos/butane/config/common"
 	cutil "github.com/coreos/butane/config/util"
+	"github.com/coreos/butane/translate"
 
+	"github.com/coreos/ignition/v2/config/util"
 	"github.com/coreos/ignition/v2/config/v3_1/types"
+	"github.com/coreos/vcontext/path"
 	"github.com/coreos/vcontext/report"
 )
+
+// ToIgn3_1Unvalidated translates the config to an Ignition config. It also
+// returns the set of translations it did so paths in the resultant config
+// can be tracked back to their source in the source config.  No config
+// validation is performed on input or output.
+func (c Config) ToIgn3_1Unvalidated(options common.TranslateOptions) (types.Config, translate.TranslationSet, report.Report) {
+	ret, ts, r := c.Config.ToIgn3_1Unvalidated(options)
+	if r.IsFatal() {
+		return types.Config{}, translate.TranslationSet{}, r
+	}
+
+	for i, disk := range ret.Storage.Disks {
+		// Don't warn if wipeTable is set, matching later spec versions
+		if !util.IsTrue(disk.WipeTable) {
+			for j, partition := range disk.Partitions {
+				// check for reserved partlabels
+				if partition.Label != nil {
+					if (*partition.Label == "BIOS-BOOT" && partition.Number != 1) || (*partition.Label == "PowerPC-PReP-boot" && partition.Number != 1) || (*partition.Label == "EFI-SYSTEM" && partition.Number != 2) || (*partition.Label == "boot" && partition.Number != 3) || (*partition.Label == "root" && partition.Number != 4) {
+						r.AddOnWarn(path.New("json", "storage", "disks", i, "partitions", j, "label"), common.ErrWrongPartitionNumber)
+					}
+				}
+			}
+		}
+	}
+	return ret, ts, r
+}
 
 // ToIgn3_1 translates the config to an Ignition config.  It returns a
 // report of any errors or warnings in the source and resultant config.  If

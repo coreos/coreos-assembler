@@ -126,8 +126,8 @@ func MergeP(tr Translator, tm TranslationSet, r *report.Report, prefix interface
 // Utility function to run a translation and merge the result, with the
 // specified prefixes, into the specified TranslationSet and Report.
 func MergeP2(tr Translator, tm TranslationSet, r *report.Report, fromPrefix interface{}, from interface{}, toPrefix interface{}, to interface{}) {
-	translations, report := tr.Translate(from, to)
+	translations, translationReport := tr.Translate(from, to)
 	tm.MergeP2(fromPrefix, toPrefix, translations)
 	// translation report paths are on the from side
-	r.Merge(PrefixReport(report, fromPrefix))
+	r.Merge(PrefixReport(translationReport, fromPrefix))
 }

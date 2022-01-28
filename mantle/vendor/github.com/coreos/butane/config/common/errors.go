@@ -27,6 +27,9 @@ var (
 	ErrInvalidSourceConfig    = errors.New("source config is invalid")
 	ErrInvalidGeneratedConfig = errors.New("config generated was invalid")
 
+	// deprecated variant/version
+	ErrRhcosVariantDeprecated = errors.New("this variant is deprecated and will be removed in a future release; use openshift variant instead")
+
 	// resources and trees
 	ErrTooManyResourceSources = errors.New("only one of the following can be set: inline, local, source")
 	ErrFilesDirEscape         = errors.New("local file path traverses outside the files directory")
@@ -47,6 +50,9 @@ var (
 	ErrUnknownBootDeviceLayout = errors.New("layout must be one of: aarch64, ppc64le, x86_64")
 	ErrTooFewMirrorDevices     = errors.New("mirroring requires at least two devices")
 
+	// partition
+	ErrWrongPartitionNumber = errors.New("incorrect partition number; a new partition will be created using reserved label")
+
 	// MachineConfigs
 	ErrFieldElided            = errors.New("field ignored in raw mode")
 	ErrNameRequired           = errors.New("metadata.name is required")
@@ -55,6 +61,7 @@ var (
 	ErrBtrfsSupport           = errors.New("btrfs is not supported in this spec version")
 	ErrFilesystemNoneSupport  = errors.New("format \"none\" is not supported in this spec version")
 	ErrDirectorySupport       = errors.New("directories are not supported in this spec version")
+	ErrFileSchemeSupport      = errors.New("file contents source must be data URL in this spec version")
 	ErrFileAppendSupport      = errors.New("appending to files is not supported in this spec version")
 	ErrFileCompressionSupport = errors.New("file compression is not supported in this spec version")
 	ErrLinkSupport            = errors.New("links are not supported in this spec version")
@@ -62,4 +69,7 @@ var (
 	ErrUserFieldSupport       = errors.New("fields other than \"name\" and \"ssh_authorized_keys\" are not supported in this spec version")
 	ErrUserNameSupport        = errors.New("users other than \"core\" are not supported in this spec version")
 	ErrKernelArgumentSupport  = errors.New("this field cannot be used for kernel arguments in this spec version; use openshift.kernel_arguments instead")
+
+	// Extensions
+	ErrExtensionNameRequired = errors.New("field \"name\" is required")
 )

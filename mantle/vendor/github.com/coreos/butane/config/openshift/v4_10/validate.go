@@ -1,4 +1,4 @@
-// Copyright 2020 Red Hat, Inc
+// Copyright 2021 Red Hat, Inc
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.)
 
-package v1_5_exp
+package v4_10
 
 import (
 	"github.com/coreos/butane/config/common"
@@ -21,28 +21,23 @@ import (
 	"github.com/coreos/vcontext/report"
 )
 
-func (d BootDevice) Validate(c path.ContextPath) (r report.Report) {
-	if d.Layout != nil {
-		switch *d.Layout {
-		case "aarch64", "ppc64le", "x86_64":
+func (m Metadata) Validate(c path.ContextPath) (r report.Report) {
+	if m.Name == "" {
+		r.AddOnError(c.Append("name"), common.ErrNameRequired)
+	}
+	if m.Labels[ROLE_LABEL_KEY] == "" {
+		r.AddOnError(c.Append("labels", ROLE_LABEL_KEY), common.ErrRoleRequired)
+	}
+	return
+}
+
+func (os OpenShift) Validate(c path.ContextPath) (r report.Report) {
+	if os.KernelType != nil {
+		switch *os.KernelType {
+		case "", "default", "realtime":
 		default:
-			r.AddOnError(c.Append("layout"), common.ErrUnknownBootDeviceLayout)
+			r.AddOnError(c.Append("kernel_type"), common.ErrInvalidKernelType)
 		}
-	}
-	r.Merge(d.Mirror.Validate(c.Append("mirror")))
-	return
-}
-
-func (m BootDeviceMirror) Validate(c path.ContextPath) (r report.Report) {
-	if len(m.Devices) == 1 {
-		r.AddOnError(c.Append("devices"), common.ErrTooFewMirrorDevices)
-	}
-	return
-}
-
-func (e Extension) Validate(c path.ContextPath) (r report.Report) {
-	if e.Name == "" {
-		r.AddOnError(c.Append("name"), common.ErrExtensionNameRequired)
 	}
 	return
 }

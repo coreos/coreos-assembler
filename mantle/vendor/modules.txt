@@ -159,7 +159,7 @@ github.com/aws/aws-sdk-go/service/sts
 github.com/aws/aws-sdk-go/service/sts/stsiface
 # github.com/clarketm/json v1.14.1
 github.com/clarketm/json
-# github.com/coreos/butane v0.13.1
+# github.com/coreos/butane v0.14.0
 github.com/coreos/butane/base/util
 github.com/coreos/butane/base/v0_1
 github.com/coreos/butane/base/v0_2
@@ -174,8 +174,10 @@ github.com/coreos/butane/config/fcos/v1_2
 github.com/coreos/butane/config/fcos/v1_3
 github.com/coreos/butane/config/fcos/v1_4
 github.com/coreos/butane/config/fcos/v1_5_exp
-github.com/coreos/butane/config/openshift/v4_10_exp
-github.com/coreos/butane/config/openshift/v4_10_exp/result
+github.com/coreos/butane/config/openshift/v4_10
+github.com/coreos/butane/config/openshift/v4_10/result
+github.com/coreos/butane/config/openshift/v4_11_exp
+github.com/coreos/butane/config/openshift/v4_11_exp/result
 github.com/coreos/butane/config/openshift/v4_8
 github.com/coreos/butane/config/openshift/v4_8/result
 github.com/coreos/butane/config/openshift/v4_9
