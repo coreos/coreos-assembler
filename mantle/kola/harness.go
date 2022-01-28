@@ -1112,23 +1112,13 @@ func collectLogsExternalTest(h *harness.H, t *register.Test, tcluster cluster.Te
 // Create a parent test that runs non-exclusive tests as subtests
 func makeNonExclusiveTest(tests []*register.Test, flight platform.Flight) register.Test {
 	// Parse test flags and gather configs
-	var (
-		internetAccess     bool
-		noSSHKeyInMetadata bool
-		noSSHKeyInUserdata bool
-	)
+	internetAccess := false
 	var flags []register.Flag
 	var nonExclusiveTestConfs []*conf.Conf
 	dependencyDirs := make(register.DepDirMap)
-	// hasExternalTestDataDir := false
 	for _, test := range tests {
-		if !noSSHKeyInMetadata && test.HasFlag(register.NoSSHKeyInMetadata) {
-			flags = append(flags, register.NoSSHKeyInMetadata)
-			noSSHKeyInMetadata = true
-		}
-		if !noSSHKeyInUserdata && test.HasFlag(register.NoSSHKeyInUserData) {
-			flags = append(flags, register.NoSSHKeyInUserData)
-			noSSHKeyInUserdata = true
+		if test.HasFlag(register.NoSSHKeyInMetadata) || test.HasFlag(register.NoSSHKeyInUserData) {
+			plog.Fatalf("Non-exclusive test %v cannot have NoSSHKeyIn* flag", test.Name)
 		}
 		if !internetAccess && testRequiresInternet(test) {
 			flags = append(flags, register.RequiresInternetAccess)
