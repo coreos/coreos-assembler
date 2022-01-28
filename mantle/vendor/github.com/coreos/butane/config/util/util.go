@@ -97,7 +97,7 @@ func TranslateBytes(input []byte, container interface{}, translateMethod string,
 	cfg := container
 
 	// Unmarshal the YAML.
-	contextTree, err := unmarshal(input, cfg, options.Strict)
+	contextTree, err := unmarshal(input, cfg)
 	if err != nil {
 		return nil, report.Report{}, err
 	}
@@ -181,11 +181,9 @@ func CheckForElidedFields(struct_ interface{}) report.Report {
 	return r
 }
 
-// unmarshal unmarshals the data to "to" and also returns a context tree for the source. If strict
-// is set it errors out on unused keys.
-func unmarshal(data []byte, to interface{}, strict bool) (tree.Node, error) {
+// unmarshal unmarshals the data to "to" and also returns a context tree for the source.
+func unmarshal(data []byte, to interface{}) (tree.Node, error) {
 	dec := yaml.NewDecoder(bytes.NewReader(data))
-	dec.KnownFields(strict)
 	if err := dec.Decode(to); err != nil {
 		return nil, err
 	}

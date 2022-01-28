@@ -15,6 +15,7 @@
 package v4_8
 
 import (
+	"net/url"
 	"reflect"
 	"strings"
 
@@ -235,6 +236,14 @@ func validateMCOSupport(mc result.MachineConfig, ts translate.TranslationSet) re
 			// BUGGED
 			// https://bugzilla.redhat.com/show_bug.cgi?id=1970218
 			r.AddOnError(path.New("json", "spec", "config", "storage", "files", i, "contents", "compression"), common.ErrFileCompressionSupport)
+		}
+		if file.Contents.Source != nil {
+			fileSource, err := url.Parse(*file.Contents.Source)
+			// parse errors will be caught by normal config validation
+			if err == nil && fileSource.Scheme != "data" {
+				// FORBIDDEN
+				r.AddOnError(path.New("json", "spec", "config", "storage", "files", i, "contents", "source"), common.ErrFileSchemeSupport)
+			}
 		}
 	}
 	for i := range mc.Spec.Config.Storage.Links {

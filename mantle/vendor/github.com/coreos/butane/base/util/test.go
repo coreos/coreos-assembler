@@ -15,7 +15,6 @@
 package util
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/coreos/butane/translate"
@@ -26,20 +25,19 @@ import (
 
 // VerifyTranslations ensures all the translations are identity, unless they
 // match a listed one, and verifies that all the listed ones exist.
-func VerifyTranslations(t *testing.T, set translate.TranslationSet, exceptions []translate.Translation, format string, args ...interface{}) {
-	message := fmt.Sprintf(format, args...)
+func VerifyTranslations(t *testing.T, set translate.TranslationSet, exceptions []translate.Translation) {
 	exceptionSet := translate.NewTranslationSet(set.FromTag, set.ToTag)
 	for _, ex := range exceptions {
 		exceptionSet.AddTranslation(ex.From, ex.To)
 		if tr, ok := set.Set[ex.To.String()]; ok {
-			assert.Equal(t, ex, tr, "%s: non-identity translation with unexpected From", message)
+			assert.Equal(t, ex, tr, "non-identity translation with unexpected From")
 		} else {
-			t.Errorf("%s: missing non-identity translation %v", message, ex)
+			t.Errorf("missing non-identity translation %v", ex)
 		}
 	}
 	for key, translation := range set.Set {
 		if _, ok := exceptionSet.Set[key]; !ok {
-			assert.Equal(t, translation.From.Path, translation.To.Path, "%s: translation is not identity", message)
+			assert.Equal(t, translation.From.Path, translation.To.Path, "translation is not identity")
 		}
 	}
 }

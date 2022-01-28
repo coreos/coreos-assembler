@@ -253,12 +253,12 @@ func (c Config) processTrees(ret *types.Config, options common.TranslateOptions)
 			destBaseDir = *tree.Path
 		}
 
-		walkTree(yamlPath, tree, &ts, &r, t, srcBaseDir, destBaseDir, options)
+		walkTree(yamlPath, &ts, &r, t, srcBaseDir, destBaseDir, options)
 	}
 	return ts, r
 }
 
-func walkTree(yamlPath path.ContextPath, tree Tree, ts *translate.TranslationSet, r *report.Report, t *nodeTracker, srcBaseDir, destBaseDir string, options common.TranslateOptions) {
+func walkTree(yamlPath path.ContextPath, ts *translate.TranslationSet, r *report.Report, t *nodeTracker, srcBaseDir, destBaseDir string, options common.TranslateOptions) {
 	// The strategy for errors within WalkFunc is to add an error to
 	// the report and return nil, so walking continues but translation
 	// will fail afterward.

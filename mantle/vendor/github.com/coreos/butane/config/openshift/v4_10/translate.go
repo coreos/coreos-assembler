@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.)
 
-package v4_9
+package v4_10
 
 import (
 	"net/url"
@@ -20,7 +20,7 @@ import (
 	"strings"
 
 	"github.com/coreos/butane/config/common"
-	"github.com/coreos/butane/config/openshift/v4_9/result"
+	"github.com/coreos/butane/config/openshift/v4_10/result"
 	cutil "github.com/coreos/butane/config/util"
 	"github.com/coreos/butane/translate"
 
@@ -37,15 +37,11 @@ const (
 	fipsCipherArgument    = types.LuksOption("aes-cbc-essiv:sha256")
 )
 
-// ToMachineConfig4_9Unvalidated translates the config to a MachineConfig.  It also
+// ToMachineConfig4_10Unvalidated translates the config to a MachineConfig.  It also
 // returns the set of translations it did so paths in the resultant config
 // can be tracked back to their source in the source config.  No config
 // validation is performed on input or output.
-func (c Config) ToMachineConfig4_9Unvalidated(options common.TranslateOptions) (result.MachineConfig, translate.TranslationSet, report.Report) {
-	// disable inline resource compression since the MCO doesn't support it
-	// https://bugzilla.redhat.com/show_bug.cgi?id=1970218
-	options.NoResourceAutoCompression = true
-
+func (c Config) ToMachineConfig4_10Unvalidated(options common.TranslateOptions) (result.MachineConfig, translate.TranslationSet, report.Report) {
 	cfg, ts, r := c.Config.ToIgn3_2Unvalidated(options)
 	if r.IsFatal() {
 		return result.MachineConfig{}, ts, r
@@ -97,12 +93,12 @@ func (c Config) ToMachineConfig4_9Unvalidated(options common.TranslateOptions) (
 	return mc, ts, r
 }
 
-// ToMachineConfig4_9 translates the config to a MachineConfig.  It returns a
+// ToMachineConfig4_10 translates the config to a MachineConfig.  It returns a
 // report of any errors or warnings in the source and resultant config.  If
 // the report has fatal errors or it encounters other problems translating,
 // an error is returned.
-func (c Config) ToMachineConfig4_9(options common.TranslateOptions) (result.MachineConfig, report.Report, error) {
-	cfg, r, err := cutil.Translate(c, "ToMachineConfig4_9Unvalidated", options)
+func (c Config) ToMachineConfig4_10(options common.TranslateOptions) (result.MachineConfig, report.Report, error) {
+	cfg, r, err := cutil.Translate(c, "ToMachineConfig4_10Unvalidated", options)
 	return cfg.(result.MachineConfig), r, err
 }
 
@@ -111,7 +107,7 @@ func (c Config) ToMachineConfig4_9(options common.TranslateOptions) (result.Mach
 // can be tracked back to their source in the source config.  No config
 // validation is performed on input or output.
 func (c Config) ToIgn3_2Unvalidated(options common.TranslateOptions) (types.Config, translate.TranslationSet, report.Report) {
-	mc, ts, r := c.ToMachineConfig4_9Unvalidated(options)
+	mc, ts, r := c.ToMachineConfig4_10Unvalidated(options)
 	cfg := mc.Spec.Config
 
 	// report warnings if there are any non-empty fields in Spec (other
@@ -134,14 +130,14 @@ func (c Config) ToIgn3_2(options common.TranslateOptions) (types.Config, report.
 	return cfg.(types.Config), r, err
 }
 
-// ToConfigBytes translates from a v4.9 Butane config to a v4.9 MachineConfig or a v3.2.0 Ignition config. It returns a report of any errors or
+// ToConfigBytes translates from a v4.10 Butane config to a v4.10 MachineConfig or a v3.4.0 Ignition config. It returns a report of any errors or
 // warnings in the source and resultant config. If the report has fatal errors or it encounters other problems
 // translating, an error is returned.
 func ToConfigBytes(input []byte, options common.TranslateBytesOptions) ([]byte, report.Report, error) {
 	if options.Raw {
 		return cutil.TranslateBytes(input, &Config{}, "ToIgn3_2", options)
 	} else {
-		return cutil.TranslateBytesYAML(input, &Config{}, "ToMachineConfig4_9", options)
+		return cutil.TranslateBytesYAML(input, &Config{}, "ToMachineConfig4_10", options)
 	}
 }
 
@@ -217,10 +213,6 @@ func validateMCOSupport(mc result.MachineConfig, ts translate.TranslationSet) re
 	// is provisioned, and the struct contains unsupported fields, MCD
 	// will mark the node degraded, even if the change only affects
 	// supported fields.  We reject these.
-	//
-	// BUGGED - Ignored by the MCD but not by Ignition.  Ignition
-	// correctly applies the setting, but the MCD doesn't, and writes
-	// incorrect state to the node.
 
 	var r report.Report
 	for i := range mc.Spec.Config.Storage.Directories {
@@ -231,11 +223,6 @@ func validateMCOSupport(mc result.MachineConfig, ts translate.TranslationSet) re
 		if len(file.Append) > 0 {
 			// FORBIDDEN
 			r.AddOnError(path.New("json", "spec", "config", "storage", "files", i, "append"), common.ErrFileAppendSupport)
-		}
-		if util.NotEmpty(file.Contents.Compression) {
-			// BUGGED
-			// https://bugzilla.redhat.com/show_bug.cgi?id=1970218
-			r.AddOnError(path.New("json", "spec", "config", "storage", "files", i, "contents", "compression"), common.ErrFileCompressionSupport)
 		}
 		if file.Contents.Source != nil {
 			fileSource, err := url.Parse(*file.Contents.Source)
