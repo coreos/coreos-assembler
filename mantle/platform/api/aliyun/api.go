@@ -22,6 +22,7 @@ import (
 
 	"github.com/coreos/mantle/auth"
 	"github.com/coreos/mantle/platform"
+	"github.com/coreos/mantle/util"
 	"github.com/coreos/pkg/capnslog"
 	"github.com/coreos/pkg/multierror"
 
@@ -111,7 +112,7 @@ func getOSSEndpoint(region string) string {
 }
 
 // CopyImage replicates an image to a new region
-func (a *API) CopyImage(source_id, dest_name, dest_region, dest_description, kms_key_id string, encrypted bool) (string, error) {
+func (a *API) CopyImage(source_id, dest_name, dest_region, dest_description, kms_key_id string, encrypted bool, wait_for_ready bool) (string, error) {
 	request := ecs.CreateCopyImageRequest()
 	request.SetConnectTimeout(defaultConnectTimeout)
 	request.SetReadTimeout(defaultReadTimeout)
@@ -132,7 +133,45 @@ func (a *API) CopyImage(source_id, dest_name, dest_region, dest_description, kms
 	if err != nil {
 		return "", fmt.Errorf("copying image: %v", err)
 	}
+
+	// if we have a need to operate on an image immediately after the image has
+	// been copied to a region, we can wait for it to be marked available
+	//
+	// NB: this gem from the Aliyun API docs - "A single region can have only
+	// one image copy task running at a time. Other image copy tasks queue up
+	// for the current task to complete before they run in sequence."
+	//
+	// Not sure if this means only one copy task can run for the *entire* region
+	// or if the limitation is per account, per region...but this kind of
+	// queuing would explain some of the delays observed.
+	if wait_for_ready {
+		plog.Infof("waiting for %v in %v to be available before returning", response.ImageId, dest_region)
+		a.WaitForImageReady(dest_region, response.ImageId)
+	}
 	return response.ImageId, nil
+}
+
+// WaitForImageReady checks that an image in a region is available to be
+// operated on. i.e. when you want to modify attributes of an image
+func (a *API) WaitForImageReady(region_id string, image_id string) error {
+	checkAvailable := func() error {
+		images, err := a.GetImagesByID(image_id, region_id)
+		if err != nil {
+			return fmt.Errorf("getting images: %v", err)
+		}
+		for _, img := range images.Images.Image {
+			if img.ImageId == image_id && img.Status == "Available" {
+				return nil
+			}
+		}
+		return fmt.Errorf("%v in %v was not available", image_id, region_id)
+	}
+
+	if err := util.RetryUntilTimeout(10*time.Minute, 10*time.Second, checkAvailable); err != nil {
+		return fmt.Errorf("%v in %v never became available: %v", image_id, region_id, err)
+	}
+
+	return nil
 }
 
 // ImportImage attempts to import an image from OSS returning the image_id & error
