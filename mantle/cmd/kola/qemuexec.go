@@ -78,7 +78,7 @@ func init() {
 	cmdQemuExec.Flags().StringVarP(&knetargs, "knetargs", "", "", "Arguments for Ignition networking on kernel commandline")
 	cmdQemuExec.Flags().StringArrayVar(&kargs, "kargs", nil, "Additional kernel arguments applied")
 	cmdQemuExec.Flags().BoolVarP(&usernet, "usernet", "U", false, "Enable usermode networking")
-	cmdQemuExec.Flags().StringSliceVar(&ignitionFragments, "add-ignition", nil, "Append well-known Ignition fragment: [\"autologin\"]")
+	cmdQemuExec.Flags().StringSliceVar(&ignitionFragments, "add-ignition", nil, "Append well-known Ignition fragment: [\"autologin\", \"autoresize\"]")
 	cmdQemuExec.Flags().StringVarP(&hostname, "hostname", "", "", "Set hostname via DHCP")
 	cmdQemuExec.Flags().IntVarP(&memory, "memory", "m", 0, "Memory in MB")
 	cmdQemuExec.Flags().StringArrayVarP(&addDisks, "add-disk", "D", []string{}, "Additional disk, human readable size (repeatable)")
@@ -103,6 +103,8 @@ func renderFragments(fragments []string, c *conf.Conf) error {
 		switch fragtype {
 		case "autologin":
 			c.AddAutoLogin()
+		case "autoresize":
+			c.AddAutoResize()
 		default:
 			return fmt.Errorf("Unknown fragment: %s", fragtype)
 		}
@@ -158,6 +160,8 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 		if consoleFile != "" {
 			return fmt.Errorf("Cannot use console devshell and --console-to-file")
 		}
+
+		ignitionFragments = append(ignitionFragments, "autoresize")
 	}
 	if devshell {
 		if directIgnition {

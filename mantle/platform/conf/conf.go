@@ -1089,6 +1089,22 @@ func (c *Conf) AddAutoLogin() {
 	c.AddSystemdUnitDropin("serial-getty@.service", "10-autologin.conf", getAutologinUnit("serial-getty@.service", "--keep-baud 115200,38400,9600"))
 }
 
+// AddAutoResize adds an Ignition config for a `resize` function to resize serial consoles
+func (c *Conf) AddAutoResize() {
+	c.AddFile("/etc/profile.d/autoresize.sh", `
+# adapted from https://wiki.archlinux.org/title/Working_with_the_serial_console#Resizing_a_terminal
+resize_terminal() {
+	local IFS='[;' escape geometry x y
+	echo -en '\e7\e[r\e[999;999H\e[6n\e8'
+	read -sd R escape geometry
+	x=${geometry##*;} y=${geometry%%;*}
+	if [[ ${COLUMNS} -ne ${x} || ${LINES} -ne ${y} ]];then
+		stty cols ${x} rows ${y}
+	fi
+}
+PROMPT_COMMAND+=(resize_terminal)`, 0644)
+}
+
 // Mount9p adds an Ignition config to mount an folder with 9p
 func (c *Conf) Mount9p(dest string, readonly bool) {
 	readonlyStr := ""
