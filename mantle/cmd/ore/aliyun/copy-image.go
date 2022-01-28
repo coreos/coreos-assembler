@@ -38,6 +38,7 @@ After a successful run, the final line of output will be a line of JSON describi
 	sourceImageID        string
 	destImageName        string
 	destImageDescription string
+	waitForReady         bool
 )
 
 func init() {
@@ -45,6 +46,7 @@ func init() {
 	cmdCopyImage.Flags().StringVar(&sourceImageID, "image", "", "source image")
 	cmdCopyImage.Flags().StringVar(&destImageName, "name", "", "destination image name")
 	cmdCopyImage.Flags().StringVar(&destImageDescription, "description", "", "destination image description")
+	cmdCopyImage.Flags().BoolVar(&waitForReady, "wait-for-ready", false, "wait for the copied image to be marked available")
 }
 
 func runCopyImage(cmd *cobra.Command, args []string) error {
@@ -55,7 +57,7 @@ func runCopyImage(cmd *cobra.Command, args []string) error {
 
 	ids := make(map[string]string)
 	for _, region := range args {
-		id, err := API.CopyImage(sourceImageID, destImageName, region, destImageDescription, "", false)
+		id, err := API.CopyImage(sourceImageID, destImageName, region, destImageDescription, "", false, waitForReady)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Copying image to region %q: %v\n", region, err)
 			os.Exit(1)
