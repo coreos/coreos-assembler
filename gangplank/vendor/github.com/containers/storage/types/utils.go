@@ -87,7 +87,7 @@ func getRootlessRuntimeDirIsolated(env rootlessRuntimeDirEnvironment) (string, e
 	if tmpPerUserDir != "" {
 		if _, err := env.systemLstat(tmpPerUserDir); os.IsNotExist(err) {
 			if err := os.Mkdir(tmpPerUserDir, 0700); err != nil {
-				logrus.Errorf("failed to create temp directory for user: %v", err)
+				logrus.Errorf("Failed to create temp directory for user: %v", err)
 			} else {
 				return tmpPerUserDir, nil
 			}
@@ -155,12 +155,25 @@ func getRootlessUID() int {
 }
 
 func expandEnvPath(path string, rootlessUID int) (string, error) {
+	var err error
 	path = strings.Replace(path, "$UID", strconv.Itoa(rootlessUID), -1)
-	return filepath.Clean(os.ExpandEnv(path)), nil
+	path = os.ExpandEnv(path)
+	newpath, err := filepath.EvalSymlinks(path)
+	if err != nil {
+		newpath = filepath.Clean(path)
+	}
+	return newpath, nil
 }
 
 func DefaultConfigFile(rootless bool) (string, error) {
-	if defaultConfigFileSet || !rootless {
+	if defaultConfigFileSet {
+		return defaultConfigFile, nil
+	}
+
+	if path, ok := os.LookupEnv("CONTAINERS_STORAGE_CONF"); ok {
+		return path, nil
+	}
+	if !rootless {
 		return defaultConfigFile, nil
 	}
 

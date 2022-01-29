@@ -23,10 +23,12 @@ import (
 	"github.com/containers/storage/pkg/system"
 	"github.com/containers/storage/pkg/tarlog"
 	"github.com/containers/storage/pkg/truncindex"
+	multierror "github.com/hashicorp/go-multierror"
 	"github.com/klauspost/pgzip"
 	digest "github.com/opencontainers/go-digest"
 	"github.com/opencontainers/selinux/go-selinux/label"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 	"github.com/vbatts/tar-split/archive/tar"
 	"github.com/vbatts/tar-split/tar/asm"
 	"github.com/vbatts/tar-split/tar/storage"
@@ -271,21 +273,22 @@ type LayerStore interface {
 }
 
 type layerStore struct {
-	lockfile          Locker
-	mountsLockfile    Locker
-	rundir            string
-	driver            drivers.Driver
-	layerdir          string
-	layers            []*Layer
-	idindex           *truncindex.TruncIndex
-	byid              map[string]*Layer
-	byname            map[string]*Layer
-	bymount           map[string]*Layer
-	bycompressedsum   map[digest.Digest][]string
-	byuncompressedsum map[digest.Digest][]string
-	uidMap            []idtools.IDMap
-	gidMap            []idtools.IDMap
-	loadMut           sync.Mutex
+	lockfile           Locker
+	mountsLockfile     Locker
+	rundir             string
+	driver             drivers.Driver
+	layerdir           string
+	layers             []*Layer
+	idindex            *truncindex.TruncIndex
+	byid               map[string]*Layer
+	byname             map[string]*Layer
+	bymount            map[string]*Layer
+	bycompressedsum    map[digest.Digest][]string
+	byuncompressedsum  map[digest.Digest][]string
+	uidMap             []idtools.IDMap
+	gidMap             []idtools.IDMap
+	loadMut            sync.Mutex
+	layerspathModified time.Time
 }
 
 func copyLayer(l *Layer) *Layer {
@@ -801,7 +804,7 @@ func (r *layerStore) Put(id string, parentLayer *Layer, names []string, mountLab
 				r.driver.Remove(id)
 				return nil, -1, err
 			}
-			size, err = r.ApplyDiff(layer.ID, diff)
+			size, err = r.applyDiffWithOptions(layer.ID, moreOptions, diff)
 			if err != nil {
 				if r.Delete(layer.ID) != nil {
 					// Either a driver error or an error saving.
@@ -1156,48 +1159,51 @@ func (r *layerStore) deleteInternal(id string) error {
 	}
 	id = layer.ID
 	err := r.driver.Remove(id)
-	if err == nil {
-		os.Remove(r.tspath(id))
-		os.RemoveAll(r.datadir(id))
-		delete(r.byid, id)
-		for _, name := range layer.Names {
-			delete(r.byname, name)
+	if err != nil {
+		return err
+	}
+
+	os.Remove(r.tspath(id))
+	os.RemoveAll(r.datadir(id))
+	delete(r.byid, id)
+	for _, name := range layer.Names {
+		delete(r.byname, name)
+	}
+	r.idindex.Delete(id)
+	mountLabel := layer.MountLabel
+	if layer.MountPoint != "" {
+		delete(r.bymount, layer.MountPoint)
+	}
+	r.deleteInDigestMap(id)
+	toDeleteIndex := -1
+	for i, candidate := range r.layers {
+		if candidate.ID == id {
+			toDeleteIndex = i
+			break
 		}
-		r.idindex.Delete(id)
-		mountLabel := layer.MountLabel
-		if layer.MountPoint != "" {
-			delete(r.bymount, layer.MountPoint)
+	}
+	if toDeleteIndex != -1 {
+		// delete the layer at toDeleteIndex
+		if toDeleteIndex == len(r.layers)-1 {
+			r.layers = r.layers[:len(r.layers)-1]
+		} else {
+			r.layers = append(r.layers[:toDeleteIndex], r.layers[toDeleteIndex+1:]...)
 		}
-		r.deleteInDigestMap(id)
-		toDeleteIndex := -1
-		for i, candidate := range r.layers {
-			if candidate.ID == id {
-				toDeleteIndex = i
+	}
+	if mountLabel != "" {
+		var found bool
+		for _, candidate := range r.layers {
+			if candidate.MountLabel == mountLabel {
+				found = true
 				break
 			}
 		}
-		if toDeleteIndex != -1 {
-			// delete the layer at toDeleteIndex
-			if toDeleteIndex == len(r.layers)-1 {
-				r.layers = r.layers[:len(r.layers)-1]
-			} else {
-				r.layers = append(r.layers[:toDeleteIndex], r.layers[toDeleteIndex+1:]...)
-			}
-		}
-		if mountLabel != "" {
-			var found bool
-			for _, candidate := range r.layers {
-				if candidate.MountLabel == mountLabel {
-					found = true
-					break
-				}
-			}
-			if !found {
-				label.ReleaseLabel(mountLabel)
-			}
+		if !found {
+			label.ReleaseLabel(mountLabel)
 		}
 	}
-	return err
+
+	return nil
 }
 
 func (r *layerStore) deleteInDigestMap(id string) {
@@ -1401,6 +1407,52 @@ func (r *layerStore) Diff(from, to string, options *DiffOptions) (io.ReadCloser,
 		return maybeCompressReadCloser(diff)
 	}
 
+	if ad, ok := r.driver.(drivers.AdditionalLayerStoreDriver); ok {
+		if aLayer, err := ad.LookupAdditionalLayerByID(to); err == nil {
+			// This is an additional layer. We leverage blob API for acquiring the reproduced raw blob.
+			info, err := aLayer.Info()
+			if err != nil {
+				aLayer.Release()
+				return nil, err
+			}
+			defer info.Close()
+			layer := &Layer{}
+			if err := json.NewDecoder(info).Decode(layer); err != nil {
+				aLayer.Release()
+				return nil, err
+			}
+			blob, err := aLayer.Blob()
+			if err != nil {
+				aLayer.Release()
+				return nil, err
+			}
+			// If layer compression type is different from the expected one, decompress and convert it.
+			if compression != layer.CompressionType {
+				diff, err := archive.DecompressStream(blob)
+				if err != nil {
+					if err2 := blob.Close(); err2 != nil {
+						err = errors.Wrapf(err, "failed to close blob file: %v", err2)
+					}
+					aLayer.Release()
+					return nil, err
+				}
+				rc, err := maybeCompressReadCloser(diff)
+				if err != nil {
+					if err2 := closeAll(blob.Close, diff.Close); err2 != nil {
+						err = errors.Wrapf(err, "failed to cleanup: %v", err2)
+					}
+					aLayer.Release()
+					return nil, err
+				}
+				return ioutils.NewReadCloserWrapper(rc, func() error {
+					defer aLayer.Release()
+					return closeAll(blob.Close, rc.Close)
+				}), nil
+			}
+			return ioutils.NewReadCloserWrapper(blob, func() error { defer aLayer.Release(); return blob.Close() }), nil
+		}
+	}
+
 	tsfile, err := os.Open(r.tspath(to))
 	if err != nil {
 		if !os.IsNotExist(err) {
@@ -1412,34 +1464,48 @@ func (r *layerStore) Diff(from, to string, options *DiffOptions) (io.ReadCloser,
 		}
 		return maybeCompressReadCloser(diff)
 	}
-	defer tsfile.Close()
 
 	decompressor, err := pgzip.NewReader(tsfile)
 	if err != nil {
-		return nil, err
-	}
-	defer decompressor.Close()
-
-	tsbytes, err := ioutil.ReadAll(decompressor)
-	if err != nil {
+		if e := tsfile.Close(); e != nil {
+			logrus.Debug(e)
+		}
 		return nil, err
 	}
 
-	metadata = storage.NewJSONUnpacker(bytes.NewBuffer(tsbytes))
+	metadata = storage.NewJSONUnpacker(decompressor)
 
 	fgetter, err := r.newFileGetter(to)
 	if err != nil {
-		return nil, err
+		errs := multierror.Append(nil, errors.Wrapf(err, "creating file-getter"))
+		if err := decompressor.Close(); err != nil {
+			errs = multierror.Append(errs, errors.Wrapf(err, "closing decompressor"))
+		}
+		if err := tsfile.Close(); err != nil {
+			errs = multierror.Append(errs, errors.Wrapf(err, "closing tarstream headers"))
+		}
+		return nil, errs.ErrorOrNil()
 	}
 
 	tarstream := asm.NewOutputTarStream(fgetter, metadata)
 	rc := ioutils.NewReadCloserWrapper(tarstream, func() error {
-		err1 := tarstream.Close()
-		err2 := fgetter.Close()
-		if err2 == nil {
-			return err1
+		var errs *multierror.Error
+		if err := decompressor.Close(); err != nil {
+			errs = multierror.Append(errs, errors.Wrapf(err, "closing decompressor"))
 		}
-		return err2
+		if err := tsfile.Close(); err != nil {
+			errs = multierror.Append(errs, errors.Wrapf(err, "closing tarstream headers"))
+		}
+		if err := tarstream.Close(); err != nil {
+			errs = multierror.Append(errs, errors.Wrapf(err, "closing reconstructed tarstream"))
+		}
+		if err := fgetter.Close(); err != nil {
+			errs = multierror.Append(errs, errors.Wrapf(err, "closing file-getter"))
+		}
+		if errs != nil {
+			return errs.ErrorOrNil()
+		}
+		return nil
 	})
 	return maybeCompressReadCloser(rc)
 }
@@ -1454,6 +1520,10 @@ func (r *layerStore) DiffSize(from, to string) (size int64, err error) {
 }
 
 func (r *layerStore) ApplyDiff(to string, diff io.Reader) (size int64, err error) {
+	return r.applyDiffWithOptions(to, nil, diff)
+}
+
+func (r *layerStore) applyDiffWithOptions(to string, layerOptions *LayerOptions, diff io.Reader) (size int64, err error) {
 	if !r.IsReadWrite() {
 		return -1, errors.Wrapf(ErrStoreIsReadOnly, "not allowed to modify layer contents at %q", r.layerspath())
 	}
@@ -1468,16 +1538,41 @@ func (r *layerStore) ApplyDiff(to string, diff io.Reader) (size int64, err error
 	if err != nil && err != io.EOF {
 		return -1, err
 	}
-
 	compression := archive.DetectCompression(header[:n])
-	compressedDigest := digest.Canonical.Digester()
-	compressedCounter := ioutils.NewWriteCounter(compressedDigest.Hash())
-	defragmented := io.TeeReader(io.MultiReader(bytes.NewBuffer(header[:n]), diff), compressedCounter)
+	defragmented := io.MultiReader(bytes.NewBuffer(header[:n]), diff)
+
+	// Decide if we need to compute digests
+	var compressedDigest, uncompressedDigest digest.Digest       // = ""
+	var compressedDigester, uncompressedDigester digest.Digester // = nil
+	if layerOptions != nil && layerOptions.OriginalDigest != "" &&
+		layerOptions.OriginalDigest.Algorithm() == digest.Canonical {
+		compressedDigest = layerOptions.OriginalDigest
+	} else {
+		compressedDigester = digest.Canonical.Digester()
+	}
+	if layerOptions != nil && layerOptions.UncompressedDigest != "" &&
+		layerOptions.UncompressedDigest.Algorithm() == digest.Canonical {
+		uncompressedDigest = layerOptions.UncompressedDigest
+	} else {
+		uncompressedDigester = digest.Canonical.Digester()
+	}
+
+	var compressedWriter io.Writer
+	if compressedDigester != nil {
+		compressedWriter = compressedDigester.Hash()
+	} else {
+		compressedWriter = ioutil.Discard
+	}
+	compressedCounter := ioutils.NewWriteCounter(compressedWriter)
+	defragmented = io.TeeReader(defragmented, compressedCounter)
 
 	tsdata := bytes.Buffer{}
 	compressor, err := pgzip.NewWriterLevel(&tsdata, pgzip.BestSpeed)
 	if err != nil {
 		compressor = pgzip.NewWriter(&tsdata)
+	}
+	if err := compressor.SetConcurrency(1024*1024, 1); err != nil { // 1024*1024 is the hard-coded default; we're not changing that
+		logrus.Infof("Error setting compression concurrency threads to 1: %v; ignoring", err)
 	}
 	metadata := storage.NewJSONPacker(compressor)
 	uncompressed, err := archive.DecompressStream(defragmented)
@@ -1485,8 +1580,6 @@ func (r *layerStore) ApplyDiff(to string, diff io.Reader) (size int64, err error
 		return -1, err
 	}
 	defer uncompressed.Close()
-	uncompressedDigest := digest.Canonical.Digester()
-	uncompressedCounter := ioutils.NewWriteCounter(uncompressedDigest.Hash())
 	uidLog := make(map[uint32]struct{})
 	gidLog := make(map[uint32]struct{})
 	idLogger, err := tarlog.NewLogger(func(h *tar.Header) {
@@ -1499,7 +1592,12 @@ func (r *layerStore) ApplyDiff(to string, diff io.Reader) (size int64, err error
 		return -1, err
 	}
 	defer idLogger.Close()
-	payload, err := asm.NewInputTarStream(io.TeeReader(uncompressed, io.MultiWriter(uncompressedCounter, idLogger)), metadata, storage.NewDiscardFilePutter())
+	uncompressedCounter := ioutils.NewWriteCounter(idLogger)
+	uncompressedWriter := (io.Writer)(uncompressedCounter)
+	if uncompressedDigester != nil {
+		uncompressedWriter = io.MultiWriter(uncompressedWriter, uncompressedDigester.Hash())
+	}
+	payload, err := asm.NewInputTarStream(io.TeeReader(uncompressed, uncompressedWriter), metadata, storage.NewDiscardFilePutter())
 	if err != nil {
 		return -1, err
 	}
@@ -1521,6 +1619,12 @@ func (r *layerStore) ApplyDiff(to string, diff io.Reader) (size int64, err error
 			return -1, err
 		}
 	}
+	if compressedDigester != nil {
+		compressedDigest = compressedDigester.Digest()
+	}
+	if uncompressedDigester != nil {
+		uncompressedDigest = uncompressedDigester.Digest()
+	}
 
 	updateDigestMap := func(m *map[digest.Digest][]string, oldvalue, newvalue digest.Digest, id string) {
 		var newList []string
@@ -1540,11 +1644,11 @@ func (r *layerStore) ApplyDiff(to string, diff io.Reader) (size int64, err error
 			(*m)[newvalue] = append((*m)[newvalue], id)
 		}
 	}
-	updateDigestMap(&r.bycompressedsum, layer.CompressedDigest, compressedDigest.Digest(), layer.ID)
-	layer.CompressedDigest = compressedDigest.Digest()
+	updateDigestMap(&r.bycompressedsum, layer.CompressedDigest, compressedDigest, layer.ID)
+	layer.CompressedDigest = compressedDigest
 	layer.CompressedSize = compressedCounter.Count
-	updateDigestMap(&r.byuncompressedsum, layer.UncompressedDigest, uncompressedDigest.Digest(), layer.ID)
-	layer.UncompressedDigest = uncompressedDigest.Digest()
+	updateDigestMap(&r.byuncompressedsum, layer.UncompressedDigest, uncompressedDigest, layer.ID)
+	layer.UncompressedDigest = uncompressedDigest
 	layer.UncompressedSize = uncompressedCounter.Count
 	layer.CompressionType = compression
 	layer.UIDs = make([]uint32, 0, len(uidLog))
@@ -1695,7 +1799,7 @@ func (r *layerStore) Touch() error {
 }
 
 func (r *layerStore) Modified() (bool, error) {
-	var mmodified bool
+	var mmodified, tmodified bool
 	lmodified, err := r.lockfile.Modified()
 	if err != nil {
 		return lmodified, err
@@ -1708,7 +1812,23 @@ func (r *layerStore) Modified() (bool, error) {
 			return lmodified, err
 		}
 	}
-	return lmodified || mmodified, nil
+
+	if lmodified || mmodified {
+		return true, nil
+	}
+
+	// If the layers.json file has been modified manually, then we have to
+	// reload the storage in any case.
+	info, err := os.Stat(r.layerspath())
+	if err != nil && !os.IsNotExist(err) {
+		return false, errors.Wrap(err, "stat layers file")
+	}
+	if info != nil {
+		tmodified = info.ModTime() != r.layerspathModified
+		r.layerspathModified = info.ModTime()
+	}
+
+	return tmodified, nil
 }
 
 func (r *layerStore) IsReadWrite() bool {
@@ -1732,4 +1852,17 @@ func (r *layerStore) ReloadIfChanged() error {
 		return r.Load()
 	}
 	return err
+}
+
+func closeAll(closes ...func() error) (rErr error) {
+	for _, f := range closes {
+		if err := f(); err != nil {
+			if rErr == nil {
+				rErr = errors.Wrapf(err, "close error")
+				continue
+			}
+			rErr = errors.Wrapf(rErr, "%v", err)
+		}
+	}
+	return
 }
