@@ -22,7 +22,7 @@ import (
 	"github.com/containers/storage/pkg/system"
 	"github.com/containers/storage/pkg/unshare"
 	gzip "github.com/klauspost/pgzip"
-	rsystem "github.com/opencontainers/runc/libcontainer/system"
+	"github.com/opencontainers/runc/libcontainer/userns"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/ulikunitz/xz"
@@ -76,6 +76,10 @@ const (
 	windows                 = "windows"
 	containersOverrideXattr = "user.containers.override_stat"
 )
+
+var xattrsToIgnore = map[string]interface{}{
+	"security.selinux": true,
+}
 
 // Archiver allows the reuse of most utility functions of this package with a
 // pluggable Untar function.  To facilitate the passing of specific id mappings
@@ -507,6 +511,10 @@ func (ta *tarAppender) addTarFile(path, name string) error {
 			return err
 		}
 	}
+	if fi.Mode()&os.ModeSocket != 0 {
+		logrus.Warnf("archive: skipping %q since it is a socket", path)
+		return nil
+	}
 
 	hdr, err := FileInfoHeader(name, fi, link)
 	if err != nil {
@@ -645,10 +653,13 @@ func createTarFile(path, extractDir string, hdr *tar.Header, reader io.Reader, L
 		}
 		file.Close()
 
-	case tar.TypeBlock, tar.TypeChar, tar.TypeFifo:
+	case tar.TypeBlock, tar.TypeChar:
 		if inUserns { // cannot create devices in a userns
+			logrus.Debugf("Tar: Can't create device %v while running in user namespace", path)
 			return nil
 		}
+		fallthrough
+	case tar.TypeFifo:
 		// Handle this is an OS-specific way
 		if err := handleTarTypeBlockCharFifo(hdr, path); err != nil {
 			return err
@@ -740,6 +751,9 @@ func createTarFile(path, extractDir string, hdr *tar.Header, reader io.Reader, L
 
 	var errs []string
 	for key, value := range hdr.Xattrs {
+		if _, found := xattrsToIgnore[key]; found {
+			continue
+		}
 		if err := system.Lsetxattr(path, key, []byte(value), 0); err != nil {
 			if errors.Is(err, syscall.ENOTSUP) || (inUserns && errors.Is(err, syscall.EPERM)) {
 				// We ignore errors here because not all graphdrivers support
@@ -876,7 +890,7 @@ func TarWithOptions(srcPath string, options *TarOptions) (io.ReadCloser, error) 
 				if include != relFilePath {
 					matches, err := pm.IsMatch(relFilePath)
 					if err != nil {
-						logrus.Errorf("Error matching %s: %v", relFilePath, err)
+						logrus.Errorf("Matching %s: %v", relFilePath, err)
 						return err
 					}
 					skip = matches
@@ -1140,7 +1154,7 @@ func (archiver *Archiver) TarUntar(src, dst string) error {
 		GIDMaps:     tarMappings.GIDs(),
 		Compression: Uncompressed,
 		CopyPass:    true,
-		InUserNS:    rsystem.RunningInUserNS(),
+		InUserNS:    userns.RunningInUserNS(),
 	}
 	archive, err := TarWithOptions(src, options)
 	if err != nil {
@@ -1155,7 +1169,7 @@ func (archiver *Archiver) TarUntar(src, dst string) error {
 		UIDMaps:   untarMappings.UIDs(),
 		GIDMaps:   untarMappings.GIDs(),
 		ChownOpts: archiver.ChownOpts,
-		InUserNS:  rsystem.RunningInUserNS(),
+		InUserNS:  userns.RunningInUserNS(),
 	}
 	return archiver.Untar(archive, dst, options)
 }
@@ -1175,7 +1189,7 @@ func (archiver *Archiver) UntarPath(src, dst string) error {
 		UIDMaps:   untarMappings.UIDs(),
 		GIDMaps:   untarMappings.GIDs(),
 		ChownOpts: archiver.ChownOpts,
-		InUserNS:  rsystem.RunningInUserNS(),
+		InUserNS:  userns.RunningInUserNS(),
 	}
 	return archiver.Untar(archive, dst, options)
 }
@@ -1275,7 +1289,7 @@ func (archiver *Archiver) CopyFileWithTar(src, dst string) (err error) {
 		UIDMaps:              archiver.UntarIDMappings.UIDs(),
 		GIDMaps:              archiver.UntarIDMappings.GIDs(),
 		ChownOpts:            archiver.ChownOpts,
-		InUserNS:             rsystem.RunningInUserNS(),
+		InUserNS:             userns.RunningInUserNS(),
 		NoOverwriteDirNonDir: true,
 	}
 	err = archiver.Untar(r, filepath.Dir(dst), options)

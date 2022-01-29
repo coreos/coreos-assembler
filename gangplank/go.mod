@@ -4,11 +4,11 @@ go 1.15
 
 require (
 	github.com/containers/podman/v3 v3.2.1
-	github.com/containers/storage v1.31.3
+	github.com/containers/storage v1.38.1
 	github.com/coreos/coreos-assembler-schema v0.0.0-00010101000000-000000000000
 	github.com/google/uuid v1.2.0
 	github.com/minio/minio-go/v7 v7.0.12
-	github.com/opencontainers/runc v1.0.3
+	github.com/opencontainers/runc v1.1.0
 	github.com/opencontainers/runtime-spec v1.0.3-0.20210326190908-1c3f411f0417
 	github.com/openshift/api v0.0.0-20210521075222-e273a339932a
 	github.com/sirupsen/logrus v1.8.1

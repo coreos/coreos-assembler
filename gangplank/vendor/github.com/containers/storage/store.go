@@ -23,6 +23,7 @@ import (
 	"github.com/containers/storage/pkg/parsers"
 	"github.com/containers/storage/pkg/stringid"
 	"github.com/containers/storage/pkg/stringutils"
+	"github.com/containers/storage/pkg/system"
 	"github.com/containers/storage/types"
 	"github.com/hashicorp/go-multierror"
 	digest "github.com/opencontainers/go-digest"
@@ -547,6 +548,15 @@ type LayerOptions struct {
 	// initialize this layer.  If set, it should be a child of the layer
 	// which we want to use as the parent of the new layer.
 	TemplateLayer string
+	// OriginalDigest specifies a digest of the tarstream (diff), if one is
+	// provided along with these LayerOptions, and reliably known by the caller.
+	// Use the default "" if this fields is not applicable or the value is not known.
+	OriginalDigest digest.Digest
+	// UncompressedDigest specifies a digest of the uncompressed version (“DiffID”)
+	// of the tarstream (diff), if one is provided along with these LayerOptions,
+	// and reliably known by the caller.
+	// Use the default "" if this fields is not applicable or the value is not known.
+	UncompressedDigest digest.Digest
 }
 
 // ImageOptions is used for passing options to a Store's CreateImage() method.
@@ -565,10 +575,11 @@ type ContainerOptions struct {
 	// container's layer will inherit settings from the image's top layer
 	// or, if it is not being created based on an image, the Store object.
 	types.IDMappingOptions
-	LabelOpts []string
-	Flags     map[string]interface{}
-	MountOpts []string
-	Volatile  bool
+	LabelOpts  []string
+	Flags      map[string]interface{}
+	MountOpts  []string
+	Volatile   bool
+	StorageOpt map[string]string
 }
 
 type store struct {
@@ -636,17 +647,21 @@ func GetStore(options types.StoreOptions) (Store, error) {
 	storesLock.Lock()
 	defer storesLock.Unlock()
 
+	// return if BOTH run and graph root are matched, otherwise our run-root can be overridden if the graph is found first
 	for _, s := range stores {
-		if s.graphRoot == options.GraphRoot && (options.GraphDriverName == "" || s.graphDriverName == options.GraphDriverName) {
+		if (s.graphRoot == options.GraphRoot) && (s.runRoot == options.RunRoot) && (options.GraphDriverName == "" || s.graphDriverName == options.GraphDriverName) {
 			return s, nil
 		}
 	}
 
-	if options.GraphRoot == "" {
-		return nil, errors.Wrap(ErrIncompleteOptions, "no storage root specified")
-	}
-	if options.RunRoot == "" {
-		return nil, errors.Wrap(ErrIncompleteOptions, "no storage runroot specified")
+	// if passed a run-root or graph-root alone, the other should be defaulted only error if we have neither.
+	switch {
+	case options.RunRoot == "" && options.GraphRoot == "":
+		return nil, errors.Wrap(ErrIncompleteOptions, "no storage runroot or graphroot specified")
+	case options.GraphRoot == "":
+		options.GraphRoot = types.Options().GraphRoot
+	case options.RunRoot == "":
+		options.RunRoot = types.Options().RunRoot
 	}
 
 	if err := os.MkdirAll(options.RunRoot, 0700); err != nil {
@@ -937,7 +952,7 @@ func (s *store) ContainerStore() (ContainerStore, error) {
 }
 
 func (s *store) canUseShifting(uidmap, gidmap []idtools.IDMap) bool {
-	if !s.graphDriver.SupportsShifting() {
+	if s.graphDriver == nil || !s.graphDriver.SupportsShifting() {
 		return false
 	}
 	if uidmap != nil && !idtools.IsContiguous(uidmap) {
@@ -1031,20 +1046,21 @@ func (s *store) PutLayer(id, parent string, names []string, mountLabel string, w
 			gidMap = s.gidMap
 		}
 	}
-	var layerOptions *LayerOptions
+	layerOptions := LayerOptions{
+		OriginalDigest:     options.OriginalDigest,
+		UncompressedDigest: options.UncompressedDigest,
+	}
 	if s.canUseShifting(uidMap, gidMap) {
-		layerOptions = &LayerOptions{IDMappingOptions: types.IDMappingOptions{HostUIDMapping: true, HostGIDMapping: true, UIDMap: nil, GIDMap: nil}}
+		layerOptions.IDMappingOptions = types.IDMappingOptions{HostUIDMapping: true, HostGIDMapping: true, UIDMap: nil, GIDMap: nil}
 	} else {
-		layerOptions = &LayerOptions{
-			IDMappingOptions: types.IDMappingOptions{
-				HostUIDMapping: options.HostUIDMapping,
-				HostGIDMapping: options.HostGIDMapping,
-				UIDMap:         copyIDMap(uidMap),
-				GIDMap:         copyIDMap(gidMap),
-			},
+		layerOptions.IDMappingOptions = types.IDMappingOptions{
+			HostUIDMapping: options.HostUIDMapping,
+			HostGIDMapping: options.HostGIDMapping,
+			UIDMap:         copyIDMap(uidMap),
+			GIDMap:         copyIDMap(gidMap),
 		}
 	}
-	return rlstore.Put(id, parentLayer, names, mountLabel, nil, layerOptions, writeable, nil, diff)
+	return rlstore.Put(id, parentLayer, names, mountLabel, nil, &layerOptions, writeable, nil, diff)
 }
 
 func (s *store) CreateLayer(id, parent string, names []string, mountLabel string, writeable bool, options *LayerOptions) (*Layer, error) {
@@ -1120,10 +1136,6 @@ func (s *store) imageTopLayerForMapping(image *Image, ristore ROImageStore, crea
 		}
 		if options.HostGIDMapping && len(layer.GIDMap) != 0 {
 			return false
-		}
-		// If we don't care about the mapping, it's fine.
-		if len(options.UIDMap) == 0 && len(options.GIDMap) == 0 {
-			return true
 		}
 		// Compare the maps.
 		return reflect.DeepEqual(layer.UIDMap, options.UIDMap) && reflect.DeepEqual(layer.GIDMap, options.GIDMap)
@@ -1377,7 +1389,7 @@ func (s *store) CreateContainer(id string, names []string, image, layer, metadat
 		options.Flags["MountLabel"] = mountLabel
 	}
 
-	clayer, err := rlstore.Create(layer, imageTopLayer, nil, options.Flags["MountLabel"].(string), nil, layerOptions, true)
+	clayer, err := rlstore.Create(layer, imageTopLayer, nil, options.Flags["MountLabel"].(string), options.StorageOpt, layerOptions, true)
 	if err != nil {
 		return nil, err
 	}
@@ -1601,7 +1613,7 @@ func (s *store) ImageBigData(id, key string) ([]byte, error) {
 		}
 	}
 	if foundImage {
-		return nil, errors.Wrapf(os.ErrNotExist, "error locating item named %q for image with ID %q", key, id)
+		return nil, errors.Wrapf(os.ErrNotExist, "error locating item named %q for image with ID %q (consider removing the image to resolve the issue)", key, id)
 	}
 	return nil, errors.Wrapf(ErrImageUnknown, "error locating image with ID %q", id)
 }
@@ -2363,22 +2375,16 @@ func (s *store) DeleteImage(id string, commit bool) (layers []string, err error)
 		if err != nil {
 			return nil, err
 		}
-		childrenByParent := make(map[string]*[]string)
+		childrenByParent := make(map[string][]string)
 		for _, layer := range layers {
-			parent := layer.Parent
-			if list, ok := childrenByParent[parent]; ok {
-				newList := append(*list, layer.ID)
-				childrenByParent[parent] = &newList
-			} else {
-				childrenByParent[parent] = &([]string{layer.ID})
-			}
+			childrenByParent[layer.Parent] = append(childrenByParent[layer.Parent], layer.ID)
 		}
-		otherImagesByTopLayer := make(map[string]string)
+		otherImagesTopLayers := make(map[string]struct{})
 		for _, img := range images {
 			if img.ID != id {
-				otherImagesByTopLayer[img.TopLayer] = img.ID
+				otherImagesTopLayers[img.TopLayer] = struct{}{}
 				for _, layerID := range img.MappedTopLayers {
-					otherImagesByTopLayer[layerID] = img.ID
+					otherImagesTopLayers[layerID] = struct{}{}
 				}
 			}
 		}
@@ -2388,43 +2394,46 @@ func (s *store) DeleteImage(id string, commit bool) (layers []string, err error)
 			}
 		}
 		layer := image.TopLayer
-		lastRemoved := ""
+		layersToRemoveMap := make(map[string]struct{})
 		for layer != "" {
 			if rcstore.Exists(layer) {
 				break
 			}
-			if _, ok := otherImagesByTopLayer[layer]; ok {
+			if _, used := otherImagesTopLayers[layer]; used {
 				break
 			}
 			parent := ""
 			if l, err := rlstore.Get(layer); err == nil {
 				parent = l.Parent
 			}
-			hasOtherRefs := func() bool {
+			hasChildrenNotBeingRemoved := func() bool {
 				layersToCheck := []string{layer}
 				if layer == image.TopLayer {
 					layersToCheck = append(layersToCheck, image.MappedTopLayers...)
 				}
 				for _, layer := range layersToCheck {
-					if childList, ok := childrenByParent[layer]; ok && childList != nil {
-						children := *childList
-						for _, child := range children {
-							if child != lastRemoved {
-								return true
+					if childList := childrenByParent[layer]; len(childList) > 0 {
+						for _, child := range childList {
+							if _, childIsSlatedForRemoval := layersToRemoveMap[child]; childIsSlatedForRemoval {
+								continue
 							}
+							return true
 						}
 					}
 				}
 				return false
 			}
-			if hasOtherRefs() {
+			if hasChildrenNotBeingRemoved() {
 				break
 			}
-			lastRemoved = layer
 			if layer == image.TopLayer {
 				layersToRemove = append(layersToRemove, image.MappedTopLayers...)
+				for _, mappedTopLayer := range image.MappedTopLayers {
+					layersToRemoveMap[mappedTopLayer] = struct{}{}
+				}
 			}
-			layersToRemove = append(layersToRemove, lastRemoved)
+			layersToRemove = append(layersToRemove, layer)
+			layersToRemoveMap[layer] = struct{}{}
 			layer = parent
 		}
 	} else {
@@ -2492,15 +2501,29 @@ func (s *store) DeleteContainer(id string) error {
 			gcpath := filepath.Join(s.GraphRoot(), middleDir, container.ID)
 			wg.Add(1)
 			go func() {
-				errChan <- os.RemoveAll(gcpath)
-				wg.Done()
+				defer wg.Done()
+				// attempt a simple rm -rf first
+				err := os.RemoveAll(gcpath)
+				if err == nil {
+					errChan <- nil
+					return
+				}
+				// and if it fails get to the more complicated cleanup
+				errChan <- system.EnsureRemoveAll(gcpath)
 			}()
 
 			rcpath := filepath.Join(s.RunRoot(), middleDir, container.ID)
 			wg.Add(1)
 			go func() {
-				errChan <- os.RemoveAll(rcpath)
-				wg.Done()
+				defer wg.Done()
+				// attempt a simple rm -rf first
+				err := os.RemoveAll(rcpath)
+				if err == nil {
+					errChan <- nil
+					return
+				}
+				// and if it fails get to the more complicated cleanup
+				errChan <- system.EnsureRemoveAll(rcpath)
 			}()
 
 			go func() {
@@ -2668,6 +2691,10 @@ func (s *store) mount(id string, options drivers.MountOpts) (string, error) {
 		s.lastLoaded = time.Now()
 	}
 
+	if options.UidMaps != nil || options.GidMaps != nil {
+		options.DisableShifting = !s.canUseShifting(options.UidMaps, options.GidMaps)
+	}
+
 	if rlstore.Exists(id) {
 		return rlstore.Mount(id, options)
 	}
@@ -2708,7 +2735,6 @@ func (s *store) Mount(id, mountLabel string) (string, error) {
 				options.Volatile = v.(bool)
 			}
 		}
-		options.DisableShifting = !s.canUseShifting(container.UIDMap, container.GIDMap)
 	}
 	return s.mount(id, options)
 }
@@ -2812,10 +2838,33 @@ func (s *store) Diff(from, to string, options *DiffOptions) (io.ReadCloser, erro
 	if err != nil {
 		return nil, err
 	}
+
+	// NaiveDiff could cause mounts to happen without a lock, so be safe
+	// and treat the .Diff operation as a Mount.
+	s.graphLock.Lock()
+	defer s.graphLock.Unlock()
+
+	modified, err := s.graphLock.Modified()
+	if err != nil {
+		return nil, err
+	}
+
+	// We need to make sure the home mount is present when the Mount is done.
+	if modified {
+		s.graphDriver = nil
+		s.layerStore = nil
+		s.graphDriver, err = s.getGraphDriver()
+		if err != nil {
+			return nil, err
+		}
+		s.lastLoaded = time.Now()
+	}
+
 	for _, s := range append([]ROLayerStore{lstore}, lstores...) {
 		store := s
 		store.RLock()
 		if err := store.ReloadIfChanged(); err != nil {
+			store.Unlock()
 			return nil, err
 		}
 		if store.Exists(to) {
@@ -3041,10 +3090,15 @@ func (s *store) Layers() ([]Layer, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := lstore.LoadLocked(); err != nil {
-		return nil, err
-	}
-	layers, err := lstore.Layers()
+
+	layers, err := func() ([]Layer, error) {
+		lstore.Lock()
+		defer lstore.Unlock()
+		if err := lstore.Load(); err != nil {
+			return nil, err
+		}
+		return lstore.Layers()
+	}()
 	if err != nil {
 		return nil, err
 	}
