@@ -103,6 +103,12 @@ $ gangplank pod --podman -A base
 
 Unless an external Minio Server has been defined, Gangplank will forward Minio over SSH for return of the artifacts.
 
+If running remote Podman to build a different architecture than where Gangplank is being called (ie. `x86_64` remoting to `aarch64`), the `-a` (`--arch`) flag must be specified. Omitting this will result in artifacts not being upload to Minio, whether using an external server or over SSH.
+
+```sh
+$ gangplank pod --podman -A base -a aarch64
+```
+
 #### Secret/Config Map Discovery (Kubernetes/OCP)
 Gangplank has first-class secret discovery, but does not require them. To find secrets, Gangplank will iterate over all secrets that have been annotated using `coreos-assembler.coreos.com/secret` and check the value against known secrets (i.e. AWS, GCP, etc.). If the secret is known, then the _workers_ will have the secret exposed via envVar or with an envVar pointer to the files.
 
