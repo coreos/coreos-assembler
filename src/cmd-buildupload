@@ -53,6 +53,8 @@ def parse_args():
                     action='store', default='private')
     s3.add_argument("--enable-gz-peel", help="Auto-peel .gz extensions "
                     "and set Content-Disposition names", action='store_true')
+    s3.add_argument("--endpoint-url", help="URL of S3-compatible server",
+                    action="store", metavar="URL")
     s3.set_defaults(func=cmd_upload_s3)
 
     return parser.parse_args()
@@ -78,10 +80,11 @@ def cmd_upload_s3(args):
             continue
         # assume it's metadata
         s3_copy(f'builds/{args.build}/{f}', bucket, f'{prefix}/{args.build}/{f}',
-                CACHE_MAX_AGE_METADATA, args.acl)
+                CACHE_MAX_AGE_METADATA, args.acl, endpoint_url=args.endpoint_url)
     if not args.skip_builds_json:
         s3_copy(BUILDFILES['list'], bucket, f'{prefix}/builds.json',
-                CACHE_MAX_AGE_METADATA, args.acl, extra_args={}, dry_run=args.dry_run)
+                CACHE_MAX_AGE_METADATA, args.acl, extra_args={},
+                dry_run=args.dry_run, endpoint_url=args.endpoint_url)
         # And now update our cached copy to note we've successfully sync'd.
         with open(BUILDFILES['sourceurl'], 'w') as f:
             f.write(f"s3://{bucket}/{prefix}\n")
@@ -124,7 +127,8 @@ def s3_upload_build(args, builddir, bucket, prefix):
             uploaded.add(bn)
             continue
 
-        s3_target_exists = s3_check_exists(bucket, s3_path, args.dry_run)
+        s3_target_exists = s3_check_exists(bucket, s3_path, args.dry_run,
+                                           endpoint_url=args.endpoint_url)
 
         if not os.path.exists(path) and not s3_target_exists:
             raise Exception(f"{path} not found locally or in the s3 destination!")
@@ -146,7 +150,8 @@ def s3_upload_build(args, builddir, bucket, prefix):
         s3_copy(path, bucket, s3_path,
             CACHE_MAX_AGE_ARTIFACT, args.acl,
             extra_args=extra_args,
-            dry_run=args.dry_run)
+            dry_run=args.dry_run,
+            endpoint_url=args.endpoint_url)
         uploaded.add(bn)
 
     for f in os.listdir(builddir):
@@ -156,7 +161,7 @@ def s3_upload_build(args, builddir, bucket, prefix):
         path = os.path.join(builddir, f)
         s3_copy(path, bucket, f'{prefix}/{f}',
             CACHE_MAX_AGE_ARTIFACT, args.acl,
-            dry_run=args.dry_run)
+            dry_run=args.dry_run, endpoint_url=args.endpoint_url)
 
     # Now upload a modified version of the meta.json which has the fixed
     # filenames without the .gz suffixes. We don't want to modify the local
@@ -166,13 +171,13 @@ def s3_upload_build(args, builddir, bucket, prefix):
         f.flush()
         s3_copy(f.name, bucket, f'{prefix}/meta.json',
             CACHE_MAX_AGE_METADATA, args.acl,
-            dry_run=args.dry_run)
+            dry_run=args.dry_run, endpoint_url=args.endpoint_url)
 
 
 @retry(stop=retry_stop, retry=retry_boto_exception, before_sleep=retry_callback)
-def s3_check_exists(bucket, key, dry_run=False):
+def s3_check_exists(bucket, key, dry_run=False, endpoint_url=None):
     print(f"Checking if bucket '{bucket}' has key '{key}'")
-    s3 = boto3.client('s3')
+    s3 = boto3.client('s3', endpoint_url=endpoint_url)
     try:
         s3.head_object(Bucket=bucket, Key=key)
     except ClientError as e:
@@ -188,7 +193,7 @@ def s3_check_exists(bucket, key, dry_run=False):
 
 
 @retry(stop=retry_stop, retry=retry_boto_exception, retry_error_callback=retry_callback)
-def s3_copy(src, bucket, key, max_age, acl, extra_args={}, dry_run=False):
+def s3_copy(src, bucket, key, max_age, acl, extra_args={}, dry_run=False, endpoint_url=None):
     extra_args = dict(extra_args)
     if 'ContentType' not in extra_args:
         if key.endswith('.json'):
@@ -217,7 +222,7 @@ def s3_copy(src, bucket, key, max_age, acl, extra_args={}, dry_run=False):
     if dry_run:
         return
 
-    s3 = boto3.client('s3')
+    s3 = boto3.client('s3', endpoint_url=endpoint_url)
     s3.upload_file(Filename=src, Bucket=bucket, Key=key, ExtraArgs=upload_args)
 
 
