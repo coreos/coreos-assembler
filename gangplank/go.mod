@@ -3,6 +3,7 @@ module github.com/coreos/gangplank
 go 1.15
 
 require (
+	github.com/containerd/containerd v1.5.8 // indirect
 	github.com/containers/podman/v3 v3.2.1
 	github.com/containers/storage v1.38.1
 	github.com/coreos/coreos-assembler-schema v0.0.0-00010101000000-000000000000
