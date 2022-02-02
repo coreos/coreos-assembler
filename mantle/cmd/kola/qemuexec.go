@@ -47,11 +47,11 @@ var (
 	usernet      bool
 	cpuCountHost bool
 
-	hostname string
-	ignition string
-	butane   string
-	kargs    []string
-	knetargs string
+	hostname       string
+	ignition       string
+	butane         string
+	kargs          []string
+	firstbootkargs string
 
 	ignitionFragments []string
 	bindro            []string
@@ -75,7 +75,7 @@ const maxAdditionalNics = 16
 
 func init() {
 	root.AddCommand(cmdQemuExec)
-	cmdQemuExec.Flags().StringVarP(&knetargs, "knetargs", "", "", "Arguments for Ignition networking on kernel commandline")
+	cmdQemuExec.Flags().StringVarP(&firstbootkargs, "firstbootkargs", "", "", "Additional first boot kernel arguments")
 	cmdQemuExec.Flags().StringArrayVar(&kargs, "kargs", nil, "Additional kernel arguments applied")
 	cmdQemuExec.Flags().BoolVarP(&usernet, "usernet", "U", false, "Enable usermode networking")
 	cmdQemuExec.Flags().StringSliceVar(&ignitionFragments, "add-ignition", nil, "Append well-known Ignition fragment: [\"autologin\", \"autoresize\"]")
@@ -264,8 +264,8 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 		config.Mount9p(dest, false)
 	}
 	builder.ForceConfigInjection = forceConfigInjection
-	if len(knetargs) > 0 {
-		builder.AppendFirstbootKernelArgs = knetargs
+	if len(firstbootkargs) > 0 {
+		builder.AppendFirstbootKernelArgs = firstbootkargs
 	}
 	builder.AppendKernelArgs = strings.Join(kargs, " ")
 	builder.Firmware = kola.QEMUOptions.Firmware
