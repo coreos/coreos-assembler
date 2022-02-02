@@ -713,7 +713,7 @@ func (gf *coreosGuestfish) destroy() {
 }
 
 // setupPreboot performs changes necessary before the disk is booted
-func setupPreboot(confPath, knetargs, kargs string, diskImagePath string, diskSectorSize int) error {
+func setupPreboot(confPath, firstbootkargs, kargs string, diskImagePath string, diskSectorSize int) error {
 	gf, err := newGuestfish(diskImagePath, diskSectorSize)
 	if err != nil {
 		return err
@@ -731,8 +731,8 @@ func setupPreboot(confPath, knetargs, kargs string, diskImagePath string, diskSe
 	}
 
 	// See /boot/grub2/grub.cfg
-	if knetargs != "" {
-		grubStr := fmt.Sprintf("set ignition_network_kcmdline='%s'\n", knetargs)
+	if firstbootkargs != "" {
+		grubStr := fmt.Sprintf("set ignition_network_kcmdline='%s'\n", firstbootkargs)
 		if err := exec.Command("guestfish", gf.remote, "write", "/ignition.firstboot", grubStr).Run(); err != nil {
 			return errors.Wrapf(err, "guestfish write")
 		}
