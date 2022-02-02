@@ -56,6 +56,9 @@ func (ac *cluster) NewMachineWithOptions(userdata *conf.UserData, options platfo
 	if options.AppendKernelArgs != "" {
 		return nil, errors.New("platform azure does not support appending kernel arguments")
 	}
+	if options.AppendFirstbootKernelArgs != "" {
+		return nil, errors.New("platform azure does not support appending firstboot kernel arguments")
+	}
 
 	conf, err := ac.RenderUserData(userdata, map[string]string{
 		"$private_ipv4": "${COREOS_AZURE_IPV4_DYNAMIC}",

@@ -153,13 +153,14 @@ type Flight interface {
 }
 
 type MachineOptions struct {
-	MultiPathDisk    bool
-	AdditionalDisks  []string
-	MinMemory        int
-	MinDiskSize      int
-	AdditionalNics   int
-	AppendKernelArgs string
-	SkipStartMachine bool // Skip platform.StartMachine on machine bringup
+	MultiPathDisk             bool
+	AdditionalDisks           []string
+	MinMemory                 int
+	MinDiskSize               int
+	AdditionalNics            int
+	AppendKernelArgs          string
+	AppendFirstbootKernelArgs string
+	SkipStartMachine          bool // Skip platform.StartMachine on machine bringup
 }
 
 // SystemdDropin is a userdata type agnostic struct representing a systemd dropin

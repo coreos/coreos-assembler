@@ -195,7 +195,8 @@ Here's an example `kola.json`:
     "minMemory": 4096,
     "minDisk": 15,
     "additionalNics": 2,
-    "appendKernelArgs": "ip=bond0:dhcp bond=bond0:ens5,ens6:mode=active-backup,miimon=100"
+    "appendKernelArgs": "enforcing=0"
+    "appendFirstbootKernelArgs": "ip=bond0:dhcp bond=bond0:ens5,ens6:mode=active-backup,miimon=100"
     "timeoutMin": 8,
     "exclusive": true,
     "conflicts": ["ext.config.some-test", "podman.some-other-test"]
@@ -243,6 +244,9 @@ to `qemuexec`. It is currently only supported on `qemu-unpriv`.
 
 The `appendKernelArgs` key has the same semantics at the `--kargs` argument to
 `qemuexec`. It is currently only supported on `qemu-unpriv`.
+
+The `appendFirstbootKernelArgs` key has the same semantics at the `--firstbootkargs`
+argument to `qemuexec`. It is currently only supported on `qemu-unpriv`.
 
 The `timeoutMin` key takes a positive integer and specifies a timeout for the test
 in minutes. After the specified amount of time, the test will be interrupted.

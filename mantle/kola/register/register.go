@@ -87,6 +87,9 @@ type Test struct {
 	// Additional kernel arguments to append to the defaults.
 	AppendKernelArgs string
 
+	// Additional first boot kernel arguments to append to the defaults.
+	AppendFirstbootKernelArgs string
+
 	// ExternalTest is a path to a binary that will be uploaded
 	ExternalTest string
 	// DependencyDir is a path to directory that will be uploaded, normally used by external tests

@@ -747,19 +747,20 @@ func RunUpgradeTests(patterns []string, rerun bool, pltfrm, outputDir string, pr
 
 // externalTestMeta is parsed from kola.json in external tests
 type externalTestMeta struct {
-	Architectures    string   `json:"architectures,omitempty"`
-	Platforms        string   `json:"platforms,omitempty"`
-	Distros          string   `json:"distros,omitempty"`
-	Tags             string   `json:"tags,omitempty"`
-	RequiredTag      string   `json:"requiredTag,omitempty"`
-	AdditionalDisks  []string `json:"additionalDisks,omitempty"`
-	MinMemory        int      `json:"minMemory,omitempty"`
-	MinDiskSize      int      `json:"minDisk,omitempty"`
-	AdditionalNics   int      `json:"additionalNics,omitempty"`
-	AppendKernelArgs string   `json:"appendKernelArgs,omitempty"`
-	Exclusive        bool     `json:"exclusive"`
-	TimeoutMin       int      `json:"timeoutMin"`
-	Conflicts        []string `json:"conflicts"`
+	Architectures             string   `json:"architectures,omitempty"`
+	Platforms                 string   `json:"platforms,omitempty"`
+	Distros                   string   `json:"distros,omitempty"`
+	Tags                      string   `json:"tags,omitempty"`
+	RequiredTag               string   `json:"requiredTag,omitempty"`
+	AdditionalDisks           []string `json:"additionalDisks,omitempty"`
+	MinMemory                 int      `json:"minMemory,omitempty"`
+	MinDiskSize               int      `json:"minDisk,omitempty"`
+	AdditionalNics            int      `json:"additionalNics,omitempty"`
+	AppendKernelArgs          string   `json:"appendKernelArgs,omitempty"`
+	AppendFirstbootKernelArgs string   `json:"appendFirstbootKernelArgs,omitempty"`
+	Exclusive                 bool     `json:"exclusive"`
+	TimeoutMin                int      `json:"timeoutMin"`
+	Conflicts                 []string `json:"conflicts"`
 }
 
 // metadataFromTestBinary extracts JSON-in-comment like:
@@ -923,13 +924,14 @@ ExecStart=%s
 		DependencyDir: destDirs,
 		Tags:          []string{"external"},
 
-		AdditionalDisks:  targetMeta.AdditionalDisks,
-		MinMemory:        targetMeta.MinMemory,
-		MinDiskSize:      targetMeta.MinDiskSize,
-		AdditionalNics:   targetMeta.AdditionalNics,
-		AppendKernelArgs: targetMeta.AppendKernelArgs,
-		NonExclusive:     !targetMeta.Exclusive,
-		Conflicts:        targetMeta.Conflicts,
+		AdditionalDisks:           targetMeta.AdditionalDisks,
+		MinMemory:                 targetMeta.MinMemory,
+		MinDiskSize:               targetMeta.MinDiskSize,
+		AdditionalNics:            targetMeta.AdditionalNics,
+		AppendKernelArgs:          targetMeta.AppendKernelArgs,
+		AppendFirstbootKernelArgs: targetMeta.AppendFirstbootKernelArgs,
+		NonExclusive:              !targetMeta.Exclusive,
+		Conflicts:                 targetMeta.Conflicts,
 
 		Run: func(c cluster.TestCluster) {
 			mach := c.Machines()[0]
@@ -1342,13 +1344,14 @@ func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flig
 		var userdata *conf.UserData = t.UserData
 
 		options := platform.MachineOptions{
-			MultiPathDisk:    t.MultiPathDisk,
-			AdditionalDisks:  t.AdditionalDisks,
-			MinMemory:        t.MinMemory,
-			MinDiskSize:      t.MinDiskSize,
-			AdditionalNics:   t.AdditionalNics,
-			AppendKernelArgs: t.AppendKernelArgs,
-			SkipStartMachine: true,
+			MultiPathDisk:             t.MultiPathDisk,
+			AdditionalDisks:           t.AdditionalDisks,
+			MinMemory:                 t.MinMemory,
+			MinDiskSize:               t.MinDiskSize,
+			AdditionalNics:            t.AdditionalNics,
+			AppendKernelArgs:          t.AppendKernelArgs,
+			AppendFirstbootKernelArgs: t.AppendFirstbootKernelArgs,
+			SkipStartMachine:          true,
 		}
 
 		// Providers sometimes fail to bring up a machine within a
