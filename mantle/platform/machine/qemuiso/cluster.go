@@ -136,6 +136,9 @@ func (qc *Cluster) NewMachineWithQemuOptions(userdata *conf.UserData, options pl
 	if options.AppendKernelArgs != "" {
 		builder.AppendKernelArgs = options.AppendKernelArgs
 	}
+	if options.AppendFirstbootKernelArgs != "" {
+		builder.AppendFirstbootKernelArgs = options.AppendFirstbootKernelArgs
+	}
 
 	inst, err := builder.Exec()
 	if err != nil {

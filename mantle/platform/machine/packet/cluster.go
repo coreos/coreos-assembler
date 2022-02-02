@@ -49,6 +49,9 @@ func (pc *cluster) NewMachineWithOptions(userdata *conf.UserData, options platfo
 	if options.AppendKernelArgs != "" {
 		return nil, errors.New("platform packet does not support appending kernel arguments")
 	}
+	if options.AppendFirstbootKernelArgs != "" {
+		return nil, errors.New("platform packet does not support appending firstboot kernel arguments")
+	}
 
 	conf, err := pc.RenderUserData(userdata, map[string]string{
 		"$public_ipv4":  "${COREOS_PACKET_IPV4_PUBLIC_0}",
