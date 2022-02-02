@@ -63,6 +63,7 @@ def parse_args():
 def cmd_upload_s3(args):
     bucket, prefix = args.url.split('/', 1)
     builds = Builds()
+    s3_client = boto3.client('s3', endpoint_url=args.endpoint_url)
     # This can't be an error for backcompat reasons, but let's print something
     if not os.path.isfile(BUILDFILES['sourceurl']):
         print(f"NOTICE: No {BUILDFILES['sourceurl']} file; uploading without buildfetch?")
@@ -70,7 +71,7 @@ def cmd_upload_s3(args):
         args.build = builds.get_latest()
     print(f"Targeting build: {args.build}")
     for arch in builds.get_build_arches(args.build):
-        s3_upload_build(args, builds.get_build_dir(args.build, arch),
+        s3_upload_build(s3_client, args, builds.get_build_dir(args.build, arch),
                         bucket, f'{prefix}/{args.build}/{arch}')
     # if there's anything else in the build dir, just upload it too,
     # e.g. pipelines might inject additional metadata
@@ -79,19 +80,19 @@ def cmd_upload_s3(args):
         if f in builds.get_build_arches(args.build):
             continue
         # assume it's metadata
-        s3_copy(f'builds/{args.build}/{f}', bucket, f'{prefix}/{args.build}/{f}',
-                CACHE_MAX_AGE_METADATA, args.acl, endpoint_url=args.endpoint_url)
+        s3_copy(s3_client, f'builds/{args.build}/{f}', bucket,
+                f'{prefix}/{args.build}/{f}', CACHE_MAX_AGE_METADATA, args.acl)
     if not args.skip_builds_json:
-        s3_copy(BUILDFILES['list'], bucket, f'{prefix}/builds.json',
+        s3_copy(s3_client, BUILDFILES['list'], bucket, f'{prefix}/builds.json',
                 CACHE_MAX_AGE_METADATA, args.acl, extra_args={},
-                dry_run=args.dry_run, endpoint_url=args.endpoint_url)
+                dry_run=args.dry_run)
         # And now update our cached copy to note we've successfully sync'd.
         with open(BUILDFILES['sourceurl'], 'w') as f:
             f.write(f"s3://{bucket}/{prefix}\n")
         subprocess.check_call(['cp-reflink', BUILDFILES['list'], BUILDFILES['sourcedata']])
 
 
-def s3_upload_build(args, builddir, bucket, prefix):
+def s3_upload_build(s3_client, args, builddir, bucket, prefix):
     # In the case where we are doing builds for different architectures
     # it's likely not all builds for this arch are local. If the meta.json
     # doesn't exist then return early.
@@ -127,8 +128,7 @@ def s3_upload_build(args, builddir, bucket, prefix):
             uploaded.add(bn)
             continue
 
-        s3_target_exists = s3_check_exists(bucket, s3_path, args.dry_run,
-                                           endpoint_url=args.endpoint_url)
+        s3_target_exists = s3_check_exists(s3_client, bucket, s3_path, args.dry_run)
 
         if not os.path.exists(path) and not s3_target_exists:
             raise Exception(f"{path} not found locally or in the s3 destination!")
@@ -147,11 +147,10 @@ def s3_upload_build(args, builddir, bucket, prefix):
                 'ContentEncoding': 'gzip',
                 'ContentDisposition': f'inline; filename={img["path"]}'
             }
-        s3_copy(path, bucket, s3_path,
+        s3_copy(s3_client, path, bucket, s3_path,
             CACHE_MAX_AGE_ARTIFACT, args.acl,
             extra_args=extra_args,
-            dry_run=args.dry_run,
-            endpoint_url=args.endpoint_url)
+            dry_run=args.dry_run)
         uploaded.add(bn)
 
     for f in os.listdir(builddir):
@@ -159,9 +158,9 @@ def s3_upload_build(args, builddir, bucket, prefix):
         if f in uploaded or f == 'meta.json':
             continue
         path = os.path.join(builddir, f)
-        s3_copy(path, bucket, f'{prefix}/{f}',
+        s3_copy(s3_client, path, bucket, f'{prefix}/{f}',
             CACHE_MAX_AGE_ARTIFACT, args.acl,
-            dry_run=args.dry_run, endpoint_url=args.endpoint_url)
+            dry_run=args.dry_run)
 
     # Now upload a modified version of the meta.json which has the fixed
     # filenames without the .gz suffixes. We don't want to modify the local
@@ -169,17 +168,16 @@ def s3_upload_build(args, builddir, bucket, prefix):
     with tempfile.NamedTemporaryFile('w') as f:
         json.dump(build, f, indent=4)
         f.flush()
-        s3_copy(f.name, bucket, f'{prefix}/meta.json',
+        s3_copy(s3_client, f.name, bucket, f'{prefix}/meta.json',
             CACHE_MAX_AGE_METADATA, args.acl,
-            dry_run=args.dry_run, endpoint_url=args.endpoint_url)
+            dry_run=args.dry_run)
 
 
 @retry(stop=retry_stop, retry=retry_boto_exception, before_sleep=retry_callback)
-def s3_check_exists(bucket, key, dry_run=False, endpoint_url=None):
+def s3_check_exists(s3_client, bucket, key, dry_run=False):
     print(f"Checking if bucket '{bucket}' has key '{key}'")
-    s3 = boto3.client('s3', endpoint_url=endpoint_url)
     try:
-        s3.head_object(Bucket=bucket, Key=key)
+        s3_client.head_object(Bucket=bucket, Key=key)
     except ClientError as e:
         if e.response['Error']['Code'] == '404':
             return False
@@ -193,7 +191,7 @@ def s3_check_exists(bucket, key, dry_run=False, endpoint_url=None):
 
 
 @retry(stop=retry_stop, retry=retry_boto_exception, retry_error_callback=retry_callback)
-def s3_copy(src, bucket, key, max_age, acl, extra_args={}, dry_run=False, endpoint_url=None):
+def s3_copy(s3_client, src, bucket, key, max_age, acl, extra_args={}, dry_run=False):
     extra_args = dict(extra_args)
     if 'ContentType' not in extra_args:
         if key.endswith('.json'):
@@ -222,8 +220,7 @@ def s3_copy(src, bucket, key, max_age, acl, extra_args={}, dry_run=False, endpoi
     if dry_run:
         return
 
-    s3 = boto3.client('s3', endpoint_url=endpoint_url)
-    s3.upload_file(Filename=src, Bucket=bucket, Key=key, ExtraArgs=upload_args)
+    s3_client.upload_file(Filename=src, Bucket=bucket, Key=key, ExtraArgs=upload_args)
 
 
 if __name__ == '__main__':
