@@ -265,7 +265,7 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 	}
 	builder.ForceConfigInjection = forceConfigInjection
 	if len(knetargs) > 0 {
-		builder.IgnitionNetworkKargs = knetargs
+		builder.AppendFirstbootKernelArgs = knetargs
 	}
 	builder.AppendKernelArgs = strings.Join(kargs, " ")
 	builder.Firmware = kola.QEMUOptions.Firmware

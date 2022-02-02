@@ -406,8 +406,8 @@ type QemuBuilder struct {
 	// AppendKernelArgs are appended to the bootloader config
 	AppendKernelArgs string
 
-	// IgnitionNetworkKargs are written to /boot/ignition
-	IgnitionNetworkKargs string
+	// AppendFirstbootKernelArgs are written to /boot/ignition
+	AppendFirstbootKernelArgs string
 
 	Hostname string
 
@@ -874,8 +874,8 @@ func (builder *QemuBuilder) addDiskImpl(disk *Disk, primary bool) error {
 			return errors.Wrapf(err, "rendering ignition")
 		}
 		requiresInjection := builder.ConfigFile != "" && builder.ForceConfigInjection
-		if requiresInjection || builder.IgnitionNetworkKargs != "" || builder.AppendKernelArgs != "" {
-			if err := setupPreboot(builder.ConfigFile, builder.IgnitionNetworkKargs, builder.AppendKernelArgs,
+		if requiresInjection || builder.AppendFirstbootKernelArgs != "" || builder.AppendKernelArgs != "" {
+			if err := setupPreboot(builder.ConfigFile, builder.AppendFirstbootKernelArgs, builder.AppendKernelArgs,
 				disk.dstFileName, disk.SectorSize); err != nil {
 				return errors.Wrapf(err, "ignition injection with guestfs failed")
 			}
