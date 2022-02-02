@@ -215,6 +215,12 @@ func (a *API) ImportImage(format, bucket, object, image_size, device, name, desc
 	request.ImageName = name
 	request.Description = description
 	request.Architecture = architecture
+	request.Tag = &[]ecs.ImportImageTag{
+		{
+			Key:   "created-by",
+			Value: "mantle",
+		},
+	}
 
 	plog.Infof("importing image")
 	response, err := a.ecs.ImportImage(request)
