@@ -119,6 +119,7 @@ func verifyMultipathBoot(c cluster.TestCluster, m platform.Machine) {
 	for _, mnt := range []string{"/sysroot", "/boot"} {
 		verifyMultipath(c, m, mnt)
 	}
+	c.MustSSH(m, "test -f /etc/multipath.conf")
 }
 
 func verifyMultipath(c cluster.TestCluster, m platform.Machine, path string) {
