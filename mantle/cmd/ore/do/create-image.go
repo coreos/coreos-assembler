@@ -205,7 +205,7 @@ systemd:
         WantedBy=multi-user.target
 `, imageURL)
 
-	conf, err := conf.Ignition(config).Render()
+	conf, err := conf.Ignition(config).Render(conf.ReportWarnings)
 	if err != nil {
 		return "", fmt.Errorf("Couldn't render userdata: %v", err)
 	}

@@ -761,6 +761,7 @@ type externalTestMeta struct {
 	Exclusive                 bool     `json:"exclusive"`
 	TimeoutMin                int      `json:"timeoutMin"`
 	Conflicts                 []string `json:"conflicts"`
+	AllowConfigWarnings       bool     `json:"allowConfigWarnings"`
 }
 
 // metadataFromTestBinary extracts JSON-in-comment like:
@@ -864,11 +865,6 @@ func runExternalTest(c cluster.TestCluster, mach platform.Machine, testNum int) 
 }
 
 func registerExternalTest(testname, executable, dependencydir string, userdata *conf.UserData, baseMeta externalTestMeta) error {
-	config, err := userdata.Render()
-	if err != nil {
-		return errors.Wrapf(err, "Parsing config.ign")
-	}
-
 	targetMeta, err := metadataFromTestBinary(executable)
 	if err != nil {
 		return errors.Wrapf(err, "Parsing metadata from %s", executable)
@@ -876,6 +872,15 @@ func registerExternalTest(testname, executable, dependencydir string, userdata *
 	if targetMeta == nil {
 		metaCopy := baseMeta
 		targetMeta = &metaCopy
+	}
+
+	warningsAction := conf.FailWarnings
+	if targetMeta.AllowConfigWarnings {
+		warningsAction = conf.IgnoreWarnings
+	}
+	config, err := userdata.Render(warningsAction)
+	if err != nil {
+		return errors.Wrapf(err, "Parsing config.ign")
 	}
 
 	// Services that are exclusive will be marked by a 0 at the end of the name
@@ -1237,6 +1242,9 @@ func makeNonExclusiveTest(bucket int, tests []*register.Test, flight platform.Fl
 		if test.HasFlag(register.NoSSHKeyInMetadata) || test.HasFlag(register.NoSSHKeyInUserData) {
 			plog.Fatalf("Non-exclusive test %v cannot have NoSSHKeyIn* flag", test.Name)
 		}
+		if test.HasFlag(register.AllowConfigWarnings) {
+			plog.Fatalf("Non-exclusive test %v cannot have AllowConfigWarnings flag", test.Name)
+		}
 		if !internetAccess && testRequiresInternet(test) {
 			flags = append(flags, register.RequiresInternetAccess)
 			internetAccess = true
@@ -1248,7 +1256,7 @@ func makeNonExclusiveTest(bucket int, tests []*register.Test, flight platform.Fl
 			}
 		}
 
-		conf, err := test.UserData.Render()
+		conf, err := test.UserData.Render(conf.FailWarnings)
 		if err != nil {
 			plog.Fatalf("Error rendering config: %v", err)
 		}
@@ -1311,7 +1319,11 @@ func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flig
 		OutputDir:          h.OutputDir(),
 		NoSSHKeyInUserData: t.HasFlag(register.NoSSHKeyInUserData),
 		NoSSHKeyInMetadata: t.HasFlag(register.NoSSHKeyInMetadata),
+		WarningsAction:     conf.FailWarnings,
 		InternetAccess:     testRequiresInternet(t),
+	}
+	if t.HasFlag(register.AllowConfigWarnings) {
+		rconf.WarningsAction = conf.IgnoreWarnings
 	}
 
 	var c platform.Cluster

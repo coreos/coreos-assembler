@@ -189,7 +189,7 @@ func (bc *BaseCluster) RenderUserData(userdata *platformConf.UserData, ignitionV
 		userdata = userdata.Subst(k, v)
 	}
 
-	conf, err := userdata.Render()
+	conf, err := userdata.Render(bc.rconf.WarningsAction)
 	if err != nil {
 		return nil, err
 	}

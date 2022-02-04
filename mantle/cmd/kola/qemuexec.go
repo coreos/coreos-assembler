@@ -211,7 +211,7 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		config, err = conf.Butane(string(buf)).Render()
+		config, err = conf.Butane(string(buf)).Render(conf.ReportWarnings)
 		if err != nil {
 			return errors.Wrapf(err, "parsing %s", butane)
 		}
@@ -220,7 +220,7 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		config, err = conf.Ignition(string(buf)).Render()
+		config, err = conf.Ignition(string(buf)).Render(conf.ReportWarnings)
 		if err != nil {
 			return errors.Wrapf(err, "parsing %s", ignition)
 		}
@@ -228,7 +228,7 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 
 	ensureConfig := func() {
 		if config == nil {
-			config, err = conf.EmptyIgnition().Render()
+			config, err = conf.EmptyIgnition().Render(conf.FailWarnings)
 			if err != nil {
 				// could try to handle this more gratefully, but meh... this
 				// really should never fail

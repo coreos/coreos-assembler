@@ -43,6 +43,7 @@ import (
 	v34exptypes "github.com/coreos/ignition/v2/config/v3_4_experimental/types"
 	"github.com/coreos/ignition/v2/config/validate"
 	"github.com/coreos/pkg/capnslog"
+	"github.com/coreos/vcontext/report"
 	"github.com/vincent-petithory/dataurl"
 	"golang.org/x/crypto/ssh/agent"
 )
@@ -61,6 +62,14 @@ const (
 	NoState systemdUnitState = iota
 	Enable
 	Mask
+)
+
+type WarningsAction int
+
+const (
+	IgnoreWarnings WarningsAction = iota
+	ReportWarnings
+	FailWarnings
 )
 
 var plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "platform/conf")
@@ -169,10 +178,24 @@ func (u *UserData) AddKey(key agent.Key) *UserData {
 }
 
 // Render parses userdata and returns a new Conf. It returns an error if the
-// userdata can't be parsed.
-func (u *UserData) Render() (*Conf, error) {
+// userdata can't be parsed, or if FailWarnings is selected and there are
+// warnings.
+func (u *UserData) Render(warnings WarningsAction) (*Conf, error) {
 	c := &Conf{}
 
+	handleWarnings := func(r report.Report) error {
+		if len(r.Entries) > 0 {
+			switch warnings {
+			case IgnoreWarnings:
+			case ReportWarnings:
+				plog.Warningf("warnings parsing config: %s", r)
+			case FailWarnings:
+				plog.Errorf("warnings parsing config: %s", r)
+				return errors.New("configured to treate config warnings as fatal")
+			}
+		}
+		return nil
+	}
 	renderIgnition := func(data []byte) error {
 		ver, report, err := ignutil.GetConfigVersion(data)
 		if err != nil {
@@ -247,7 +270,7 @@ func (u *UserData) Render() (*Conf, error) {
 		default:
 			return ignerr.ErrUnknownVersion
 		}
-		return nil
+		return handleWarnings(report)
 	}
 
 	switch u.kind {
@@ -266,8 +289,9 @@ func (u *UserData) Render() (*Conf, error) {
 		if err != nil {
 			return nil, err
 		}
-		if len(report.Entries) > 0 {
-			plog.Warningf("translating Butane config: %s", report)
+		err = handleWarnings(report)
+		if err != nil {
+			return nil, err
 		}
 		err = renderIgnition(ignc)
 		if err != nil {

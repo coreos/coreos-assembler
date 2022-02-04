@@ -29,6 +29,7 @@ const (
 	NoSSHKeyInMetadata                 // don't add SSH key to platform metadata
 	NoEmergencyShellCheck              // don't check console output for emergency shell invocation
 	RequiresInternetAccess             // run the test only if the platform supports Internet access
+	AllowConfigWarnings                // ignore Ignition and Butane warnings instead of failing
 )
 
 // NativeFuncWrap is a wrapper for the NativeFunc which includes an optional string of arches and/or distributions to

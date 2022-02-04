@@ -45,7 +45,7 @@ func TestConfCopyKey(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		_, err := tt.Render()
+		_, err := tt.Render(FailWarnings)
 		if err == nil {
 			t.Errorf("parsed an unsupported config!")
 			continue
@@ -64,7 +64,7 @@ func TestConfCopyKey(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		conf, err := tt.Render()
+		conf, err := tt.Render(FailWarnings)
 		if err != nil {
 			t.Errorf("failed to parse config %d: %v", i, err)
 			continue

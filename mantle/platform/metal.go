@@ -652,7 +652,7 @@ func (inst *Install) InstallViaISOEmbed(kargs []string, liveIgnition, targetIgni
 
 		// TODO also use https://github.com/coreos/coreos-installer/issues/118#issuecomment-585572952
 		// when it arrives
-		targetConfig, err := conf.EmptyIgnition().Render()
+		targetConfig, err := conf.EmptyIgnition().Render(conf.FailWarnings)
 		if err != nil {
 			return nil, err
 		}

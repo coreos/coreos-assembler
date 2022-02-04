@@ -62,7 +62,7 @@ func runCreateDevice(cmd *cobra.Command, args []string) error {
 		}
 		userdata = conf.Unknown(string(data))
 	}
-	conf, err := userdata.Render()
+	conf, err := userdata.Render(conf.ReportWarnings)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Couldn't parse userdata file %v: %v\n", userDataPath, err)
 		os.Exit(1)

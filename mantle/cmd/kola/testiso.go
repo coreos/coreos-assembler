@@ -251,7 +251,7 @@ func newQemuBuilder(outdir string) (*platform.QemuBuilder, *conf.Conf, error) {
 		return nil, nil, err
 	}
 
-	config, err := conf.EmptyIgnition().Render()
+	config, err := conf.EmptyIgnition().Render(conf.FailWarnings)
 	if err != nil {
 		return nil, nil, err
 	}
