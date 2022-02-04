@@ -99,10 +99,6 @@ depcheck() {
 preflight() {
     depcheck
 
-    if [ "$(stat -f --printf="%T" .)" = "overlayfs" ] && [ -z "${COSA_SKIP_OVERLAY:-}" ]; then
-        fatal "$(pwd) must be a volume"
-    fi
-
     # See https://pagure.io/centos-infra/issue/48
     if test "$(umask)" = 0000; then
         fatal "Your umask is unset, please use umask 0022 or so"
@@ -155,6 +151,10 @@ prepare_build() {
     preflight_kvm
     if ! [ -d builds ]; then
         fatal "No $(pwd)/builds found; did you run coreos-assembler init?"
+    fi
+
+    if [ "$(stat -f --printf="%T" .)" = "overlayfs" ] && [ -z "${COSA_SKIP_OVERLAY:-}" ]; then
+        fatal "$(pwd) must be a volume"
     fi
 
     workdir="$(pwd)"
