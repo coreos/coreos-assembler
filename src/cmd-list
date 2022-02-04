@@ -20,8 +20,13 @@ def main():
         tags[tag['target']] = tags.get(tag['target'], []) + [tag['name']]
 
     for build in builds.get_builds():
+        try:
+            m = builds.get_build_meta(build['id'])
+        except FileNotFoundError:
+            print("<missing builds locally>")
+            break
+
         print(f"{build['id']}")
-        m = builds.get_build_meta(build['id'])
         ts = m['coreos-assembler.build-timestamp']
         d = parse_date_string(ts)
         delta = datetime.datetime.now(datetime.timezone.utc) - d
