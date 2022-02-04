@@ -256,6 +256,9 @@ if args.mode == "compress":
 elif args.mode == "uncompress":
     for arch in builds.get_build_arches(build):
         builddir = builds.get_build_dir(build, arch)
+        if not os.path.exists(builddir):
+            print(f"Skipping missing arch: {arch}")
+            continue
         changed.append(uncompress_one_builddir(builddir))
         if not any(changed):
             print("All builds already uncompressed")
