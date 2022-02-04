@@ -52,7 +52,7 @@ systemd:
     - name: 10-debug.conf
       contents: |-
         [Service]
-        Environment=G_MESSAGES_DEBUG=all`),
+        Environment=G_MESSAGES_DEBUG=rpm-ostreed`),
 	})
 
 }
