@@ -1,0 +1,45 @@
+#!/usr/bin/python3 -u
+# Upload the container to a registry.  Note this
+# is distinct from `upload-oscontainer` which
+# only applies to (hopefully soon only older)
+# versions of RHCOS but not FCOS.
+
+import argparse
+import json
+import os
+import subprocess
+import sys
+
+cosa_dir = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, cosa_dir)
+
+from cosalib import cmdlib
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--authfile", help="Authentication file",
+                    action='store')
+parser.add_argument("name", help="destination image reference")
+
+args = parser.parse_args()
+
+with open('builds/builds.json') as f:
+    builds = json.load(f)['builds']
+if len(builds) == 0:
+    cmdlib.fatal("No builds found")
+latest_build = builds[0]['id']
+arch = cmdlib.get_basearch()
+latest_build_path = f"builds/{latest_build}/{arch}"
+
+metapath = f"{latest_build_path}/meta.json"
+with open(metapath) as f:
+    meta = json.load(f)
+ociarchive = os.path.join(latest_build_path, meta['images']['ostree']['path'])
+
+skopeoargs = ['skopeo', 'copy']
+if args.authfile is None:
+    args.authfile = os.environ.get("REGISTRY_AUTH_FILE")
+if args.authfile is not None:
+    skopeoargs.extend(['--authfile', args.authfile])
+skopeoargs.extend([f"oci-archive:{ociarchive}", f"docker://{args.name}"])
+print(subprocess.list2cmdline(skopeoargs))
+os.execvp('skopeo', skopeoargs)
