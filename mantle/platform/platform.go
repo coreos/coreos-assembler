@@ -196,9 +196,10 @@ type Options struct {
 type RuntimeConfig struct {
 	OutputDir string
 
-	NoSSHKeyInUserData bool // don't inject SSH key into Ignition/cloud-config
-	NoSSHKeyInMetadata bool // don't add SSH key to platform metadata
-	AllowFailedUnits   bool // don't fail CheckMachine if a systemd unit has failed
+	NoSSHKeyInUserData bool                // don't inject SSH key into Ignition/cloud-config
+	NoSSHKeyInMetadata bool                // don't add SSH key to platform metadata
+	AllowFailedUnits   bool                // don't fail CheckMachine if a systemd unit has failed
+	WarningsAction     conf.WarningsAction // what to do on Ignition or Butane validation warnings
 
 	// InternetAccess is true if the cluster should be Internet connected
 	InternetAccess bool

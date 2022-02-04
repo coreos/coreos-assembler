@@ -101,7 +101,7 @@ func (af *flight) NewCluster(rconf *platform.RuntimeConfig) (platform.Cluster, e
 }
 
 func (af *flight) ConfigTooLarge(ud conf.UserData) bool {
-	config, err := ud.Render()
+	config, err := ud.Render(conf.IgnoreWarnings)
 	if err != nil {
 		return true
 	}
