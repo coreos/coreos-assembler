@@ -161,7 +161,7 @@ def compress_one_builddir(builddir):
             rm_allow_noent(filepath[:-3])
 
     if len(skipped) > 0:
-        print(f"Skipped artifacts: {skipped}")
+        print(f"Skipped artifacts: {' '.join(skipped)}")
     if at_least_one:
         print(f"Updated: {buildmeta_path}")
     return at_least_one
@@ -251,9 +251,9 @@ def uncompress_one_builddir(builddir):
             rm_allow_noent(filepath[:-3])
 
     if len(skipped) > 0:
-        print(f"Skipped artifacts: {skipped}")
+        print(f"Skipped artifacts: {' '.join(skipped)}")
     if len(skipped_missing) > 0:
-        print(f"Skipped missing artifacts: {skipped_missing}")
+        print(f"Skipped missing artifacts: {' '.join(skipped_missing)}")
     if at_least_one:
         print(f"Updated: {buildmeta_path}")
     return at_least_one
