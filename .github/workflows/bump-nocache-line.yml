@@ -21,6 +21,8 @@ jobs:
         with:
           ref: main
           fetch-depth: 0
+      - name: Install dependencies
+        run: dnf install -y git
       - name: bump nocache line
         run: |
           datestr=$(date +%D)
