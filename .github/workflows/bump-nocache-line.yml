@@ -16,19 +16,24 @@ jobs:
     runs-on: ubuntu-latest
     container: registry.fedoraproject.org/fedora:latest
     steps:
+      - name: Install dependencies
+        run: dnf install -y git-core
       - name: Check out repository
         uses: actions/checkout@v2
         with:
           ref: main
+          # Since we are pushing to a fork we need the full history
+          # in case the fork is out of date and we need to bring it up
+          # to date.
           fetch-depth: 0
-      - name: Install dependencies
-        run: dnf install -y git
       - name: bump nocache line
         run: |
           datestr=$(date +%D)
           sed -i "s|# nocache.*$|# nocache ${datestr}|" ./Dockerfile
       - name: Create commit
         run: |
+          git config user.name 'CoreOS Bot'
+          git config user.email coreosbot@fedoraproject.org
           if ! git diff --quiet --exit-code; then
               git commit -am "Dockerfile: bump nocache line 🪴" \
                 -m "Triggered by bump-nocache-line GitHub workflow."
