@@ -53,6 +53,10 @@ install_rpms() {
     # Process our base dependencies + build dependencies and install
     (echo "${builddeps}" && "${srcdir}"/src/print-dependencies.sh) | xargs yum -y install
 
+    # Add fast-tracked packages here.  We don't want to wait on bodhi for rpm-ostree
+    # as we want to enable fast iteration there.
+    yum --enablerepo=updates-testing upgrade rpm-ostree
+
     # Commented out for now, see above
     #dnf remove -y ${builddeps}
     # can't remove grubby on el7 because libguestfs-tools depends on it
