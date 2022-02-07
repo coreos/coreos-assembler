@@ -1,0 +1,43 @@
+name: Bump nocache line in Dockerfile
+
+on:
+  schedule:
+    # 10 AM UTC on Thursday
+    # This is probably after we've done our releases for the week.
+    - cron: '0 10 * * 4'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  bump-nocache-line:
+    name: Bump the nocache line in Dockerfile
+    runs-on: ubuntu-latest
+    container: registry.fedoraproject.org/fedora:latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v2
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: bump nocache line
+        run: |
+          datestr=$(date +%D)
+          sed -i "s|# nocache.*$|# nocache ${datestr}|" ./Dockerfile
+      - name: Create commit
+        run: |
+          if ! git diff --quiet --exit-code; then
+              git commit -am "Dockerfile: bump nocache line 🪴" \
+                -m "Triggered by bump-nocache-line GitHub workflow."
+          fi
+      - name: Open pull request
+        uses: peter-evans/create-pull-request@v3.8.2
+        with:
+          token: ${{ secrets.COREOSBOT_RELENG_TOKEN }}
+          branch: main-bump-nocache
+          push-to-fork: coreosbot-releng/coreos-assembler
+          title: "Dockerfile: bump nocache line 🪴"
+          body: "Triggered by bump-nocache-line [GitHub workflow](${{ github.server_url }}/${{ github.repository }}/actions/workflows/bump-nocache-line.yml) ([source](${{ github.server_url }}/${{ github.repository }}/blob/main/.github/workflows/bump-nocache-line.yml))."
+          committer: "CoreOS Bot <coreosbot@fedoraproject.org>"
+          author: "CoreOS Bot <coreosbot@fedoraproject.org>"
