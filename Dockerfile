@@ -10,7 +10,7 @@ RUN rm -rfv /usr/lib/coreos-assembler /usr/bin/coreos-assembler
 COPY ./src/print-dependencies.sh ./src/deps*.txt ./src/vmdeps*.txt ./src/build-deps.txt /root/containerbuild/src/
 COPY ./build.sh /root/containerbuild/
 RUN ./build.sh configure_yum_repos
-RUN ./build.sh install_rpms  # nocache 20220111
+RUN ./build.sh install_rpms  # nocache 02/07/22
 
 # This allows Prow jobs for other projects to use our cosa image as their
 # buildroot image (so clonerefs can copy the repo into `/go`). For cosa itself,
