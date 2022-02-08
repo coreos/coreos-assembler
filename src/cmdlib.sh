@@ -570,7 +570,7 @@ EOF
     case $arch in
     # Power 8 page faults with 2G of memory in rpm-ostree
     # Most probably due to radix and 64k overhead.
-    "ppc64le") memory_default=4096 ;;
+    "ppc64le") memory_default=8192 ;;
     esac
 
     kola_args=(kola qemuexec -m "${COSA_SUPERMIN_MEMORY:-${memory_default}}" --auto-cpus -U --workdir none \
