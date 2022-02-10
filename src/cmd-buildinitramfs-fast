@@ -9,8 +9,8 @@ set -euo pipefail
 # Example usage:
 # ```
 # $ cd /src/ignition
-# $ make 
-# $ install -D -d -m 0755 bin/amd64/ignition /srv/fcos/overrides/initramfs
+# $ make
+# $ install -D -m 0755 -t /srv/fcos/overrides/initramfs/usr/bin bin/amd64/ignition
 # $ cd /srv/fcos
 # $ cosa buildinitramfs-fast
 # ```
