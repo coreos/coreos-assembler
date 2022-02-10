@@ -277,6 +277,14 @@ prepare_build() {
     export overrides_active_stamp
 }
 
+commit_ostree_layer() {
+    local rootfs=$1; shift
+    local branch=$1; shift
+    ostree commit --repo="${tmprepo}" --tree=dir="${rootfs}" -b "${branch}" \
+        --owner-uid 0 --owner-gid 0 --no-xattrs --no-bindings --parent=none \
+        --mode-ro-executables --timestamp "${git_timestamp}" "$@"
+}
+
 commit_overlay() {
     local name path respath
     name=$1
@@ -292,9 +300,7 @@ commit_overlay() {
     # files, but we do.
     touch "${TMPDIR}/overlay/statoverride"
     echo -n "Committing ${name}: ${path} ... "
-    ostree commit --repo="${tmprepo}" --tree=dir="${TMPDIR}/overlay" -b "${name}" \
-        --owner-uid 0 --owner-gid 0 --no-xattrs --no-bindings --parent=none \
-        --mode-ro-executables --timestamp "${git_timestamp}" \
+    commit_ostree_layer "${TMPDIR}/overlay" "${name}" \
         --statoverride <(sed -e '/^#/d' "${TMPDIR}/overlay/statoverride") \
         --skip-list <(echo /statoverride)
 }
@@ -406,9 +412,7 @@ EOF
     if [[ -d "${rootfs_overrides}" && -n $(ls -A "${rootfs_overrides}") ]]; then
         echo -n "Committing ${rootfs_overrides}... "
         touch "${overrides_active_stamp}"
-        ostree commit --repo="${tmprepo}" --tree=dir="${rootfs_overrides}" -b cosa-overrides-rootfs \
-          --owner-uid 0 --owner-gid 0 --no-xattrs --no-bindings --parent=none \
-          --timestamp "${git_timestamp}"
+        commit_ostree_layer "${rootfs_overrides}" "cosa-overrides-rootfs"
           cat >> "${override_manifest}" << EOF
 ostree-override-layers:
   - cosa-overrides-rootfs
