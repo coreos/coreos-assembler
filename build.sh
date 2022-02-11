@@ -38,6 +38,12 @@ configure_yum_repos() {
 }
 
 install_rpms() {
+    local builddeps
+    local frozendeps
+
+    # no frozen deps right now
+    frozendeps=""
+
     # First, a general update; this is best practice.  We also hit an issue recently
     # where qemu implicitly depended on an updated libusbx but didn't have a versioned
     # requires https://bugzilla.redhat.com/show_bug.cgi?id=1625641
@@ -54,7 +60,7 @@ install_rpms() {
     builddeps=$(grep -v '^#' "${srcdir}"/src/build-deps.txt)
 
     # Process our base dependencies + build dependencies and install
-    (echo "${builddeps}" && "${srcdir}"/src/print-dependencies.sh) | xargs yum -y install
+    (echo "${builddeps}" && echo "${frozendeps}" && "${srcdir}"/src/print-dependencies.sh) | xargs yum -y install
 
     # Delete file that only exists on ppc64le because it is causing
     # sudo to not work.
