@@ -1276,17 +1276,23 @@ func makeNonExclusiveTest(bucket int, tests []*register.Test, flight platform.Fl
 				t := t
 				run := func(h *harness.H) {
 					testResults.add(h)
-					// Install external test executable
-					if t.ExternalTest != "" {
-						setupExternalTest(h, t, tcluster)
-						// Collect the journal logs after execution is finished
-						defer collectLogsExternalTest(h, t, tcluster)
-					}
-
+					// tcluster has a reference to the wrapper's harness
+					// We need a new TestCluster that has a reference to the
+					// subtest being ran
+					// This will allow timeout logic to work correctly when executing
+					// functions such as TestCluster.SSH, since these functions
+					// internally use harness.RunWithExecTimeoutCheck
 					newTC := cluster.TestCluster{
 						H:       h,
 						Cluster: tcluster.Cluster,
 					}
+					// Install external test executable
+					if t.ExternalTest != "" {
+						setupExternalTest(h, t, newTC)
+						// Collect the journal logs after execution is finished
+						defer collectLogsExternalTest(h, t, newTC)
+					}
+
 					t.Run(newTC)
 				}
 				// Each non-exclusive test is run as a subtest of this wrapper test
