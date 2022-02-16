@@ -804,7 +804,6 @@ func metadataFromTestBinary(executable string) (*externalTestMeta, error) {
 func runExternalTest(c cluster.TestCluster, mach platform.Machine, testNum int) error {
 	var previousRebootState string
 	var stdout []byte
-	var stderr []byte
 	for {
 		bootID, err := platform.GetMachineBootId(mach)
 		if err != nil {
@@ -820,18 +819,20 @@ func runExternalTest(c cluster.TestCluster, mach platform.Machine, testNum int) 
 			}
 		}
 
-		var unit string
+		var cmd string
 		if testNum != 0 {
 			// This is a non-exclusive test
-			unit = fmt.Sprintf("%s-%d.service", KoletExtTestUnit, testNum)
+			unit := fmt.Sprintf("%s-%d.service", KoletExtTestUnit, testNum)
 			// Reboot requests are disabled for non-exclusive tests
-			stdout, stderr, err = mach.SSH(fmt.Sprintf("sudo ./kolet run-test-unit --deny-reboots %s", shellquote.Join(unit)))
+			cmd = fmt.Sprintf("sudo ./kolet run-test-unit --deny-reboots %s", shellquote.Join(unit))
 		} else {
-			unit = fmt.Sprintf("%s.service", KoletExtTestUnit)
-			stdout, stderr, err = mach.SSH(fmt.Sprintf("sudo ./kolet run-test-unit %s", shellquote.Join(unit)))
+			unit := fmt.Sprintf("%s.service", KoletExtTestUnit)
+			cmd = fmt.Sprintf("sudo ./kolet run-test-unit %s", shellquote.Join(unit))
 		}
+		stdout, err = c.SSH(mach, cmd)
+
 		if err != nil {
-			return errors.Wrapf(err, "kolet run-test-unit failed: %s", stderr)
+			return errors.Wrapf(err, "kolet run-test-unit failed")
 		}
 		koletRes := KoletResult{}
 		if len(stdout) > 0 {
