@@ -118,7 +118,7 @@ declare -A targets=( )
 for target in "$@"; do
     if [[ $target != ostree ]]; then
         case "$target" in
-            metal|metal4k|qemu) ;;
+            metal|metal4k|qemu|secex) ;;
             *) fatal "Unrecognized target: $target" ;;
         esac
         targets[$target]=1

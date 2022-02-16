@@ -5,6 +5,9 @@ dn=$(dirname "$0")
 # shellcheck source=src/cmdlib.sh
 . "${dn}"/cmdlib.sh
 
+# IBM SecureExecution
+secure_execution=
+
 # This script is used for creating both the bare metal and the canonical VM
 # image (qemu). `buildextend-qemu` is a symlink to `buildextend-metal`.
 case "$(basename "$0")" in
@@ -12,6 +15,10 @@ case "$(basename "$0")" in
     "cmd-buildextend-metal4k") image_type=metal4k;;
     "cmd-buildextend-dasd") image_type=dasd;;
     "cmd-buildextend-qemu") image_type=qemu;;
+    "cmd-buildextend-secex")
+        secure_execution=1
+        image_type=qemu
+        ;;
     *) fatal "called as unexpected name $0";;
 esac
 
@@ -25,9 +32,10 @@ EOF
 }
 
 # Parse options
+hostkey=src/config/secex-hostkey
 rc=0
 build=
-options=$(getopt --options h --longoptions help,build: -- "$@") || rc=$?
+options=$(getopt --options h --longoptions help,build,hostkey: -- "$@") || rc=$?
 [ $rc -eq 0 ] || {
     print_help
     exit 1
@@ -43,6 +51,9 @@ while true; do
             build=$2
             shift
             ;;
+        --hostkey)
+            hostkey="$2"
+            shift;;
         --)
             shift
             break
@@ -71,6 +82,17 @@ esac
 if [[ "$basearch" != "s390x" && $image_type == dasd ]]; then
     fatal "$basearch is not supported for building dasd images"
 fi
+disk_args=()
+# SecureExecution extra stuff
+secex_image_suffix=
+secex_hostkey_drive=()
+if [[ $secure_execution -eq "1" ]]; then
+    hostkey=$(realpath "$hostkey")
+    secex_image_suffix="-secex"
+    disk_args+=("--with-secure-execution")
+    secex_hostkey_drive=("-drive" "if=none,id=hostkey,format=raw,file=$hostkey,readonly=on" \
+                         "-device" "virtio-blk,serial=hostkey,drive=hostkey")
+fi
 
 # shellcheck disable=SC2031
 export LIBGUESTFS_BACKEND=direct
@@ -98,9 +120,9 @@ touch "${build_semaphore}"
 trap 'rm -rf ${build_semaphore}' EXIT
 
 # check if the image already exists in the meta.json
-meta_img=$(meta_key "images.${image_type}.path")
+meta_img=$(meta_key "images.${image_type}${secex_image_suffix}.path")
 if [ "${meta_img}" != "None" ]; then
-    echo "${image_type} image already exists:"
+    echo "${image_type}${secex_image_suffix} image already exists:"
     echo "$meta_img"
     exit 0
 fi
@@ -128,10 +150,11 @@ if [[ $image_type == qemu ]]; then
     image_format=qcow2
 fi
 
-img=${name}-${build}-${image_type}.${basearch}.${image_format}
+img=${name}-${build}-${image_type}${secex_image_suffix}.${basearch}.${image_format}
 path=${PWD}/${img}
 
 ignition_platform_id="${image_type}"
+
 # dasd and metal4k are different disk formats, but they're still metal
 if [ "${image_type}" = dasd ] || [ "${image_type}" = metal4k ]; then
     ignition_platform_id=metal
@@ -164,8 +187,6 @@ rootfs_size="$(jq '."estimate-mb".final' "$PWD/tmp/ostree-size.json")"
 # extra size is the non-ostree partitions, see create_disk.sh
 image_size="$(( rootfs_size + 513 ))M"
 echo "Disk size estimated to ${image_size}"
-
-disk_args=()
 
 # For bare metal and dasd images, we use the estimated image size. For IaaS/virt, we get it from
 # image.yaml because we want a "default" disk size that has some free space.
@@ -219,7 +240,7 @@ if [ -e "${configdir}/platforms.yaml" ]; then
     platforms_json="${workdir}/tmp/platforms.json"
     yaml2json "${configdir}/platforms.yaml" "${platforms_json}"
 fi
-runvm "${target_drive[@]}" -- \
+runvm "${target_drive[@]}" "${secex_hostkey_drive[@]}" -- \
         /usr/lib/coreos-assembler/create_disk.sh \
             --config "$(pwd)"/image-for-disk.json \
             --kargs "\"${kargs}\"" \
@@ -232,7 +253,7 @@ sha256=$(sha256sum_str < "${img}")
 cosa meta --workdir "${workdir}" --build "${build}" --dump | python3 -c "
 import sys, json
 j = json.load(sys.stdin)
-j['images']['${image_type}'] = {
+j['images']['${image_type}${secex_image_suffix}'] = {
     'path': '${img}',
     'sha256': '${sha256}',
     'size': $(stat -c '%s' "${img}")

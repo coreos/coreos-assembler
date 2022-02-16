@@ -16,6 +16,7 @@ package misc
 
 import (
 	"fmt"
+	"runtime"
 	"strings"
 
 	"github.com/coreos/mantle/kola/cluster"
@@ -180,7 +181,6 @@ func Denylist(c cluster.TestCluster) {
 
 	denylist := []string{
 		// Things excluded from the image that might slip in
-		"/usr/bin/perl",
 		"/usr/bin/python",
 		"/usr/share/man",
 
@@ -197,6 +197,11 @@ func Denylist(c cluster.TestCluster) {
 		"* *",
 		// DEL
 		"*\x7f*",
+	}
+
+	// https://github.com/coreos/fedora-coreos-tracker/issues/1217
+	if runtime.GOARCH != "s390x" {
+		denylist = append(denylist, "/usr/bin/perl")
 	}
 
 	output := c.MustSSH(m, fmt.Sprintf("sudo find / -ignore_readdir_race -path %s -prune -o -path '%s' -print", strings.Join(skip, " -prune -o -path "), strings.Join(denylist, "' -print -o -path '")))

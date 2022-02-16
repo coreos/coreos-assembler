@@ -18,6 +18,7 @@ uninitialized_gpt_uuid="00000000-0000-4000-a000-000000000001"
 # https://github.com/coreos/fedora-coreos-tracker/issues/465
 bootfs_uuid="96d15588-3596-4b3c-adca-a2ff7279ea63"
 rootfs_uuid="910678ff-f77e-4a7d-8d53-86f2ac47a823"
+deploy_root=
 
 usage() {
     cat <<EOC
@@ -32,16 +33,52 @@ Options:
     --platform: Ignition platform ID
     --platforms-json: platforms.yaml in JSON format
     --no-x86-bios-bootloader: don't install BIOS bootloader on x86_64
+    --with-secure-execution:  enable IBM SecureExecution
 
 You probably don't want to run this script by hand. This script is
 run as part of 'coreos-assembler build'.
 EOC
 }
 
+propagate_luks_config() {
+    local key="$1"
+    local lbl="crypt_${1}fs"
+    # Moving key file to final destination
+    mkdir -m 700 -p $deploy_root/etc/luks
+    mv /tmp/${key}-luks-key $deploy_root/etc/luks/$key
+    chmod 0400 $deploy_root/etc/luks/$key
+    local uuid=$(cryptsetup luksUUID /dev/disk/by-label/$lbl)
+    if [[ ! -e $deploy_root/etc/crypttab ]]; then
+        touch $deploy_root/etc/crypttab
+        chmod 0600 $deploy_root/etc/crypttab
+    fi
+    echo "$lbl UUID=${uuid} /etc/luks/$key luks" >> $deploy_root/etc/crypttab
+}
+
+create_luks_partition() {
+    local key="/tmp/${1}-luks-key"
+    local lbl="crypt_${1}fs"
+    local dev="$2"
+    # Generating random key
+    dd if=/dev/urandom of=$key bs=1024 count=4
+    chmod 0400 $key
+    cryptsetup luksFormat -q \
+                        --type luks2 \
+                        --label="$lbl" \
+                        --key-file=$key \
+                        $dev
+
+    cryptsetup luksOpen $dev \
+                        $lbl \
+                        --key-file=$key
+
+}
+
 config=
 disk=
 platform=metal
 platforms_json=
+secure_execution=0
 x86_bios_bootloader=1
 extrakargs=""
 
@@ -56,6 +93,7 @@ do
         --no-x86-bios-bootloader) x86_bios_bootloader=0;;
         --platform)              platform="${1}"; shift;;
         --platforms-json)        platforms_json="${1}"; shift;;
+        --with-secure-execution) secure_execution=1;;
          *) echo "${flag} is not understood."; usage; exit 10;;
      esac;
 done
@@ -140,11 +178,12 @@ set -x
 # Partition and create fs's. The 0...4...a...1 uuid is a sentinal used by coreos-gpt-setup
 # in ignition-dracut. It signals that the disk needs to have it's uuid randomized and the
 # backup header moved to the end of the disk.
-# Pin /boot and / to the partition number 3 and 4 respectively. Also insert reserved
+# Pin /se, /boot and / to the partition number 1, 3 and 4 respectively. Also insert reserved
 # partitions on aarch64/ppc64le to keep the 1,2,3,4 partition numbers aligned across
 # x86_64/aarch64/ppc64le. We decided not to try to achieve partition parity on s390x
 # because a bare metal install onto an s390x DASD translates the GPT to DASD partitions
 # and we only get three of those. https://github.com/coreos/fedora-coreos-tracker/issues/855
+SDPART=1
 BOOTPN=3
 ROOTPN=4
 # Make the size relative
@@ -174,14 +213,22 @@ case "$arch" in
         sgdisk -p "$disk"
         ;;
     s390x)
-        # NB: in the bare metal case when targeting ECKD DASD disks, this
-        # partition table is not what actually gets written to disk in the end:
-        # coreos-installer has code which transforms it into a DASD-compatible
-        # partition table and copies each partition individually bitwise.
-        sgdisk -Z $disk \
-        -U "${uninitialized_gpt_uuid}" \
-        -n ${BOOTPN}:0:+384M -c ${BOOTPN}:boot \
-        -n ${ROOTPN}:0:${rootfs_size} -c ${ROOTPN}:root -t ${ROOTPN}:0FC63DAF-8483-4772-8E79-3D69D8477DE4
+        if [[ ${secure_execution} -eq 1 ]]; then
+            sgdisk -Z $disk \
+                -U "${uninitialized_gpt_uuid}" \
+                -n ${SDPART}:0:+200M -c ${SDPART}:se -t ${SDPART}:0FC63DAF-8483-4772-8E79-3D69D8477DE4 \
+                -n ${BOOTPN}:0:+384M -c ${BOOTPN}:boot \
+                -n ${ROOTPN}:0:${rootfs_size} -c ${ROOTPN}:root -t ${ROOTPN}:0FC63DAF-8483-4772-8E79-3D69D8477DE4
+        else
+            # NB: in the bare metal case when targeting ECKD DASD disks, this
+            # partition table is not what actually gets written to disk in the end:
+            # coreos-installer has code which transforms it into a DASD-compatible
+            # partition table and copies each partition individually bitwise.
+            sgdisk -Z $disk \
+                -U "${uninitialized_gpt_uuid}" \
+                -n ${BOOTPN}:0:+384M -c ${BOOTPN}:boot \
+                -n ${ROOTPN}:0:${rootfs_size} -c ${ROOTPN}:root -t ${ROOTPN}:0FC63DAF-8483-4772-8E79-3D69D8477DE4
+        fi
         sgdisk -p "$disk"
         ;;
     ppc64le)
@@ -200,6 +247,8 @@ esac
 
 udevtrig
 
+zipl_dev="${disk}${SDPART}"
+boot_dev="${disk}${BOOTPN}"
 root_dev="${disk}${ROOTPN}"
 
 bootargs=
@@ -220,7 +269,20 @@ case "${bootfs}" in
     ext4) ;;
     *) echo "Unhandled bootfs: ${bootfs}" 1>&2; exit 1 ;;
 esac
-mkfs.ext4 ${bootargs} "${disk}${BOOTPN}" -L boot -U "${bootfs_uuid}"
+
+if [[ ${secure_execution} -eq 1 ]]; then
+    # Unencrypted partition for sd-boot
+    mkfs.ext4 ${bootargs} "${zipl_dev}" -L se -U random
+    # /boot must be encrypted
+    create_luks_partition boot ${boot_dev}
+    # / must be encrypted
+    create_luks_partition root ${root_dev}
+    # reset to devmapper devices
+    boot_dev="/dev/mapper/crypt_bootfs"
+    root_dev="/dev/mapper/crypt_rootfs"
+fi
+
+mkfs.ext4 ${bootargs} "${boot_dev}" -L boot -U "${bootfs_uuid}"
 udevtrig
 
 if [ ${EFIPN:+x} ]; then
@@ -265,13 +327,17 @@ mount -o discard "${root_dev}" ${rootfs}
 chcon $(matchpathcon -n /) ${rootfs}
 mkdir ${rootfs}/boot
 chcon $(matchpathcon -n /boot) $rootfs/boot
-mount "${disk}${BOOTPN}" $rootfs/boot
+mount "${boot_dev}" $rootfs/boot
 chcon $(matchpathcon -n /boot) $rootfs/boot
 # FAT doesn't support SELinux labeling, it uses "genfscon", so we
 # don't need to give it a label manually.
 if [ ${EFIPN:+x} ]; then
     mkdir $rootfs/boot/efi
     mount "${disk}${EFIPN}" $rootfs/boot/efi
+fi
+if [[ ${secure_execution} -eq 1 ]]; then
+    mkdir ${rootfs}/se
+    chcon $(matchpathcon -n /boot) $rootfs/se
 fi
 
 # Now that we have the basic disk layout, initialize the basic
@@ -432,31 +498,16 @@ ppc64le)
     ;;
 s390x)
     bootloader_backend=zipl
-    # current zipl expects 'title' to be first line, and no blank lines in BLS file
-    # see https://github.com/ibm-s390-tools/s390-tools/issues/64
-    blsfile=$(find $rootfs/boot/loader/entries/*.conf)
-    tmpfile=$(mktemp)
-    for f in title version linux initrd options; do
-        echo $(grep $f $blsfile) >> $tmpfile
-    done
-    cat $tmpfile > $blsfile
-    # we force firstboot in building base image on s390x, ignition-dracut hook will remove
-    # this and update zipl for second boot
-    # this is only a temporary solution until we are able to do firstboot check at bootloader
-    # stage on s390x, either through zipl->grub2-emu or zipl standalone.
-    # See https://github.com/coreos/ignition-dracut/issues/84
-    # There's a similar hack in gf-set-platform
-    echo "$(grep options $blsfile | cut -d' ' -f2-) ignition.firstboot" > $tmpfile
-
-    # ideally we want to invoke zipl with bls and zipl.conf but we might need
-    # to chroot to $rootfs/ to do so. We would also do that when FCOS boot on its own.
-    # without chroot we can use --target option in zipl but it requires kernel + initramfs
-    # pair instead
-    zipl --verbose \
-        --target $rootfs/boot \
-        --image $rootfs/boot/"$(grep linux $blsfile | cut -d' ' -f2)" \
-        --ramdisk $rootfs/boot/"$(grep initrd $blsfile | cut -d' ' -f2)" \
-        --parmfile $tmpfile
+    rdcore_args=("--boot-mount=$rootfs/boot" "--kargs=ignition.firstboot")
+    if [[ ${secure_execution} -eq 1 ]]; then
+        rdcore_args+=("--secex-mode=enforce" "--rootfs=$deploy_root" "--hostkey=/dev/disk/by-id/virtio-hostkey")
+        propagate_luks_config boot
+        propagate_luks_config root
+    else
+        # in case builder itself runs with SecureExecution
+        rdcore_args+=("--secex-mode=disable")
+    fi
+    ${deploy_root}/usr/lib/dracut/modules.d/50rdcore/rdcore zipl ${rdcore_args[@]}
     ;;
 esac
 
