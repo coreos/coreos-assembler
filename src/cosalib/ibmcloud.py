@@ -264,5 +264,6 @@ def get_ibmcloud_variant(variant, parser, kwargs={}):
         schema=parser.schema,
         variant=variant,
         force=parser.force,
+        arch=parser.arch,
         compress=parser.compress,
         **kwargs)
