@@ -653,7 +653,7 @@ boot
     if basearch == "x86_64":
         run_verbose(['/usr/bin/isohybrid', '--uefi', f'{tmpisofile}.minimal'])
     # this consumes the minimal image
-    run_verbose(['coreos-installer', 'iso', 'extract', 'pack-minimal-iso',
+    run_verbose(['coreos-installer', 'pack', 'minimal-iso',
                  tmpisofile, f'{tmpisofile}.minimal', "--consume"])
 
     buildmeta['images'].update({
