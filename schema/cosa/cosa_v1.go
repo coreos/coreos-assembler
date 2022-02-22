@@ -73,6 +73,7 @@ type Build struct {
 	PkgdiffBetweenBuilds      PackageSetDifferences `json:"pkgdiff,omitempty"`
 	PowerVirtualServer        []Cloudartifact       `json:"powervs,omitempty"`
 	ReleasePayload            *Image                `json:"release-payload,omitempty"`
+	S3                        *S3                   `json:"s3,omitempty"`
 }
 
 type BuildArtifacts struct {
@@ -147,3 +148,9 @@ type Koji struct {
 type PackageSetDifferences []PackageSetDifferencesItems
 
 type PackageSetDifferencesItems interface{}
+
+type S3 struct {
+	Bucket    string `json:"bucket,omitempty"`
+	Key       string `json:"key,omitempty"`
+	PublicURL string `json:"public-url,omitempty"`
+}

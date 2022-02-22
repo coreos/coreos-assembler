@@ -225,6 +225,7 @@ var generatedSchemaJSON = `{
    "parent-advisories-diff",
    "advisories-diff",
    "release-payload",
+   "s3",
 
    "coreos-assembler.basearch",
    "coreos-assembler.build-timestamp",
@@ -265,6 +266,26 @@ var generatedSchemaJSON = `{
      "title":"BuildID",
      "default":"",
      "minLength": 1
+    },
+   "s3": {
+     "type": "object",
+       "properties": {
+         "bucket": {
+           "$id":"#/properties/bucket",
+           "type":"string",
+           "title":"Bucket"
+         },
+         "key": {
+           "$id": "#/properties/key",
+           "type":"string",
+           "title":"Key"
+         },
+         "public-url": {
+           "$id":"#/properties/public-url",
+           "type":"string",
+           "title":"Public URL"
+         }
+       }
     },
    "koji": {
      "type": "object",
