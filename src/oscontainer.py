@@ -95,7 +95,7 @@ def oscontainer_extract(containers_storage, tmpdir, src, dest,
 # Given an OSTree repository at src (and exactly one ref) generate an
 # oscontainer with it.
 def oscontainer_build(containers_storage, tmpdir, src, ref, image_name_and_tag,
-                      base_image, push=False, tls_verify=True,
+                      base_image, push=False, tls_verify=True, pushformat=None,
                       add_directories=[], cert_dir="", authfile="", digestfile=None,
                       display_name=None):
     r = OSTree.Repo.new(Gio.File.new_for_path(src))
@@ -209,10 +209,14 @@ def oscontainer_build(containers_storage, tmpdir, src, ref, image_name_and_tag,
 
         if cert_dir != "":
             podCmd.append("--cert-dir={}".format(cert_dir))
-        podCmd.append(image_name_and_tag)
 
         if digestfile is not None:
             podCmd.append(f'--digestfile={digestfile}')
+
+        if pushformat is not None:
+            podCmd.append(f'--format={pushformat}')
+
+        podCmd.append(image_name_and_tag)
 
         run_verbose(podCmd)
     elif digestfile is not None:
@@ -250,6 +254,7 @@ def main():
     parser_build.add_argument("--display-name", help="Name used for an OpenShift component")
     parser_build.add_argument("--add-directory", help="Copy in all content from referenced directory DIR",
                               metavar='DIR', action='append', default=[])
+    parser_build.add_argument("--format", help="Pass through push format to buildah", default="v2s2")
     parser_build.add_argument(
         "--digestfile",
         help="Write image digest to file",
@@ -288,6 +293,7 @@ def main():
                 digestfile=args.digestfile,
                 add_directories=args.add_directory,
                 push=args.push,
+                pushformat=args.format,
                 tls_verify=not args.disable_tls_verify,
                 cert_dir=args.cert_dir,
                 authfile=args.authfile)

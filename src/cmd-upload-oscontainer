@@ -25,6 +25,7 @@ parser.add_argument("--name", help="oscontainer name",
                     action='store', required=True)
 parser.add_argument("--from", help="Base image", default='scratch',
                     dest='from_image')
+parser.add_argument("--format", help="Format to use for push")
 parser.add_argument("--add-directory", help="Copy in all content from referenced directory DIR",
                     metavar='DIR', action='append', default=[])
 
@@ -113,6 +114,8 @@ for d in args.add_directory:
 if extensions_destdir is not None:
     cosa_argv.append(f"--add-directory={extensions_destdir}")
 cosa_argv.append(f"--display-name={display_name}")
+if args.format is not None:
+    cosa_argv.append(f'--format={args.format}')
 subprocess.check_call(cosa_argv +
     [f'--digestfile={digestfile}',
         '--push', tmprepo,
