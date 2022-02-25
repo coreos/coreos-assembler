@@ -174,10 +174,23 @@ $ make
 $ install -D -m 0755 bin/amd64/ignition /path/to/cosadir/overrides/initramfs/usr/bin/ignition
 $ cd /path/to/cosadir
 $ cosa buildinitramfs-fast
-$ cosa run --qemu-image tmp/fastbuild/fastbuildinitrd-fedora-coreos-qemu.qcow2
+$ cosa run --qemu-image tmp/fastbuild/fastbuildinitrd-fedora-coreos-qemu.qcow2 -i config.ign
 ```
 
 (Or instead of `cosa run` use e.g. `cosa kola` to run tests, etc.)
+
+If you're adding new fields to the Ignition experimental spec, `-i` will
+silently remove those fields, since the copy of Ignition that's vendored
+into mantle won't know about them yet.  Instead, you can specify that
+kola should pass the config to the machine unmodified:
+
+```
+$ kola qemuexec --qemu-image tmp/fastbuild/fastbuildinitrd-fedora-coreos-qemu.qcow2 -i config.ign --ignition-direct
+```
+
+You'll need to
+[manually configure autologin](https://docs.fedoraproject.org/en-US/fedora-coreos/tutorial-autologin/)
+in the Ignition config, since kola won't be able to do it for you.
 
 ## Using different CA certificates
 
