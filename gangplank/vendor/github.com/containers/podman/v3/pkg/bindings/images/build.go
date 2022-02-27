@@ -74,18 +74,25 @@ func Build(ctx context.Context, containerFiles []string, options entities.BuildO
 		}
 		params.Set("excludes", bArgs)
 	}
-	if cpuShares := options.CommonBuildOpts.CPUShares; cpuShares > 0 {
-		params.Set("cpushares", strconv.Itoa(int(cpuShares)))
-	}
-	if cpuSetCpus := options.CommonBuildOpts.CPUSetCPUs; len(cpuSetCpus) > 0 {
-		params.Set("cpusetcpus", cpuSetCpus)
-	}
 	if cpuPeriod := options.CommonBuildOpts.CPUPeriod; cpuPeriod > 0 {
 		params.Set("cpuperiod", strconv.Itoa(int(cpuPeriod)))
 	}
 	if cpuQuota := options.CommonBuildOpts.CPUQuota; cpuQuota > 0 {
 		params.Set("cpuquota", strconv.Itoa(int(cpuQuota)))
 	}
+	if cpuSetCpus := options.CommonBuildOpts.CPUSetCPUs; len(cpuSetCpus) > 0 {
+		params.Set("cpusetcpus", cpuSetCpus)
+	}
+	if cpuSetMems := options.CommonBuildOpts.CPUSetMems; len(cpuSetMems) > 0 {
+		params.Set("cpusetmems", cpuSetMems)
+	}
+	if cpuShares := options.CommonBuildOpts.CPUShares; cpuShares > 0 {
+		params.Set("cpushares", strconv.Itoa(int(cpuShares)))
+	}
+	if len(options.CommonBuildOpts.CgroupParent) > 0 {
+		params.Set("cgroupparent", options.CommonBuildOpts.CgroupParent)
+	}
+
 	params.Set("networkmode", strconv.Itoa(int(options.ConfigureNetwork)))
 	params.Set("outputformat", options.OutputFormat)
 
@@ -177,6 +184,9 @@ func Build(ctx context.Context, containerFiles []string, options entities.BuildO
 	}
 	if options.LogRusage {
 		params.Set("rusage", "1")
+	}
+	if len(options.RusageLogFile) > 0 {
+		params.Set("rusagelogfile", options.RusageLogFile)
 	}
 	if len(options.Manifest) > 0 {
 		params.Set("manifest", options.Manifest)
@@ -298,7 +308,25 @@ func Build(ctx context.Context, containerFiles []string, options entities.BuildO
 
 	tarContent := []string{options.ContextDirectory}
 	newContainerFiles := []string{}
+
+	dontexcludes := []string{"!Dockerfile", "!Containerfile", "!.dockerignore", "!.containerignore"}
 	for _, c := range containerFiles {
+		if c == "/dev/stdin" {
+			content, err := ioutil.ReadAll(os.Stdin)
+			if err != nil {
+				return nil, err
+			}
+			tmpFile, err := ioutil.TempFile("", "build")
+			if err != nil {
+				return nil, err
+			}
+			defer os.Remove(tmpFile.Name()) // clean up
+			defer tmpFile.Close()
+			if _, err := tmpFile.Write(content); err != nil {
+				return nil, err
+			}
+			c = tmpFile.Name()
+		}
 		containerfile, err := filepath.Abs(c)
 		if err != nil {
 			logrus.Errorf("cannot find absolute path of %v: %v", c, err)
@@ -309,6 +337,7 @@ func Build(ctx context.Context, containerFiles []string, options entities.BuildO
 		// Do NOT add to tarfile
 		if strings.HasPrefix(containerfile, contextDir+string(filepath.Separator)) {
 			containerfile = strings.TrimPrefix(containerfile, contextDir+string(filepath.Separator))
+			dontexcludes = append(dontexcludes, "!"+containerfile)
 		} else {
 			// If Containerfile does not exists assume it is in context directory, do Not add to tarfile
 			if _, err := os.Lstat(containerfile); err != nil {
@@ -330,8 +359,7 @@ func Build(ctx context.Context, containerFiles []string, options entities.BuildO
 		}
 		params.Set("dockerfile", string(cFileJSON))
 	}
-
-	tarfile, err := nTar(excludes, tarContent...)
+	tarfile, err := nTar(append(excludes, dontexcludes...), tarContent...)
 	if err != nil {
 		logrus.Errorf("cannot tar container entries %v error: %v", tarContent, err)
 		return nil, err
@@ -370,42 +398,50 @@ func Build(ctx context.Context, containerFiles []string, options entities.BuildO
 	dec := json.NewDecoder(body)
 
 	var id string
-	var mErr error
 	for {
 		var s struct {
 			Stream string `json:"stream,omitempty"`
 			Error  string `json:"error,omitempty"`
 		}
-		if err := dec.Decode(&s); err != nil {
-			if errors.Is(err, io.EOF) {
-				if mErr == nil && id == "" {
-					mErr = errors.New("stream dropped, unexpected failure")
-				}
-				break
-			}
-			s.Error = err.Error() + "\n"
-		}
 
 		select {
+		// FIXME(vrothberg): it seems we always hit the EOF case below,
+		// even when the server quit but it seems desirable to
+		// distinguish a proper build from a transient EOF.
 		case <-response.Request.Context().Done():
-			return &entities.BuildReport{ID: id}, mErr
+			return &entities.BuildReport{ID: id}, nil
 		default:
 			// non-blocking select
 		}
 
+		if err := dec.Decode(&s); err != nil {
+			if errors.Is(err, io.ErrUnexpectedEOF) {
+				return nil, errors.Wrap(err, "server probably quit")
+			}
+			// EOF means the stream is over in which case we need
+			// to have read the id.
+			if errors.Is(err, io.EOF) && id != "" {
+				break
+			}
+			return &entities.BuildReport{ID: id}, errors.Wrap(err, "decoding stream")
+		}
+
 		switch {
 		case s.Stream != "":
-			stdout.Write([]byte(s.Stream))
-			if iidRegex.Match([]byte(s.Stream)) {
+			raw := []byte(s.Stream)
+			stdout.Write(raw)
+			if iidRegex.Match(raw) {
 				id = strings.TrimSuffix(s.Stream, "\n")
 			}
 		case s.Error != "":
-			mErr = errors.New(s.Error)
+			// If there's an error, return directly.  The stream
+			// will be closed on return.
+			return &entities.BuildReport{ID: id}, errors.New(s.Error)
 		default:
 			return &entities.BuildReport{ID: id}, errors.New("failed to parse build results stream, unexpected input")
 		}
 	}
-	return &entities.BuildReport{ID: id}, mErr
+	return &entities.BuildReport{ID: id}, nil
 }
 
 func nTar(excludes []string, sources ...string) (io.ReadCloser, error) {
@@ -445,9 +481,9 @@ func nTar(excludes []string, sources ...string) (io.ReadCloser, error) {
 					return nil // skip root dir
 				}
 
-				name := strings.TrimPrefix(path, s+string(filepath.Separator))
+				name := filepath.ToSlash(strings.TrimPrefix(path, s+string(filepath.Separator)))
 
-				excluded, err := pm.Matches(filepath.ToSlash(name)) // nolint:staticcheck
+				excluded, err := pm.Matches(name) // nolint:staticcheck
 				if err != nil {
 					return errors.Wrapf(err, "error checking if %q is excluded", name)
 				}
@@ -529,9 +565,13 @@ func nTar(excludes []string, sources ...string) (io.ReadCloser, error) {
 }
 
 func parseDockerignore(root string) ([]string, error) {
-	ignore, err := ioutil.ReadFile(filepath.Join(root, ".dockerignore"))
-	if err != nil && !os.IsNotExist(err) {
-		return nil, errors.Wrapf(err, "error reading .dockerignore: '%s'", root)
+	ignore, err := ioutil.ReadFile(filepath.Join(root, ".containerignore"))
+	if err != nil {
+		var dockerIgnoreErr error
+		ignore, dockerIgnoreErr = ioutil.ReadFile(filepath.Join(root, ".dockerignore"))
+		if dockerIgnoreErr != nil && !os.IsNotExist(dockerIgnoreErr) {
+			return nil, errors.Wrapf(err, "error reading .containerignore: '%s'", root)
+		}
 	}
 	rawexcludes := strings.Split(string(ignore), "\n")
 	excludes := make([]string, 0, len(rawexcludes))

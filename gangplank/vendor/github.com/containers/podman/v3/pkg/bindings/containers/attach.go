@@ -25,6 +25,12 @@ import (
 	"golang.org/x/crypto/ssh/terminal"
 )
 
+// The CloseWriter interface is used to determine whether we can do a  one-sided
+// close of a hijacked connection.
+type CloseWriter interface {
+	CloseWrite() error
+}
+
 // Attach attaches to a running container
 func Attach(ctx context.Context, nameOrID string, stdin io.Reader, stdout io.Writer, stderr io.Writer, attachReady chan bool, options *AttachOptions) error {
 	if options == nil {
@@ -161,6 +167,12 @@ func Attach(ctx context.Context, nameOrID string, stdin io.Reader, stdout io.Wri
 				logrus.Error("failed to write input to service: " + err.Error())
 			}
 			stdinChan <- err
+
+			if closeWrite, ok := socket.(CloseWriter); ok {
+				if err := closeWrite.CloseWrite(); err != nil {
+					logrus.Warnf("Failed to close STDIN for writing: %v", err)
+				}
+			}
 		}()
 	}
 
@@ -343,7 +355,7 @@ func attachHandleResize(ctx, winCtx context.Context, winChange chan os.Signal, i
 			resizeErr = ResizeContainerTTY(ctx, id, new(ResizeTTYOptions).WithHeight(h).WithWidth(w))
 		}
 		if resizeErr != nil {
-			logrus.Warnf("failed to resize TTY: %v", resizeErr)
+			logrus.Infof("failed to resize TTY: %v", resizeErr)
 		}
 	}
 
@@ -408,6 +420,17 @@ func ExecStartAndAttach(ctx context.Context, sessionID string, options *ExecStar
 	// If we are in TTY mode, we need to set raw mode for the terminal.
 	// TODO: Share all of this with Attach() for containers.
 	needTTY := terminalFile != nil && terminal.IsTerminal(int(terminalFile.Fd())) && isTerm
+
+	body := struct {
+		Detach bool   `json:"Detach"`
+		TTY    bool   `json:"Tty"`
+		Height uint16 `json:"h"`
+		Width  uint16 `json:"w"`
+	}{
+		Detach: false,
+		TTY:    needTTY,
+	}
+
 	if needTTY {
 		state, err := setRawTerminal(terminalFile)
 		if err != nil {
@@ -419,13 +442,14 @@ func ExecStartAndAttach(ctx context.Context, sessionID string, options *ExecStar
 			}
 			logrus.SetFormatter(&logrus.TextFormatter{})
 		}()
+		w, h, err := terminal.GetSize(int(terminalFile.Fd()))
+		if err != nil {
+			logrus.Warnf("failed to obtain TTY size: %v", err)
+		}
+		body.Width = uint16(w)
+		body.Height = uint16(h)
 	}
 
-	body := struct {
-		Detach bool `json:"Detach"`
-	}{
-		Detach: false,
-	}
 	bodyJSON, err := json.Marshal(body)
 	if err != nil {
 		return err
@@ -472,6 +496,13 @@ func ExecStartAndAttach(ctx context.Context, sessionID string, options *ExecStar
 			_, err := utils.CopyDetachable(socket, options.InputStream, []byte{})
 			if err != nil {
 				logrus.Error("failed to write input to service: " + err.Error())
+			}
+
+			if closeWrite, ok := socket.(CloseWriter); ok {
+				logrus.Debugf("Closing STDIN")
+				if err := closeWrite.CloseWrite(); err != nil {
+					logrus.Warnf("Failed to close STDIN for writing: %v", err)
+				}
 			}
 		}()
 	}

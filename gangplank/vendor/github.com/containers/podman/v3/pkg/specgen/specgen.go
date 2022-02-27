@@ -239,6 +239,9 @@ type ContainerStorageConfig struct {
 	// Devices are devices that will be added to the container.
 	// Optional.
 	Devices []spec.LinuxDevice `json:"devices,omitempty"`
+	// DeviceCGroupRule are device cgroup rules that allow containers
+	// to use additional types of devices.
+	DeviceCGroupRule []spec.LinuxDeviceCgroup `json:"device_cgroup_rule,omitempty"`
 	// IpcNS is the container's IPC namespace.
 	// Default is private.
 	// Conflicts with ShmSize if not set to private.
@@ -258,7 +261,7 @@ type ContainerStorageConfig struct {
 	RootfsPropagation string `json:"rootfs_propagation,omitempty"`
 	// Secrets are the secrets that will be added to the container
 	// Optional.
-	Secrets []string `json:"secrets,omitempty"`
+	Secrets []Secret `json:"secrets,omitempty"`
 	// Volatile specifies whether the container storage can be optimized
 	// at the cost of not syncing all the dirty files in memory.
 	Volatile bool `json:"volatile,omitempty"`
@@ -519,6 +522,13 @@ type PortMapping struct {
 	// separated by commas.
 	// If unset, assumed to be TCP.
 	Protocol string `json:"protocol,omitempty"`
+}
+
+type Secret struct {
+	Source string
+	UID    uint32
+	GID    uint32
+	Mode   uint32
 }
 
 var (
