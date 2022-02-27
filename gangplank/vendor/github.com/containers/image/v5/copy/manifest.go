@@ -45,7 +45,7 @@ func (os *orderedSet) append(s string) {
 func (ic *imageCopier) determineManifestConversion(ctx context.Context, destSupportedManifestMIMETypes []string, forceManifestMIMEType string, requiresOciEncryption bool) (string, []string, error) {
 	_, srcType, err := ic.src.Manifest(ctx)
 	if err != nil { // This should have been cached?!
-		return "", nil, errors.Wrap(err, "Error reading manifest")
+		return "", nil, errors.Wrap(err, "reading manifest")
 	}
 	normalizedSrcType := manifest.NormalizedMIMEType(srcType)
 	if srcType != normalizedSrcType {
@@ -79,10 +79,10 @@ func (ic *imageCopier) determineManifestConversion(ctx context.Context, destSupp
 	if _, ok := supportedByDest[srcType]; ok {
 		prioritizedTypes.append(srcType)
 	}
-	if !ic.canModifyManifest {
-		// We could also drop the !ic.canModifyManifest check and have the caller
+	if ic.cannotModifyManifestReason != "" {
+		// We could also drop this check and have the caller
 		// make the choice; it is already doing that to an extent, to improve error
-		// messages.  But it is nice to hide the “if !ic.canModifyManifest, do no conversion”
+		// messages.  But it is nice to hide the “if we can't modify, do no conversion”
 		// special case in here; the caller can then worry (or not) only about a good UI.
 		logrus.Debugf("We can't modify the manifest, hoping for the best...")
 		return srcType, []string{}, nil // Take our chances - FIXME? Or should we fail without trying?
@@ -137,30 +137,29 @@ func (c *copier) determineListConversion(currentListMIMEType string, destSupport
 	if forcedListMIMEType != "" {
 		destSupportedMIMETypes = []string{forcedListMIMEType}
 	}
-	var selectedType string
-	var otherSupportedTypes []string
-	for i := range destSupportedMIMETypes {
-		// The second priority is the first member of the list of acceptable types that is a list,
-		// but keep going in case current type occurs later in the list.
-		if selectedType == "" && manifest.MIMETypeIsMultiImage(destSupportedMIMETypes[i]) {
-			selectedType = destSupportedMIMETypes[i]
-		}
-		// The first priority is the current type, if it's in the list, since that lets us avoid a
-		// conversion that isn't strictly necessary.
-		if destSupportedMIMETypes[i] == currentListMIMEType {
-			selectedType = destSupportedMIMETypes[i]
+
+	prioritizedTypes := newOrderedSet()
+	// The first priority is the current type, if it's in the list, since that lets us avoid a
+	// conversion that isn't strictly necessary.
+	for _, t := range destSupportedMIMETypes {
+		if t == currentListMIMEType {
+			prioritizedTypes.append(currentListMIMEType)
+			break
 		}
 	}
 	// Pick out the other list types that we support.
-	for i := range destSupportedMIMETypes {
-		if selectedType != destSupportedMIMETypes[i] && manifest.MIMETypeIsMultiImage(destSupportedMIMETypes[i]) {
-			otherSupportedTypes = append(otherSupportedTypes, destSupportedMIMETypes[i])
+	for _, t := range destSupportedMIMETypes {
+		if manifest.MIMETypeIsMultiImage(t) {
+			prioritizedTypes.append(t)
 		}
 	}
+
 	logrus.Debugf("Manifest list has MIME type %s, ordered candidate list [%s]", currentListMIMEType, strings.Join(destSupportedMIMETypes, ", "))
-	if selectedType == "" {
+	if len(prioritizedTypes.list) == 0 {
 		return "", nil, errors.Errorf("destination does not support any supported manifest list types (%v)", manifest.SupportedListMIMETypes)
 	}
+	selectedType := prioritizedTypes.list[0]
+	otherSupportedTypes := prioritizedTypes.list[1:]
 	if selectedType != currentListMIMEType {
 		logrus.Debugf("... will convert to %s first, and then try %v", selectedType, otherSupportedTypes)
 	} else {

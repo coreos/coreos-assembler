@@ -23,6 +23,10 @@ type ImportOptions struct {
 	CommitMessage string
 	// Tag the imported image with this value.
 	Tag string
+	// Overwrite OS of imported image.
+	OS string
+	// Overwrite Arch of imported image.
+	Arch string
 }
 
 // Import imports a custom tarball at the specified path.  Returns the name of
@@ -48,8 +52,10 @@ func (r *Runtime) Import(ctx context.Context, path string, options *ImportOption
 	}
 
 	config := v1.Image{
-		Config:  ic,
-		History: hist,
+		Config:       ic,
+		History:      hist,
+		OS:           options.OS,
+		Architecture: options.Arch,
 	}
 
 	u, err := url.ParseRequestURI(path)
@@ -80,16 +86,12 @@ func (r *Runtime) Import(ctx context.Context, path string, options *ImportOption
 		return "", err
 	}
 
-	name := options.Tag
-	if name == "" {
-		name, err = getImageDigest(ctx, srcRef, r.systemContextCopy())
-		if err != nil {
-			return "", err
-		}
-		name = "sha256:" + name[1:] // strip leading "@"
+	id, err := getImageID(ctx, srcRef, r.systemContextCopy())
+	if err != nil {
+		return "", err
 	}
 
-	destRef, err := storageTransport.Transport.ParseStoreReference(r.store, name)
+	destRef, err := storageTransport.Transport.ParseStoreReference(r.store, id)
 	if err != nil {
 		return "", err
 	}
@@ -104,5 +106,19 @@ func (r *Runtime) Import(ctx context.Context, path string, options *ImportOption
 		return "", err
 	}
 
-	return name, nil
+	// Strip the leading @ off the id.
+	name := id[1:]
+
+	// If requested, tag the imported image.
+	if options.Tag != "" {
+		image, _, err := r.LookupImage(name, nil)
+		if err != nil {
+			return "", errors.Wrap(err, "looking up imported image")
+		}
+		if err := image.Tag(options.Tag); err != nil {
+			return "", err
+		}
+	}
+
+	return "sha256:" + name, nil
 }

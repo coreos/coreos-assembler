@@ -27,6 +27,7 @@
 package psgo
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -40,29 +41,18 @@ import (
 	"github.com/containers/psgo/internal/dev"
 	"github.com/containers/psgo/internal/proc"
 	"github.com/containers/psgo/internal/process"
-	"github.com/pkg/errors"
+	"github.com/containers/storage/pkg/idtools"
 	"golang.org/x/sys/unix"
 )
-
-// IDMap specifies a mapping range from the host to the container IDs.
-type IDMap struct {
-	// ContainerID is the first ID in the container.
-	ContainerID int
-	// HostID is the first ID in the host.
-	HostID int
-	// Size specifies how long is the range.  e.g. 1 means a single user
-	// is mapped.
-	Size int
-}
 
 // JoinNamespaceOpts specifies different options for joining the specified namespaces.
 type JoinNamespaceOpts struct {
 	// UIDMap specifies a mapping for UIDs in the container.  If specified
 	// huser will perform the reverse mapping.
-	UIDMap []IDMap
+	UIDMap []idtools.IDMap
 	// GIDMap specifies a mapping for GIDs in the container.  If specified
 	// hgroup will perform the reverse mapping.
-	GIDMap []IDMap
+	GIDMap []idtools.IDMap
 
 	// FillMappings specified whether UIDMap and GIDMap must be initialized
 	// with the current user namespace.
@@ -102,14 +92,14 @@ type aixFormatDescriptor struct {
 }
 
 // findID converts the specified id to the host mapping
-func findID(idStr string, mapping []IDMap, lookupFunc func(uid string) (string, error), overflowFile string) (string, error) {
+func findID(idStr string, mapping []idtools.IDMap, lookupFunc func(uid string) (string, error), overflowFile string) (string, error) {
 	if len(mapping) == 0 {
 		return idStr, nil
 	}
 
 	id, err := strconv.ParseInt(idStr, 10, 0)
 	if err != nil {
-		return "", errors.Wrapf(err, "cannot parse %s", idStr)
+		return "", fmt.Errorf("cannot parse ID: %w", err)
 	}
 	for _, m := range mapping {
 		if int(id) >= m.ContainerID && int(id) < m.ContainerID+m.Size {
@@ -122,7 +112,7 @@ func findID(idStr string, mapping []IDMap, lookupFunc func(uid string) (string, 
 	// User not found, read the overflow
 	overflow, err := ioutil.ReadFile(overflowFile)
 	if err != nil {
-		return "", errors.Wrapf(err, "cannot read %s", overflowFile)
+		return "", err
 	}
 	return string(overflow), nil
 }
@@ -147,7 +137,7 @@ func translateDescriptors(descriptors []string) ([]aixFormatDescriptor, error) {
 			}
 		}
 		if !found {
-			return nil, errors.Wrapf(ErrUnknownDescriptor, "'%s'", d)
+			return nil, fmt.Errorf("'%s': %w", d, ErrUnknownDescriptor)
 		}
 	}
 
@@ -173,6 +163,11 @@ var (
 			normal: "group",
 			header: "GROUP",
 			procFn: processGROUP,
+		},
+		{
+			normal: "groups",
+			header: "GROUPS",
+			procFn: processGROUPS,
 		},
 		{
 			code:   "%P",
@@ -306,6 +301,12 @@ var (
 			procFn: processHGROUP,
 		},
 		{
+			normal: "hgroups",
+			header: "HGROUPS",
+			onHost: true,
+			procFn: processHGROUPS,
+		},
+		{
 			normal: "rss",
 			header: "RSS",
 			procFn: processRSS,
@@ -339,29 +340,16 @@ func JoinNamespaceAndProcessInfo(pid string, descriptors []string) ([][]string, 
 	return JoinNamespaceAndProcessInfoWithOptions(pid, descriptors, &JoinNamespaceOpts{})
 }
 
-func readMappings(path string) ([]IDMap, error) {
-	mappings, err := proc.ReadMappings(path)
-	if err != nil {
-		return nil, err
-	}
-	var res []IDMap
-	for _, i := range mappings {
-		m := IDMap{ContainerID: i.ContainerID, HostID: i.HostID, Size: i.Size}
-		res = append(res, m)
-	}
-	return res, nil
-}
-
 func contextFromOptions(options *JoinNamespaceOpts) (*psContext, error) {
 	ctx := new(psContext)
 	ctx.opts = options
 	if ctx.opts != nil && ctx.opts.FillMappings {
-		uidMappings, err := readMappings("/proc/self/uid_map")
+		uidMappings, err := proc.ReadMappings("/proc/self/uid_map")
 		if err != nil {
 			return nil, err
 		}
 
-		gidMappings, err := readMappings("/proc/self/gid_map")
+		gidMappings, err := proc.ReadMappings("/proc/self/gid_map")
 		if err != nil {
 			return nil, err
 		}
@@ -412,13 +400,13 @@ func JoinNamespaceAndProcessInfoWithOptions(pid string, descriptors []string, op
 		// extract user namespaces prior to joining the mount namespace
 		currentUserNs, err := proc.ParseUserNamespace("self")
 		if err != nil {
-			dataErr = errors.Wrapf(err, "error determining user namespace")
+			dataErr = fmt.Errorf("error determining user namespace: %w", err)
 			return
 		}
 
 		pidUserNs, err := proc.ParseUserNamespace(pid)
 		if err != nil {
-			dataErr = errors.Wrapf(err, "error determining user namespace of PID %s", pid)
+			dataErr = fmt.Errorf("error determining user namespace of PID %s: %w", pid, err)
 		}
 
 		// join the mount namespace of pid
@@ -478,11 +466,11 @@ func JoinNamespaceAndProcessInfoByPidsWithOptions(pids []string, descriptors []s
 	for _, pid := range pids {
 		ns, err := proc.ParsePIDNamespace(pid)
 		if err != nil {
-			if os.IsNotExist(errors.Cause(err)) {
+			if errors.Is(err, os.ErrNotExist) {
 				// catch race conditions
 				continue
 			}
-			return nil, errors.Wrapf(err, "error extracting PID namespace")
+			return nil, fmt.Errorf("error extracting PID namespace: %w", err)
 		}
 		if _, exists := nsMap[ns]; !exists {
 			nsMap[ns] = true
@@ -493,7 +481,7 @@ func JoinNamespaceAndProcessInfoByPidsWithOptions(pids []string, descriptors []s
 	data := [][]string{}
 	for i, pid := range pidList {
 		pidData, err := JoinNamespaceAndProcessInfoWithOptions(pid, descriptors, options)
-		if os.IsNotExist(errors.Cause(err)) {
+		if errors.Is(err, os.ErrNotExist) {
 			// catch race conditions
 			continue
 		}
@@ -620,14 +608,29 @@ func findHostProcess(p *process.Process, ctx *psContext) *process.Process {
 }
 
 // processGROUP returns the effective group ID of the process.  This will be
-// the textual group ID, if it can be optained, or a decimal representation
+// the textual group ID, if it can be obtained, or a decimal representation
 // otherwise.
 func processGROUP(p *process.Process, ctx *psContext) (string, error) {
 	return process.LookupGID(p.Status.Gids[1])
 }
 
+// processGROUPS returns the supplementary groups of the process separated by
+// comma. This will be the textual group ID, if it can be obtained, or a
+// decimal representation otherwise.
+func processGROUPS(p *process.Process, ctx *psContext) (string, error) {
+	var err error
+	groups := make([]string, len(p.Status.Groups))
+	for i, g := range p.Status.Groups {
+		groups[i], err = process.LookupGID(g)
+		if err != nil {
+			return "", err
+		}
+	}
+	return strings.Join(groups, ","), nil
+}
+
 // processRGROUP returns the real group ID of the process.  This will be
-// the textual group ID, if it can be optained, or a decimal representation
+// the textual group ID, if it can be obtained, or a decimal representation
 // otherwise.
 func processRGROUP(p *process.Process, ctx *psContext) (string, error) {
 	return process.LookupGID(p.Status.Gids[0])
@@ -639,14 +642,14 @@ func processPPID(p *process.Process, ctx *psContext) (string, error) {
 }
 
 // processUSER returns the effective user name of the process.  This will be
-// the textual user ID, if it can be optained, or a decimal representation
+// the textual user ID, if it can be obtained, or a decimal representation
 // otherwise.
 func processUSER(p *process.Process, ctx *psContext) (string, error) {
 	return process.LookupUID(p.Status.Uids[1])
 }
 
 // processRUSER returns the effective user name of the process.  This will be
-// the textual user ID, if it can be optained, or a decimal representation
+// the textual user ID, if it can be obtained, or a decimal representation
 // otherwise.
 func processRUSER(p *process.Process, ctx *psContext) (string, error) {
 	return process.LookupUID(p.Status.Uids[0])
@@ -863,6 +866,26 @@ func processHGROUP(p *process.Process, ctx *psContext) (string, error) {
 			return findID(hp.Status.Gids[1], ctx.opts.GIDMap, process.LookupGID, "/proc/sys/fs/overflowgid")
 		}
 		return hp.Hgroup, nil
+	}
+	return "?", nil
+}
+
+// processHGROUPS returns the supplementary groups of the corresponding host
+// process of the (container) or "?" if no corresponding process could be
+// found.
+func processHGROUPS(p *process.Process, ctx *psContext) (string, error) {
+	if hp := findHostProcess(p, ctx); hp != nil {
+		groups := hp.Status.Groups
+		if ctx.opts != nil && len(ctx.opts.GIDMap) > 0 {
+			var err error
+			for i, g := range groups {
+				groups[i], err = findID(g, ctx.opts.GIDMap, process.LookupGID, "/proc/sys/fs/overflowgid")
+				if err != nil {
+					return "", err
+				}
+			}
+		}
+		return strings.Join(groups, ","), nil
 	}
 	return "?", nil
 }

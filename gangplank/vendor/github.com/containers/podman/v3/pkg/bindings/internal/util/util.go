@@ -72,30 +72,34 @@ func ToParams(o interface{}) (url.Values, error) {
 		if reflect.Ptr == f.Kind() {
 			f = f.Elem()
 		}
+		paramName := fieldName
+		if pn, ok := sType.Field(i).Tag.Lookup("schema"); ok {
+			paramName = pn
+		}
 		switch {
 		case IsSimpleType(f):
-			params.Set(fieldName, SimpleTypeToParam(f))
+			params.Set(paramName, SimpleTypeToParam(f))
 		case f.Kind() == reflect.Slice:
 			for i := 0; i < f.Len(); i++ {
 				elem := f.Index(i)
 				if IsSimpleType(elem) {
-					params.Add(fieldName, SimpleTypeToParam(elem))
+					params.Add(paramName, SimpleTypeToParam(elem))
 				} else {
 					return nil, errors.New("slices must contain only simple types")
 				}
 			}
 		case f.Kind() == reflect.Map:
-			lowerCaseKeys := make(map[string][]string)
+			lowerCaseKeys := make(map[string]interface{})
 			iter := f.MapRange()
 			for iter.Next() {
-				lowerCaseKeys[iter.Key().Interface().(string)] = iter.Value().Interface().([]string)
+				lowerCaseKeys[iter.Key().Interface().(string)] = iter.Value().Interface()
 			}
 			s, err := json.MarshalToString(lowerCaseKeys)
 			if err != nil {
 				return nil, err
 			}
 
-			params.Set(fieldName, s)
+			params.Set(paramName, s)
 		}
 	}
 	return params, nil

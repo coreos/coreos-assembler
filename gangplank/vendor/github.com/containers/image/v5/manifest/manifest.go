@@ -110,7 +110,8 @@ func GuessMIMEType(manifest []byte) string {
 	}
 
 	switch meta.MediaType {
-	case DockerV2Schema2MediaType, DockerV2ListMediaType: // A recognized type.
+	case DockerV2Schema2MediaType, DockerV2ListMediaType,
+		imgspecv1.MediaTypeImageManifest, imgspecv1.MediaTypeImageIndex: // A recognized type.
 		return meta.MediaType
 	}
 	// this is the only way the function can return DockerV2Schema1MediaType, and recognizing that is essential for stripping the JWS signatures = computing the correct manifest digest.
@@ -121,9 +122,9 @@ func GuessMIMEType(manifest []byte) string {
 		}
 		return DockerV2Schema1MediaType
 	case 2:
-		// best effort to understand if this is an OCI image since mediaType
-		// isn't in the manifest for OCI anymore
-		// for docker v2s2 meta.MediaType should have been set. But given the data, this is our best guess.
+		// Best effort to understand if this is an OCI image since mediaType
+		// wasn't in the manifest for OCI image-spec < 1.0.2.
+		// For docker v2s2 meta.MediaType should have been set. But given the data, this is our best guess.
 		ociMan := struct {
 			Config struct {
 				MediaType string `json:"mediaType"`
@@ -195,7 +196,7 @@ func MatchesDigest(manifest []byte, expectedDigest digest.Digest) (bool, error) 
 }
 
 // AddDummyV2S1Signature adds an JWS signature with a temporary key (i.e. useless) to a v2s1 manifest.
-// This is useful to make the manifest acceptable to a Docker Registry (even though nothing needs or wants the JWS signature).
+// This is useful to make the manifest acceptable to a docker/distribution registry (even though nothing needs or wants the JWS signature).
 func AddDummyV2S1Signature(manifest []byte) ([]byte, error) {
 	key, err := libtrust.GenerateECP256PrivateKey()
 	if err != nil {
