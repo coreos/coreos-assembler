@@ -732,9 +732,20 @@ func GetRerunnableTestName(testName string) (string, bool) {
 func getRerunnable(tests []*harness.H) []string {
 	var testsToRerun []string
 	for _, h := range tests {
-		name, isRerunnable := GetRerunnableTestName(h.Name())
-		if h.Failed() && isRerunnable {
-			testsToRerun = append(testsToRerun, name)
+		// The current nonexclusive test wrapper would have all non-exclusive tests.
+		// We would add all those tests for rerunning if none of the non-exclusive
+		// subtests start due to some initial failure.
+		if nonexclusiveWrapperMatch.MatchString(h.Name()) && !h.GetNonExclusiveTestStarted() {
+			if h.Failed() {
+				for _, testName := range h.Subtests() {
+					testsToRerun = append(testsToRerun, testName)
+				}
+			}
+		} else {
+			name, isRerunnable := GetRerunnableTestName(h.Name())
+			if h.Failed() && isRerunnable {
+				testsToRerun = append(testsToRerun, name)
+			}
 		}
 	}
 	return testsToRerun
@@ -1242,7 +1253,9 @@ func makeNonExclusiveTest(bucket int, tests []*register.Test, flight platform.Fl
 	var flags []register.Flag
 	var nonExclusiveTestConfs []*conf.Conf
 	dependencyDirs := make(register.DepDirMap)
+	var subtests []string
 	for _, test := range tests {
+		subtests = append(subtests, test.Name)
 		if test.HasFlag(register.NoSSHKeyInMetadata) || test.HasFlag(register.NoSSHKeyInUserData) {
 			plog.Fatalf("Non-exclusive test %v cannot have NoSSHKeyIn* flag", test.Name)
 		}
@@ -1279,6 +1292,7 @@ func makeNonExclusiveTest(bucket int, tests []*register.Test, flight platform.Fl
 			for _, t := range tests {
 				t := t
 				run := func(h *harness.H) {
+					h.NonExclusiveTestStarted()
 					testResults.add(h)
 					// tcluster has a reference to the wrapper's harness
 					// We need a new TestCluster that has a reference to the
@@ -1308,6 +1322,7 @@ func makeNonExclusiveTest(bucket int, tests []*register.Test, flight platform.Fl
 			}
 		},
 		UserData: mergedConfig,
+		Subtests: subtests,
 		// This will allow runTest to copy kolet to machine
 		NativeFuncs: make(map[string]register.NativeFuncWrap),
 		ClusterSize: 1,
@@ -1324,6 +1339,7 @@ func makeNonExclusiveTest(bucket int, tests []*register.Test, flight platform.Fl
 // analysis after the test run. It should already exist.
 func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flight) {
 	h.Parallel()
+	h.SetSubtests(t.Subtests)
 
 	rconf := &platform.RuntimeConfig{
 		OutputDir:          h.OutputDir(),

@@ -21,6 +21,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"text/tabwriter"
 
@@ -115,6 +116,8 @@ This can be useful for e.g. serving locally built OSTree repos to qemu.
 	runExternals []string
 	runMultiply  int
 	runRerunFlag bool
+
+	nonexclusiveWrapperMatch = regexp.MustCompile(`^non-exclusive-test-bucket-[0-9]$`)
 )
 
 func init() {
@@ -199,12 +202,22 @@ func runRerun(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	for _, test := range data.Tests {
-		name, isRerunnable := kola.GetRerunnableTestName(test.Name)
-		if test.Result == testresult.Fail && isRerunnable {
-			patterns = append(patterns, name)
+		if nonexclusiveWrapperMatch.MatchString(test.Name) {
+			// When the test hasn't started yet, we get the subtests
+			// of the test(nonExclusiveWrapper) for re-running
+			for _, subtest := range test.Subtests {
+				name, isRerunnable := kola.GetRerunnableTestName(subtest)
+				if test.Result == testresult.Fail && isRerunnable {
+					patterns = append(patterns, name)
+				}
+			}
+		} else {
+			name, isRerunnable := kola.GetRerunnableTestName(test.Name)
+			if test.Result == testresult.Fail && isRerunnable {
+				patterns = append(patterns, name)
+			}
 		}
 	}
-
 	return kolaRunPatterns(patterns, false)
 }
 

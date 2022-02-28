@@ -51,6 +51,7 @@ func CreateNativeFuncWrap(f func() error, exclusions ...string) NativeFuncWrap {
 // function is run.
 type Test struct {
 	Name                 string // should be unique
+	Subtests             []string
 	Run                  func(cluster.TestCluster)
 	NativeFuncs          map[string]NativeFuncWrap
 	UserData             *conf.UserData
