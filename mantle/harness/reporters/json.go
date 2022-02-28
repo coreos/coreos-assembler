@@ -39,6 +39,7 @@ type jsonReporter struct {
 
 type jsonTest struct {
 	Name     string                `json:"name"`
+	Subtests []string              `json:"subtests"`
 	Result   testresult.TestResult `json:"result"`
 	Duration time.Duration         `json:"duration"`
 	Output   string                `json:"output"`
@@ -70,12 +71,13 @@ func NewJSONReporter(filename, platform, version string) *jsonReporter {
 	}
 }
 
-func (r *jsonReporter) ReportTest(name string, result testresult.TestResult, duration time.Duration, b []byte) {
+func (r *jsonReporter) ReportTest(name string, subtests []string, result testresult.TestResult, duration time.Duration, b []byte) {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 
 	r.Tests = append(r.Tests, jsonTest{
 		Name:     name,
+		Subtests: subtests,
 		Result:   result,
 		Duration: duration,
 		Output:   string(b),

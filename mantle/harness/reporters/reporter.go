@@ -22,9 +22,9 @@ import (
 
 type Reporters []Reporter
 
-func (reps Reporters) ReportTest(name string, result testresult.TestResult, duration time.Duration, b []byte) {
+func (reps Reporters) ReportTest(name string, subtests []string, result testresult.TestResult, duration time.Duration, b []byte) {
 	for _, r := range reps {
-		r.ReportTest(name, result, duration, b)
+		r.ReportTest(name, subtests, result, duration, b)
 	}
 }
 
@@ -45,7 +45,7 @@ func (reps Reporters) SetResult(s testresult.TestResult) {
 }
 
 type Reporter interface {
-	ReportTest(string, testresult.TestResult, time.Duration, []byte)
+	ReportTest(string, []string, testresult.TestResult, time.Duration, []byte)
 	Output(string) error
 	SetResult(testresult.TestResult)
 }

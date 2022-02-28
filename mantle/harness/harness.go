@@ -61,7 +61,7 @@ type H struct {
 	finished bool // Test function has completed.
 	done     bool // Test is finished and all subtests have completed.
 	hasSub   bool
-	subLock  sync.RWMutex // guards hasSub
+	subLock  sync.RWMutex // guards hasSub and subtests
 
 	suite    *Suite
 	parent   *H
@@ -72,8 +72,10 @@ type H struct {
 	barrier  chan bool // To signal parallel subtests they may start.
 	signal   chan bool // To signal a test is done.
 	sub      []*H      // Queue of subtests to be run in parallel.
+	subtests []string  // All subtests of this test
 
-	isParallel bool
+	isParallel               bool
+	nonExclusiveTestsStarted bool
 
 	timeout   time.Duration // Duration for which the test will be allowed to run
 	execTimer *time.Timer   // Used to interrupt the test after timeout
@@ -222,6 +224,17 @@ func (c *H) Name() string {
 	return c.name
 }
 
+// Subtests returns the list of subtests
+func (c *H) Subtests() []string {
+	return c.subtests
+}
+
+func (c *H) SetSubtests(subtests []string) {
+	c.subLock.Lock()
+	c.subtests = subtests
+	c.subLock.Unlock()
+}
+
 // Context returns the context for the current test.
 // The context is cancelled when the test finishes.
 // A goroutine started during a test can wait for the
@@ -238,6 +251,14 @@ func (c *H) setRan() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.ran = true
+}
+
+func (c *H) GetNonExclusiveTestStarted() bool {
+	return c.nonExclusiveTestsStarted
+}
+
+func (c *H) NonExclusiveTestStarted() {
+	c.nonExclusiveTestsStarted = true
 }
 
 // Fail marks the function as having failed but continues execution.
@@ -517,6 +538,7 @@ func tRunner(t *H, fn func(t *H)) {
 func (t *H) RunTimeout(name string, f func(t *H), timeout time.Duration) bool {
 	t.subLock.Lock()
 	t.hasSub = true
+	t.subtests = append(t.subtests, name)
 	t.subLock.Unlock()
 	testName, ok := t.suite.match.fullName(t, name)
 	if !ok {
@@ -589,7 +611,10 @@ func (t *H) report() {
 	// could also write verbosely to the 'reporter sink'.  I'm fine with
 	// this being a TODO if you don't want to tackle it in this initial
 	// PR.
-	t.reporters.ReportTest(t.name, status, t.duration, t.output.Bytes())
+	t.subLock.Lock()
+	subtests := t.subtests
+	t.subLock.Unlock()
+	t.reporters.ReportTest(t.name, subtests, status, t.duration, t.output.Bytes())
 }
 
 // CleanOutputDir creates/empties an output directory and returns the cleaned path.
