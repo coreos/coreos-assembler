@@ -76,7 +76,7 @@ func init() {
 		Platforms:   []string{"qemu-unpriv"},
 		// Can't mirror boot disk on s390x, and qemu s390x doesn't
 		// support TPM
-		ExcludeArchitectures: []string{"s390x"},
+		ExcludeArchitectures: []string{"s390x", "ppc64le"},
 		// skipping this test on UEFI until https://github.com/coreos/coreos-assembler/issues/2039
 		// gets resolved.
 		ExcludeFirmwares: []string{"uefi"},
