@@ -171,3 +171,53 @@ automatically SSH into a machine when any `MustSSH` calls fail.
 
 kolet is run on kola instances to run native functions in tests. Generally kolet
 is not invoked manually.
+
+## More information on tests
+
+After you run the kola test, you can find more information in `tmp/kola/<test-name>` about the test that just ran, as the following file logs. They will help you to debug the problem and will certainly give you hints along the way.
+
+1. `journal.txt`
+2. `console.txt`
+3. `ignition.json`
+4. `journal-raw.txt.gz`
+
+## Extended artifacts
+
+1. Extended artifacts need additional forms of testing (You can pass the ignition and the path to the artifact you want to test)
+2. `cosa kola run -h` (this allows you to see the commands yourself and what syntax is needed)
+3. `cosa buildextend-"name_of_artifact"` (An example of building an extended artifact)
+4. `kola run -p <platform>` Is the most generic way of testing extended artifacts, this is mostly useful for the cloud platforms
+5. For running the likes of metal/metal4k artifacts there's not much difference than running `kola run` from the coreos-assembler
+6. `cd builds/latest/` (This will show your latest build information)
+7. `cosa list` (This will show you the most recent CoreOS builds that have been made and the artifacts that were created)
+8. In the case of the `testiso` command, you'll see that there is the `--qemu-native-4k` option passed to `kola testiso`.  This instructs the `testiso` test to attempt to install FCOS/RHCOS to a disk that uses 4k sector size.  If you don't include that option, the `testiso` command will attempt to install FCOS/RHCOS to a non 4k disk (512b sector size)
+9. `kola testiso -S --scenarios pxe-install,pxe-offline-install --output-dir tmp/kola-metal`   You can also pass some scenarios, in case you do not want to run all of them
+10. `cosa kola testiso --qemu-native-4k` (This is an example testing the live ISO build for a 4k sectors disk. This tests all of the scenarios.)
+
+Example output:
+
+```
+kola -p qemu-unpriv --output-dir tmp/kola testiso -P --qemu-native-4k
+Testing scenarios: [iso-offline-install iso-live-login iso-as-disk miniso-install miniso-install-nm]
+Detected development build; disabling signature verification
+Successfully tested scenario iso-offline-install for 35.20220217.dev.0 on uefi (metal4k)
+Successfully tested scenario iso-live-login for 35.20220217.dev.0 on uefi (metal4k)
+Successfully tested scenario iso-as-disk for 35.20220217.dev.0 on uefi (metal4k)
+Successfully tested scenario miniso-install for 35.20220217.dev.0 on uefi (metal4k)
+Successfully tested scenario miniso-install-nm for 35.20220217.dev.0 on uefi (metal4k with NM keyfile)
+```
+
+## Useful commands
+
+`cosa kola run 'name_of_test'` This is how to run a single test, This is used to help debug specific tests in order to get a better understanding of the bug that's taking place. Once you run this command this test will be added to the tmp directory
+
+`cosa kola run basic` This will just run the basic tests
+
+`cosa kola run --parallel=3` This will run tests in parallel, 3 at a time.
+
+In order to see the logs for these tests you must enter the `tmp/kola/name_of_the_tests` and there you will find the logs (journal and console files, ignition used and so on)
+
+`cosa run` This launches the build you created (in this way you can access the image for troubleshooting). Also check the option -c (console).
+
+`cosa run -i ignition_path` You can run it passing your Ignition, or the Ignition used in the the test that failed for troubleshooting reasons.
+
