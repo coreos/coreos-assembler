@@ -64,8 +64,8 @@ class OVA(QemuVariantImage):
         self.ovf_path = os.path.join(self._tmpdir, "coreos.ovf")
 
     def generate_ovf_parameters(self, vmdk, cpu=2,
-                                memory=4096, system_type="vmx-13",
-                                os_type="rhel7_64Guest", scsi="VirtualSCSI",
+                                memory=4096, system_type="vmx-15",
+                                os_type="rhel8_64Guest", scsi="VirtualSCSI",
                                 network="VmxNet3"):
         """
         Returns a dictionary with the parameters needed to create an OVF file
