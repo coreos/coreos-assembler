@@ -317,9 +317,9 @@ type DenyListObj struct {
 }
 
 type ManifestData struct {
-	AddCommitMetadata struct {
-		FcosStream string `yaml:"fedora-coreos.stream"`
-	} `yaml:"add-commit-metadata"`
+	Variables struct {
+		Stream string `yaml:"stream"`
+	} `yaml:"variables"`
 }
 
 func parseDenyListYaml(pltfrm string) error {
@@ -357,7 +357,7 @@ func parseDenyListYaml(pltfrm string) error {
 		return err
 	}
 
-	stream := manifest.AddCommitMetadata.FcosStream
+	stream := manifest.Variables.Stream
 	arch := Options.CosaBuildArch
 	plog.Debugf("Arch: %v detected.", arch)
 	today := time.Now()
