@@ -54,7 +54,7 @@ pod(image: imageName + ":latest", kvm: true, memory: "10Gi") {
     stage("CLI Tests") {
         shwrap("""
             cd /srv
-            sudo -u builder ${env.WORKSPACE}/tests/test_pruning.sh
+            ${env.WORKSPACE}/tests/test_pruning.sh
         """)
     }
 }
