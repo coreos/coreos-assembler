@@ -13,15 +13,10 @@ const (
 	oldMaxSize = uint64(1048576)
 )
 
-// getDefaultMachineImage returns the default machine image stream
-// On Linux/Mac, this returns the FCOS stream
-func getDefaultMachineImage() string {
-	return "testing"
-}
-
-// getDefaultMachineUser returns the user to use for rootless podman
-func getDefaultMachineUser() string {
-	return "core"
+// getDefaultRootlessNetwork returns the default rootless network configuration.
+// It is "slirp4netns" for Linux.
+func getDefaultRootlessNetwork() string {
+	return "slirp4netns"
 }
 
 // getDefaultProcessLimits returns the nproc for the current process in ulimits format

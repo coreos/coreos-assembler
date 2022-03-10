@@ -74,7 +74,6 @@ func Create() List {
 		},
 		oci: v1.Index{
 			Versioned: imgspec.Versioned{SchemaVersion: 2},
-			MediaType: v1.MediaTypeImageIndex,
 		},
 	}
 }
@@ -374,7 +373,6 @@ func FromBlob(manifestBytes []byte) (List, error) {
 		},
 		oci: v1.Index{
 			Versioned: imgspec.Versioned{SchemaVersion: 2},
-			MediaType: v1.MediaTypeImageIndex,
 		},
 	}
 	switch manifestType {
