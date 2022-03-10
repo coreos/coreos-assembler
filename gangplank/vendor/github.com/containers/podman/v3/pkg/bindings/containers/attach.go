@@ -134,7 +134,9 @@ func Attach(ctx context.Context, nameOrID string, stdin io.Reader, stdout io.Wri
 	if err != nil {
 		return err
 	}
+
 	if !(response.IsSuccess() || response.IsInformational()) {
+		defer response.Body.Close()
 		return response.Process(nil)
 	}
 
@@ -155,24 +157,24 @@ func Attach(ctx context.Context, nameOrID string, stdin io.Reader, stdout io.Wri
 	}
 
 	stdoutChan := make(chan error)
-	stdinChan := make(chan error)
+	stdinChan := make(chan error, 1) //stdin channel should not block
 
 	if isSet.stdin {
 		go func() {
 			logrus.Debugf("Copying STDIN to socket")
 
 			_, err := utils.CopyDetachable(socket, stdin, detachKeysInBytes)
-
 			if err != nil && err != define.ErrDetach {
 				logrus.Error("failed to write input to service: " + err.Error())
 			}
-			stdinChan <- err
-
-			if closeWrite, ok := socket.(CloseWriter); ok {
-				if err := closeWrite.CloseWrite(); err != nil {
-					logrus.Warnf("Failed to close STDIN for writing: %v", err)
+			if err == nil {
+				if closeWrite, ok := socket.(CloseWriter); ok {
+					if err := closeWrite.CloseWrite(); err != nil {
+						logrus.Warnf("Failed to close STDIN for writing: %v", err)
+					}
 				}
 			}
+			stdinChan <- err
 		}()
 	}
 
@@ -207,12 +209,12 @@ func Attach(ctx context.Context, nameOrID string, stdin io.Reader, stdout io.Wri
 			}
 		}
 	} else {
-		logrus.Debugf("Copying standard streams of container in non-terminal mode")
+		logrus.Debugf("Copying standard streams of container %q in non-terminal mode", ctnr.ID)
 		for {
 			// Read multiplexed channels and write to appropriate stream
 			fd, l, err := DemuxHeader(socket, buffer)
 			if err != nil {
-				if errors.Is(err, io.EOF) {
+				if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
 					return nil
 				}
 				return err
@@ -324,6 +326,8 @@ func resizeTTY(ctx context.Context, endpoint string, height *int, width *int) er
 	if err != nil {
 		return err
 	}
+	defer rsp.Body.Close()
+
 	return rsp.Process(nil)
 }
 
@@ -407,6 +411,7 @@ func ExecStartAndAttach(ctx context.Context, sessionID string, options *ExecStar
 	if err != nil {
 		return err
 	}
+	defer resp.Body.Close()
 
 	respStruct := new(define.InspectExecSession)
 	if err := resp.Process(respStruct); err != nil {
@@ -477,6 +482,8 @@ func ExecStartAndAttach(ctx context.Context, sessionID string, options *ExecStar
 	if err != nil {
 		return err
 	}
+	defer response.Body.Close()
+
 	if !(response.IsSuccess() || response.IsInformational()) {
 		return response.Process(nil)
 	}
@@ -524,7 +531,7 @@ func ExecStartAndAttach(ctx context.Context, sessionID string, options *ExecStar
 			// Read multiplexed channels and write to appropriate stream
 			fd, l, err := DemuxHeader(socket, buffer)
 			if err != nil {
-				if errors.Is(err, io.EOF) {
+				if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
 					return nil
 				}
 				return err

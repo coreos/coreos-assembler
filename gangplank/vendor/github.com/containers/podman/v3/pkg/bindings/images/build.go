@@ -16,6 +16,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/containers/buildah/define"
 	"github.com/containers/podman/v3/pkg/auth"
 	"github.com/containers/podman/v3/pkg/bindings"
 	"github.com/containers/podman/v3/pkg/domain/entities"
@@ -39,6 +40,10 @@ var (
 
 // Build creates an image using a containerfile reference
 func Build(ctx context.Context, containerFiles []string, options entities.BuildOptions) (*entities.BuildReport, error) {
+	if options.CommonBuildOpts == nil {
+		options.CommonBuildOpts = new(define.CommonBuildOptions)
+	}
+
 	params := url.Values{}
 
 	if caps := options.AddCapabilities; len(caps) > 0 {
@@ -220,6 +225,19 @@ func Build(ctx context.Context, containerFiles []string, options entities.BuildO
 	if len(platform) > 0 {
 		params.Set("platform", platform)
 	}
+	if len(options.Platforms) > 0 {
+		params.Del("platform")
+		for _, platformSpec := range options.Platforms {
+			platform = platformSpec.OS + "/" + platformSpec.Arch
+			if platformSpec.Variant != "" {
+				platform += "/" + platformSpec.Variant
+			}
+			params.Add("platform", platform)
+		}
+	}
+	if contextDir, err := filepath.EvalSymlinks(options.ContextDirectory); err == nil {
+		options.ContextDirectory = contextDir
+	}
 
 	params.Set("pullpolicy", options.PullPolicy.String())
 
@@ -326,6 +344,11 @@ func Build(ctx context.Context, containerFiles []string, options entities.BuildO
 				return nil, err
 			}
 			c = tmpFile.Name()
+		}
+		cfDir := filepath.Dir(c)
+		if absDir, err := filepath.EvalSymlinks(cfDir); err == nil {
+			name := filepath.ToSlash(strings.TrimPrefix(c, cfDir+string(filepath.Separator)))
+			c = filepath.Join(absDir, name)
 		}
 		containerfile, err := filepath.Abs(c)
 		if err != nil {
@@ -501,6 +524,7 @@ func nTar(excludes []string, sources ...string) (io.ReadCloser, error) {
 					if err != nil {
 						return err
 					}
+					hdr.Uid, hdr.Gid = 0, 0
 					orig, ok := seen[di]
 					if ok {
 						hdr.Typeflag = tar.TypeLink
@@ -532,6 +556,7 @@ func nTar(excludes []string, sources ...string) (io.ReadCloser, error) {
 						return lerr
 					}
 					hdr.Name = name
+					hdr.Uid, hdr.Gid = 0, 0
 					if lerr := tw.WriteHeader(hdr); lerr != nil {
 						return lerr
 					}
@@ -545,6 +570,7 @@ func nTar(excludes []string, sources ...string) (io.ReadCloser, error) {
 						return lerr
 					}
 					hdr.Name = name
+					hdr.Uid, hdr.Gid = 0, 0
 					if lerr := tw.WriteHeader(hdr); lerr != nil {
 						return lerr
 					}

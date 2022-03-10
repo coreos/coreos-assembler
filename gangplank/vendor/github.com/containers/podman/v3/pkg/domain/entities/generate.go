@@ -9,7 +9,7 @@ type GenerateSystemdOptions struct {
 	// New - create a new container instead of starting a new one.
 	New bool
 	// RestartPolicy - systemd restart policy.
-	RestartPolicy string
+	RestartPolicy *string
 	// StopTimeout - time when stopping the container.
 	StopTimeout *uint
 	// ContainerPrefix - systemd unit name prefix for containers
@@ -35,6 +35,8 @@ type GenerateKubeOptions struct {
 }
 
 // GenerateKubeReport
+//
+// FIXME: Podman4.0 should change io.Reader to io.ReaderCloser
 type GenerateKubeReport struct {
 	// Reader - the io.Reader to reader the generated YAML file.
 	Reader io.Reader

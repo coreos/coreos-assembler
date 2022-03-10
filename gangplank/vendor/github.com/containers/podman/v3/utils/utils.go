@@ -4,13 +4,18 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"io/ioutil"
+	"math/rand"
 	"os"
 	"os/exec"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/containers/podman/v3/libpod/define"
+	"github.com/containers/podman/v3/pkg/cgroups"
 	"github.com/containers/storage/pkg/archive"
+	"github.com/godbus/dbus/v5"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
@@ -107,6 +112,16 @@ func UntarToFileSystem(dest string, tarball *os.File, options *archive.TarOption
 	return archive.Untar(tarball, dest, options)
 }
 
+// Creates a new tar file and wrties bytes from io.ReadCloser
+func CreateTarFromSrc(source string, dest string) error {
+	file, err := os.Create(dest)
+	if err != nil {
+		return errors.Wrapf(err, "Could not create tarball file '%s'", dest)
+	}
+	defer file.Close()
+	return TarToFilesystem(source, file)
+}
+
 // TarToFilesystem creates a tarball from source and writes to an os.file
 // provided
 func TarToFilesystem(source string, tarball *os.File) error {
@@ -144,4 +159,70 @@ func RemoveScientificNotationFromFloat(x float64) (float64, error) {
 		return x, errors.Wrapf(err, "unable to remove scientific number from calculations")
 	}
 	return result, nil
+}
+
+var (
+	runsOnSystemdOnce sync.Once
+	runsOnSystemd     bool
+)
+
+// RunsOnSystemd returns whether the system is using systemd
+func RunsOnSystemd() bool {
+	runsOnSystemdOnce.Do(func() {
+		initCommand, err := ioutil.ReadFile("/proc/1/comm")
+		// On errors, default to systemd
+		runsOnSystemd = err != nil || strings.TrimRight(string(initCommand), "\n") == "systemd"
+	})
+	return runsOnSystemd
+}
+
+func moveProcessToScope(pidPath, slice, scope string) error {
+	data, err := ioutil.ReadFile(pidPath)
+	if err != nil {
+		// do not raise an error if the file doesn't exist
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return errors.Wrapf(err, "cannot read pid file %s", pidPath)
+	}
+	pid, err := strconv.ParseUint(string(data), 10, 0)
+	if err != nil {
+		return errors.Wrapf(err, "cannot parse pid file %s", pidPath)
+	}
+	err = RunUnderSystemdScope(int(pid), slice, scope)
+
+	// If the PID is not valid anymore, do not return an error.
+	if dbusErr, ok := err.(dbus.Error); ok {
+		if dbusErr.Name == "org.freedesktop.DBus.Error.UnixProcessIdUnknown" {
+			return nil
+		}
+	}
+
+	return err
+}
+
+// MovePauseProcessToScope moves the pause process used for rootless mode to keep the namespaces alive to
+// a separate scope.
+func MovePauseProcessToScope(pausePidPath string) {
+	var err error
+
+	for i := 0; i < 3; i++ {
+		r := rand.Int()
+		err = moveProcessToScope(pausePidPath, "user.slice", fmt.Sprintf("podman-pause-%d.scope", r))
+		if err == nil {
+			return
+		}
+	}
+
+	if err != nil {
+		unified, err2 := cgroups.IsCgroup2UnifiedMode()
+		if err2 != nil {
+			logrus.Warnf("Failed to detect if running with cgroup unified: %v", err)
+		}
+		if RunsOnSystemd() && unified {
+			logrus.Warnf("Failed to add pause process to systemd sandbox cgroup: %v", err)
+		} else {
+			logrus.Debugf("Failed to add pause process to systemd sandbox cgroup: %v", err)
+		}
+	}
 }
