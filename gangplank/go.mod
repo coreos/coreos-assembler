@@ -7,7 +7,6 @@ require (
 	github.com/containerd/containerd v1.6.1 // indirect
 	github.com/containerd/stargz-snapshotter/estargz v0.11.2 // indirect
 	github.com/containers/buildah v1.23.3 // indirect
-	github.com/containers/common v0.47.4 // indirect
 	github.com/containers/image/v5 v5.20.0 // indirect
 	github.com/containers/podman/v3 v3.4.3
 	github.com/containers/psgo v1.7.2 // indirect
@@ -18,9 +17,12 @@ require (
 	github.com/docker/go-connections v0.4.1-0.20210727194412-58542c764a11 // indirect
 	github.com/google/go-cmp v0.5.7 // indirect
 	github.com/google/uuid v1.3.0
+	github.com/jinzhu/copier v0.3.5 // indirect
 	github.com/miekg/pkcs11 v1.1.1 // indirect
 	github.com/minio/minio-go/v7 v7.0.12
 	github.com/moby/sys/mountinfo v0.6.0 // indirect
+	github.com/onsi/ginkgo v1.16.5 // indirect
+	github.com/onsi/gomega v1.18.1 // indirect
 	github.com/opencontainers/image-spec v1.0.3-0.20220303224323-02efb9a75ee1 // indirect
 	github.com/opencontainers/runc v1.1.0
 	github.com/opencontainers/runtime-spec v1.0.3-0.20220225203953-7ceeb8af5259

@@ -14,27 +14,9 @@ import (
 
 // ValidateVolumeOpts validates a volume's options
 func ValidateVolumeOpts(options []string) ([]string, error) {
-	var foundRootPropagation, foundRWRO, foundLabelChange, bindType, foundExec, foundDev, foundSuid, foundChown, foundUpperDir, foundWorkDir int
+	var foundRootPropagation, foundRWRO, foundLabelChange, bindType, foundExec, foundDev, foundSuid, foundChown int
 	finalOpts := make([]string, 0, len(options))
 	for _, opt := range options {
-		// support advanced options like upperdir=/path, workdir=/path
-		if strings.Contains(opt, "upperdir") {
-			foundUpperDir++
-			if foundUpperDir > 1 {
-				return nil, errors.Errorf("invalid options %q, can only specify 1 upperdir per overlay", strings.Join(options, ", "))
-			}
-			finalOpts = append(finalOpts, opt)
-			continue
-		}
-		if strings.Contains(opt, "workdir") {
-			foundWorkDir++
-			if foundWorkDir > 1 {
-				return nil, errors.Errorf("invalid options %q, can only specify 1 workdir per overlay", strings.Join(options, ", "))
-			}
-			finalOpts = append(finalOpts, opt)
-			continue
-		}
-
 		switch opt {
 		case "noexec", "exec":
 			foundExec++
@@ -84,7 +66,6 @@ func ValidateVolumeOpts(options []string) ([]string, error) {
 			// are intended to be always safe to use, even not on OS
 			// X).
 			continue
-		case "idmap":
 		default:
 			return nil, errors.Errorf("invalid option type %q", opt)
 		}

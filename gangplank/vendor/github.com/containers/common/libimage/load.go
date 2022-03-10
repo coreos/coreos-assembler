@@ -2,7 +2,7 @@ package libimage
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"os"
 	"time"
 
@@ -28,69 +28,66 @@ func (r *Runtime) Load(ctx context.Context, path string, options *LoadOptions) (
 		defer r.writeEvent(&Event{ID: "", Name: path, Time: time.Now(), Type: EventTypeImageLoad})
 	}
 
+	var (
+		loadedImages []string
+		loadError    error
+	)
+
 	if options == nil {
 		options = &LoadOptions{}
 	}
 
-	var loadErrors []error
-
-	for _, f := range []func() ([]string, string, error){
+	for _, f := range []func() ([]string, error){
 		// OCI
-		func() ([]string, string, error) {
+		func() ([]string, error) {
 			logrus.Debugf("-> Attempting to load %q as an OCI directory", path)
 			ref, err := ociTransport.NewReference(path, "")
 			if err != nil {
-				return nil, ociTransport.Transport.Name(), err
+				return nil, err
 			}
-			images, err := r.copyFromDefault(ctx, ref, &options.CopyOptions)
-			return images, ociTransport.Transport.Name(), err
+			return r.copyFromDefault(ctx, ref, &options.CopyOptions)
 		},
 
 		// OCI-ARCHIVE
-		func() ([]string, string, error) {
+		func() ([]string, error) {
 			logrus.Debugf("-> Attempting to load %q as an OCI archive", path)
 			ref, err := ociArchiveTransport.NewReference(path, "")
 			if err != nil {
-				return nil, ociArchiveTransport.Transport.Name(), err
+				return nil, err
 			}
-			images, err := r.copyFromDefault(ctx, ref, &options.CopyOptions)
-			return images, ociArchiveTransport.Transport.Name(), err
-		},
-
-		// DOCKER-ARCHIVE
-		func() ([]string, string, error) {
-			logrus.Debugf("-> Attempting to load %q as a Docker archive", path)
-			ref, err := dockerArchiveTransport.ParseReference(path)
-			if err != nil {
-				return nil, dockerArchiveTransport.Transport.Name(), err
-			}
-			images, err := r.loadMultiImageDockerArchive(ctx, ref, &options.CopyOptions)
-			return images, dockerArchiveTransport.Transport.Name(), err
+			return r.copyFromDefault(ctx, ref, &options.CopyOptions)
 		},
 
 		// DIR
-		func() ([]string, string, error) {
+		func() ([]string, error) {
 			logrus.Debugf("-> Attempting to load %q as a Docker dir", path)
 			ref, err := dirTransport.NewReference(path)
 			if err != nil {
-				return nil, dirTransport.Transport.Name(), err
+				return nil, err
 			}
-			images, err := r.copyFromDefault(ctx, ref, &options.CopyOptions)
-			return images, dirTransport.Transport.Name(), err
+			return r.copyFromDefault(ctx, ref, &options.CopyOptions)
+		},
+
+		// DOCKER-ARCHIVE
+		func() ([]string, error) {
+			logrus.Debugf("-> Attempting to load %q as a Docker archive", path)
+			ref, err := dockerArchiveTransport.ParseReference(path)
+			if err != nil {
+				return nil, err
+			}
+			return r.loadMultiImageDockerArchive(ctx, ref, &options.CopyOptions)
+		},
+
+		// Give a decent error message if nothing above worked.
+		func() ([]string, error) {
+			return nil, errors.New("payload does not match any of the supported image formats (oci, oci-archive, dir, docker-archive)")
 		},
 	} {
-		loadedImages, transportName, err := f()
-		if err == nil {
-			return loadedImages, nil
+		loadedImages, loadError = f()
+		if loadError == nil {
+			return loadedImages, loadError
 		}
-		logrus.Debugf("Error loading %s (%s): %v", path, transportName, err)
-		loadErrors = append(loadErrors, fmt.Errorf("%s: %v", transportName, err))
-	}
-
-	// Give a decent error message if nothing above worked.
-	loadError := fmt.Errorf("payload does not match any of the supported image formats:")
-	for _, err := range loadErrors {
-		loadError = fmt.Errorf("%v\n * %v", loadError, err)
+		logrus.Debugf("Error loading %s: %v", path, loadError)
 	}
 
 	return nil, loadError
