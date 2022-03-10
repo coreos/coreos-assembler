@@ -39,6 +39,8 @@ def parse_args():
                         help='Force upload even for pre-existing images')
     parser.add_argument("--artifact", default=[], action='append',
                         help="Only upload given image artifact(s)", metavar="ARTIFACT")
+    parser.add_argument("--arch", default=[], action='append',
+                        help="Only upload for arch", metavar="ARCH")
     group = parser.add_mutually_exclusive_group()
     group.add_argument("--skip-builds-json", help="Don't push builds.json",
                        action='store_true')
@@ -71,10 +73,13 @@ def cmd_upload_s3(args):
         args.build = builds.get_latest()
     print(f"Targeting build: {args.build}")
     for arch in builds.get_build_arches(args.build):
+        if len(args.arch) > 0 and arch not in args.arch:
+            print(f"Skipping upload of arch {arch} upon user request")
+            continue
         s3_upload_build(s3_client, args, builds.get_build_dir(args.build, arch),
                         bucket, f'{prefix}/{args.build}/{arch}')
     # if there's anything else in the build dir, just upload it too,
-    # e.g. pipelines might inject additional metadata
+    # e.g. release metadata is stored at this level
     for f in os.listdir(f'builds/{args.build}'):
         # arches already uploaded higher up
         if f in builds.get_build_arches(args.build):
