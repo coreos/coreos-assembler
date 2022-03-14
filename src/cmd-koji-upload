@@ -1,4 +1,5 @@
 #!/usr/bin/python3 -u
+# pylint: disable=E1136
 """
 cmd-koji-upload performs the required steps to make COSA a Koji Content
 Generator. When running this in an automated fashion, you will need a Kerberos
@@ -191,6 +192,36 @@ class Build(_Build):
                 return new_path, True
 
         return fname, True
+
+    def get_rpm_list(self, host=None):
+        """
+        Translate commitmeta.json/HOST OS rpms into a json list
+        Returns the json rpms list
+        """
+        components = []
+        if host is None:
+            rpms = self.commit["rpmostree.rpmdb.pkglist"]
+        else:
+            host_rpms = subprocess.check_output('rpm -qa --qf="%{NAME}:%{EPOCH}:%{RELEASE}:%{VERSION}:%{ARCH}:%{SIGMD5}:%{SIGPGP} \n"', shell=True).strip()
+            rpms = (host_rpms.decode('utf-8')).split("\n")
+
+        for rpm in rpms:
+            if host is None:
+                name, epoch, version, release, arch = rpm
+                sigmd5, sigpgp, epoch = None, None, None
+            else:
+                name, epoch, release, version, arch, sigmd5, sigpgp = rpm.split(':')
+            entry = {
+                "type": "rpm",
+                "name": name,
+                "version": version,
+                "release": release,
+                "epoch": epoch,
+                "arch": arch,
+                "sigmd5": sigmd5,
+                "sigpgp": sigpgp}
+            components.append(entry)
+        return components
 
     def mutate_for_koji(self, fname):
         """
@@ -528,7 +559,8 @@ class Upload(_KojiBase):
             "filename": obj['upload_path'],
             "filesize": obj["size"],
             "type": ext,
-            "extra": {"image": {"arch": arch}}
+            "extra": {"image": {"arch": arch}},
+            "components": ""
         }
 
         if etype not in ("image", "source"):
@@ -550,6 +582,8 @@ class Upload(_KojiBase):
         for _, value in (self.build).get_artifacts():
             file_output = self.get_file_meta(value)
             if file_output is not None:
+                if "qcow2" in value['upload_path']:
+                    file_output["components"] = self.build.get_rpm_list()
                 outputs.append(file_output)
         self._image_files = outputs
         return self._image_files
@@ -646,7 +680,7 @@ class Upload(_KojiBase):
                     "arch": self.build.basearch,
                     "name": "coreos-assembler"
                 },
-                "components": "",
+                "components": self.build.get_rpm_list('host'),
                 "extra": {
                     "coreos-assembler": {
                         "build_id": 1,
