@@ -558,6 +558,9 @@ func syncFindParentImageOptions() error {
 			}
 			qemuImageDirIsTemp = true
 		}
+		if parentCosaBuild.BuildArtifacts.Qemu == nil {
+			return fmt.Errorf("No QEMU in parent meta.json")
+		}
 		qcowURL := parentBaseURL + parentCosaBuild.BuildArtifacts.Qemu.Path
 		qcowLocal := filepath.Join(qemuImageDir, parentCosaBuild.BuildArtifacts.Qemu.Path)
 		decompressedQcowLocal, err := util.DownloadImageAndDecompress(qcowURL, qcowLocal, skipSignature)
