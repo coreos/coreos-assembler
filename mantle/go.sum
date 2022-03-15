@@ -90,8 +90,8 @@ github.com/coreos/ioprogress v0.0.0-20151023204047-4637e494fd9b h1:mpeSDqY0vMUyJ
 github.com/coreos/ioprogress v0.0.0-20151023204047-4637e494fd9b/go.mod h1:JIWRG8HSwVYUrjdR/JsFg7DEby0nhQcWFPIQvXJyih8=
 github.com/coreos/pkg v0.0.0-20180928190104-399ea9e2e55f h1:lBNOc5arjvs8E5mO2tbpBpLoyyu8B6e44T7hJy6potg=
 github.com/coreos/pkg v0.0.0-20180928190104-399ea9e2e55f/go.mod h1:E3G3o1h8I7cfcXa63jLwjI0eiQQMgzzUDFVpN/nH/eA=
-github.com/coreos/stream-metadata-go v0.1.7 h1:WlD8p2mcGZ/OtROJo0o4eJKK179p697wlVzipTv2Wjc=
-github.com/coreos/stream-metadata-go v0.1.7/go.mod h1:RTjQyHgO/G37oJ3qnqYK6Z4TPZ5EsaabOtfMjVXmgko=
+github.com/coreos/stream-metadata-go v0.1.8 h1:EbLlLia+Ekuqgh8nF4NNFs0jUqmhUbN4mWd1O8u8TQE=
+github.com/coreos/stream-metadata-go v0.1.8/go.mod h1:RTjQyHgO/G37oJ3qnqYK6Z4TPZ5EsaabOtfMjVXmgko=
 github.com/coreos/vcontext v0.0.0-20211021162308-f1dbbca7bef4 h1:pfSsrvbjUFGINaPGy0mm2QKQKTdq7IcbUa+nQwsz2UM=
 github.com/coreos/vcontext v0.0.0-20211021162308-f1dbbca7bef4/go.mod h1:HckqHnP/HI41vS0bfVjJ20u6jD0biI5+68QwZm5Xb9U=
 github.com/cpuguy83/go-md2man/v2 v2.0.0/go.mod h1:maD7wRr/U5Z6m/iR4s+kqSMx2CaBsrgA7czyZG/E6dU=

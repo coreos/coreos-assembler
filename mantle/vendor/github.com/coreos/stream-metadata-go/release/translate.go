@@ -132,6 +132,18 @@ func (releaseArch *Arch) toStreamArch(rel *Release) stream.Arch {
 		}
 	}
 
+	if releaseArch.Media.KubeVirt != nil {
+		artifacts["kubevirt"] = stream.PlatformArtifacts{
+			Release: rel.Release,
+			Formats: mapFormats(releaseArch.Media.KubeVirt.Artifacts),
+		}
+		if releaseArch.Media.KubeVirt.Image != nil {
+			cloudImages.KubeVirt = &stream.KubeVirtContainerDisk{
+				Image: releaseArch.Media.KubeVirt.Image.Image,
+			}
+		}
+	}
+
 	if releaseArch.Media.Digitalocean != nil {
 		artifacts["digitalocean"] = stream.PlatformArtifacts{
 			Release: rel.Release,
