@@ -67,6 +67,8 @@ systemd:
         [Service]
         Type=oneshot
         ExecStart=/usr/sbin/mkfs.xfs -L containers -m reflink=1 /dev/mapper/mpatha
+        # This is usually created by tmpfiles.d, but we run earlier than that.
+        ExecStart=/usr/bin/mkdir -p /var/lib/containers
 
         [Install]
         WantedBy=multi-user.target
