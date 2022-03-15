@@ -96,8 +96,10 @@ func (af *flight) NewCluster(rconf *platform.RuntimeConfig) (platform.Cluster, e
 	// tests on Azure.
 	// https://github.com/coreos/coreos-assembler/issues/1772
 	// https://docs.microsoft.com/en-us/azure/virtual-machines/linux/mac-create-ssh-keys#supported-ssh-key-formats
-	ac.sshKey = af.FakeSSHKey
-	//ac.sshKey = af.SSHKey
+	if !rconf.NoSSHKeyInMetadata {
+		ac.sshKey = af.FakeSSHKey
+		//ac.sshKey = af.SSHKey
+	}
 
 	ac.ResourceGroup, err = af.api.CreateResourceGroup("kola-cluster")
 	if err != nil {
