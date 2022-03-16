@@ -50,21 +50,25 @@ func stripControlCharacters(s string) string {
 	}, s)
 }
 
-func displayStatusMsg(status, msg string) {
+func displayStatusMsg(status, msg string, termMaxWidth int) {
 	s := strings.TrimSpace(msg)
 	if s == "" {
 		return
 	}
-	max := 100
-	if len(s) > max {
-		s = s[:max]
+	s = fmt.Sprintf("[%s] %s", status, stripControlCharacters(s))
+	if termMaxWidth > 0 && len(s) > termMaxWidth {
+		s = s[:termMaxWidth]
 	}
-	fmt.Printf("\033[2K\r[%s] %s", status, stripControlCharacters(s))
+	fmt.Printf("\033[2K\r%s", s)
 }
 
 func runDevShellSSH(ctx context.Context, builder *platform.QemuBuilder, conf *conf.Conf, sshCommand string) error {
 	if !terminal.IsTerminal(0) {
 		return fmt.Errorf("stdin is not a tty")
+	}
+	termMaxWidth, _, err := terminal.GetSize(0)
+	if err != nil {
+		termMaxWidth = 100
 	}
 
 	tmpd, err := ioutil.TempDir("", "kola-devshell")
@@ -175,7 +179,7 @@ func runDevShellSSH(ctx context.Context, builder *platform.QemuBuilder, conf *co
 		// a status message on the console.
 		case serialMsg := <-serialChan:
 			if !ready {
-				displayStatusMsg(statusMsg, serialMsg)
+				displayStatusMsg(statusMsg, serialMsg, termMaxWidth)
 			}
 			lastMsg = serialMsg
 		// monitor the err channel
@@ -189,7 +193,7 @@ func runDevShellSSH(ctx context.Context, builder *platform.QemuBuilder, conf *co
 
 		// monitor the instance state
 		case <-qemuWaitChan:
-			displayStatusMsg("DONE", "QEMU instance terminated")
+			displayStatusMsg("DONE", "QEMU instance terminated", termMaxWidth)
 			return nil
 
 		// monitor the machine state events from console/serial logs
@@ -220,17 +224,17 @@ func runDevShellSSH(ctx context.Context, builder *platform.QemuBuilder, conf *co
 					statusMsg = "QEMU guest is booting"
 				}
 			}
-			displayStatusMsg(fmt.Sprintf("EVENT | %s", statusMsg), lastMsg)
+			displayStatusMsg(fmt.Sprintf("EVENT | %s", statusMsg), lastMsg, termMaxWidth)
 
 		// monitor the SSH connection
 		case err := <-sc.errChan:
 			if err == nil {
 				sc.controlChan <- sshNotReady
-				displayStatusMsg("SESSION", "Clean exit from SSH, terminating instance")
+				displayStatusMsg("SESSION", "Clean exit from SSH, terminating instance", termMaxWidth)
 				return nil
 			} else if sshCommand != "" {
 				sc.controlChan <- sshNotReady
-				displayStatusMsg("SESSION", "SSH command exited, terminating instance")
+				displayStatusMsg("SESSION", "SSH command exited, terminating instance", termMaxWidth)
 				return err
 			}
 			if ready {
@@ -520,7 +524,7 @@ func (sc *sshClient) start() {
 		for scanner.Scan() {
 			msg := scanner.Text()
 			if strings.Contains(msg, "Connection to 127.0.0.1 closed") {
-				displayStatusMsg("SSH", "connection closed")
+				displayStatusMsg("SSH", "connection closed", 0)
 			}
 		}
 	}()
