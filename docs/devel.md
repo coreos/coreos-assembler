@@ -115,10 +115,12 @@ rebuild.
 $ pip3 install --user -r test-requirements.txt
 ```
 
-2. Run `pytest` on the `tests` directory
+2. Run `make unittest`
 
 ```
-$ pytest tests/
+$ make unittest
+COSA_TEST_META_PATH=`pwd`/fixtures \
+	PYTHONPATH=`pwd`/src python3 -m pytest tests/
 ============================= test session starts ==============================
 platform linux -- Python 3.7.3, pytest-4.6.3, py-1.8.0, pluggy-0.12.0
 rootdir: /var/home/steve/Tech/GITHUB/coreos-assembler, inifile: pytest.ini
