@@ -146,7 +146,7 @@ class BuildCli(Cli):
             help='Override build id, defaults to latest')
         self.add_argument(
             '--buildroot', env_var="BUILD_ROOT", default='builds',
-            help='Build diretory')
+            help='Build directory')
         self.add_argument(
             '--dump', default=False, action='store_true',
             help='Dump the manfiest and exit')
