@@ -16,7 +16,7 @@
   <VirtualSystem ovf:id="image">
     <Info>A virtual machine</Info>
     <Name>{vsphere_image_name}</Name>
-    <OperatingSystemSection ovf:id="80" ovf:version="6" vmw:osType="{vsphere_os_type}">
+    <OperatingSystemSection ovf:id="100" vmw:osType="{vsphere_os_type}">
       <Info>The kind of installed guest operating system</Info>
     </OperatingSystemSection>
     <VirtualHardwareSection ovf:transport="com.vmware.guestInfo">
