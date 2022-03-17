@@ -1,8 +1,15 @@
-# This file contains defaults for image.yaml that is used by create_disk.sh
+# This file contains defaults for image.yaml
+
 bootfs: "ext4"
 rootfs: "xfs"
 grub-script: "/usr/lib/coreos-assembler/grub.cfg"
+
 # True if we should use `ostree container image deploy`
 deploy-via-container: false
+
 # Set this to a target container reference, e.g. ostree-unverified-registry:quay.io/example/os:latest
 # container-imgref: ""
+
+# Defaults for VMware OVA, matching historical behavior
+vmware-hw-version: 13
+vmware-os-type: rhel7_64Guest
