@@ -148,9 +148,6 @@ class BuildCli(Cli):
             '--buildroot', env_var="BUILD_ROOT", default='builds',
             help='Build directory')
         self.add_argument(
-            '--dump', default=False, action='store_true',
-            help='Dump the manfiest and exit')
-        self.add_argument(
             '--schema', env_var="META_SCHEMA",
             default='/usr/lib/coreos-assembler/v1.json',
             help='Schema to use. Set to NONE to skip all validation')

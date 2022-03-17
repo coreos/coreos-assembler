@@ -37,7 +37,7 @@ def test_build_cli_additional_args():
     Ensure that BuildCli contains the expected additional default args
     """
     parser = BuildCli()
-    expected = ['--build', '--buildroot', '--dump']
+    expected = ['--build', '--buildroot']
     for action in parser._actions:
         for expect in expected:
             if expect in action.option_strings:
