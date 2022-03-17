@@ -65,8 +65,7 @@ class OVA(QemuVariantImage):
 
     def generate_ovf_parameters(self, vmdk, cpu=2,
                                 memory=4096, system_type="vmx-13",
-                                os_type="rhel7_64Guest", scsi="VirtualSCSI",
-                                network="VmxNet3"):
+                                os_type="rhel7_64Guest"):
         """
         Returns a dictionary with the parameters needed to create an OVF file
         based on the qemu, vmdk, and info from the build metadata
@@ -87,8 +86,6 @@ class OVA(QemuVariantImage):
             'vsphere_product_version':          version,
             'vsphere_virtual_system_type':      system_type,
             'vsphere_os_type':                  os_type,
-            'vsphere_scsi_controller_type':     scsi,
-            'vsphere_network_controller_type':  network,
             'vmdk_capacity':                    disk_info.get("virtual-size"),
             'vmdk_size':                        str(vmdk_size),
         }
