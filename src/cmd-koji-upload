@@ -794,7 +794,7 @@ Environment variables are supported:
     parent_parser.add_argument("--buildroot", default="builds",
                         help="Build diretory")
     parent_parser.add_argument("--dump", default=False, action='store_true',
-                        help="Dump the manfiest and exit")
+                        help="Dump the manifest and exit")
     parent_parser.add_argument("--no-upload", default=False, action='store_true',
                         help="Do not upload, just parse the build")
     parent_parser.add_argument("--arch", default=get_basearch(),
