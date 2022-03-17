@@ -94,12 +94,12 @@ esac
 
 bootfs=$(getconfig "bootfs")
 grub_script=$(getconfig "grub-script")
-ostree=$(getconfig "ostree-repo")
+ostree_container=$(getconfig "ostree-container")
 commit=$(getconfig "ostree-commit")
 ref=$(getconfig "ostree-ref")
 # We support not setting a remote name (used by RHCOS)
 remote_name=$(getconfig_def "ostree-remote" "")
-deploy_container=$(getconfig "deploy-container" "")
+deploy_via_container=$(getconfig "deploy-via-container" "")
 container_imgref=$(getconfig "container-imgref" "")
 os_name=$(getconfig "osname")
 rootfs_size=$(getconfig "rootfs-size")
@@ -262,18 +262,18 @@ fi
 # *not* the shell here.  Hence the backslash escape.
 allkargs="$extrakargs \$ignition_firstboot"
 
-if test -n "${deploy_container}"; then
+if test -n "${deploy_via_container}"; then
     kargsargs=""
     for karg in $allkargs
     do
         kargsargs+="--karg=$karg "
     done
-    ostree container image deploy --imgref "${deploy_container}" \
+    ostree container image deploy --imgref "${ostree_container}" \
         ${container_imgref:+--target-imgref $container_imgref} \
         --stateroot "$os_name" --sysroot $rootfs $kargsargs
 else
     # Pull the commit
-    time ostree pull-local --repo $rootfs/ostree/repo "$ostree" "$commit"
+    time ostree container unencapsulate --repo=$rootfs/ostree/repo "${ostree_container}"
     # Deploy it, using an optional remote prefix
     if test -n "${remote_name}"; then
         deploy_ref="${remote_name}:${ref}"
