@@ -21,6 +21,7 @@ import (
 	"io"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -476,9 +477,26 @@ func CheckMachine(ctx context.Context, m Machine) error {
 		return fmt.Errorf("not a supported instance: %v", string(out))
 	}
 
+	// check systemd version on host to see if we can use `busctl --json=short`
+	var systemdVer int
+	var failedUnitsCmd string
+	minSystemdVer := 240
+	out, stderr, err = m.SSH("rpm -q --queryformat='%{VERSION}\n' systemd")
+	if err != nil {
+		return fmt.Errorf("failed to query systemd RPM for version: %s: %v: %s", out, err, stderr)
+	}
+	// Fedora can use XXX.Y as a version string, so just use the major version
+	systemdVer, _ = strconv.Atoi(string(out[0:3]))
+
+	if systemdVer >= minSystemdVer {
+		failedUnitsCmd = "busctl --json=short call org.freedesktop.systemd1 /org/freedesktop/systemd1 org.freedesktop.systemd1.Manager ListUnitsFiltered as 2 state failed | jq -r '.data[][][0]'"
+	} else {
+		failedUnitsCmd = "systemctl --no-legend --state failed list-units | awk '{print $1}'"
+	}
+
 	if !m.RuntimeConf().AllowFailedUnits {
 		// Ensure no systemd units failed during boot
-		out, stderr, err = m.SSH("busctl --json=short call org.freedesktop.systemd1 /org/freedesktop/systemd1 org.freedesktop.systemd1.Manager ListUnitsFiltered as 2 state failed | jq -r '.data[][][0]'")
+		out, stderr, err = m.SSH(failedUnitsCmd)
 		if err != nil {
 			return fmt.Errorf("failed to query systemd for failed units: %s: %v: %s", out, err, stderr)
 		}
