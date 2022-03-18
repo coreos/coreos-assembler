@@ -45,7 +45,7 @@ type Dialer interface {
 // SSHAgent can manage keys, updates cloud config, and loves ponies.
 // The embedded dialer is used for establishing new SSH connections.
 type SSHAgent struct {
-	agent.Agent
+	agent.ExtendedAgent
 	Dialer
 	User         string
 	Socket       string
@@ -99,13 +99,13 @@ func NewSSHAgent(dialer Dialer) (*SSHAgent, error) {
 	}
 
 	a := &SSHAgent{
-		Agent:        keyring,
-		Dialer:       dialer,
-		User:         defaultUser,
-		Socket:       sockPath,
-		sockDir:      sockDir,
-		sockdirOwned: sockdirOwned,
-		listener:     listener,
+		ExtendedAgent: keyring.(agent.ExtendedAgent),
+		Dialer:        dialer,
+		User:          defaultUser,
+		Socket:        sockPath,
+		sockDir:       sockDir,
+		sockdirOwned:  sockdirOwned,
+		listener:      listener,
 	}
 
 	go func() {
