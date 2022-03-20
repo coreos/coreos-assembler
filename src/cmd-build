@@ -384,20 +384,21 @@ if [ "${commit}" == "${previous_commit}" ] && \
     fi
 else
     ostree_format=$(jq -r '.["ostree-format"]' < "${image_json}")
+    ostree_tarfile_path="${name}-${buildid}-ostree.${basearch}.ociarchive"
+    gitsrc=$(jq -r .git.origin < "${PWD}/coreos-assembler-config-git.json")
+    cmd=(ostree container encapsulate)
     case "${ostree_format}" in
-        null|oci)
-            ostree_tarfile_path="${name}-${buildid}-ostree.${basearch}.ociarchive"
-            gitsrc=$(jq -r .git.origin < "${PWD}/coreos-assembler-config-git.json")
-            runv ostree container encapsulate --repo="${tmprepo}" \
-                --label="coreos-assembler.image-config-checksum=${image_config_checksum}" \
-                --label="coreos-assembler.image-input-checksum=${image_input_checksum}" \
-                --label="org.opencontainers.image.source=${gitsrc}" \
-                --label="org.opencontainers.image.revision=${config_gitrev}" \
-                "${buildid}" \
-                oci-archive:"${ostree_tarfile_path}".tmp:latest
-            ;;
+        oci) ;;
+        oci-chunked) cmd=(rpm-ostree container-encapsulate) ;;
         *) fatal "Unknown ostree-format: ${ostree_format}"
     esac
+    runv "${cmd[@]}" --repo="${tmprepo}" \
+        --label="coreos-assembler.image-config-checksum=${image_config_checksum}" \
+        --label="coreos-assembler.image-input-checksum=${image_input_checksum}" \
+        --label="org.opencontainers.image.source=${gitsrc}" \
+        --label="org.opencontainers.image.revision=${config_gitrev}" \
+        "${buildid}" \
+        oci-archive:"${ostree_tarfile_path}".tmp:latest
     /usr/lib/coreos-assembler/finalize-artifact "${ostree_tarfile_path}"{.tmp,}
     ostree_tarfile_sha256=$(sha256sum "${ostree_tarfile_path}" | awk '{print$1}')
 fi
