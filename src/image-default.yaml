@@ -4,6 +4,8 @@ bootfs: "ext4"
 rootfs: "xfs"
 grub-script: "/usr/lib/coreos-assembler/grub.cfg"
 
+# Can also be oci-chunked
+ostree-format: oci
 # True if we should use `ostree container image deploy`
 deploy-via-container: false
 
