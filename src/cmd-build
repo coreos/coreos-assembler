@@ -402,7 +402,14 @@ else
             ;;
         null|oci)
             ostree_tarfile_path="${name}-${buildid}-ostree.${basearch}.ociarchive"
-            ostree container encapsulate --repo="${tmprepo}" "${buildid}" oci-archive:"${ostree_tarfile_path}".tmp:latest
+            gitsrc=$(jq -r .git.origin < "${PWD}/coreos-assembler-config-git.json")
+            runv ostree container encapsulate --repo="${tmprepo}" \
+                --label="coreos-assembler.image-config-checksum=${image_config_checksum}" \
+                --label="coreos-assembler.image-input-checksum=${image_input_checksum}" \
+                --label="org.opencontainers.image.source=${gitsrc}" \
+                --label="org.opencontainers.image.revision=${config_gitrev}" \
+                "${buildid}" \
+                oci-archive:"${ostree_tarfile_path}".tmp:latest
             ;;
         *) fatal "Unknown ostree-format: ${ostree_format}"
     esac

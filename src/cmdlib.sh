@@ -30,6 +30,12 @@ fatal() {
     exit 1
 }
 
+# Execute a command, also writing the cmdline to stdout
+runv() {
+    echo "Running: " "$@"
+    "$@"
+}
+
 # Get target base architecture
 basearch=$(python3 -c '
 import gi
