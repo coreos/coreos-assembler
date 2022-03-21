@@ -38,8 +38,8 @@ install_rpms() {
     local builddeps
     local frozendeps
 
-    # freeze kernel due to https://github.com/coreos/coreos-assembler/issues/2707
-    frozendeps=$(echo kernel{,-core,-modules}-5.15.18-200.fc35)
+    # no frozen deps right now
+    frozendeps=""
 
     # First, a general update; this is best practice.  We also hit an issue recently
     # where qemu implicitly depended on an updated libusbx but didn't have a versioned
