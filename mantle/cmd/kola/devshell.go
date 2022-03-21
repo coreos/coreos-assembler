@@ -505,7 +505,8 @@ func (sc *sshClient) start() {
 	if sc.cmd != "" {
 		sshArgs = append(sshArgs, "--", sc.cmd)
 	}
-	fmt.Printf("\033[2K\r") // clear serial console line
+	fmt.Printf("\033[2K\r")                // clear serial console line
+	fmt.Printf("[SESSION] Starting SSH\r") // and stage a status msg which will be erased
 	sshCmd := exec.Command(sshArgs[0], sshArgs[1:]...)
 	sshCmd.Stdin = os.Stdin
 	sshCmd.Stdout = os.Stdout
