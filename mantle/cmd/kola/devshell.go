@@ -31,6 +31,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/coreos/mantle/network"
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/platform/conf"
 	"github.com/coreos/mantle/util"
@@ -78,12 +79,18 @@ func runDevShellSSH(ctx context.Context, builder *platform.QemuBuilder, conf *co
 	defer os.RemoveAll(tmpd)
 
 	// Define SSH key
-	sshPubKeyBuf, sshKeyPath, err := util.CreateSSHAuthorizedKey(tmpd)
+	agent, err := network.NewSSHAgent(network.NewRetryDialer())
 	if err != nil {
 		return err
 	}
-	keys := []string{strings.TrimSpace(string(sshPubKeyBuf))}
-	conf.AddAuthorizedKeys("core", keys)
+	defer agent.Close()
+
+	keys, err := agent.List()
+	if err != nil {
+		return err
+	}
+
+	conf.CopyKeys(keys)
 	builder.SetConfig(conf)
 
 	// errChan communicates errors from go routines
@@ -161,7 +168,7 @@ func runDevShellSSH(ctx context.Context, builder *platform.QemuBuilder, conf *co
 	defer func() { fmt.Printf("\n\n") }() // make the console pretty again
 
 	// Start the SSH client
-	sc := newSshClient(ip, sshKeyPath, sshCommand)
+	sc := newSshClient(ip, agent.Socket, sshCommand)
 	go sc.controlStartStop()
 
 	ready := false
@@ -445,7 +452,7 @@ type sshClient struct {
 	mu          sync.Mutex
 	host        string
 	port        string
-	privKey     string
+	agent       string
 	cmd         string
 	controlChan chan sshControlMessage
 	errChan     chan error
@@ -453,7 +460,7 @@ type sshClient struct {
 }
 
 // newSshClient creates a new sshClient.
-func newSshClient(host, privKey, cmd string) *sshClient {
+func newSshClient(host, agent, cmd string) *sshClient {
 	parts := strings.Split(host, ":")
 	host = parts[0]
 	port := parts[1]
@@ -465,7 +472,7 @@ func newSshClient(host, privKey, cmd string) *sshClient {
 		mu:          sync.Mutex{},
 		host:        host,
 		port:        port,
-		privKey:     privKey,
+		agent:       agent,
 		controlChan: make(chan sshControlMessage),
 		errChan:     make(chan error),
 		// this could be a []string, but ssh sends it over as a string anyway, so meh...
@@ -493,10 +500,10 @@ func (sc *sshClient) start() {
 
 	sshArgs := []string{
 		"ssh", "-t",
-		"-i", sc.privKey,
 		"-o", "User=core",
 		"-o", "StrictHostKeyChecking=no",
 		"-o", "CheckHostIP=no",
+		"-o", "IdentityAgent=" + sc.agent,
 		"-o", "PreferredAuthentications=publickey",
 		"-p", sc.port, sc.host,
 	}
