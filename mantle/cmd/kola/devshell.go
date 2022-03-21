@@ -505,7 +505,7 @@ func (sc *sshClient) start() {
 	if sc.cmd != "" {
 		sshArgs = append(sshArgs, "--", sc.cmd)
 	}
-	fmt.Println("") // line break for prettier output
+	fmt.Printf("\033[2K\r") // clear serial console line
 	sshCmd := exec.Command(sshArgs[0], sshArgs[1:]...)
 	sshCmd.Stdin = os.Stdin
 	sshCmd.Stdout = os.Stdout
