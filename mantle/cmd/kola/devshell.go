@@ -498,7 +498,6 @@ func (sc *sshClient) start() {
 		"-i", sc.privKey,
 		"-o", "StrictHostKeyChecking=no",
 		"-o", "CheckHostIP=no",
-		"-o", "IdentityFile=/dev/null",
 		"-p", sc.port,
 		fmt.Sprintf("%s@%s", sc.user, sc.host),
 	}
