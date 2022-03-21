@@ -161,7 +161,7 @@ func runDevShellSSH(ctx context.Context, builder *platform.QemuBuilder, conf *co
 	defer func() { fmt.Printf("\n\n") }() // make the console pretty again
 
 	// Start the SSH client
-	sc := newSshClient("core", ip, sshKeyPath, sshCommand)
+	sc := newSshClient(ip, sshKeyPath, sshCommand)
 	go sc.controlStartStop()
 
 	ready := false
@@ -443,7 +443,6 @@ const (
 // sshClient represents a single SSH session.
 type sshClient struct {
 	mu          sync.Mutex
-	user        string
 	host        string
 	port        string
 	privKey     string
@@ -454,7 +453,7 @@ type sshClient struct {
 }
 
 // newSshClient creates a new sshClient.
-func newSshClient(user, host, privKey, cmd string) *sshClient {
+func newSshClient(host, privKey, cmd string) *sshClient {
 	parts := strings.Split(host, ":")
 	host = parts[0]
 	port := parts[1]
@@ -464,7 +463,6 @@ func newSshClient(user, host, privKey, cmd string) *sshClient {
 
 	return &sshClient{
 		mu:          sync.Mutex{},
-		user:        user,
 		host:        host,
 		port:        port,
 		privKey:     privKey,
@@ -496,11 +494,11 @@ func (sc *sshClient) start() {
 	sshArgs := []string{
 		"ssh", "-t",
 		"-i", sc.privKey,
+		"-o", "User=core",
 		"-o", "StrictHostKeyChecking=no",
 		"-o", "CheckHostIP=no",
 		"-o", "PreferredAuthentications=publickey",
-		"-p", sc.port,
-		fmt.Sprintf("%s@%s", sc.user, sc.host),
+		"-p", sc.port, sc.host,
 	}
 	if sc.cmd != "" {
 		sshArgs = append(sshArgs, "--", sc.cmd)
