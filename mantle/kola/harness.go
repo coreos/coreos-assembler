@@ -586,6 +586,9 @@ func runProvidedTests(testsBank map[string]*register.Test, patterns []string, mu
 	var nonExclusiveTests []*register.Test
 	for _, test := range tests {
 		if test.NonExclusive {
+			if test.ExternalTest == "" {
+				plog.Fatalf("Tests compiled in kola must be exclusive: %v", test.Name)
+			}
 			nonExclusiveTests = append(nonExclusiveTests, test)
 			delete(tests, test.Name)
 		}
