@@ -159,6 +159,16 @@ For more examples, look at the
 suite of tests under kola. These tests were ported into kola and make
 heavy use of the native code interface.
 
+## kola non-exclusive tests
+
+Some tests are light weight and do not involve complex interactions like reboots
+and multiple machines. Tests that are not expected to conflict with other tests can be
+marked as "non-exclusive", so that they are run in the same VM to save resources.
+
+External tests can be marked as non-exclusive via kola.json or an inline tag. 
+Note: tests compiled in kola (non external tests) cannot be marked as non-exclusive. 
+This is deliberate as tests compiled in kola should be complex and thus exclusive.
+
 ## Manhole
 
 The `platform.Manhole()` function creates an interactive SSH session which can
