@@ -698,7 +698,7 @@ func setupMultipleNetworkTest(c cluster.TestCluster, primaryMac, secondaryMac st
 					"name": "capture-macs.service"
 				},
 				{
-					"contents": "[Unit]\nDescription=Setup OVS bonding\nBefore=ovs-configuration.service\nAfter=NetworkManager.service\nAfter=openvswitch.service\nAfter=capture-macs.service\n\n[Service]\nType=oneshot\nExecStart=/usr/local/bin/setup-ovs\n\n[Install]\nRequiredBy=multi-user.target\n",
+					"contents": "[Unit]\nDescription=Setup OVS bonding\nBefore=ovs-configuration.service\nAfter=NetworkManager.service\nAfter=openvswitch.service\nAfter=capture-macs.service\nConditionKernelCommandLine=macAddressList\n\n[Service]\nType=oneshot\nExecStart=/usr/local/bin/setup-ovs\n\n[Install]\nRequiredBy=multi-user.target\n",
 					"enabled": true,
 					"name": "setup-ovs.service"
 				}
