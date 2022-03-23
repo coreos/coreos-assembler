@@ -652,10 +652,15 @@ EOF
                     -append "root=/dev/vda console=${DEFAULT_TERMINAL} selinux=1 enforcing=0 autorelabel=1" \
                    )
 
-    # support local dev cases where src/config is a symlink
+    # support local dev cases where src/config is a symlink.  Note if you change or extend to this set,
+    # you also need to update supermin-init-prelude.sh to mount it inside the VM.
     if [ -L "${workdir}/src/config" ]; then
         # qemu follows symlinks
         base_qemu_args+=("-virtfs" 'local,id=source,path='"${workdir}"'/src/config,security_model=none,mount_tag=source')
+    fi
+    # Current RHCOS pipeline makes builds/ a PVC
+    if [ -L "${workdir}/builds" ]; then
+        base_qemu_args+=("-virtfs" 'local,id=builds,path='"${workdir}"'/builds,security_model=none,mount_tag=builds')
     fi
 
     if [ -z "${RUNVM_SHELL:-}" ]; then
