@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Currently used to determine the version of `oc` we install
+OCP_VERSION=4.10
+
 # Detect what platform we are on
 if ! grep -q '^Fedora' /etc/redhat-release; then
     echo 1>&2 "should be on either Fedora"
@@ -87,6 +90,14 @@ install_rpms() {
     yum clean all
 }
 
+# For now, we ship `oc` in coreos-assembler as {Fedora,RHEL} CoreOS is an essential part of OCP4,
+# and it is very useful to have in the same place/flow as where we do builds/tests related
+# to CoreOS.
+install_ocp_tools() {
+    curl -L https://mirror.openshift.com/pub/openshift-v4/"$(arch)"/clients/ocp/latest-$OCP_VERSION/openshift-client-linux.tar.gz | tar zxf - oc \
+        && mv oc /usr/bin
+}
+
 make_and_makeinstall() {
     make && make install
 }
@@ -137,5 +148,6 @@ else
   install_rpms
   write_archive_info
   make_and_makeinstall
+  install_ocp_tools
   configure_user
 fi
