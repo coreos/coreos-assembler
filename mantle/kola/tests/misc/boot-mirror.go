@@ -194,14 +194,21 @@ func bootMirrorSanityTest(c cluster.TestCluster, m platform.Machine, devices []s
 		c.AssertCmdOutputContains(m, "findmnt -nvr /boot -o FSTYPE", "ext4")
 		// Check that growpart didn't run
 		c.RunCmdSync(m, "if [ -e /run/coreos-growpart.stamp ]; then exit 1; fi")
-		// Check for binding dropins
+		// Check that we took ownership of the rootfs
 		c.RunCmdSync(m, "sudo test -f /boot/.root_uuid")
-		c.RunCmdSync(m, "sudo test -f /boot/grub2/bootuuid.cfg")
-		for _, dev := range devices {
-			c.RunCmdSync(m, fmt.Sprintf(`
-				sudo mount -o ro %s2 /boot/efi
-				sudo sh -c 'test -f /boot/efi/EFI/*/bootuuid.cfg'
-				sudo umount /boot/efi`, dev))
+		// Check for bootuuid dropins where available
+		switch system.RpmArch() {
+		case "s390x":
+		case "x86_64", "aarch64":
+			for _, dev := range devices {
+				c.RunCmdSync(m, fmt.Sprintf(`
+					sudo mount -o ro %s2 /boot/efi
+					sudo sh -c 'test -f /boot/efi/EFI/*/bootuuid.cfg'
+					sudo umount /boot/efi`, dev))
+			}
+			fallthrough
+		case "ppc64le":
+			c.RunCmdSync(m, "sudo test -f /boot/grub2/bootuuid.cfg")
 		}
 	})
 }
