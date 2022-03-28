@@ -21,6 +21,7 @@ import (
 	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/platform/conf"
+	"github.com/coreos/mantle/system"
 )
 
 var (
@@ -125,13 +126,21 @@ func verifyMultipathBoot(c cluster.TestCluster, m platform.Machine) {
 }
 
 func verifyBootDropins(c cluster.TestCluster, m platform.Machine, checkBootuuid bool) {
+	// Check that we took ownership of the rootfs
 	c.RunCmdSync(m, "sudo test -f /boot/.root_uuid")
 	if checkBootuuid {
-		c.RunCmdSync(m, "sudo test -f /boot/grub2/bootuuid.cfg")
-		c.RunCmdSync(m, `
-			sudo mount -o ro /dev/disk/by-label/EFI-SYSTEM /boot/efi
-			sudo sh -c 'test -f /boot/efi/EFI/*/bootuuid.cfg'
-			sudo umount /boot/efi`)
+		// Check for bootuuid dropins where available
+		switch system.RpmArch() {
+		case "s390x":
+		case "x86_64", "aarch64":
+			c.RunCmdSync(m, `
+				sudo mount -o ro /dev/disk/by-label/EFI-SYSTEM /boot/efi
+				sudo sh -c 'test -f /boot/efi/EFI/*/bootuuid.cfg'
+				sudo umount /boot/efi`)
+			fallthrough
+		case "ppc64le":
+			c.RunCmdSync(m, "sudo test -f /boot/grub2/bootuuid.cfg")
+		}
 	}
 }
 
