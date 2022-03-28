@@ -15,11 +15,7 @@ import argparse
 import json
 import logging as log
 import os
-import shutil
 import sys
-import tarfile
-import tempfile
-import urllib.request
 
 
 COSA_PATH = os.path.dirname(os.path.abspath(__file__))
@@ -33,7 +29,6 @@ from cosalib.cmdlib import (
 os.environ["PATH"] = f"{os.getcwd()}:{COSA_PATH}:{os.environ.get('PATH')}"
 OCP_SERVER = "https://api.ci.openshift.org"
 OCP_RELEASE_STREAM = "quay.io/openshift-release-dev/ocp-release"
-OCP_TOOL_MIRROR = "https://mirror.openshift.com/pub/openshift-v4/clients/oc/{ocp_ver}/linux/oc.tar.gz"
 
 log.basicConfig(
     format='[%(levelname)s]: %(message)s',
@@ -53,32 +48,6 @@ def ocp_versions(meta):
     ocp_major, ocp_minor = list(ostree_v[0])
     os_major, os_minor = list(ostree_v[1])
     return (f"{ocp_major}.{ocp_minor}", f"{os_major}.{os_minor}")
-
-
-def fetch_ocp_bin(ocp_ver):
-    """
-    Download the specific release oc binary
-    """
-    ret = f"{os.getcwd()}/oc-{ocp_ver}"
-    if os.path.exists(ret):
-        log.warning(f"{ret} already exists, skipping download")
-        return ret
-
-    url = OCP_TOOL_MIRROR.format(ocp_ver=ocp_ver)
-    log.info(f"Downloading oc tool from {url}")
-
-    oc_gz = tempfile.NamedTemporaryFile()
-    oc_bin = tempfile.NamedTemporaryFile()
-
-    with urllib.request.urlopen(url) as data:
-        shutil.copyfileobj(data, oc_gz)
-
-    with tarfile.open(oc_gz.name, mode='r:gz') as td:
-        shutil.copyfileobj(td.extractfile("oc"), oc_bin)
-
-    shutil.copyfile(oc_bin.name, ret)
-    os.chmod(ret, 0o755)
-    return ret
 
 
 def release_stream(meta, args, ocp_ver):
@@ -131,9 +100,7 @@ if __name__ == '__main__':
     parser.add_argument('--server', action="store",
                         default=OCP_SERVER,
                         help="server to get releases from")
-    parser.add_argument('--fetch-bin', action='store_true',
-                        help="download the oc binary, overrides --oc-bin"),
-    parser.add_argument('--oc-bin', action="store", default="",
+    parser.add_argument('--oc-bin', action="store", default="oc",
                         help="Openshift ocp binary")
     parser.add_argument("--dry-run", default=False, action='store_true')
 
@@ -152,18 +119,7 @@ if __name__ == '__main__':
     log.info(f"Generating payload for {ocp_ver} for OS Version {os_ver}")
     from_release = release_stream(meta, args, ocp_ver)
 
-    oc_bin = args.oc_bin
-    if args.fetch_bin:
-        oc_bin = fetch_ocp_bin(ocp_ver)
-        log.info(f"Wrote {os.getcwd()}/{oc_bin}")
-    elif oc_bin == "":
-        oc_bin = shutil.which(f"oc-{ocp_ver}")
-
-    if oc_bin is None:
-        raise Exception("missing ocp binary: please use --fetch-bin, --ocp-bin "
-                        f"or add oc-{ocp_ver} to the path")
-
-    cmd = [oc_bin, "adm", "release", "new", "-a", args.authfile]
+    cmd = [args.oc_bin, "adm", "release", "new", "-a", args.authfile]
     if ocp_ver:
         cmd.extend(["-n", "ocp"])
 
