@@ -1,4 +1,5 @@
-// Copyright 2016 CoreOS, Inc.
+// Copyright 2022 Red Hat
+// Copyright 2018 CoreOS, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,49 +16,63 @@
 package azure
 
 import (
-	"time"
+	"encoding/json"
+	"fmt"
+	"os"
 
 	"github.com/spf13/cobra"
-
-	"github.com/coreos/mantle/platform/api/azure"
 )
 
 var (
 	cmdCreateImage = &cobra.Command{
-		Use:   "create-image",
-		Short: "Create Azure image",
-		Long:  "Create Azure image from a local VHD file",
-		RunE:  runCreateImage,
+		Use:     "create-image",
+		Short:   "Create Azure image",
+		Long:    "Create Azure image from a blob url",
+		RunE:    runCreateImage,
+		Aliases: []string{"create-image-arm"},
 
 		SilenceUsage: true,
 	}
 
-	// create image options
-	md azure.OSImage
+	imageName     string
+	blobUrl       string
+	resourceGroup string
 )
-
-func today() string {
-	return time.Now().Format("2006-01-02")
-}
 
 func init() {
 	sv := cmdCreateImage.Flags().StringVar
 
-	sv(&md.Name, "name", "", "image name")
-	sv(&md.Label, "label", "", "image label")
-	sv(&md.Description, "description", "", "image description")
-	sv(&md.MediaLink, "blob", "", "source blob url")
-	sv(&md.ImageFamily, "family", "", "image family")
-	sv(&md.PublishedDate, "published-date", today(), "image published date, parsed as RFC3339")
-	sv(&md.RecommendedVMSize, "recommended-vm-size", "Medium", "recommended VM size")
-	sv(&md.IconURI, "icon-uri", "coreos-globe-color-lg-100px.png", "icon URI")
-	sv(&md.SmallIconURI, "small-icon-uri", "coreos-globe-color-lg-45px.png", "small icon URI")
+	sv(&imageName, "image-name", "", "image name")
+	sv(&blobUrl, "image-blob", "", "source blob url")
+	sv(&resourceGroup, "resource-group", "kola", "resource group name")
 
 	Azure.AddCommand(cmdCreateImage)
 }
 
 func runCreateImage(cmd *cobra.Command, args []string) error {
-	md.Category = "Public"
-	md.OS = "Linux"
-	return api.AddOSImage(&md)
+	if err := api.SetupClients(); err != nil {
+		fmt.Fprintf(os.Stderr, "setting up clients: %v\n", err)
+		os.Exit(1)
+	}
+	img, err := api.CreateImage(imageName, resourceGroup, blobUrl)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Couldn't create image: %v\n", err)
+		os.Exit(1)
+	}
+	if img.ID == nil {
+		fmt.Fprintf(os.Stderr, "received nil image\n")
+		os.Exit(1)
+	}
+	err = json.NewEncoder(os.Stdout).Encode(&struct {
+		ID       *string
+		Location *string
+	}{
+		ID:       img.ID,
+		Location: img.Location,
+	})
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Couldn't encode result: %v\n", err)
+		os.Exit(1)
+	}
+	return nil
 }
