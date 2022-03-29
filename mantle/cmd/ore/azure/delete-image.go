@@ -1,4 +1,4 @@
-// Copyright 2019 Red Hat
+// Copyright 2022 Red Hat
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,10 +23,11 @@ import (
 
 var (
 	cmdDeleteImage = &cobra.Command{
-		Use:   "delete-image-arm",
-		Short: "Delete Azure image",
-		Long:  "Remove an image from Azure.",
-		RunE:  runDeleteImage,
+		Use:     "delete-image",
+		Short:   "Delete Azure image",
+		Long:    "Remove an image from Azure.",
+		RunE:    runDeleteImage,
+		Aliases: []string{"delete-image-arm"},
 
 		SilenceUsage: true,
 	}
