@@ -15,7 +15,7 @@ def remove_azure_image(image, resource_group, auth, profile):
             'ore', 'azure',
             '--azure-auth', auth,
             '--azure-profile', profile,
-            'delete-image-arm',
+            'delete-image',
             '--image-name', image,
             '--resource-group', resource_group
         ])
@@ -39,7 +39,7 @@ def azure_run_ore(build, args):
     ore_args = [
         'ore',
         '--log-level', args.log_level,
-        'azure', 'upload-blob-arm',
+        'azure', 'upload-blob',
         '--azure-auth', args.auth,
         '--azure-location', args.location,
         '--azure-profile', args.profile,
