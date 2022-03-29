@@ -96,6 +96,27 @@ func (a *API) GetBlob(storageaccount, storagekey, container, name string) (io.Re
 	return bsc.GetBlob(container, name)
 }
 
+// DeleteBlob deletes the given blob specified by the given storage account,
+// container, and blob name.
+func (a *API) DeleteBlob(storageaccount, storagekey, container, blob string) error {
+	sc, err := storage.NewClient(storageaccount, storagekey, a.opts.StorageEndpointSuffix, storage.DefaultAPIVersion, true)
+	if err != nil {
+		return err
+	}
+
+	bsc := sc.GetBlobService()
+	if _, err = bsc.CreateContainerIfNotExists(container, storage.ContainerAccessTypePrivate); err != nil {
+		return err
+	}
+
+	err = bsc.DeleteBlob(container, blob, nil)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // UploadBlob uploads vhd to the given storage account, container, and blob name.
 //
 // It returns BlobExistsError if the blob exists and overwrite is not true.
