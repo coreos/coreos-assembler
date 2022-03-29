@@ -123,7 +123,9 @@ if [ $# -ne 0 ]; then
   # Run the function specified by the calling script
   ${1}
 else
-  # Otherwise, just run all the steps
+  # Otherwise, just run all the steps.  NOTE: This is presently not actually
+  # used in `Dockerfile`, so if you add a stage you'll need to do it both
+  # here and there.
   configure_yum_repos
   install_rpms
   write_archive_info
