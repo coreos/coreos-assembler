@@ -6,7 +6,6 @@ github.com/Azure/azure-sdk-for-go/arm/network
 github.com/Azure/azure-sdk-for-go/arm/resources/resources
 github.com/Azure/azure-sdk-for-go/arm/storage
 github.com/Azure/azure-sdk-for-go/management
-github.com/Azure/azure-sdk-for-go/management/location
 github.com/Azure/azure-sdk-for-go/management/storageservice
 github.com/Azure/azure-sdk-for-go/storage
 # github.com/Azure/go-autorest v9.1.0+incompatible

@@ -54,18 +54,6 @@ type OSImage struct {
 	PricingDetailLink string  `xml:",omitempty"` // Specifies a URL for an image with IsPremium set to true, which contains the pricing details for a virtual machine that is created from the image.
 }
 
-var azureImageShareURL = "services/images/%s/share?permission=%s"
-
-func (a *API) ShareImage(image, permission string) error {
-	url := fmt.Sprintf(azureImageShareURL, image, permission)
-	op, err := a.client.SendAzurePutRequest(url, "", nil)
-	if err != nil {
-		return err
-	}
-
-	return a.client.WaitForOperation(op, nil)
-}
-
 func IsConflictError(err error) bool {
 	azerr, ok := err.(management.AzureError)
 	return ok && azerr.Code == "ConflictError"
