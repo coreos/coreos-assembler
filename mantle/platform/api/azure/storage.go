@@ -15,19 +15,13 @@
 package azure
 
 import (
-	"encoding/xml"
 	"fmt"
 	"net/url"
 	"path"
 	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/arm/storage"
-	"github.com/Azure/azure-sdk-for-go/management"
 	"github.com/Azure/azure-sdk-for-go/management/storageservice"
-)
-
-var (
-	azureImageURL = "services/images"
 )
 
 func (a *API) GetStorageServiceKeys(account string) (storageservice.GetStorageServiceKeysResponse, error) {
@@ -36,45 +30,6 @@ func (a *API) GetStorageServiceKeys(account string) (storageservice.GetStorageSe
 
 func (a *API) GetStorageServiceKeysARM(account, resourceGroup string) (storage.AccountListKeysResult, error) {
 	return a.accClient.ListKeys(resourceGroup, account)
-}
-
-// https://msdn.microsoft.com/en-us/library/azure/jj157192.aspx
-func (a *API) AddOSImage(md *OSImage) error {
-	data, err := xml.Marshal(md)
-	if err != nil {
-		return err
-	}
-
-	op, err := a.client.SendAzurePostRequest(azureImageURL, data)
-	if err != nil {
-		return err
-	}
-
-	return a.client.WaitForOperation(op, nil)
-}
-
-func (a *API) OSImageExists(name string) (bool, error) {
-	url := fmt.Sprintf("%s/%s", azureImageURL, name)
-	response, err := a.client.SendAzureGetRequest(url)
-	if err != nil {
-		if management.IsResourceNotFoundError(err) {
-			return false, nil
-		}
-
-		return false, err
-	}
-
-	var image OSImage
-
-	if err := xml.Unmarshal(response, &image); err != nil {
-		return false, err
-	}
-
-	if image.Name == name {
-		return true, nil
-	}
-
-	return false, nil
 }
 
 func (a *API) UrlOfBlob(account, container, blob string) *url.URL {
