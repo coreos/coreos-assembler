@@ -15,11 +15,6 @@
 package azure
 
 import (
-	"bufio"
-	"fmt"
-	"net/http"
-	"strings"
-
 	"github.com/Azure/azure-sdk-for-go/arm/compute"
 )
 
@@ -42,37 +37,6 @@ func (a *API) CreateImage(name, resourceGroup, blobURI string) (compute.Image, e
 	}
 
 	return a.imgClient.Get(resourceGroup, name, "")
-}
-
-// resolveImage is used to ensure that either a Version or DiskURI
-// are provided present for a run. If neither is given via arguments
-// it attempts to parse the Version from the version.txt in the Sku's
-// release bucket.
-func (a *API) resolveImage() error {
-	// immediately return if the version has been set or if the channel
-	// is not set via the Sku (this happens in ore)
-	if a.opts.DiskURI != "" || a.opts.Version != "" || a.opts.Sku == "" {
-		return nil
-	}
-
-	resp, err := http.DefaultClient.Get(fmt.Sprintf("https://%s.release.core-os.net/amd64-usr/current/version.txt", a.opts.Sku))
-	if err != nil {
-		return fmt.Errorf("unable to fetch release bucket %v version: %v", a.opts.Sku, err)
-	}
-
-	scanner := bufio.NewScanner(resp.Body)
-	for scanner.Scan() {
-		line := strings.SplitN(scanner.Text(), "=", 2)
-		if len(line) != 2 {
-			continue
-		}
-		if line[0] == "COREOS_VERSION" {
-			a.opts.Version = line[1]
-			return nil
-		}
-	}
-
-	return fmt.Errorf("couldn't find COREOS_VERSION in version.txt")
 }
 
 // DeleteImage removes Azure image
