@@ -45,7 +45,6 @@ var (
 func init() {
 	cmdRelease.Flags().StringVar(&awsCredentialsFile, "aws-credentials", "", "AWS credentials file")
 	cmdRelease.Flags().StringVar(&selectedDistro, "distro", "fcos", "system to release")
-	cmdRelease.Flags().StringVar(&azureProfile, "azure-profile", "", "Azure Profile json file")
 	cmdRelease.Flags().BoolVarP(&releaseDryRun, "dry-run", "n", false,
 		"perform a trial run, do not make changes")
 	AddSpecFlags(cmdRelease.Flags())
