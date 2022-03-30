@@ -468,6 +468,10 @@ class Upload(_KojiBase):
         self._reserve_id_file = None
         self._retry_attempts = 2
         self._uploaded = False
+        self._s3 = None
+        self._s3_bucket = None
+        self._s3_key = None
+        self._s3_url = None
 
         if self._tag is None:
             raise Exception("build tag must be set")
@@ -590,6 +594,14 @@ class Upload(_KojiBase):
                     self._token = self.build.meta['koji']['token']
             except:
                 pass
+
+        if self._s3 is not None:
+            self.build.meta['s3'] = {
+                'bucket': self._s3_bucket,
+                'key': self._s3_key,
+                'public-url': self._s3_url
+            }
+            self.build.meta_write()
 
         source = self.build.get_meta_key(
             "meta", self.build.ckey("container-config-git"))
@@ -841,6 +853,18 @@ Environment variables are supported:
         '--reserve-id-state-file', required=False,
         help='Uses the path for a reservation file previous created')
 
+    upload_cmd.add_argument(
+        '--s3-bucket', required=False,
+        help='Store bucket information in meta.json')
+
+    upload_cmd.add_argument(
+        '--s3-key', required=False,
+        help='Store key information in meta.json')
+
+    upload_cmd.add_argument(
+        '--s3-url', required=False,
+        help='Store url information in meta.json')
+
     args, extra_args = parser.parse_known_args()
     set_logger(args.log_level)
 
@@ -873,6 +897,12 @@ Environment variables are supported:
             Reserve(args.profile).reserve_id(build)
         if args.reserve_id_state_file:
             upload._reserve_id_file = args.reserve_id_state_file
+        if args.s3_bucket or args.s3_key or args.s3_url:
+            upload._s3 = True
+            upload._s3_bucket = args.s3_bucket
+            upload._s3_key = args.s3_key
+            upload._s3_url = args.s3_url
+
         build.build_artifacts()
         upload.upload()
     elif args._command == 'reserve-id':
