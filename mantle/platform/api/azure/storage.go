@@ -16,28 +16,13 @@ package azure
 
 import (
 	"fmt"
-	"net/url"
-	"path"
 	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/arm/storage"
-	"github.com/Azure/azure-sdk-for-go/management/storageservice"
 )
-
-func (a *API) GetStorageServiceKeys(account string) (storageservice.GetStorageServiceKeysResponse, error) {
-	return storageservice.NewClient(a.client).GetStorageServiceKeys(account)
-}
 
 func (a *API) GetStorageServiceKeysARM(account, resourceGroup string) (storage.AccountListKeysResult, error) {
 	return a.accClient.ListKeys(resourceGroup, account)
-}
-
-func (a *API) UrlOfBlob(account, container, blob string) *url.URL {
-	return &url.URL{
-		Scheme: "https",
-		Host:   fmt.Sprintf("%s.blob.%s", account, a.opts.StorageEndpointSuffix),
-		Path:   path.Join(container, blob),
-	}
 }
 
 func (a *API) CreateStorageAccount(resourceGroup string) (string, error) {
