@@ -21,7 +21,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/arm/storage"
 )
 
-func (a *API) GetStorageServiceKeysARM(account, resourceGroup string) (storage.AccountListKeysResult, error) {
+func (a *API) GetStorageServiceKeys(account, resourceGroup string) (storage.AccountListKeysResult, error) {
 	return a.accClient.ListKeys(resourceGroup, account)
 }
 

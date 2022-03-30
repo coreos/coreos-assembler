@@ -48,7 +48,7 @@ func runDeleteBlob(cmd *cobra.Command, args []string) {
 		plog.Fatalf("setting up clients: %v\n", err)
 	}
 
-	kr, err := api.GetStorageServiceKeysARM(dbo.storageacct, resourceGroup)
+	kr, err := api.GetStorageServiceKeys(dbo.storageacct, resourceGroup)
 	if err != nil {
 		plog.Fatalf("Fetching storage service keys failed: %v", err)
 	}
