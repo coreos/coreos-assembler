@@ -27,13 +27,7 @@ var (
 		Use:   "plume [command]",
 		Short: "The CoreOS release utility",
 	}
-
-	gceJSONKeyFile string
 )
-
-func init() {
-	root.PersistentFlags().StringVar(&gceJSONKeyFile, "gce-json-key", "", "use a JSON key for authentication")
-}
 
 func main() {
 	cli.Execute(root)
