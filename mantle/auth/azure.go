@@ -15,7 +15,6 @@
 package auth
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -44,10 +43,6 @@ type Options struct {
 	SubscriptionName string
 	SubscriptionID   string
 
-	// Azure API endpoint. If unset, the Azure SDK default will be used.
-	ManagementURL         string
-	ManagementCertificate []byte
-
 	// Azure Storage API endpoint suffix. If unset, the Azure SDK default will be used.
 	StorageEndpointSuffix string
 }
@@ -61,7 +56,6 @@ type AzureEnvironment struct {
 	AzureDataLakeStoreFileSystemEndpointSuffix        string `json:"azureDataLakeStoreFileSystemEndpointSuffix"`
 	GalleryEndpointURL                                string `json:"galleryEndpointUrl"`
 	KeyVaultDNSSuffix                                 string `json:"keyVaultDnsSuffix"`
-	ManagementEndpointURL                             string `json:"managementEndpointUrl"`
 	Name                                              string `json:"name"`
 	PortalURL                                         string `json:"portalUrl"`
 	PublishingProfileURL                              string `json:"publishingProfileUrl"`
@@ -71,20 +65,13 @@ type AzureEnvironment struct {
 	StorageEndpointSuffix                             string `json:"storageEndpointSuffix"`
 }
 
-type AzureManagementCertificate struct {
-	Cert string `json:"cert"`
-	Key  string `json:"key"`
-}
-
 type AzureSubscription struct {
-	EnvironmentName       string                     `json:"environmentName"`
-	ID                    string                     `json:"id"`
-	IsDefault             bool                       `json:"isDefault"`
-	ManagementCertificate AzureManagementCertificate `json:"managementCertificate"`
-	ManagementEndpointURL string                     `json:"managementEndpointUrl"`
-	Name                  string                     `json:"name"`
-	RegisteredProviders   []string                   `json:"registeredProviders"`
-	State                 string                     `json:"state"`
+	EnvironmentName     string   `json:"environmentName"`
+	ID                  string   `json:"id"`
+	IsDefault           bool     `json:"isDefault"`
+	Name                string   `json:"name"`
+	RegisteredProviders []string `json:"registeredProviders"`
+	State               string   `json:"state"`
 }
 
 // AzureProfile represents a parsed Azure Profile Configuration File.
@@ -100,10 +87,8 @@ func (ap *AzureProfile) AsOptions() []Options {
 
 	for _, sub := range ap.Subscriptions {
 		newo := Options{
-			SubscriptionName:      sub.Name,
-			SubscriptionID:        sub.ID,
-			ManagementURL:         sub.ManagementEndpointURL,
-			ManagementCertificate: bytes.Join([][]byte{[]byte(sub.ManagementCertificate.Key), []byte(sub.ManagementCertificate.Cert)}, []byte("\n")),
+			SubscriptionName: sub.Name,
+			SubscriptionID:   sub.ID,
 		}
 
 		// find the storage endpoint for the subscription
