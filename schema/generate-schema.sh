@@ -1,21 +1,16 @@
 #!/bin/bash -xe
-mydir=$(readlink -f $(dirname $(basename $0)))
+mydir=$(dirname $(readlink -f $0))
 tdir="${mydir}/tmp"
 mkdir -p "${tdir}"
 trap "rm -rfv ${tdir}" EXIT
 
-export GOBIN="$(readlink -f ../tools/bin)"
-if [ ! -x "${GOBIN}/schematyper" ]; then
-    make -C ../tools
-fi
-
 schema_version="v1"
-schema_json="../schema/${schema_version}.json"
+schema_json="${schema_version}.json"
 echo "Generating COSA Schema ${schema_version}"
 
 out="${tdir}/cosa_${schema_version}.go"
 
-"${GOBIN}/schematyper" \
+"schematyper" \
     "${schema_version}.json" \
     -o "${out}" \
     --package="cosa" \
