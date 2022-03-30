@@ -102,53 +102,6 @@ def test_rm_allow_noent(tmpdir):
     cmdlib.rm_allow_noent(test_path)
 
 
-def test_import_ostree_commit(monkeypatch, tmpdir):
-    """
-    Verify the correct ostree/tar commands are executed when
-    import_ostree_commit is called.
-    """
-    repo_tmp = os.path.join(tmpdir, 'tmp')
-    os.mkdir(repo_tmp)
-
-    class monkeyspcheck_call:
-        """
-        Verifies each subprocess.check_call matches what is required.
-        """
-        check_call_count = 0
-
-        def __call__(self, *args, **kwargs):
-            if self.check_call_count == 0:
-                assert args[0] == [
-                    'ostree', 'init', '--repo', tmpdir, '--mode=archive']
-            if self.check_call_count == 1:
-                assert args[0][0:2] == ['tar', '-C']
-                assert args[0][3:5] == ['-xf', './tarfile.tar']
-            if self.check_call_count == 2:
-                assert args[0][0:4] == [
-                    'ostree', 'pull-local', '--repo', tmpdir]
-                assert args[0][5] == 'commit'
-            self.check_call_count += 1
-
-    def monkeyspcall(*args, **kwargs):
-        """
-        Verifies suprocess.call matches what we need.
-        """
-        assert args[0] == ['ostree', 'show', '--repo', tmpdir, 'commit']
-
-    # Monkey patch the subprocess function
-    monkeypatch.setattr(subprocess, 'check_call', monkeyspcheck_call())
-    monkeypatch.setattr(subprocess, 'call', monkeyspcall)
-    build = {
-        'ostree-commit': 'commit',
-        'images': {
-            'ostree': {
-                'path': 'tarfile.tar'
-            }
-        }
-    }
-    cmdlib.import_ostree_commit(tmpdir, './', build)
-
-
 def test_image_info(tmpdir):
     cmdlib.run_verbose([
         "qemu-img", "create", "-f", "qcow2", f"{tmpdir}/test.qcow2", "10M"])
