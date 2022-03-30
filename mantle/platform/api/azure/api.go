@@ -95,9 +95,8 @@ func New(opts *Options) (*API, error) {
 		opts: opts,
 	}
 
-	err = api.resolveImage()
-	if err != nil {
-		return nil, fmt.Errorf("failed to resolve image: %v", err)
+	if opts.Sku != "" && opts.DiskURI == "" && opts.Version == "" {
+		return nil, fmt.Errorf("SKU set to %q but Disk URI and version not set; can't resolve", opts.Sku)
 	}
 
 	return api, nil
