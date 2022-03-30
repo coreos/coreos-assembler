@@ -14,25 +14,6 @@
 
 package main
 
-type storageSpec struct {
-	BaseURL       string
-	Title         string // Replace the bucket name in index page titles
-	NamedPath     string // Copy to $BaseURL/$Arch/$NamedPath
-	VersionPath   bool   // Copy to $BaseURL/$Arch/$Version
-	DirectoryHTML bool
-	IndexHTML     bool
-}
-
-type gceSpec struct {
-	Project     string   // GCE project name
-	Family      string   // A group name, also used as name prefix
-	Description string   // Human readable-ish description
-	Licenses    []string // Identifiers for tracking usage
-	Image       string   // File name of image source
-	Publish     string   // Write published image name to given file
-	Limit       int      // Limit on # of old images to keep
-}
-
 type azureEnvironmentSpec struct {
 	SubscriptionName     string   // Name of subscription in Azure profile
 	AdditionalContainers []string // Extra containers to upload the disk image to
@@ -71,12 +52,10 @@ type awsSpec struct {
 }
 
 type channelSpec struct {
-	BaseURL      string // Copy from $BaseURL/$Arch/$Version
-	Arches       []string
-	Destinations []storageSpec
-	GCE          gceSpec
-	Azure        azureSpec
-	AWS          awsSpec
+	BaseURL string // Copy from $BaseURL/$Arch/$Version
+	Arches  []string
+	Azure   azureSpec
+	AWS     awsSpec
 }
 
 type fcosChannelSpec struct {
