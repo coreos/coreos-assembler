@@ -5,7 +5,6 @@ github.com/Azure/azure-sdk-for-go/arm/compute
 github.com/Azure/azure-sdk-for-go/arm/network
 github.com/Azure/azure-sdk-for-go/arm/resources/resources
 github.com/Azure/azure-sdk-for-go/arm/storage
-github.com/Azure/azure-sdk-for-go/management
 github.com/Azure/azure-sdk-for-go/storage
 # github.com/Azure/go-autorest v9.1.0+incompatible
 github.com/Azure/go-autorest/autorest
@@ -422,8 +421,6 @@ golang.org/x/crypto/openpgp/elgamal
 golang.org/x/crypto/openpgp/errors
 golang.org/x/crypto/openpgp/packet
 golang.org/x/crypto/openpgp/s2k
-golang.org/x/crypto/pkcs12
-golang.org/x/crypto/pkcs12/internal/rc2
 golang.org/x/crypto/ssh
 golang.org/x/crypto/ssh/agent
 golang.org/x/crypto/ssh/internal/bcrypt_pbkdf

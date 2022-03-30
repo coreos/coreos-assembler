@@ -36,10 +36,6 @@ type Options struct {
 	SubscriptionName string
 	SubscriptionID   string
 
-	// Azure API endpoint. If unset, the Azure SDK default will be used.
-	ManagementURL         string
-	ManagementCertificate []byte
-
 	// Azure Storage API endpoint suffix. If unset, the Azure SDK default will be used.
 	StorageEndpointSuffix string
 }
