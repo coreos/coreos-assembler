@@ -14,26 +14,6 @@
 
 package main
 
-type azureEnvironmentSpec struct {
-	SubscriptionName     string   // Name of subscription in Azure profile
-	AdditionalContainers []string // Extra containers to upload the disk image to
-}
-
-type azureSpec struct {
-	Offer          string                 // Azure offer name
-	Image          string                 // File name of image source
-	StorageAccount string                 // Storage account to use for image uploads in each environment
-	Container      string                 // Container to hold the disk image in each environment
-	Environments   []azureEnvironmentSpec // Azure environments to upload to
-
-	// Fields for azure.OSImage
-	Label             string
-	Description       string // Description of an image in this channel
-	RecommendedVMSize string
-	IconURI           string
-	SmallIconURI      string
-}
-
 type awsPartitionSpec struct {
 	Name              string   // Printable name for the partition
 	Profile           string   // Authentication profile in ~/.aws
@@ -54,7 +34,6 @@ type awsSpec struct {
 type channelSpec struct {
 	BaseURL string // Copy from $BaseURL/$Arch/$Version
 	Arches  []string
-	Azure   azureSpec
 	AWS     awsSpec
 }
 
