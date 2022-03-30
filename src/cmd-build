@@ -385,21 +385,6 @@ if [ "${commit}" == "${previous_commit}" ] && \
 else
     ostree_format=$(jq -r '.["ostree-format"]' < "${image_json}")
     case "${ostree_format}" in
-        tar)
-            ostree_tarfile_path=${name}-${buildid}-ostree.${basearch}.tar
-            ostree init --repo=repo --mode=archive
-            # Pass the ref if it's set
-            # shellcheck disable=SC2086
-            if ! ostree pull-local --repo=repo "${tmprepo}" "${buildid}" ${ref}; then
-                echo '(maybe https://github.com/coreos/coreos-assembler/issues/972 ?)'
-                exit 1
-            fi
-            # Don't compress; archive repos are already compressed individually and we'd
-            # gain ~20M at best. We could probably have better gains if we compress the
-            # whole repo in bare/bare-user mode, but that's a different story...
-            tar -cf "${ostree_tarfile_path}".tmp -C repo .
-            rm -rf repo
-            ;;
         null|oci)
             ostree_tarfile_path="${name}-${buildid}-ostree.${basearch}.ociarchive"
             gitsrc=$(jq -r .git.origin < "${PWD}/coreos-assembler-config-git.json")

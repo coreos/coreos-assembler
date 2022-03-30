@@ -11,7 +11,6 @@ import os
 import shutil
 import subprocess
 import sys
-import tarfile
 import tempfile
 
 import boto3
@@ -179,24 +178,11 @@ def robosign_ostree(args, s3, build, gpgkey):
         # We've validated the commit, now re-export the repo
         ostree_image = build['images']['ostree']
         exported_ostree_path = os.path.join(builddir, ostree_image['path'])
-        if exported_ostree_path.endswith('.ociarchive'):
-            # Files stored in the build directory are mode 0600 to prevent
-            # accidental mutation.  Remove the existing one because otherwise
-            # we'll try to `open(O_TRUNC)` it and fail.
-            os.unlink(exported_ostree_path)
-            subprocess.check_call(['ostree', 'container', 'export', '--repo=tmp/repo', checksum, f'oci-archive:{exported_ostree_path}:latest'])
-        else:
-            tmp_tar = os.path.join(d, ostree_image['path'])
-            # To make things a bit more efficient, append the commitmeta at
-            # the end of the archive after reflinking.
-            subprocess.check_call(['cp-reflink', exported_ostree_path, tmp_tar])
-            # Normally we make our artifacts 0600 to avoid accidental mutation, but since
-            # we can efficiently *append* to an existing tar archive, do that instead of
-            # copying and rewriting.  We just need to temporarily make it writable
-            os.chmod(tmp_tar, 0o660)
-            with tarfile.open(tmp_tar, 'a:') as t:
-                t.add(metapath, arcname=f'objects/{checksum[:2]}/{checksum[2:]}.commitmeta')
-            shutil.move(tmp_tar, exported_ostree_path)
+        # Files stored in the build directory are mode 0600 to prevent
+        # accidental mutation.  Remove the existing one because otherwise
+        # we'll try to `open(O_TRUNC)` it and fail.
+        os.unlink(exported_ostree_path)
+        subprocess.check_call(['ostree', 'container', 'export', '--repo=tmp/repo', checksum, f'oci-archive:{exported_ostree_path}:latest'])
         # Finalize the export by making it not writable.
         os.chmod(exported_ostree_path, 0o400)
         ostree_image['size'] = os.path.getsize(exported_ostree_path)
