@@ -100,7 +100,7 @@ func runUploadBlob(cmd *cobra.Command, args []string) {
 		}
 	}
 
-	kr, err := api.GetStorageServiceKeysARM(ubo.storageacct, resourceGroup)
+	kr, err := api.GetStorageServiceKeys(ubo.storageacct, resourceGroup)
 	if err != nil {
 		plog.Fatalf("Fetching storage service keys failed: %v", err)
 	}
