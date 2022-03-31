@@ -33,6 +33,13 @@ var (
 	awsCredentialsFile string
 	selectedDistro     string
 
+	specBucket  string
+	specPolicy  string
+	specProfile string
+	specRegion  string
+	specStream  string
+	specVersion string
+
 	cmdRelease = &cobra.Command{
 		Use:   "release [options]",
 		Short: "Publish a new CoreOS release.",
@@ -44,9 +51,12 @@ var (
 func init() {
 	cmdRelease.Flags().StringVar(&awsCredentialsFile, "aws-credentials", "", "AWS credentials file")
 	cmdRelease.Flags().StringVar(&selectedDistro, "distro", "fcos", "system to release")
+	cmdRelease.Flags().StringVar(&specBucket, "bucket", "fcos-builds", "S3 bucket")
+	cmdRelease.Flags().StringVar(&specPolicy, "policy", "public-read", "Canned ACL policy")
+	cmdRelease.Flags().StringVar(&specProfile, "profile", "default", "AWS profile")
+	cmdRelease.Flags().StringVar(&specRegion, "region", "us-east-1", "S3 bucket region")
 	cmdRelease.Flags().StringVarP(&specStream, "stream", "S", "testing", "target stream")
 	cmdRelease.Flags().StringVarP(&specVersion, "version", "V", "", "release version")
-	AddFcosSpecFlags(cmdRelease.Flags())
 	root.AddCommand(cmdRelease)
 }
 
@@ -65,13 +75,28 @@ func runFcosRelease(cmd *cobra.Command, args []string) error {
 	if len(args) > 0 {
 		plog.Fatal("No args accepted")
 	}
+	if specVersion == "" {
+		plog.Fatal("--version is required")
+	}
+	if specStream == "" {
+		plog.Fatal("--stream is required")
+	}
+	if specBucket == "" {
+		plog.Fatal("--bucket is required")
+	}
+	if specRegion == "" {
+		plog.Fatal("--region is required")
+	}
 
-	spec := FcosChannelSpec()
-	FcosValidateArguments()
+	spec := fcosChannelSpec{
+		Bucket:  specBucket,
+		Profile: specProfile,
+		Region:  specRegion,
+	}
 
 	doS3(&spec)
 
-	modifyReleaseMetadataIndex(&spec, specCommitId)
+	modifyReleaseMetadataIndex(&spec)
 
 	return nil
 }
@@ -94,7 +119,7 @@ func doS3(spec *fcosChannelSpec) {
 	}
 }
 
-func modifyReleaseMetadataIndex(spec *fcosChannelSpec, commitId string) {
+func modifyReleaseMetadataIndex(spec *fcosChannelSpec) {
 	api, err := aws.New(&aws.Options{
 		CredentialsFile: awsCredentialsFile,
 		Profile:         spec.Profile,
