@@ -187,11 +187,15 @@ prepare_build() {
     flatten_image_yaml_to_file "${configdir}/image.yaml" "${image_yaml}"
     # Convert the image.yaml to JSON so that it can be more easily parsed
     # by the shell script in create_disk.sh.
-    image_json="${workdir}/tmp/image.json"
-    yaml2json "${image_yaml}" "${image_json}"
+    yaml2json "/usr/lib/coreos-assembler/image-default.yaml" image-default.json
+    # Combine with the defaults
+    yaml2json "${image_yaml}" repo-image.json
+    export image_json="${workdir}/tmp/image.json"
+    cat image-default.json repo-image.json | jq -s add > "${image_json}"
+    rm image-default.json repo-image.json
 
     export workdir configdir manifest manifest_lock manifest_lock_overrides manifest_lock_arch_overrides
-    export fetch_stamp image_json
+    export fetch_stamp
 
     if ! [ -f "${manifest}" ]; then
         fatal "Failed to find ${manifest}"

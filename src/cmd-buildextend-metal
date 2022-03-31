@@ -132,18 +132,14 @@ if [ "${image_type}" = dasd ] || [ "${image_type}" = metal4k ]; then
     ignition_platform_id=metal
 fi
 
-yaml2json "/usr/lib/coreos-assembler/image-default.yaml" image-default.json
-# Combine with the defaults
-cat image-default.json "${image_json}" | jq -s add > image-configured.json
-
 # We do some extra handling of the rootfs here; it feeds into size estimation.
-rootfs_type=$(jq -re .rootfs < image-configured.json)
+rootfs_type=$(jq -re .rootfs < "${image_json}")
 
 deploy_via_container=""
-if jq -re '.["deploy-via-container"]' < image-configured.json; then
+if jq -re '.["deploy-via-container"]' < "${image_json}"; then
     deploy_via_container="true"
 fi
-container_imgref=$(jq -r '.["container-imgref"]//""' < image-configured.json)
+container_imgref=$(jq -r '.["container-imgref"]//""' < "${image_json}")
 # Nowadays we pull the container across 9p rather than accessing the repo, see
 # https://github.com/openshift/os/issues/594
 ostree_container=ostree-unverified-image:oci-archive:$builddir/$(meta_key images.ostree.path)
@@ -220,10 +216,10 @@ cat >image-dynamic.json << EOF
     "ostree-container": "${ostree_container}"
 }
 EOF
-cat image-configured.json image-dynamic.json | jq -s add > image.json
+cat "${image_json}" image-dynamic.json | jq -s add > image-for-disk.json
 runvm "${target_drive[@]}" -- \
         /usr/lib/coreos-assembler/create_disk.sh \
-            --config "$(pwd)"/image.json \
+            --config "$(pwd)"/image-for-disk.json \
             --kargs "\"${kargs}\"" \
             "${disk_args[@]}"
 /usr/lib/coreos-assembler/finalize-artifact "${path}.tmp" "${path}"
