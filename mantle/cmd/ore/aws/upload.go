@@ -33,7 +33,7 @@ var (
 		Short: "Create AWS images",
 		Long: `Upload CoreOS image to S3 and create an AMI.
 
-Supported source formats are VMDK (as created with ./image_to_vm --format=ami_vmdk) and RAW.
+Supported source formats are VMDK (as created with cosa buildextend-aws) and RAW.
 
 After a successful run, the final line of output will be a line of JSON describing the relevant resources.
 `,
