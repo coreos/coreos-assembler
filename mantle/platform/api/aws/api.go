@@ -87,8 +87,6 @@ func New(opts *Options) (*API, error) {
 		return nil, err
 	}
 
-	opts.AMI = resolveAMI(opts.AMI, opts.Region)
-
 	api := &API{
 		session: sess,
 		ec2:     ec2.New(sess),
