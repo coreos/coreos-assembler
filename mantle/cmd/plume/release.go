@@ -19,22 +19,21 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"net/http"
 	"net/url"
 	"path/filepath"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/coreos/mantle/platform/api/aws"
-	"github.com/coreos/mantle/storage"
 	"github.com/coreos/stream-metadata-go/release"
 	"github.com/spf13/cobra"
-	"golang.org/x/net/context"
 )
 
 var (
-	releaseDryRun bool
-	cmdRelease    = &cobra.Command{
+	awsCredentialsFile string
+	selectedDistro     string
+
+	cmdRelease = &cobra.Command{
 		Use:   "release [options]",
 		Short: "Publish a new CoreOS release.",
 		Run:   runRelease,
@@ -45,10 +44,8 @@ var (
 func init() {
 	cmdRelease.Flags().StringVar(&awsCredentialsFile, "aws-credentials", "", "AWS credentials file")
 	cmdRelease.Flags().StringVar(&selectedDistro, "distro", "fcos", "system to release")
-	cmdRelease.Flags().BoolVarP(&releaseDryRun, "dry-run", "n", false,
-		"perform a trial run, do not make changes")
-	AddSpecFlags(cmdRelease.Flags())
-	AddFedoraSpecFlags(cmdRelease.Flags())
+	cmdRelease.Flags().StringVarP(&specChannel, "stream", "S", "testing", "target stream")
+	cmdRelease.Flags().StringVarP(&specVersion, "version", "V", "", "release version")
 	AddFcosSpecFlags(cmdRelease.Flags())
 	root.AddCommand(cmdRelease)
 }
@@ -57,10 +54,6 @@ func runRelease(cmd *cobra.Command, args []string) {
 	switch selectedDistro {
 	case "fcos":
 		if err := runFcosRelease(cmd, args); err != nil {
-			plog.Fatal(err)
-		}
-	case "fedora":
-		if err := runFedoraRelease(cmd, args); err != nil {
 			plog.Fatal(err)
 		}
 	default:
@@ -81,72 +74,6 @@ func runFcosRelease(cmd *cobra.Command, args []string) error {
 	modifyReleaseMetadataIndex(&spec, specCommitId)
 
 	return nil
-}
-
-func runFedoraRelease(cmd *cobra.Command, args []string) error {
-	if len(args) > 0 {
-		plog.Fatal("No args accepted")
-	}
-
-	spec, err := ChannelFedoraSpec()
-	if err != nil {
-		return err
-	}
-	ctx := context.Background()
-	client := &http.Client{}
-
-	// Make AWS images public.
-	doAWS(ctx, client, nil, &spec)
-
-	return nil
-}
-
-func doAWS(ctx context.Context, client *http.Client, src *storage.Bucket, spec *channelSpec) {
-	if spec.AWS.Image == "" {
-		plog.Notice("AWS image creation disabled.")
-		return
-	}
-
-	awsImageMetadata, err := getSpecAWSImageMetadata(spec)
-	if err != nil {
-		return
-	}
-
-	imageName := awsImageMetadata["imageName"]
-
-	for _, part := range spec.AWS.Partitions {
-		for _, region := range part.Regions {
-			if releaseDryRun {
-				plog.Printf("Checking for images in %v %v...", part.Name, region)
-			} else {
-				plog.Printf("Publishing images in %v %v...", part.Name, region)
-			}
-
-			api, err := aws.New(&aws.Options{
-				CredentialsFile: awsCredentialsFile,
-				Profile:         part.Profile,
-				Region:          region,
-			})
-			if err != nil {
-				plog.Fatalf("creating client for %v %v: %v", part.Name, region, err)
-			}
-
-			publish := func(imageName string) {
-				imageID, err := api.FindImage(imageName)
-				if err != nil {
-					plog.Fatalf("couldn't find image %q in %v %v: %v", imageName, part.Name, region, err)
-				}
-
-				if !releaseDryRun {
-					err := api.PublishImage(imageID)
-					if err != nil {
-						plog.Fatalf("couldn't publish image in %v %v: %v", part.Name, region, err)
-					}
-				}
-			}
-			publish(imageName + "-hvm")
-		}
-	}
 }
 
 func doS3(spec *fcosChannelSpec) {
