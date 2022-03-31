@@ -2,6 +2,8 @@
 
 bootfs: "ext4"
 rootfs: "xfs"
+# Add arguments here that will be passed to e.g. mkfs.xfs
+rootfs-args: ""
 grub-script: "/usr/lib/coreos-assembler/grub.cfg"
 
 # True if we should use `ostree container image deploy`
