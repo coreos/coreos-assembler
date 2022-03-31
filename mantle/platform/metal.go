@@ -29,9 +29,9 @@ import (
 	"gopkg.in/yaml.v2"
 
 	"github.com/coreos/mantle/platform/conf"
-	"github.com/coreos/mantle/sdk"
 	"github.com/coreos/mantle/system"
 	"github.com/coreos/mantle/system/exec"
+	"github.com/coreos/mantle/util"
 )
 
 const (
@@ -78,7 +78,7 @@ func NewMetalQemuBuilderDefault() *QemuBuilder {
 }
 
 type Install struct {
-	CosaBuild       *sdk.LocalBuild
+	CosaBuild       *util.LocalBuild
 	Builder         *QemuBuilder
 	Insecure        bool
 	Native4k        bool

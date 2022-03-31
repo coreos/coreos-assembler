@@ -28,8 +28,8 @@ import (
 	"github.com/coreos/mantle/kola"
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/rhcos"
-	"github.com/coreos/mantle/sdk"
 	"github.com/coreos/mantle/system"
+	"github.com/coreos/mantle/util"
 )
 
 var (
@@ -225,7 +225,7 @@ func syncOptionsImpl(useCosa bool) error {
 			kola.Options.CosaWorkdir = "."
 		}
 
-		localbuild, err := sdk.GetLocalBuild(kola.Options.CosaWorkdir,
+		localbuild, err := util.GetLocalBuild(kola.Options.CosaWorkdir,
 			kola.Options.CosaBuildId,
 			kola.Options.CosaBuildArch)
 		if err != nil {
@@ -243,7 +243,7 @@ func syncOptionsImpl(useCosa bool) error {
 			// specified neither --build nor --workdir; only opportunistically
 			// try to use the PWD as the workdir, but don't error out if it's
 			// not
-			if isroot, err := sdk.IsCosaRoot("."); err != nil {
+			if isroot, err := util.IsCosaRoot("."); err != nil {
 				return err
 			} else if isroot {
 				kola.Options.CosaWorkdir = "."
@@ -251,7 +251,7 @@ func syncOptionsImpl(useCosa bool) error {
 		}
 
 		if kola.Options.CosaWorkdir != "" && kola.Options.CosaWorkdir != "none" {
-			localbuild, err := sdk.GetLatestLocalBuild(kola.Options.CosaWorkdir,
+			localbuild, err := util.GetLatestLocalBuild(kola.Options.CosaWorkdir,
 				kola.Options.CosaBuildArch)
 			if err != nil {
 				if !os.IsNotExist(errors.Cause(err)) {
@@ -263,7 +263,7 @@ func syncOptionsImpl(useCosa bool) error {
 				foundCosa = true
 			}
 		} else if kola.QEMUOptions.DiskImage == "" {
-			localbuild, err := sdk.GetLocalFastBuildQemu()
+			localbuild, err := util.GetLocalFastBuildQemu()
 			if err != nil {
 				return err
 			}
@@ -341,7 +341,7 @@ func syncCosaOptions() error {
 	}
 
 	if kola.Options.Distribution == "" {
-		distro, err := sdk.TargetDistro(kola.CosaBuild.Meta)
+		distro, err := util.TargetDistro(kola.CosaBuild.Meta)
 		if err != nil {
 			return err
 		}

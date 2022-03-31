@@ -55,7 +55,6 @@ import (
 	"github.com/coreos/mantle/platform/machine/packet"
 	"github.com/coreos/mantle/platform/machine/qemuiso"
 	"github.com/coreos/mantle/platform/machine/unprivqemu"
-	"github.com/coreos/mantle/sdk"
 	"github.com/coreos/mantle/system"
 	"github.com/coreos/mantle/util"
 )
@@ -95,7 +94,7 @@ var (
 	QEMUOptions      = unprivqemu.Options{Options: &Options}   // glue to set platform options from main
 	QEMUIsoOptions   = qemuiso.Options{Options: &Options}      // glue to set platform options from main
 
-	CosaBuild *sdk.LocalBuild // this is a parsed cosa build
+	CosaBuild *util.LocalBuild // this is a parsed cosa build
 
 	TestParallelism int    //glue var to set test parallelism from main
 	TAPFile         string // if not "", write TAP results here
