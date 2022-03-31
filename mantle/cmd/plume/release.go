@@ -88,24 +88,16 @@ func runFcosRelease(cmd *cobra.Command, args []string) error {
 		plog.Fatal("--region is required")
 	}
 
-	spec := fcosChannelSpec{
-		Bucket:  specBucket,
-		Profile: specProfile,
-		Region:  specRegion,
-	}
-
-	doS3(&spec)
-
-	modifyReleaseMetadataIndex(&spec)
-
+	doS3()
+	modifyReleaseMetadataIndex()
 	return nil
 }
 
-func doS3(spec *fcosChannelSpec) {
+func doS3() {
 	api, err := aws.New(&aws.Options{
 		CredentialsFile: awsCredentialsFile,
-		Profile:         spec.Profile,
-		Region:          spec.Region,
+		Profile:         specProfile,
+		Region:          specRegion,
 	})
 	if err != nil {
 		plog.Fatalf("creating aws client: %v", err)
@@ -113,17 +105,17 @@ func doS3(spec *fcosChannelSpec) {
 
 	// Assumes the bucket layout defined inside of
 	// https://github.com/coreos/fedora-coreos-tracker/issues/189
-	err = api.UpdateBucketObjectsACL(spec.Bucket, filepath.Join("prod", "streams", specStream, "builds", specVersion), specPolicy)
+	err = api.UpdateBucketObjectsACL(specBucket, filepath.Join("prod", "streams", specStream, "builds", specVersion), specPolicy)
 	if err != nil {
 		plog.Fatalf("updating object ACLs: %v", err)
 	}
 }
 
-func modifyReleaseMetadataIndex(spec *fcosChannelSpec) {
+func modifyReleaseMetadataIndex() {
 	api, err := aws.New(&aws.Options{
 		CredentialsFile: awsCredentialsFile,
-		Profile:         spec.Profile,
-		Region:          spec.Region,
+		Profile:         specProfile,
+		Region:          specRegion,
 	})
 	if err != nil {
 		plog.Fatalf("creating aws client: %v", err)
@@ -137,7 +129,7 @@ func modifyReleaseMetadataIndex(spec *fcosChannelSpec) {
 
 	path := filepath.Join("prod", "streams", specStream, "releases.json")
 	data, err := func() ([]byte, error) {
-		f, err := api.DownloadFile(spec.Bucket, path)
+		f, err := api.DownloadFile(specBucket, path)
 		if err != nil {
 			if awsErr, ok := err.(awserr.Error); ok {
 				if awsErr.Code() == "NoSuchKey" {
@@ -169,7 +161,7 @@ func modifyReleaseMetadataIndex(spec *fcosChannelSpec) {
 		plog.Fatalf("creating metadata url: %v", err)
 	}
 
-	releaseFile, err := api.DownloadFile(spec.Bucket, releasePath)
+	releaseFile, err := api.DownloadFile(specBucket, releasePath)
 	if err != nil {
 		plog.Fatalf("downloading release metadata at %s: %v", releasePath, err)
 	}
@@ -257,7 +249,7 @@ func modifyReleaseMetadataIndex(spec *fcosChannelSpec) {
 
 	// we don't want this to be cached for very long so that e.g. Cincinnati picks it up quickly
 	var releases_max_age = 60 * 5
-	err = api.UploadObjectExt(bytes.NewReader(out), spec.Bucket, path, true, specPolicy, aws.ContentTypeJSON, releases_max_age)
+	err = api.UploadObjectExt(bytes.NewReader(out), specBucket, path, true, specPolicy, aws.ContentTypeJSON, releases_max_age)
 	if err != nil {
 		plog.Fatalf("uploading release metadata json: %v", err)
 	}
