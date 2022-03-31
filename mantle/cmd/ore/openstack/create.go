@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/coreos/mantle/sdk"
 	"github.com/coreos/mantle/system"
 	"github.com/spf13/cobra"
 )
@@ -46,15 +45,17 @@ After a successful run, the final line of output will be the ID of the image.
 func init() {
 	OpenStack.AddCommand(cmdCreate)
 	cmdCreate.Flags().StringVar(&arch, "arch", system.RpmArch(), "The architecture of the image")
-	cmdCreate.Flags().StringVar(&path, "file",
-		sdk.BuildRoot()+"/images/amd64-usr/latest/coreos_production_openstack_image.img",
-		"path to CoreOS image (build with: ./image_to_vm.sh --format=openstack ...)")
+	cmdCreate.Flags().StringVar(&path, "file", "", "path to OpenStack image")
 	cmdCreate.Flags().StringVar(&name, "name", "", "image name")
 	cmdCreate.Flags().StringVar(&visibility, "visibility", "private", "Image visibility within OpenStack")
 	cmdCreate.Flags().BoolVar(&protected, "protected", false, "Image deletion protection")
 }
 
 func runCreate(cmd *cobra.Command, args []string) error {
+	if path == "" {
+		fmt.Fprintf(os.Stderr, "--file is required\n")
+		os.Exit(1)
+	}
 	id, err := API.UploadImage(name, path, arch, visibility, protected)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Couldn't create image: %v\n", err)

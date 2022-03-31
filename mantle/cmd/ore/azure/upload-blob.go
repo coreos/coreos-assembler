@@ -19,13 +19,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/Microsoft/azure-vhd-utils/vhdcore/validator"
 	"github.com/spf13/cobra"
-
-	"github.com/coreos/mantle/sdk"
 )
 
 var (
@@ -57,24 +54,18 @@ func init() {
 	sv(&ubo.storageacct, "storage-account", "kola", "storage account name")
 	sv(&ubo.container, "container", "vhds", "container name")
 	sv(&ubo.blob, "blob-name", "", "name of the blob")
-	sv(&ubo.vhd, "file", defaultUploadFile(), "path to CoreOS image (build with ./image_to_vm.sh --format=azure ...)")
+	sv(&ubo.vhd, "file", "", "path to CoreOS VHD image")
 	sv(&resourceGroup, "resource-group", "kola", "resource group name that owns the storage account")
 
 	Azure.AddCommand(cmdUploadBlob)
 }
 
-func defaultUploadFile() string {
-	build := sdk.BuildRoot()
-	return build + "/images/amd64-usr/latest/coreos_production_azure_image.vhd"
-}
-
 func runUploadBlob(cmd *cobra.Command, args []string) {
+	if ubo.vhd == "" {
+		plog.Fatal("--file is required")
+	}
 	if ubo.blob == "" {
-		ver, err := sdk.VersionsFromDir(filepath.Dir(ubo.vhd))
-		if err != nil {
-			plog.Fatalf("Unable to get version from image directory, provide a -blob-name flag or include a version.txt in the image directory: %v\n", err)
-		}
-		ubo.blob = fmt.Sprintf("Container-Linux-dev-%s-%s.vhd", os.Getenv("USER"), ver.Version)
+		plog.Fatal("--blob-name is required")
 	}
 
 	if err := api.SetupClients(); err != nil {
