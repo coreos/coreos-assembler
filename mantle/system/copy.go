@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
 )
 
 // CopyRegularFile copies a file in place, updates are not atomic. If
@@ -54,13 +53,4 @@ func CopyRegularFile(src, dest string) (err error) {
 
 	_, err = io.Copy(destFile, srcFile)
 	return err
-}
-
-// InstallRegularFile copies a file, creating any parent directories.
-func InstallRegularFile(src, dest string) error {
-	destDir := filepath.Dir(dest)
-	if err := os.MkdirAll(destDir, 0755); err != nil {
-		return err
-	}
-	return CopyRegularFile(src, dest)
 }

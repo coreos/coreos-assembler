@@ -103,11 +103,6 @@ func GetLocalBuild(root, buildid, arch string) (*LocalBuild, error) {
 }
 
 // TODO replace with coreos-assembler concepts
-func BoardRoot(board string) string {
-	return ""
-}
-
-// TODO replace with coreos-assembler concepts
 func BuildRoot() string {
 	return ""
 }
