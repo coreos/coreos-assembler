@@ -24,7 +24,7 @@ var (
 	specProfile  string
 	specPolicy   string
 	specCommitId string
-	specChannel  string
+	specStream   string
 	specVersion  string
 )
 
@@ -39,8 +39,8 @@ func FcosValidateArguments() {
 	if specVersion == "" {
 		plog.Fatal("--version is required")
 	}
-	if specChannel == "" {
-		plog.Fatal("--channel is required")
+	if specStream == "" {
+		plog.Fatal("--stream is required")
 	}
 	if specBucket == "" {
 		plog.Fatal("--bucket is required")
