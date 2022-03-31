@@ -24,7 +24,6 @@ var (
 	specProfile  string
 	specPolicy   string
 	specCommitId string
-	specArch     string
 	specChannel  string
 	specVersion  string
 )
