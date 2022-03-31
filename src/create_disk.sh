@@ -91,6 +91,7 @@ case "${rootfs_type}" in
     xfs|ext4verity|btrfs) ;;
     *) echo "Invalid rootfs type: ${rootfs_type}" 1>&2; exit 1;;
 esac
+rootfs_args=$(getconfig_def "rootfs-args" "")
 
 bootfs=$(getconfig "bootfs")
 grub_script=$(getconfig "grub-script")
@@ -211,13 +212,13 @@ case "${rootfs_type}" in
         # So basically, we're choosing performance over half-implemented security.
         # Eventually, we'd like both - once XFS gains verity (probably not too hard),
         # we could unconditionally enable it there.
-        mkfs.ext4 -b $(getconf PAGE_SIZE) -O verity -L root "${root_dev}" -U "${rootfs_uuid}"
+        mkfs.ext4 -b $(getconf PAGE_SIZE) -O verity -L root "${root_dev}" -U "${rootfs_uuid}" ${rootfs_args}
         ;;
     btrfs)
-        mkfs.btrfs -L root "${root_dev}" -U "${rootfs_uuid}"
+        mkfs.btrfs -L root "${root_dev}" -U "${rootfs_uuid}" ${rootfs_args}
         ;;
     xfs|"")
-        mkfs.xfs "${root_dev}" -L root -m reflink=1 -m uuid="${rootfs_uuid}"
+        mkfs.xfs "${root_dev}" -L root -m reflink=1 -m uuid="${rootfs_uuid}" ${rootfs_args}
         ;;
     *)
         echo "Unknown rootfs_type: $rootfs_type" 1>&2
