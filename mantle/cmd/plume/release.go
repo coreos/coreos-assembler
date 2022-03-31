@@ -63,15 +63,13 @@ func init() {
 func runRelease(cmd *cobra.Command, args []string) {
 	switch selectedDistro {
 	case "fcos":
-		if err := runFcosRelease(cmd, args); err != nil {
-			plog.Fatal(err)
-		}
+		runFcosRelease(cmd, args)
 	default:
 		plog.Fatalf("Unknown distro %q:", selectedDistro)
 	}
 }
 
-func runFcosRelease(cmd *cobra.Command, args []string) error {
+func runFcosRelease(cmd *cobra.Command, args []string) {
 	if len(args) > 0 {
 		plog.Fatal("No args accepted")
 	}
@@ -90,7 +88,6 @@ func runFcosRelease(cmd *cobra.Command, args []string) error {
 
 	doS3()
 	modifyReleaseMetadataIndex()
-	return nil
 }
 
 func doS3() {
