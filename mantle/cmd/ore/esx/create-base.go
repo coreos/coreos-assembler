@@ -17,9 +17,7 @@ package esx
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 
-	"github.com/coreos/mantle/sdk"
 	"github.com/spf13/cobra"
 )
 
@@ -42,24 +40,21 @@ After a successful run, the final line of output will be the name of the VM crea
 
 func init() {
 	ESX.AddCommand(cmdCreateBase)
-	cmdCreateBase.Flags().StringVar(&ovaPath, "file",
-		sdk.BuildRoot()+"/images/amd64-usr/latest/coreos_production_vmware_ova.ova",
-		"path to CoreOS image (build with: ./image_to_vm.sh --format=vmware_ova ...)")
+	cmdCreateBase.Flags().StringVar(&ovaPath, "file", "", "path to VMware OVA image")
 	cmdCreateBase.Flags().StringVar(&baseVMName, "name", "", "name of base VM")
 }
 
 func runBaseCreate(cmd *cobra.Command, args []string) error {
-	vmName := baseVMName
-	if vmName == "" {
-		ver, err := sdk.VersionsFromDir(filepath.Dir(ovaPath))
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Unable to get version from image directory, provide a -name flag or include a version.txt in the image directory: %v\n", err)
-			os.Exit(1)
-		}
-		vmName = ver.Version
+	if ovaPath == "" {
+		fmt.Fprintf(os.Stderr, "--file is required\n")
+		os.Exit(1)
+	}
+	if baseVMName == "" {
+		fmt.Fprintf(os.Stderr, "--name is required\n")
+		os.Exit(1)
 	}
 
-	err := API.CreateBaseDevice(vmName, ovaPath)
+	err := API.CreateBaseDevice(baseVMName, ovaPath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Couldn't create base VM: %v\n", err)
 		os.Exit(1)

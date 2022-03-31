@@ -101,8 +101,3 @@ func GetLocalBuild(root, buildid, arch string) (*LocalBuild, error) {
 		Meta: cosameta,
 	}, nil
 }
-
-// TODO replace with coreos-assembler concepts
-func BuildRoot() string {
-	return ""
-}
