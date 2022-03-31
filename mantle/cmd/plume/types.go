@@ -14,29 +14,6 @@
 
 package main
 
-type awsPartitionSpec struct {
-	Name              string   // Printable name for the partition
-	Profile           string   // Authentication profile in ~/.aws
-	Bucket            string   // S3 bucket for uploading image
-	BucketRegion      string   // Region of the bucket
-	LaunchPermissions []string // Other accounts to give launch permission
-	Regions           []string // Regions to create the AMI in
-}
-
-type awsSpec struct {
-	BaseName        string             // Prefix of image name
-	BaseDescription string             // Prefix of image description
-	Prefix          string             // Prefix for filenames of AMI lists
-	Image           string             // File name of image source
-	Partitions      []awsPartitionSpec // AWS partitions
-}
-
-type channelSpec struct {
-	BaseURL string // Copy from $BaseURL/$Arch/$Version
-	Arches  []string
-	AWS     awsSpec
-}
-
 type fcosChannelSpec struct {
 	Bucket  string
 	Profile string
