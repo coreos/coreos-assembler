@@ -352,11 +352,6 @@ github.com/spf13/cobra
 github.com/spf13/pflag
 # github.com/stretchr/testify v1.7.0
 github.com/stretchr/testify/assert
-# github.com/ulikunitz/xz v0.5.10
-github.com/ulikunitz/xz
-github.com/ulikunitz/xz/internal/hash
-github.com/ulikunitz/xz/internal/xlog
-github.com/ulikunitz/xz/lzma
 # github.com/vincent-petithory/dataurl v1.0.0
 github.com/vincent-petithory/dataurl
 # github.com/vishvananda/netlink v0.0.0-20150710184826-9cff81214893
