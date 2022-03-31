@@ -44,7 +44,7 @@ var (
 func init() {
 	cmdRelease.Flags().StringVar(&awsCredentialsFile, "aws-credentials", "", "AWS credentials file")
 	cmdRelease.Flags().StringVar(&selectedDistro, "distro", "fcos", "system to release")
-	cmdRelease.Flags().StringVarP(&specChannel, "stream", "S", "testing", "target stream")
+	cmdRelease.Flags().StringVarP(&specStream, "stream", "S", "testing", "target stream")
 	cmdRelease.Flags().StringVarP(&specVersion, "version", "V", "", "release version")
 	AddFcosSpecFlags(cmdRelease.Flags())
 	root.AddCommand(cmdRelease)
@@ -88,7 +88,7 @@ func doS3(spec *fcosChannelSpec) {
 
 	// Assumes the bucket layout defined inside of
 	// https://github.com/coreos/fedora-coreos-tracker/issues/189
-	err = api.UpdateBucketObjectsACL(spec.Bucket, filepath.Join("prod", "streams", specChannel, "builds", specVersion), specPolicy)
+	err = api.UpdateBucketObjectsACL(spec.Bucket, filepath.Join("prod", "streams", specStream, "builds", specVersion), specPolicy)
 	if err != nil {
 		plog.Fatalf("updating object ACLs: %v", err)
 	}
@@ -110,7 +110,7 @@ func modifyReleaseMetadataIndex(spec *fcosChannelSpec, commitId string) {
 	// version.  Plus we need S3 creds anyway later on to push the modified
 	// release index back.
 
-	path := filepath.Join("prod", "streams", specChannel, "releases.json")
+	path := filepath.Join("prod", "streams", specStream, "releases.json")
 	data, err := func() ([]byte, error) {
 		f, err := api.DownloadFile(spec.Bucket, path)
 		if err != nil {
@@ -138,7 +138,7 @@ func modifyReleaseMetadataIndex(spec *fcosChannelSpec, commitId string) {
 		plog.Fatalf("unmarshaling release metadata json: %v", err)
 	}
 
-	releasePath := filepath.Join("prod", "streams", specChannel, "builds", specVersion, "release.json")
+	releasePath := filepath.Join("prod", "streams", specStream, "builds", specVersion, "release.json")
 	url, err := url.Parse(fmt.Sprintf("https://builds.coreos.fedoraproject.org/%s", releasePath))
 	if err != nil {
 		plog.Fatalf("creating metadata url: %v", err)
@@ -223,7 +223,7 @@ func modifyReleaseMetadataIndex(spec *fcosChannelSpec, commitId string) {
 
 	releaseIdx.Metadata.LastModified = time.Now().UTC().Format("2006-01-02T15:04:05Z")
 	releaseIdx.Note = "For use only by Fedora CoreOS internal tooling.  All other applications should obtain release info from stream metadata endpoints."
-	releaseIdx.Stream = specChannel
+	releaseIdx.Stream = specStream
 
 	out, err := json.Marshal(releaseIdx)
 	if err != nil {
