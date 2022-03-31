@@ -216,8 +216,6 @@ github.com/coreos/ignition/v2/config/v3_4_experimental
 github.com/coreos/ignition/v2/config/v3_4_experimental/translate
 github.com/coreos/ignition/v2/config/v3_4_experimental/types
 github.com/coreos/ignition/v2/config/validate
-# github.com/coreos/ioprogress v0.0.0-20151023204047-4637e494fd9b
-github.com/coreos/ioprogress
 # github.com/coreos/pkg v0.0.0-20180928190104-399ea9e2e55f
 github.com/coreos/pkg/capnslog
 github.com/coreos/pkg/multierror
@@ -403,19 +401,12 @@ go.opencensus.io/trace/tracestate
 golang.org/x/crypto/argon2
 golang.org/x/crypto/blake2b
 golang.org/x/crypto/blowfish
-golang.org/x/crypto/cast5
 golang.org/x/crypto/chacha20
 golang.org/x/crypto/curve25519
 golang.org/x/crypto/curve25519/internal/field
 golang.org/x/crypto/ed25519
 golang.org/x/crypto/internal/poly1305
 golang.org/x/crypto/internal/subtle
-golang.org/x/crypto/openpgp
-golang.org/x/crypto/openpgp/armor
-golang.org/x/crypto/openpgp/elgamal
-golang.org/x/crypto/openpgp/errors
-golang.org/x/crypto/openpgp/packet
-golang.org/x/crypto/openpgp/s2k
 golang.org/x/crypto/ssh
 golang.org/x/crypto/ssh/agent
 golang.org/x/crypto/ssh/internal/bcrypt_pbkdf

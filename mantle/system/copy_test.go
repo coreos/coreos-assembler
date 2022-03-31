@@ -72,24 +72,3 @@ func TestCopyRegularFile(t *testing.T) {
 	}
 	checkFile(t, copy2, data, 0640)
 }
-
-func TestInstallRegularFile(t *testing.T) {
-	data := []byte("test")
-	tmp, err := ioutil.TempDir("", "")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tmp)
-
-	src := filepath.Join(tmp, "src")
-	if err := ioutil.WriteFile(src, data, 0600); err != nil {
-		t.Fatal(err)
-	}
-	checkFile(t, src, data, 0600)
-
-	copy1 := filepath.Join(tmp, "subdir", "copy1")
-	if err := InstallRegularFile(src, copy1); err != nil {
-		t.Fatal(err)
-	}
-	checkFile(t, copy1, data, 0600)
-}
