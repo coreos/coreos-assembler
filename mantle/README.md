@@ -158,8 +158,8 @@ azure, esx, ibmcloud and packet) within the latest SDK image. Ore mimics the und
 api for each cloud provider closely, so the interface for each cloud provider
 is different. See each providers `help` command for the available actions.
 
-Note, when uploading to some cloud providers (e.g. gce) the image may need to be packaged
-with a different --format (e.g. --format=gce) when running `image_to_vm.sh`
+Note, when uploading to cloud platforms, be sure to use the image built for
+that particular platform (with `cosa buildextend-...`).
 
 ### plume
 Plume is the Container Linux release utility. Releases are done in two stages,
