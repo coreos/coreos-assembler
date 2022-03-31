@@ -36,7 +36,6 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/satori/go.uuid v1.2.0 // indirect
 	github.com/spf13/cobra v0.0.6
-	github.com/spf13/pflag v1.0.6-0.20210604193023-d5e0c0615ace
 	github.com/vincent-petithory/dataurl v1.0.0
 	github.com/vishvananda/netlink v0.0.0-20150710184826-9cff81214893
 	github.com/vishvananda/netns v0.0.0-20150710222425-604eaf189ee8
