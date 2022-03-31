@@ -18,14 +18,6 @@ commands are idempotent.
 Publish a new CoreOS release. This makes uploaded images public and updates
 indexes.
 
-## plume index
-
-Generate and upload index.html objects to turn a Google Cloud Storage
-bucket into a publicly browsable file tree. Useful if you want something
-like Apache's directory index for your software download repository.
-Plume release handles this as well, so it does not need to be run as part of
-the release process.
-
 ## Pre-flight
 
 ### AWS
