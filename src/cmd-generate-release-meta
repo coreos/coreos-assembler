@@ -124,7 +124,7 @@ def append_build(out, input_):
     # build the architectures dict
     arch_dict = {"media": {}}
     ensure_dup(input_, arch_dict, "ostree-commit", "commit")
-    platforms = ["aliyun", "aws", "azure", "azurestack", "digitalocean", "exoscale", "gcp", "ibmcloud", "metal", "nutanix", "openstack", "powervs", "qemu", "virtualbox", "vmware", "vultr"]
+    platforms = ["aliyun", "aws", "azure", "azurestack", "digitalocean", "exoscale", "gcp", "ibmcloud", "kubevirt", "metal", "nutanix", "openstack", "powervs", "qemu", "virtualbox", "vmware", "vultr"]
     for platform in platforms:
         if input_.get("images", {}).get(platform, None) is not None:
             print(f"   - {platform}")
@@ -166,6 +166,11 @@ def append_build(out, input_):
         arch_dict["media"]["gcp"]["image"]["name"] = arch_dict["media"]["gcp"]["image"].pop("image")
         # remove the url as we haven't decided to expose that information publicly yet
         arch_dict["media"]["gcp"]["image"].pop("url")
+
+    # KubeVirt specific additions: https://github.com/coreos/stream-metadata-go/pull/41
+    if input_.get("kubevirt", None) is not None:
+        arch_dict["media"].setdefault("kubevirt", {}).setdefault("image", {})
+        arch_dict["media"]["kubevirt"]["image"].update(input_.get("kubevirt", {}))
 
     # Azure: https://github.com/coreos/stream-metadata-go/issues/13
     inputaz = input_.get("azure")

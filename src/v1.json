@@ -209,6 +209,7 @@
    "digitalocean",
    "exoscale",
    "gcp",
+   "kubevirt",
    "ibmcloud",
    "powervs",
    "images",
@@ -424,6 +425,7 @@
        "digitalocean",
        "exoscale",
        "gcp",
+       "kubevirt",
        "ibmcloud",
        "powervs",
        "initramfs",
@@ -598,8 +600,14 @@
          "type":"object",
          "title":"GCP",
          "$ref": "#/definitions/artifact"
-        }
-      }
+        },
+       "kubevirt": {
+         "$id":"#/properties/images/properties/kubevirt",
+         "type":"object",
+         "title":"KubeVirt",
+         "$ref": "#/definitions/artifact"
+       }
+     }
     },
    "name": {
      "$id":"#/properties/name",
@@ -863,6 +871,21 @@
         }
       }
     },
+   "kubevirt": {
+     "$id":"#/properties/kubevirt",
+     "type":"object",
+     "title":"KubeVirt",
+     "required": [
+       "image"
+     ],
+     "properties": {
+       "image": {
+         "$id":"#/properties/kubevirt/image",
+         "type":"string",
+         "title":"Image"
+       }
+     }
+   },
    "ibmcloud": {
      "$id":"#/properties/ibmcloud",
      "type":"array",
