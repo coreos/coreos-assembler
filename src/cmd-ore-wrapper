@@ -16,6 +16,7 @@ from cosalib.cli import (
 )
 from cosalib.qemuvariants import get_qemu_variant
 from cosalib.ibmcloud import get_ibmcloud_variant
+from cosalib.kubevirt import get_kubevirt_variant
 
 if __name__ == '__main__':
     log.basicConfig(
@@ -102,6 +103,8 @@ Each target has its own sub options. To access them us:
     # Now _extend the parser with the cloud targets_
     if target in ['ibmcloud', 'powervs']:
         build = get_ibmcloud_variant(target, args)
+    elif target == "kubevirt":
+        build = get_kubevirt_variant(target, args)
     else:
         build = get_qemu_variant(target, args)
     log.info(f"operating on {build.image_name}")
