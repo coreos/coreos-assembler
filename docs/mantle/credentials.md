@@ -196,3 +196,27 @@ for more information about the `.boto` file.
 - Usermode networking instead of namespaced networks
   * Single node only, no machine to machine networking
   * Machines have internet access
+
+## kubevirt
+
+`kubevirt` publishes a containerdisk which can be consumed by KubeVirt. In order to publish the containerdisk, the
+credentials to the container registry need to be provided in `~/.docker/config.json`.
+
+An example configuration may look like this:
+
+```
+{
+	"auths": {
+		"quay.io": {
+			"auth": "dXNlcjpwYXNzCg=="
+		}
+	}
+}
+```
+
+where `auth` is a base64 encoded HTTP Basic Auth token:
+
+```
+$ echo dXNlcjpwYXNzCg== | base64 -d
+user:pass
+```
