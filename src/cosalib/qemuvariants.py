@@ -23,7 +23,6 @@ from cosalib.cmdlib import (
     sha256sum_file
 )
 
-
 # BASEARCH is the current machine architecture
 BASEARCH = get_basearch()
 
@@ -91,6 +90,11 @@ VARIANTS = {
             "--format=oldgnu"
         ]
     },
+    "kubevirt": {
+        "image_format": "qcow2",
+        "platform": "kubevirt",
+        "image_suffix": "ociarchive",
+    },
     "openstack": {
         "image_format": "qcow2",
         "platform": "openstack",
@@ -103,7 +107,7 @@ VARIANTS = {
         "image_format": "vmdk",
         "image_suffix": "vmdk",
         "platform": "vmware",
-        "convert_options":  {
+        "convert_options": {
             '-o': 'adapter_type=lsilogic,subformat=streamOptimized,compat6'
         }
     },
@@ -170,6 +174,7 @@ class QemuVariantImage(_Build):
         self.tar_flags = kwargs.pop("tar_flags", [DEFAULT_TAR_FLAGS])
         self.gzip = kwargs.pop("gzip", False)
         self.virtual_size = kwargs.pop("virtual_size", None)
+        self.mutate_callback_creates_final_image = False
 
         # this is used in case the image has a different disk
         # name than the platform
@@ -278,8 +283,7 @@ class QemuVariantImage(_Build):
             tar_cmd.extend(['-f', final_img])
             tar_cmd.extend(tarlist)
             run_verbose(tar_cmd)
-
-        else:
+        elif not self.mutate_callback_creates_final_image:
             log.info(f"Moving {work_img} to {final_img}")
             shutil.move(work_img, final_img)
 

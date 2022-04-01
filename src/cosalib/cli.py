@@ -13,7 +13,8 @@ from cosalib import (
     gcp,
     vultr,
     exoscale,
-    ibmcloud
+    ibmcloud,
+    kubevirt
 )
 
 CLOUD_CLI_TARGET = {
@@ -44,6 +45,9 @@ CLOUD_CLI_TARGET = {
     "powervs":      (ibmcloud.ibmcloud_cli,
                      ibmcloud.ibmcloud_run_ore,
                      ibmcloud.ibmcloud_run_ore_replicate),
+    "kubevirt":     (kubevirt.kubevirt_cli,
+                     kubevirt.kubevirt_run_ore,
+                     kubevirt.kubevirt_run_ore_replicate),
 }
 
 

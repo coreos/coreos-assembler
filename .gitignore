@@ -9,3 +9,4 @@ maipo/
 *.shellchecked
 .coverage
 tools/bin
+.idea
