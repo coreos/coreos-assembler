@@ -386,9 +386,10 @@ else
     ostree_format=$(jq -r '.["ostree-format"]' < "${image_json}")
     ostree_tarfile_path="${name}-${buildid}-ostree.${basearch}.ociarchive"
     gitsrc=$(jq -r .git.origin < "${PWD}/coreos-assembler-config-git.json")
-    cmd=(ostree container encapsulate)
+    cmd=(ostree container encapsulate --copymeta="rpmostree.inputhash")
     case "${ostree_format}" in
         oci) ;;
+        # Note rpm-ostree always copies the rpmostree.inputhash key
         oci-chunked) cmd=(rpm-ostree container-encapsulate) ;;
         *) fatal "Unknown ostree-format: ${ostree_format}"
     esac
