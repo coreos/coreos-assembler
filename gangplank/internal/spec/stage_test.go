@@ -3,7 +3,6 @@ package spec
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -37,8 +36,7 @@ stages:
 `, MockOSJobSpec)
 
 func TestStages(t *testing.T) {
-	tmpd, _ := ioutil.TempDir("", "teststages")
-	defer os.RemoveAll(tmpd)
+	tmpd := t.TempDir()
 
 	rd := &RenderData{
 		JobSpec: new(JobSpec),
@@ -196,9 +194,8 @@ func TestStages(t *testing.T) {
 func TestStageYaml(t *testing.T) {
 	myD, _ := os.Getwd()
 	defer os.Chdir(myD) //nolint
-	tmpd, _ := ioutil.TempDir("", "stagetest")
+	tmpd := t.TempDir()
 	_ = os.Chdir(tmpd)
-	defer os.RemoveAll(tmpd)
 
 	r := strings.NewReader(MockStageYaml)
 	js, err := JobSpecReader(r)

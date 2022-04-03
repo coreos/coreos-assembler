@@ -15,11 +15,7 @@ import (
 )
 
 func TestFiler(t *testing.T) {
-	tmpd, err := ioutil.TempDir("", "cosa-test")
-	if err != nil {
-		t.Fatalf("Failed to create tempdir")
-	}
-	defer os.RemoveAll(tmpd)
+	tmpd := t.TempDir()
 
 	testBucket := "testbucket"
 	testFileContents := "this is a test"
