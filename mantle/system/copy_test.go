@@ -45,11 +45,7 @@ func checkFile(t *testing.T, path string, data []byte, mode os.FileMode) {
 
 func TestCopyRegularFile(t *testing.T) {
 	data := []byte("test")
-	tmp, err := ioutil.TempDir("", "")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tmp)
+	tmp := t.TempDir()
 
 	src := filepath.Join(tmp, "src")
 	if err := ioutil.WriteFile(src, data, 0600); err != nil {

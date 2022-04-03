@@ -14,11 +14,10 @@ import (
 )
 
 func TestTarballRemote(t *testing.T) {
-	tmpd, _ := ioutil.TempDir("", "remotes")
+	tmpd := t.TempDir()
 	srvd := filepath.Join(tmpd, "serve")
 	srcd := filepath.Join(tmpd, "src")
 	destd := filepath.Join(tmpd, "dest")
-	defer os.RemoveAll(tmpd) //nolint
 
 	for _, d := range []string{srvd, srcd, destd} {
 		if err := os.MkdirAll(d, 0777); err != nil {

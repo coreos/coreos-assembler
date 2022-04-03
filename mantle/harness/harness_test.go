@@ -18,7 +18,6 @@ package harness
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -330,13 +329,7 @@ func makeRegexp(s string) string {
 }
 
 func TestOutputDir(t *testing.T) {
-	var suitedir string
-	if dir, err := ioutil.TempDir("", ""); err != nil {
-		t.Fatal(err)
-	} else {
-		defer os.RemoveAll(dir)
-		suitedir = filepath.Join(dir, "_test_temp")
-	}
+	suitedir := filepath.Join(t.TempDir(), "_test_temp")
 
 	var testdirs []string
 	adddir := func(h *H) {
@@ -370,13 +363,7 @@ func TestOutputDir(t *testing.T) {
 }
 
 func TestSubDirs(t *testing.T) {
-	var suitedir string
-	if dir, err := ioutil.TempDir("", ""); err != nil {
-		t.Fatal(err)
-	} else {
-		defer os.RemoveAll(dir)
-		suitedir = filepath.Join(dir, "_test_temp")
-	}
+	suitedir := t.TempDir()
 
 	var testdirs []string
 	adddir := func(h *H) {
@@ -410,13 +397,7 @@ func TestSubDirs(t *testing.T) {
 }
 
 func TestTempDir(t *testing.T) {
-	var suitedir string
-	if dir, err := ioutil.TempDir("", ""); err != nil {
-		t.Fatal(err)
-	} else {
-		defer os.RemoveAll(dir)
-		suitedir = filepath.Join(dir, "_test_temp")
-	}
+	suitedir := t.TempDir()
 
 	var testdirs []string
 	opts := Options{
@@ -460,13 +441,7 @@ func TestTempDir(t *testing.T) {
 }
 
 func TestTempFile(t *testing.T) {
-	var suitedir string
-	if dir, err := ioutil.TempDir("", ""); err != nil {
-		t.Fatal(err)
-	} else {
-		defer os.RemoveAll(dir)
-		suitedir = filepath.Join(dir, "_test_temp")
-	}
+	suitedir := t.TempDir()
 
 	var testfiles []string
 	opts := Options{

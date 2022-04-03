@@ -12,10 +12,9 @@ import (
 )
 
 func TestRemote(t *testing.T) {
-	tmpd, _ := ioutil.TempDir("", "remotes")
+	tmpd := t.TempDir()
 	srvd := filepath.Join(tmpd, "serve")
 	destd := filepath.Join(tmpd, "in")
-	//defer os.RemoveAll(tmpd)
 
 	testBucket := "source"
 	if err := os.MkdirAll(filepath.Join(srvd, testBucket), 0755); err != nil {

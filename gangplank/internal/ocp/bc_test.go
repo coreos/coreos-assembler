@@ -11,8 +11,7 @@ import (
 const testDataFile = "build.json"
 
 func TestOCPBuild(t *testing.T) {
-	tmpd, _ := ioutil.TempDir("", "test")
-	defer os.RemoveAll(tmpd)
+	tmpd := t.TempDir()
 	cosaSrvDir = tmpd
 
 	bData, err := ioutil.ReadFile(testDataFile)

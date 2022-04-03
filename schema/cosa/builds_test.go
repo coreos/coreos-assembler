@@ -23,8 +23,7 @@ var testData = `
 `
 
 func TestBuildsMeta(t *testing.T) {
-	tmpd, _ := ioutil.TempDir("", "buildjson")
-	defer os.RemoveAll(tmpd)
+	tmpd := t.TempDir()
 	_ = os.MkdirAll(filepath.Join(tmpd, "builds"), 0755)
 
 	bjson := filepath.Join(tmpd, CosaBuildsJSON)

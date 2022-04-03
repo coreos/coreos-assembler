@@ -26,11 +26,7 @@ func setMockHttpGet(data []byte, status int, err error) {
 }
 
 func TestURL(t *testing.T) {
-	tmpd, err := ioutil.TempDir("", "")
-	if err != nil {
-		t.Fatalf("unable to create tmpdir")
-	}
-	defer os.RemoveAll(tmpd) //nolint
+	tmpd := t.TempDir()
 
 	cases := []struct {
 		repo       Repo
