@@ -271,7 +271,10 @@ if test -n "${deploy_via_container}"; then
     done
     ostree container image deploy --imgref "${ostree_container}" \
         ${container_imgref:+--target-imgref $container_imgref} \
+        --write-commitid-to /tmp/commit.txt \
         --stateroot "$os_name" --sysroot $rootfs $kargsargs
+    deploy_commit=$(cat /tmp/commit.txt)
+    rm /tmp/commit.txt
 else
     # Pull the commit
     time ostree container unencapsulate --repo=$rootfs/ostree/repo "${ostree_container}"
@@ -288,11 +291,11 @@ else
         kargsargs+="--karg-append=$karg "
     done
     ostree admin deploy "${deploy_ref}" --sysroot $rootfs --os "$os_name" $kargsargs
+    deploy_commit=$commit
 fi
-# Note that at the current time, this only supports deploying non-layered
-# container images; xref https://github.com/ostreedev/ostree-rs-ext/issues/143
-deploy_root="$rootfs/ostree/deploy/${os_name}/deploy/${commit}.0"
-test -d "${deploy_root}"
+# Sanity check
+deploy_root="$rootfs/ostree/deploy/${os_name}/deploy/${deploy_commit}.0"
+test -d "${deploy_root}" || (echo "failed to find $deploy_root"; exit 1)
 
 # This will allow us to track the version that an install
 # originally used; if we later need to understand something
