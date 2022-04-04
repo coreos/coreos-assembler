@@ -2,6 +2,10 @@
 
 bootfs: "ext4"
 rootfs: "xfs"
+# 0: don't change filesystem defaults
+# 1: Enable bigtime for /boot
+# 2: Enable bigtime for /boot and /
+bigtime: 0
 # Add arguments here that will be passed to e.g. mkfs.xfs
 rootfs-args: ""
 grub-script: "/usr/lib/coreos-assembler/grub.cfg"

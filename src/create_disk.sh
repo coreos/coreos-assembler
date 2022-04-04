@@ -92,6 +92,7 @@ case "${rootfs_type}" in
     *) echo "Invalid rootfs type: ${rootfs_type}" 1>&2; exit 1;;
 esac
 rootfs_args=$(getconfig_def "rootfs-args" "")
+bigtime=$(getconfig "bigtime")
 
 bootfs=$(getconfig "bootfs")
 grub_script=$(getconfig "grub-script")
@@ -193,6 +194,10 @@ case "${bootfs}" in
     ext4) ;;
     *) echo "Unhandled bootfs: ${bootfs}" 1>&2; exit 1 ;;
 esac
+if test "$bigtime" -gt 0; then
+    # -I 256 to ensure we support timestamps > 2038; for more information see `man mkfs.ext4`
+    bootargs+=" -I 256"
+fi
 mkfs.ext4 ${bootargs} "${disk}${BOOTPN}" -L boot -U "${bootfs_uuid}"
 udevtrig
 
@@ -218,6 +223,9 @@ case "${rootfs_type}" in
         mkfs.btrfs -L root "${root_dev}" -U "${rootfs_uuid}" ${rootfs_args}
         ;;
     xfs|"")
+        if test "$bigtime" -gt 1; then
+            rootfs_args="${rootfs_args} -m bigtime=1"
+        fi
         mkfs.xfs "${root_dev}" -L root -m reflink=1 -m uuid="${rootfs_uuid}" ${rootfs_args}
         ;;
     *)
