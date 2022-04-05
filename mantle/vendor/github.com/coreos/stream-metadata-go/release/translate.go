@@ -46,12 +46,12 @@ func (releaseArch *Arch) toStreamArch(rel *Release) stream.Arch {
 			Formats: mapFormats(releaseArch.Media.Aliyun.Artifacts),
 		}
 		aliyunImages := stream.ReplicatedImage{
-			Regions: make(map[string]stream.RegionImage),
+			Regions: make(map[string]stream.SingleImage),
 		}
 		if releaseArch.Media.Aliyun.Images != nil {
 			for region, image := range releaseArch.Media.Aliyun.Images {
-				ri := stream.RegionImage{Release: rel.Release, Image: image.Image}
-				aliyunImages.Regions[region] = ri
+				si := stream.SingleImage{Release: rel.Release, Image: image.Image}
+				aliyunImages.Regions[region] = si
 
 			}
 			cloudImages.Aliyun = &aliyunImages
@@ -63,13 +63,13 @@ func (releaseArch *Arch) toStreamArch(rel *Release) stream.Arch {
 			Release: rel.Release,
 			Formats: mapFormats(releaseArch.Media.Aws.Artifacts),
 		}
-		awsAmis := stream.AwsImage{
-			Regions: make(map[string]stream.AwsRegionImage),
+		awsAmis := stream.ReplicatedImage{
+			Regions: make(map[string]stream.SingleImage),
 		}
 		if releaseArch.Media.Aws.Images != nil {
 			for region, ami := range releaseArch.Media.Aws.Images {
-				ri := stream.AwsRegionImage{Release: rel.Release, Image: ami.Image}
-				awsAmis.Regions[region] = ri
+				si := stream.SingleImage{Release: rel.Release, Image: ami.Image}
+				awsAmis.Regions[region] = si
 
 			}
 			cloudImages.Aws = &awsAmis
@@ -138,8 +138,9 @@ func (releaseArch *Arch) toStreamArch(rel *Release) stream.Arch {
 			Formats: mapFormats(releaseArch.Media.KubeVirt.Artifacts),
 		}
 		if releaseArch.Media.KubeVirt.Image != nil {
-			cloudImages.KubeVirt = &stream.KubeVirtContainerDisk{
-				Image: releaseArch.Media.KubeVirt.Image.Image,
+			cloudImages.KubeVirt = &stream.SingleImage{
+				Release: rel.Release,
+				Image:   releaseArch.Media.KubeVirt.Image.Image,
 			}
 		}
 	}
@@ -163,17 +164,17 @@ func (releaseArch *Arch) toStreamArch(rel *Release) stream.Arch {
 			Formats: mapFormats(releaseArch.Media.Ibmcloud.Artifacts),
 		}
 		ibmcloudObjects := stream.ReplicatedObject{
-			Regions: make(map[string]stream.RegionObject),
+			Regions: make(map[string]stream.SingleObject),
 		}
 		if releaseArch.Media.Ibmcloud.Images != nil {
 			for region, object := range releaseArch.Media.Ibmcloud.Images {
-				ri := stream.RegionObject{
+				so := stream.SingleObject{
 					Release: rel.Release,
 					Object:  object.Object,
 					Bucket:  object.Bucket,
 					Url:     object.Url,
 				}
-				ibmcloudObjects.Regions[region] = ri
+				ibmcloudObjects.Regions[region] = so
 
 			}
 			cloudImages.Ibmcloud = &ibmcloudObjects
@@ -211,17 +212,17 @@ func (releaseArch *Arch) toStreamArch(rel *Release) stream.Arch {
 			Formats: mapFormats(releaseArch.Media.PowerVS.Artifacts),
 		}
 		powervsObjects := stream.ReplicatedObject{
-			Regions: make(map[string]stream.RegionObject),
+			Regions: make(map[string]stream.SingleObject),
 		}
 		if releaseArch.Media.PowerVS.Images != nil {
 			for region, object := range releaseArch.Media.PowerVS.Images {
-				ri := stream.RegionObject{
+				so := stream.SingleObject{
 					Release: rel.Release,
 					Object:  object.Object,
 					Bucket:  object.Bucket,
 					Url:     object.Url,
 				}
-				powervsObjects.Regions[region] = ri
+				powervsObjects.Regions[region] = so
 
 			}
 			cloudImages.PowerVS = &powervsObjects
