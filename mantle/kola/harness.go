@@ -136,10 +136,6 @@ var (
 			match: regexp.MustCompile(`WARNING: CPU: \d+ PID: \d+ at (.+)`),
 		},
 		{
-			desc:  "kernel circular locking dependency warning",
-			match: regexp.MustCompile("WARNING: possible circular locking dependency detected"),
-		},
-		{
 			desc:  "failure of disk under I/O",
 			match: regexp.MustCompile("rejecting I/O to offline device"),
 		},
