@@ -219,7 +219,7 @@ github.com/coreos/ignition/v2/config/validate
 # github.com/coreos/pkg v0.0.0-20180928190104-399ea9e2e55f
 github.com/coreos/pkg/capnslog
 github.com/coreos/pkg/multierror
-# github.com/coreos/stream-metadata-go v0.1.8
+# github.com/coreos/stream-metadata-go v0.2.0
 github.com/coreos/stream-metadata-go/arch
 github.com/coreos/stream-metadata-go/fedoracoreos
 github.com/coreos/stream-metadata-go/fedoracoreos/internals

@@ -102,7 +102,7 @@ type PlatformIBMCloud struct {
 // PlatformKubeVirt containerDisk metadata
 type PlatformKubeVirt struct {
 	PlatformBase
-	Image *KubeVirtContainerDisk `json:"image"`
+	Image *CloudImage `json:"image"`
 }
 
 // ImageFormat contains all artifacts for a single OS image
@@ -138,9 +138,4 @@ type IBMCloudImage struct {
 	Object string `json:"object"`
 	Bucket string `json:"bucket"`
 	Url    string `json:"url"`
-}
-
-// KubeVirtContainerDisk describes a disk image inside a container which can be consumed by a KubeVirt based platform
-type KubeVirtContainerDisk struct {
-	Image string `json:"image,omitempty"`
 }
