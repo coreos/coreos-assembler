@@ -38,6 +38,8 @@ func TargetDistro(build *cosa.Build) (string, error) {
 	switch build.Name {
 	case "rhcos":
 		return "rhcos", nil
+	case "scos":
+		return "rhcos", nil
 	case "fedora-coreos":
 		return "fcos", nil
 	default:
