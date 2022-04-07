@@ -174,7 +174,7 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 		cpuCountHost = true
 		usernet = true
 		// Can't use 9p on RHEL8, need https://virtio-fs.gitlab.io/ instead in the future
-		if kola.Options.CosaWorkdir != "" && !strings.HasPrefix(filepath.Base(kola.QEMUOptions.DiskImage), "rhcos") {
+		if kola.Options.CosaWorkdir != "" && !strings.HasPrefix(filepath.Base(kola.QEMUOptions.DiskImage), "rhcos") && !strings.HasPrefix(filepath.Base(kola.QEMUOptions.DiskImage), "scos") && kola.Options.Distribution != "rhcos" && kola.Options.Distribution != "scos" {
 			// Conservatively bind readonly to avoid anything in the guest (stray tests, whatever)
 			// from destroying stuff
 			bindro = append(bindro, fmt.Sprintf("%s,/var/mnt/workdir", kola.Options.CosaWorkdir))
