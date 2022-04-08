@@ -236,13 +236,12 @@ func (releaseArch *Arch) toStreamArch(rel *Release) stream.Arch {
 		}
 	}
 
-	// if releaseArch.Media.Virtualbox != nil {
-	// 	virtualbox := StreamMediaDetails{
-	// 		Release: rel.Release,
-	// 		Formats: releaseArch.Media.Virtualbox.Artifacts,
-	// 	}
-	// 	artifacts.Virtualbox = &virtualbox
-	// }
+	if releaseArch.Media.VirtualBox != nil {
+		artifacts["virtualbox"] = stream.PlatformArtifacts{
+			Release: rel.Release,
+			Formats: mapFormats(releaseArch.Media.VirtualBox.Artifacts),
+		}
+	}
 
 	if releaseArch.Media.Vmware != nil {
 		artifacts["vmware"] = stream.PlatformArtifacts{

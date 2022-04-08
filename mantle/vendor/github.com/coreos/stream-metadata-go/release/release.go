@@ -66,6 +66,7 @@ type Media struct {
 	Openstack    *PlatformBase     `json:"openstack"`
 	PowerVS      *PlatformIBMCloud `json:"powervs"`
 	Qemu         *PlatformBase     `json:"qemu"`
+	VirtualBox   *PlatformBase     `json:"virtualbox"`
 	Vmware       *PlatformBase     `json:"vmware"`
 	Vultr        *PlatformBase     `json:"vultr"`
 }
