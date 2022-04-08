@@ -18,6 +18,7 @@ from cosalib import cmdlib
 parser = argparse.ArgumentParser()
 parser.add_argument("--authfile", help="Authentication file",
                     action='store')
+parser.add_argument("--format", help="Image format for destination", choices=['oci', 'v2s2'], action='store')
 parser.add_argument("name", help="destination image reference")
 
 args = parser.parse_args()
@@ -40,6 +41,8 @@ if args.authfile is None:
     args.authfile = os.environ.get("REGISTRY_AUTH_FILE")
 if args.authfile is not None:
     skopeoargs.extend(['--authfile', args.authfile])
+if args.format is not None:
+    skopeoargs.extend(['--format', args.format])
 container_name = args.name
 if ":" not in container_name:
     container_name = f"{container_name}:{latest_build}-{arch}"
