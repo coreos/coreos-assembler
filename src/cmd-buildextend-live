@@ -47,7 +47,7 @@ if not args.build:
 print(f"Targeting build: {args.build}")
 
 image_json = generate_image_json('src/config/image.yaml')
-squashfs_compression = 'lz4' if args.fast else image_json.get('squashfs-compression', 'zstd')
+squashfs_compression = 'lz4' if args.fast else image_json['squashfs-compression']
 
 srcdir_prefix = "src/config/live/"
 
