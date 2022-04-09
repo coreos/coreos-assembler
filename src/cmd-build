@@ -207,11 +207,7 @@ ks_path="${configdir}"/image.ks
 if [ -f "${ks_path}" ]; then
     fatal "Kickstart support was removed; migrate to image.yaml"
 fi
-image_input="${image_yaml}"
-if ! [ -f "${image_input}" ]; then
-    fatal "Failed to find ${image_input}"
-fi
-image_config_checksum=$(< "${image_input}" sha256sum_str)
+image_config_checksum=$(< "${image_json}" sha256sum_str)
 if [ -n "${previous_build}" ]; then
     previous_image_input_checksum=$(jq -r '.["coreos-assembler.image-input-checksum"]' < "${previous_builddir}/meta.json")
 fi
