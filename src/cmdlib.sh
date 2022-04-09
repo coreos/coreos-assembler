@@ -149,7 +149,7 @@ pick_yaml_or_else_json() {
 
 # Given a YAML file at first path, write it as JSON to file at second path
 yaml2json() {
-    python3 -c 'import sys, json, yaml; json.dump(yaml.safe_load(sys.stdin), sys.stdout)' < "$1" > "$2"
+    python3 -c 'import sys, json, yaml; json.dump(yaml.safe_load(sys.stdin), sys.stdout, sort_keys=True)' < "$1" > "$2"
 }
 
 prepare_build() {
@@ -191,7 +191,7 @@ prepare_build() {
     # Combine with the defaults
     yaml2json "${image_yaml}" repo-image.json
     export image_json="${workdir}/tmp/image.json"
-    cat image-default.json repo-image.json | jq -s add > "${image_json}"
+    cat image-default.json repo-image.json | jq -S -s add > "${image_json}"
     rm image-default.json repo-image.json
 
     export workdir configdir manifest manifest_lock manifest_lock_overrides manifest_lock_arch_overrides
