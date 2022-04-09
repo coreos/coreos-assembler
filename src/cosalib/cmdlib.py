@@ -233,6 +233,12 @@ def rm_allow_noent(path):
         pass
 
 
+def extract_image_json(workdir, commit):
+    repo = os.path.join(workdir, 'tmp/repo')
+    with open(os.path.join(workdir, 'tmp/image.json'), 'w') as f:
+        subprocess.check_call(['ostree', f'--repo={repo}', 'cat', commit, '/usr/share/coreos-assembler/image.json'], stdout=f)
+
+
 # In coreos-assembler, we are strongly oriented towards the concept of a single
 # versioned "build" object that has artifacts.  But rpm-ostree (among other things)
 # really natively wants to operate on unpacked ostree repositories.  So, we maintain
@@ -241,7 +247,8 @@ def rm_allow_noent(path):
 # a metal image, we may not have preserved that cache.
 #
 # Call this function to ensure that the ostree commit for a given build is in tmp/repo.
-def import_ostree_commit(repo, buildpath, buildmeta, force=False):
+def import_ostree_commit(workdir, buildpath, buildmeta, force=False):
+    repo = os.path.join(workdir, 'tmp/repo')
     commit = buildmeta['ostree-commit']
     tarfile = os.path.join(buildpath, buildmeta['images']['ostree']['path'])
     # create repo in case e.g. tmp/ was cleared out; idempotent
@@ -255,6 +262,7 @@ def import_ostree_commit(repo, buildpath, buildmeta, force=False):
                         stderr=subprocess.DEVNULL) == 0
             and not os.path.isfile(commitpartial)
             and not force):
+        extract_image_json(workdir, commit)
         return
 
     print(f"Extracting {commit}")
@@ -278,6 +286,9 @@ def import_ostree_commit(repo, buildpath, buildmeta, force=False):
                                    '--write-ref', buildmeta['buildid'],
                                    'ostree-unverified-image:oci-archive:' + tarfile])
             subprocess.check_call(['ostree', f'--repo={repo}', 'pull-local', tmpd, buildmeta['buildid']])
+
+    # Also extract image.json since it's commonly needed by image builds
+    extract_image_json(workdir, commit)
 
 
 def get_basearch():
