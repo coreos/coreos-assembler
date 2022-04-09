@@ -6,6 +6,9 @@ rootfs: "xfs"
 rootfs-args: ""
 grub-script: "/usr/lib/coreos-assembler/grub.cfg"
 
+# Additional default kernel arguments injected into disk images
+extra-kargs: []
+
 # Can also be oci-chunked
 ostree-format: oci
 # True if we should use `ostree container image deploy`
