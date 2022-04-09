@@ -5,12 +5,13 @@
 import logging as log
 import os.path
 import sys
+import json
 
 cosa_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, f"{cosa_dir}/cosalib")
 sys.path.insert(0, cosa_dir)
 
-from cosalib.cmdlib import generate_image_json, image_info
+from cosalib.cmdlib import image_info
 from cosalib.qemuvariants import QemuVariantImage
 
 
@@ -86,7 +87,8 @@ class OVA(QemuVariantImage):
         Returns a dictionary with the parameters needed to create an OVF file
         based on the qemu, vmdk, image.yaml, and info from the build metadata
         """
-        image_json = generate_image_json('src/config/image.yaml')
+        with open(os.path.join(self._workdir, 'tmp/image.json')) as f:
+            image_json = json.load(f)
 
         system_type = 'vmx-{}'.format(image_json['vmware-hw-version'])
         os_type = image_json['vmware-os-type']
