@@ -183,16 +183,8 @@ prepare_build() {
     manifest_lock_arch_overrides=$(pick_yaml_or_else_json "${configdir}/manifest-lock.overrides.${basearch}")
     fetch_stamp="${workdir}"/cache/fetched-stamp
 
-    image_yaml="${workdir}/tmp/image.yaml"
-    flatten_image_yaml_to_file "${configdir}/image.yaml" "${image_yaml}"
-    # Convert the image.yaml to JSON so that it can be more easily parsed
-    # by the shell script in create_disk.sh.
-    yaml2json "/usr/lib/coreos-assembler/image-default.yaml" image-default.json
-    # Combine with the defaults
-    yaml2json "${image_yaml}" repo-image.json
     export image_json="${workdir}/tmp/image.json"
-    cat image-default.json repo-image.json | jq -S -s add > "${image_json}"
-    rm image-default.json repo-image.json
+    write_image_json "${configdir}/image.yaml" "${image_json}"
 
     export workdir configdir manifest manifest_lock manifest_lock_overrides manifest_lock_arch_overrides
     export fetch_stamp
@@ -882,14 +874,14 @@ builds.bump_timestamp()
 print('Build ${buildid} was inserted ${arch:+for $arch}')")
 }
 
-flatten_image_yaml_to_file() {
+write_image_json() {
     local srcfile=$1; shift
     local outfile=$1; shift
     (python3 -c "
 import sys
 sys.path.insert(0, '${DIR}')
 from cosalib import cmdlib
-cmdlib.flatten_image_yaml_to_file('${srcfile}', '${outfile}')")
+cmdlib.write_image_json('${srcfile}', '${outfile}')")
 }
 
 # Shell wrapper for the Python import_ostree_commit
