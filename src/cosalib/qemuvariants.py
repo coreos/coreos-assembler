@@ -20,7 +20,8 @@ from cosalib.cmdlib import (
     get_basearch,
     image_info,
     run_verbose,
-    sha256sum_file
+    sha256sum_file,
+    import_ostree_commit
 )
 
 # BASEARCH is the current machine architecture
@@ -236,6 +237,10 @@ class QemuVariantImage(_Build):
         :param callback: callback function for extra processing image
         :type callback: function
         """
+
+        # Disk image builds may require an unpacked ostree repo and tmp/image.json in general.
+        import_ostree_commit(self._workdir, self.build_dir, self.meta)
+
         work_img = os.path.join(self._tmpdir,
                                 f"{self.image_name_base}.{self.image_format}")
         final_img = os.path.join(os.path.abspath(self.build_dir),

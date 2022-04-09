@@ -80,7 +80,7 @@ class HashListV1(dict):
         checkout = 'tmp/repo/tmp/keylime-checkout'
 
         import_ostree_commit(
-            'tmp/repo',
+            os.getcwd(),
             self._metadata.build_dir,
             self._metadata,
             force=True)

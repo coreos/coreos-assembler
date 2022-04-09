@@ -117,6 +117,11 @@ commit=$(meta_key ostree-commit)
 ostree_repo=${tmprepo}
 # Ensure that we have the cached unpacked commit
 import_ostree_commit_for_build "${build}"
+# Note this overwrote the bits generated in prepare_build
+# for image_json.  In the future we expect to split prepare_build
+# into prepare_ostree_build and prepare_diskimage_build; the
+# latter path would only run this.
+image_json=${workdir}/tmp/image.json
 
 image_format=raw
 if [[ $image_type == qemu ]]; then
