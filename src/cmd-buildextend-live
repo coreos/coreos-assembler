@@ -18,7 +18,7 @@ import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from cosalib.builds import Builds
-from cosalib.cmdlib import run_verbose, sha256sum_file, flatten_image_yaml
+from cosalib.cmdlib import run_verbose, sha256sum_file, generate_image_json
 from cosalib.cmdlib import import_ostree_commit, get_basearch, ensure_glob
 from cosalib.meta import GenericBuildMeta
 
@@ -46,8 +46,8 @@ if not args.build:
     args.build = builds.get_latest()
 print(f"Targeting build: {args.build}")
 
-image_yaml = flatten_image_yaml('src/config/image.yaml')
-squashfs_compression = 'lz4' if args.fast else image_yaml.get('squashfs-compression', 'zstd')
+image_json = generate_image_json('src/config/image.yaml')
+squashfs_compression = 'lz4' if args.fast else image_json.get('squashfs-compression', 'zstd')
 
 srcdir_prefix = "src/config/live/"
 

@@ -350,10 +350,17 @@ def cmdlib_sh(script):
     '''])
 
 
-def flatten_image_yaml_to_file(srcfile, outfile):
-    flattened = flatten_image_yaml(srcfile)
+def generate_image_json(srcfile):
+    r = yaml.safe_load(open("/usr/lib/coreos-assembler/image-default.yaml"))
+    for k, v in flatten_image_yaml(srcfile).items():
+        r[k] = v
+    return r
+
+
+def write_image_json(srcfile, outfile):
+    r = generate_image_json(srcfile)
     with open(outfile, 'w') as f:
-        yaml.dump(flattened, f)
+        json.dump(r, f, sort_keys=True)
 
 
 def merge_lists(x, y, k):
