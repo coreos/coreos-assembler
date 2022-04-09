@@ -170,7 +170,7 @@ case "${image_type}" in
         rootfs_size=0
         ;;
     qemu)
-        image_size="$(python3 -c 'import sys, yaml; print(yaml.safe_load(sys.stdin)["size"])' < "${image_yaml}")G"
+        image_size="$(jq -r ".size" < "${image_json}")G"
         rootfs_size="${rootfs_size}M"
         ;;
     *) fatal "unreachable image_type ${image_type}";;
@@ -181,7 +181,7 @@ if [ "${image_type}" == metal4k ]; then
 fi
 
 set -x
-kargs="$(python3 -c 'import sys, yaml; args = yaml.safe_load(sys.stdin).get("extra-kargs", []); print(" ".join(args))' < "${image_yaml}")"
+kargs="$(python3 -c 'import sys, json; args = json.load(sys.stdin).get("extra-kargs", []); print(" ".join(args))' < "${image_json}")"
 tty="console=tty0 console=${DEFAULT_TERMINAL},115200n8"
 # On each s390x hypervisor, a tty would be automatically detected by the kernel
 # and systemd, there is no need to specify one. However, we keep DEFAULT_TERMINAL
