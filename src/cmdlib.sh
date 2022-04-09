@@ -394,6 +394,13 @@ EOF
         done
     fi
 
+    local imagejsondir="${tmp_overridesdir}/imagejson"
+    export ostree_image_json="/usr/share/coreos-assembler/image.json"
+    mkdir -p "${imagejsondir}/usr/share/coreos-assembler/"
+    cp "${image_json}" "${imagejsondir}${ostree_image_json}"
+    commit_overlay cosa-image-json "${imagejsondir}"
+    layers="${layers} cosa-image-json"
+
     local_overrides_lockfile="${tmp_overridesdir}/local-overrides.json"
     if [ -n "${with_cosa_overrides}" ] && [[ -n $(ls "${overridesdir}/rpm/"*.rpm 2> /dev/null) ]]; then
         (cd "${overridesdir}"/rpm && rm -rf .repodata && createrepo_c .)
@@ -874,6 +881,7 @@ builds.bump_timestamp()
 print('Build ${buildid} was inserted ${arch:+for $arch}')")
 }
 
+# Prepare the image.json as part of an ostree image build
 write_image_json() {
     local srcfile=$1; shift
     local outfile=$1; shift
@@ -882,6 +890,19 @@ import sys
 sys.path.insert(0, '${DIR}')
 from cosalib import cmdlib
 cmdlib.write_image_json('${srcfile}', '${outfile}')")
+}
+
+# Fetch the image.json from the ostree commit to stdout.
+# Should be used by disk image builds.
+extract_image_json() {
+    local repo=$1; shift
+    local commit=$1; shift
+    (python3 -c "
+import sys, json
+sys.path.insert(0, '${DIR}')
+from cosalib import cmdlib
+json.dump(cmdlib.extract_image_json('${repo}', '${commit}'), sys.stdout, sort_keys=True)
+")
 }
 
 # Shell wrapper for the Python import_ostree_commit

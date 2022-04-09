@@ -20,7 +20,8 @@ from cosalib.cmdlib import (
     get_basearch,
     image_info,
     run_verbose,
-    sha256sum_file
+    sha256sum_file,
+    import_ostree_commit
 )
 
 # BASEARCH is the current machine architecture
@@ -182,6 +183,9 @@ class QemuVariantImage(_Build):
             "platform_image_name", self.platform)
 
         _Build.__init__(self, **kwargs)
+
+        repo = os.path.join(self._workdir, 'tmp/repo')
+        import_ostree_commit(repo, self._tmpdir, self.meta)
 
     @property
     def image_qemu(self):
