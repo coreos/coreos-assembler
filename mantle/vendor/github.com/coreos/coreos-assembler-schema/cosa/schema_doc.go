@@ -443,6 +443,7 @@ var generatedSchemaJSON = `{
        "nutanix",
        "openstack",
        "qemu",
+       "virtualbox",
        "vmware",
        "vultr"
       ],
@@ -535,6 +536,12 @@ var generatedSchemaJSON = `{
          "$id":"#/properties/images/properties/openstack",
          "type":"object",
          "title":"OpenStack",
+         "$ref": "#/definitions/artifact"
+        },
+       "virtualbox": {
+         "$id":"#/properties/images/properties/virtualbox",
+         "type":"object",
+         "title":"VirtualBox",
          "$ref": "#/definitions/artifact"
         },
        "vmware": {
