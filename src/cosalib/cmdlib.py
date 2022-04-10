@@ -354,6 +354,9 @@ def generate_image_json(srcfile):
     r = yaml.safe_load(open("/usr/lib/coreos-assembler/image-default.yaml"))
     for k, v in flatten_image_yaml(srcfile).items():
         r[k] = v
+    # Serialize our default GRUB config
+    with open("/usr/lib/coreos-assembler/grub.cfg") as f:
+        r['grub-script'] = f.read()
     return r
 
 
