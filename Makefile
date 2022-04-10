@@ -33,7 +33,7 @@ endif
 .%.shellchecked: %
 	./tests/check_one.sh $< $@
 
-check: ${src_checked} ${tests_checked} ${cwd_checked} flake8 pycheck mantle-check gangplank-check
+check: ${src_checked} ${tests_checked} ${cwd_checked} flake8 pycheck schema-check mantle-check gangplank-check
 	echo OK
 
 pycheck:
@@ -82,6 +82,21 @@ tools:
 .PHONY: schema
 schema:
 	$(MAKE) -C schema
+
+.PHONY: schema-check
+schema-check: DIGEST = $(shell sha256sum src/v1.json | awk '{print $$1}')
+schema-check:
+	# Are the JSON Schema copies synced with each other?
+	diff -u src/v1.json schema/v1.json
+	# Is the generated Go code synced with the schema?
+	grep -q "$(DIGEST)" schema/cosa/cosa_v1.go
+	grep -q "$(DIGEST)" schema/cosa/schema_doc.go
+	# Are the vendored copies of the generated code synced with the
+	# canonical ones?
+	diff -u gangplank/vendor/github.com/coreos/coreos-assembler-schema/cosa/cosa_v1.go schema/cosa/cosa_v1.go
+	diff -u gangplank/vendor/github.com/coreos/coreos-assembler-schema/cosa/schema_doc.go schema/cosa/schema_doc.go
+	diff -u mantle/vendor/github.com/coreos/coreos-assembler-schema/cosa/cosa_v1.go schema/cosa/cosa_v1.go
+	diff -u mantle/vendor/github.com/coreos/coreos-assembler-schema/cosa/schema_doc.go schema/cosa/schema_doc.go
 
 install:
 	install -d $(DESTDIR)$(PREFIX)/lib/coreos-assembler
