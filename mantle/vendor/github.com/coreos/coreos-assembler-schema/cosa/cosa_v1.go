@@ -100,6 +100,7 @@ type BuildArtifacts struct {
 	Ostree             Artifact  `json:"ostree"`
 	PowerVirtualServer *Artifact `json:"powervs,omitempty"`
 	Qemu               *Artifact `json:"qemu,omitempty"`
+	VirtualBox         *Artifact `json:"virtualbox,omitempty"`
 	Vmware             *Artifact `json:"vmware,omitempty"`
 	Vultr              *Artifact `json:"vultr,omitempty"`
 }
