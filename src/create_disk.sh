@@ -364,7 +364,7 @@ install_grub_cfg() {
     # 0700 to match the RPM permissions which I think are mainly in case someone has
     # manually set a grub password
     mkdir -p -m 0700 $rootfs/boot/grub2
-    cp -v $grub_script $rootfs/boot/grub2/grub.cfg
+    printf "%s" "$grub_script" > $rootfs/boot/grub2/grub.cfg
 }
 
 # Other arch-specific bootloader changes

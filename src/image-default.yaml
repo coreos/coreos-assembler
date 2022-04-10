@@ -4,7 +4,6 @@ bootfs: "ext4"
 rootfs: "xfs"
 # Add arguments here that will be passed to e.g. mkfs.xfs
 rootfs-args: ""
-grub-script: "/usr/lib/coreos-assembler/grub.cfg"
 
 # Additional default kernel arguments injected into disk images
 extra-kargs: []
