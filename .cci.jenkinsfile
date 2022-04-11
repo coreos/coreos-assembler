@@ -36,7 +36,7 @@ pod(image: imageName + ":latest", kvm: true, memory: "10Gi") {
 
     stage("Build Cloud Images") {
         cosaParallelCmds(cosaDir: "/srv", commands: ["Aliyun", "AWS", "Azure", "DigitalOcean", "Exoscale", "GCP",
-                                                     "IBMCloud", "OpenStack", "VMware", "Vultr"])
+                                                     "IBMCloud", "KubeVirt", "OpenStack", "VMware", "Vultr"])
 
         // quick schema validation
         utils.cosaCmd(cosaDir: "/srv", args: "meta --get name")
