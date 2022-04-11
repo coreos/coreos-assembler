@@ -64,7 +64,7 @@ install_rpms() {
 
     # Add fast-tracked packages here.  We don't want to wait on bodhi for rpm-ostree
     # as we want to enable fast iteration there.
-    yum --enablerepo=updates-testing upgrade rpm-ostree
+    yum -y --enablerepo=updates-testing upgrade rpm-ostree
 
     # Commented out for now, see above
     #dnf remove -y ${builddeps}
