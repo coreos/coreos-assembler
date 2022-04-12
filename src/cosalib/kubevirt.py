@@ -3,7 +3,11 @@ import subprocess
 import logging as log
 
 from cosalib.cmdlib import (
-    run_verbose
+    run_verbose,
+)
+
+from cosalib.buildah import (
+    buildah_base_args
 )
 
 from cosalib.qemuvariants import QemuVariantImage
@@ -26,12 +30,13 @@ class KubeVirtImage(QemuVariantImage):
         """
         Take the qcow2 base image and convert it to an oci-archive.
         """
+        buildah_base_argv = buildah_base_args()
         final_img = os.path.join(os.path.abspath(self.build_dir),
                                  self.image_name)
-        buildah_img = run_verbose(["buildah", "from", "scratch"], stdout=subprocess.PIPE).stdout.decode("utf-8").strip()
-        run_verbose(["buildah", "add", "--chmod", "0555", buildah_img, image_name, "/disk/coreos.img"])
-        digest = run_verbose(["buildah", "commit", buildah_img], stdout=subprocess.PIPE).stdout.decode("utf-8").strip()
-        run_verbose(["buildah", "push", "--format", "oci", digest, f"oci-archive:{final_img}"])
+        buildah_img = run_verbose_collect_stdout(buildah_base_argv + ["from", "scratch"])
+        run_verbose(buildah_base_argv + ["add", "--chmod", "0555", buildah_img, image_name, "/disk/coreos.img"])
+        digest = run_verbose_collect_stdout(buildah_base_argv + ["commit", buildah_img])
+        run_verbose(buildah_base_argv + ["push", "--format", "oci", digest, f"oci-archive:{final_img}"])
 
 
 def kubevirt_run_ore(build, args):
@@ -83,3 +88,7 @@ def get_kubevirt_variant(variant, parser, kwargs={}):
         arch=parser.arch,
         compress=parser.compress,
         **kwargs)
+
+
+def run_verbose_collect_stdout(args):
+    return run_verbose(args, stdout=subprocess.PIPE).stdout.decode("utf-8").strip()
