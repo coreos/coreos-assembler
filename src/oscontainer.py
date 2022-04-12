@@ -20,11 +20,11 @@ import os
 import shutil
 import subprocess
 from cosalib import cmdlib
+from cosalib.buildah import (
+    buildah_base_args
+)
 
 OSCONTAINER_COMMIT_LABEL = 'com.coreos.ostree-commit'
-
-# https://access.redhat.com/documentation/en-us/openshift_container_platform/4.1/html/builds/custom-builds-buildah
-NESTED_BUILD_ARGS = ['--storage-driver', 'vfs']
 
 
 def run_get_json(args):
@@ -113,14 +113,7 @@ def oscontainer_build(containers_storage, tmpdir, src, ref, image_name_and_tag,
     else:
         ostree_version = None
 
-    buildah_base_argv = ['buildah']
-    if containers_storage is not None:
-        buildah_base_argv.append(f"--root={containers_storage}")
-        if os.environ.get('container') is not None:
-            print("Using nested container mode due to container environment variable")
-            buildah_base_argv.extend(NESTED_BUILD_ARGS)
-        else:
-            print("Skipping nested container mode")
+    buildah_base_argv = buildah_base_args(containers_storage)
 
     # In general, we just stick with the default tmpdir set up. But if a
     # workdir is provided, then we want to be sure that all the heavy I/O work
