@@ -437,6 +437,27 @@ func checkSystemdUnitFailures(output string, distribution string) error {
 	return nil
 }
 
+// checkSystemdUnitStuck ensures that no system unit stuck in activating state.
+// https://github.com/coreos/coreos-assembler/issues/2798
+// See https://bugzilla.redhat.com/show_bug.cgi?id=2072050
+func checkSystemdUnitStuck(output string, m Machine) error {
+	if len(output) == 0 {
+		return nil
+	}
+	var NRestarts int
+	for _, unit := range strings.Split(output, "\n") {
+		out, stderr, err := m.SSH(fmt.Sprintf("systemctl show -p NRestarts --value %s", unit))
+		if err != nil {
+			return fmt.Errorf("failed to query systemd unit NRestarts: %s: %v: %s", out, err, stderr)
+		}
+		NRestarts, _ = strconv.Atoi(string(out))
+		if NRestarts >= 2 {
+			return fmt.Errorf("systemd units %s has %v restarts", unit, NRestarts)
+		}
+	}
+	return nil
+}
+
 // CheckMachine tests a machine for various error conditions such as ssh
 // being available and no systemd units failing at the time ssh is reachable.
 // It also ensures the remote system is running Container Linux by CoreOS or
@@ -479,7 +500,7 @@ func CheckMachine(ctx context.Context, m Machine) error {
 
 	// check systemd version on host to see if we can use `busctl --json=short`
 	var systemdVer int
-	var failedUnitsCmd string
+	var systemdCmd, failedUnitsCmd, activatingUnitsCmd string
 	minSystemdVer := 240
 	out, stderr, err = m.SSH("rpm -q --queryformat='%{VERSION}\n' systemd")
 	if err != nil {
@@ -489,10 +510,12 @@ func CheckMachine(ctx context.Context, m Machine) error {
 	systemdVer, _ = strconv.Atoi(string(out[0:3]))
 
 	if systemdVer >= minSystemdVer {
-		failedUnitsCmd = "busctl --json=short call org.freedesktop.systemd1 /org/freedesktop/systemd1 org.freedesktop.systemd1.Manager ListUnitsFiltered as 2 state failed | jq -r '.data[][][0]'"
+		systemdCmd = "busctl --json=short call org.freedesktop.systemd1 /org/freedesktop/systemd1 org.freedesktop.systemd1.Manager ListUnitsFiltered as 2 state status | jq -r '.data[][][0]'"
 	} else {
-		failedUnitsCmd = "systemctl --no-legend --state failed list-units | awk '{print $1}'"
+		systemdCmd = "systemctl --no-legend --state status list-units | awk '{print $1}'"
 	}
+	failedUnitsCmd = strings.Replace(systemdCmd, "status", "failed", -1)
+	activatingUnitsCmd = strings.Replace(systemdCmd, "status", "activating", -1)
 
 	if !m.RuntimeConf().AllowFailedUnits {
 		// Ensure no systemd units failed during boot
@@ -500,6 +523,16 @@ func CheckMachine(ctx context.Context, m Machine) error {
 		if err != nil {
 			return fmt.Errorf("failed to query systemd for failed units: %s: %v: %s", out, err, stderr)
 		}
+		// Ensure no systemd units stuck in activating state
+		out, stderr, err = m.SSH(activatingUnitsCmd)
+		if err != nil {
+			return fmt.Errorf("failed to query systemd for activating units: %s: %v: %s", out, err, stderr)
+		}
+		err = checkSystemdUnitStuck(string(out), m)
+		if err != nil {
+			return err
+		}
+
 		err = checkSystemdUnitFailures(string(out), distribution)
 		if err != nil {
 			return err
