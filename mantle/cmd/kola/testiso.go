@@ -388,11 +388,11 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 		ranTest = true
 		instPxe := baseInst // Pretend this is Rust and I wrote .copy()
 
-		if err := testPXE(ctx, instPxe, filepath.Join(outputDir, scenarioPXEInstall), false); err != nil {
-			return errors.Wrapf(err, "scenario %s", scenarioPXEInstall)
-
+		err := testPXE(ctx, instPxe, filepath.Join(outputDir, scenarioPXEInstall), false)
+		printResult(scenarioPXEInstall, err)
+		if err != nil {
+			return err
 		}
-		printSuccess(scenarioPXEInstall)
 	}
 	if _, ok := targetScenarios[scenarioPXEOfflineInstall]; ok {
 		if kola.CosaBuild.Meta.BuildArtifacts.LiveKernel == nil {
@@ -402,11 +402,11 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 		ranTest = true
 		instPxe := baseInst // Pretend this is Rust and I wrote .copy()
 
-		if err := testPXE(ctx, instPxe, filepath.Join(outputDir, scenarioPXEOfflineInstall), true); err != nil {
-			return errors.Wrapf(err, "scenario %s", scenarioPXEOfflineInstall)
-
+		err := testPXE(ctx, instPxe, filepath.Join(outputDir, scenarioPXEOfflineInstall), true)
+		printResult(scenarioPXEOfflineInstall, err)
+		if err != nil {
+			return err
 		}
-		printSuccess(scenarioPXEOfflineInstall)
 	}
 	if _, ok := targetScenarios[scenarioISOInstall]; ok {
 		if kola.CosaBuild.Meta.BuildArtifacts.LiveIso == nil {
@@ -414,10 +414,11 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 		}
 		ranTest = true
 		instIso := baseInst // Pretend this is Rust and I wrote .copy()
-		if err := testLiveIso(ctx, instIso, filepath.Join(outputDir, scenarioISOInstall), false, false); err != nil {
-			return errors.Wrapf(err, "scenario %s", scenarioISOInstall)
+		err := testLiveIso(ctx, instIso, filepath.Join(outputDir, scenarioISOInstall), false, false)
+		printResult(scenarioISOInstall, err)
+		if err != nil {
+			return err
 		}
-		printSuccess(scenarioISOInstall)
 	}
 	if _, ok := targetScenarios[scenarioISOOfflineInstall]; ok {
 		if kola.CosaBuild.Meta.BuildArtifacts.LiveIso == nil {
@@ -425,20 +426,22 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 		}
 		ranTest = true
 		instIso := baseInst // Pretend this is Rust and I wrote .copy()
-		if err := testLiveIso(ctx, instIso, filepath.Join(outputDir, scenarioISOOfflineInstall), true, false); err != nil {
-			return errors.Wrapf(err, "scenario %s", scenarioISOOfflineInstall)
+		err := testLiveIso(ctx, instIso, filepath.Join(outputDir, scenarioISOOfflineInstall), true, false)
+		printResult(scenarioISOOfflineInstall, err)
+		if err != nil {
+			return err
 		}
-		printSuccess(scenarioISOOfflineInstall)
 	}
 	if _, ok := targetScenarios[scenarioISOLiveLogin]; ok {
 		if kola.CosaBuild.Meta.BuildArtifacts.LiveIso == nil {
 			return fmt.Errorf("build %s has no live ISO", kola.CosaBuild.Meta.Name)
 		}
 		ranTest = true
-		if err := testLiveLogin(ctx, filepath.Join(outputDir, scenarioISOLiveLogin)); err != nil {
-			return errors.Wrapf(err, "scenario %s", scenarioISOLiveLogin)
+		err := testLiveLogin(ctx, filepath.Join(outputDir, scenarioISOLiveLogin))
+		printResult(scenarioISOLiveLogin, err)
+		if err != nil {
+			return err
 		}
-		printSuccess(scenarioISOLiveLogin)
 	}
 	if _, ok := targetScenarios[scenarioISOAsDisk]; ok {
 		if kola.CosaBuild.Meta.BuildArtifacts.LiveIso == nil {
@@ -447,10 +450,11 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 		switch system.RpmArch() {
 		case "x86_64":
 			ranTest = true
-			if err := testAsDisk(ctx, filepath.Join(outputDir, scenarioISOAsDisk)); err != nil {
-				return errors.Wrapf(err, "scenario %s", scenarioISOAsDisk)
+			err := testAsDisk(ctx, filepath.Join(outputDir, scenarioISOAsDisk))
+			printResult(scenarioISOAsDisk, err)
+			if err != nil {
+				return err
 			}
-			printSuccess(scenarioISOAsDisk)
 		default:
 			// no hybrid partition table to boot from
 			fmt.Printf("%s unsupported on %s; skipping\n", scenarioISOAsDisk, system.RpmArch())
@@ -462,10 +466,11 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 		}
 		ranTest = true
 		instIso := baseInst // Pretend this is Rust and I wrote .copy()
-		if err := testLiveIso(ctx, instIso, filepath.Join(outputDir, scenarioMinISOInstall), false, true); err != nil {
-			return errors.Wrapf(err, "scenario %s", scenarioMinISOInstall)
+		err := testLiveIso(ctx, instIso, filepath.Join(outputDir, scenarioMinISOInstall), false, true)
+		printResult(scenarioMinISOInstall, err)
+		if err != nil {
+			return err
 		}
-		printSuccess(scenarioMinISOInstall)
 	}
 	if _, ok := targetScenarios[scenarioMinISOInstallNm]; ok {
 		if kola.CosaBuild.Meta.BuildArtifacts.LiveIso == nil {
@@ -474,10 +479,11 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 		ranTest = true
 		instIso := baseInst // Pretend this is Rust and I wrote .copy()
 		addNmKeyfile = true
-		if err := testLiveIso(ctx, instIso, filepath.Join(outputDir, scenarioMinISOInstallNm), false, true); err != nil {
-			return errors.Wrapf(err, "scenario %s", scenarioMinISOInstallNm)
+		err := testLiveIso(ctx, instIso, filepath.Join(outputDir, scenarioMinISOInstallNm), false, true)
+		printResult(scenarioMinISOInstallNm, err)
+		if err != nil {
+			return err
 		}
-		printSuccess(scenarioMinISOInstallNm)
 	}
 
 	if !ranTest {
@@ -551,7 +557,11 @@ func awaitCompletion(ctx context.Context, inst *platform.QemuInstance, outdir st
 	return <-errchan
 }
 
-func printSuccess(mode string) {
+func printResult(mode string, err error) bool {
+	result := "PASS"
+	if err != nil {
+		result = "FAIL"
+	}
 	variant := []string{kola.QEMUOptions.Firmware}
 	if kola.QEMUOptions.Native4k {
 		variant = append(variant, "metal4k")
@@ -564,7 +574,12 @@ func printSuccess(mode string) {
 	if addNmKeyfile {
 		variant = append(variant, "nm-keyfile")
 	}
-	fmt.Printf("PASS: %s (%s)\n", mode, strings.Join(variant, " + "))
+	fmt.Printf("%s: %s (%s)\n", result, mode, strings.Join(variant, " + "))
+	if err != nil {
+		fmt.Printf("    %s\n", err)
+		return true
+	}
+	return false
 }
 
 func testPXE(ctx context.Context, inst platform.Install, outdir string, offline bool) error {
