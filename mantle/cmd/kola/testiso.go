@@ -552,19 +552,19 @@ func awaitCompletion(ctx context.Context, inst *platform.QemuInstance, outdir st
 }
 
 func printSuccess(mode string) {
-	metaltype := "metal"
+	variant := []string{kola.QEMUOptions.Firmware}
 	if kola.QEMUOptions.Native4k {
-		metaltype = "metal4k"
+		variant = append(variant, "metal4k")
+	} else {
+		variant = append(variant, "metal")
 	}
-	onMultipath := ""
 	if kola.QEMUOptions.MultiPathDisk {
-		onMultipath = " on multipath"
+		variant = append(variant, "multipath")
 	}
-	withNmKeyfile := ""
 	if addNmKeyfile {
-		withNmKeyfile = " with NM keyfile"
+		variant = append(variant, "nm-keyfile")
 	}
-	fmt.Printf("Successfully tested scenario %s for %s on %s (%s%s%s)\n", mode, kola.CosaBuild.Meta.OstreeVersion, kola.QEMUOptions.Firmware, metaltype, onMultipath, withNmKeyfile)
+	fmt.Printf("PASS: %s (%s)\n", mode, strings.Join(variant, " + "))
 }
 
 func testPXE(ctx context.Context, inst platform.Install, outdir string, offline bool) error {
