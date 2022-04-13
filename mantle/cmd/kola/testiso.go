@@ -388,8 +388,8 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 		ranTest = true
 		instPxe := baseInst // Pretend this is Rust and I wrote .copy()
 
-		err := testPXE(ctx, instPxe, filepath.Join(outputDir, scenarioPXEInstall), false)
-		printResult(scenarioPXEInstall, err)
+		duration, err := testPXE(ctx, instPxe, filepath.Join(outputDir, scenarioPXEInstall), false)
+		printResult(scenarioPXEInstall, duration, err)
 		if err != nil {
 			return err
 		}
@@ -402,8 +402,8 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 		ranTest = true
 		instPxe := baseInst // Pretend this is Rust and I wrote .copy()
 
-		err := testPXE(ctx, instPxe, filepath.Join(outputDir, scenarioPXEOfflineInstall), true)
-		printResult(scenarioPXEOfflineInstall, err)
+		duration, err := testPXE(ctx, instPxe, filepath.Join(outputDir, scenarioPXEOfflineInstall), true)
+		printResult(scenarioPXEOfflineInstall, duration, err)
 		if err != nil {
 			return err
 		}
@@ -414,8 +414,8 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 		}
 		ranTest = true
 		instIso := baseInst // Pretend this is Rust and I wrote .copy()
-		err := testLiveIso(ctx, instIso, filepath.Join(outputDir, scenarioISOInstall), false, false)
-		printResult(scenarioISOInstall, err)
+		duration, err := testLiveIso(ctx, instIso, filepath.Join(outputDir, scenarioISOInstall), false, false)
+		printResult(scenarioISOInstall, duration, err)
 		if err != nil {
 			return err
 		}
@@ -426,8 +426,8 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 		}
 		ranTest = true
 		instIso := baseInst // Pretend this is Rust and I wrote .copy()
-		err := testLiveIso(ctx, instIso, filepath.Join(outputDir, scenarioISOOfflineInstall), true, false)
-		printResult(scenarioISOOfflineInstall, err)
+		duration, err := testLiveIso(ctx, instIso, filepath.Join(outputDir, scenarioISOOfflineInstall), true, false)
+		printResult(scenarioISOOfflineInstall, duration, err)
 		if err != nil {
 			return err
 		}
@@ -437,8 +437,8 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("build %s has no live ISO", kola.CosaBuild.Meta.Name)
 		}
 		ranTest = true
-		err := testLiveLogin(ctx, filepath.Join(outputDir, scenarioISOLiveLogin))
-		printResult(scenarioISOLiveLogin, err)
+		duration, err := testLiveLogin(ctx, filepath.Join(outputDir, scenarioISOLiveLogin))
+		printResult(scenarioISOLiveLogin, duration, err)
 		if err != nil {
 			return err
 		}
@@ -450,8 +450,8 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 		switch system.RpmArch() {
 		case "x86_64":
 			ranTest = true
-			err := testAsDisk(ctx, filepath.Join(outputDir, scenarioISOAsDisk))
-			printResult(scenarioISOAsDisk, err)
+			duration, err := testAsDisk(ctx, filepath.Join(outputDir, scenarioISOAsDisk))
+			printResult(scenarioISOAsDisk, duration, err)
 			if err != nil {
 				return err
 			}
@@ -466,8 +466,8 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 		}
 		ranTest = true
 		instIso := baseInst // Pretend this is Rust and I wrote .copy()
-		err := testLiveIso(ctx, instIso, filepath.Join(outputDir, scenarioMinISOInstall), false, true)
-		printResult(scenarioMinISOInstall, err)
+		duration, err := testLiveIso(ctx, instIso, filepath.Join(outputDir, scenarioMinISOInstall), false, true)
+		printResult(scenarioMinISOInstall, duration, err)
 		if err != nil {
 			return err
 		}
@@ -479,8 +479,8 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 		ranTest = true
 		instIso := baseInst // Pretend this is Rust and I wrote .copy()
 		addNmKeyfile = true
-		err := testLiveIso(ctx, instIso, filepath.Join(outputDir, scenarioMinISOInstallNm), false, true)
-		printResult(scenarioMinISOInstallNm, err)
+		duration, err := testLiveIso(ctx, instIso, filepath.Join(outputDir, scenarioMinISOInstallNm), false, true)
+		printResult(scenarioMinISOInstallNm, duration, err)
 		if err != nil {
 			return err
 		}
@@ -493,7 +493,8 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func awaitCompletion(ctx context.Context, inst *platform.QemuInstance, outdir string, qchan *os.File, booterrchan chan error, expected []string) error {
+func awaitCompletion(ctx context.Context, inst *platform.QemuInstance, outdir string, qchan *os.File, booterrchan chan error, expected []string) (time.Duration, error) {
+	start := time.Now()
 	errchan := make(chan error)
 	go func() {
 		time.Sleep(installTimeout)
@@ -554,10 +555,11 @@ func awaitCompletion(ctx context.Context, inst *platform.QemuInstance, outdir st
 			}
 		}
 	}()
-	return <-errchan
+	err := <-errchan
+	return time.Since(start), err
 }
 
-func printResult(mode string, err error) bool {
+func printResult(mode string, duration time.Duration, err error) bool {
 	result := "PASS"
 	if err != nil {
 		result = "FAIL"
@@ -574,7 +576,7 @@ func printResult(mode string, err error) bool {
 	if addNmKeyfile {
 		variant = append(variant, "nm-keyfile")
 	}
-	fmt.Printf("%s: %s (%s)\n", result, mode, strings.Join(variant, " + "))
+	fmt.Printf("%s: %s (%s) (%s)\n", result, mode, strings.Join(variant, " + "), duration.Round(time.Millisecond).String())
 	if err != nil {
 		fmt.Printf("    %s\n", err)
 		return true
@@ -582,29 +584,29 @@ func printResult(mode string, err error) bool {
 	return false
 }
 
-func testPXE(ctx context.Context, inst platform.Install, outdir string, offline bool) error {
+func testPXE(ctx context.Context, inst platform.Install, outdir string, offline bool) (time.Duration, error) {
 	if addNmKeyfile {
-		return errors.New("--add-nm-keyfile not yet supported for PXE")
+		return 0, errors.New("--add-nm-keyfile not yet supported for PXE")
 	}
 	tmpd, err := ioutil.TempDir("", "kola-testiso")
 	if err != nil {
-		return err
+		return 0, err
 	}
 	defer os.RemoveAll(tmpd)
 
 	sshPubKeyBuf, _, err := util.CreateSSHAuthorizedKey(tmpd)
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	builder, virtioJournalConfig, err := newQemuBuilderWithDisk(outdir)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	inst.Builder = builder
 	completionChannel, err := inst.Builder.VirtioChannelRead("testisocompletion")
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	var keys []string
@@ -625,7 +627,7 @@ func testPXE(ctx context.Context, inst platform.Install, outdir string, offline 
 
 	mach, err := inst.PXE(pxeKernelArgs, liveConfig, targetConfig, offline)
 	if err != nil {
-		return errors.Wrapf(err, "running PXE")
+		return 0, errors.Wrapf(err, "running PXE")
 	}
 	defer func() {
 		if err := mach.Destroy(); err != nil {
@@ -636,26 +638,26 @@ func testPXE(ctx context.Context, inst platform.Install, outdir string, offline 
 	return awaitCompletion(ctx, mach.QemuInst, outdir, completionChannel, mach.BootStartedErrorChannel, []string{liveOKSignal, signalCompleteString})
 }
 
-func testLiveIso(ctx context.Context, inst platform.Install, outdir string, offline, minimal bool) error {
+func testLiveIso(ctx context.Context, inst platform.Install, outdir string, offline, minimal bool) (time.Duration, error) {
 	tmpd, err := ioutil.TempDir("", "kola-testiso")
 	if err != nil {
-		return err
+		return 0, err
 	}
 	defer os.RemoveAll(tmpd)
 
 	sshPubKeyBuf, _, err := util.CreateSSHAuthorizedKey(tmpd)
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	builder, virtioJournalConfig, err := newQemuBuilderWithDisk(outdir)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	inst.Builder = builder
 	completionChannel, err := inst.Builder.VirtioChannelRead("testisocompletion")
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	var keys []string
@@ -681,7 +683,7 @@ func testLiveIso(ctx context.Context, inst platform.Install, outdir string, offl
 
 	mach, err := inst.InstallViaISOEmbed(nil, liveConfig, targetConfig, outdir, offline, minimal)
 	if err != nil {
-		return errors.Wrapf(err, "running iso install")
+		return 0, errors.Wrapf(err, "running iso install")
 	}
 	defer func() {
 		if err := mach.Destroy(); err != nil {
@@ -692,22 +694,22 @@ func testLiveIso(ctx context.Context, inst platform.Install, outdir string, offl
 	return awaitCompletion(ctx, mach.QemuInst, outdir, completionChannel, mach.BootStartedErrorChannel, []string{liveOKSignal, signalCompleteString})
 }
 
-func testLiveLogin(ctx context.Context, outdir string) error {
+func testLiveLogin(ctx context.Context, outdir string) (time.Duration, error) {
 	builddir := kola.CosaBuild.Dir
 	isopath := filepath.Join(builddir, kola.CosaBuild.Meta.BuildArtifacts.LiveIso.Path)
 	builder, err := newBaseQemuBuilder(outdir)
 	if err != nil {
-		return nil
+		return 0, err
 	}
 	defer builder.Close()
 	// Drop the bootindex bit (applicable to all arches except s390x and ppc64le); we want it to be the default
 	if err := builder.AddIso(isopath, "", false); err != nil {
-		return err
+		return 0, err
 	}
 
 	completionChannel, err := builder.VirtioChannelRead("coreos.liveiso-success")
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	// No network device to test https://github.com/coreos/fedora-coreos-config/pull/326
@@ -715,29 +717,29 @@ func testLiveLogin(ctx context.Context, outdir string) error {
 
 	mach, err := builder.Exec()
 	if err != nil {
-		return errors.Wrapf(err, "running iso")
+		return 0, errors.Wrapf(err, "running iso")
 	}
 	defer mach.Destroy()
 
 	return awaitCompletion(ctx, mach, outdir, completionChannel, nil, []string{"coreos-liveiso-success"})
 }
 
-func testAsDisk(ctx context.Context, outdir string) error {
+func testAsDisk(ctx context.Context, outdir string) (time.Duration, error) {
 	builddir := kola.CosaBuild.Dir
 	isopath := filepath.Join(builddir, kola.CosaBuild.Meta.BuildArtifacts.LiveIso.Path)
 	builder, config, err := newQemuBuilder(outdir)
 	if err != nil {
-		return nil
+		return 0, err
 	}
 	defer builder.Close()
 	// Drop the bootindex bit (applicable to all arches except s390x and ppc64le); we want it to be the default
 	if err := builder.AddIso(isopath, "", true); err != nil {
-		return err
+		return 0, err
 	}
 
 	completionChannel, err := builder.VirtioChannelRead("testisocompletion")
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	config.AddSystemdUnit("live-signal-ok.service", liveSignalOKUnit, conf.Enable)
@@ -746,7 +748,7 @@ func testAsDisk(ctx context.Context, outdir string) error {
 
 	mach, err := builder.Exec()
 	if err != nil {
-		return errors.Wrapf(err, "running iso")
+		return 0, errors.Wrapf(err, "running iso")
 	}
 	defer mach.Destroy()
 
