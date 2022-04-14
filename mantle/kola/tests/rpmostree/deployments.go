@@ -94,6 +94,9 @@ func rpmOstreeUpgradeRollback(c cluster.TestCluster) {
 		createCommit := "sudo ostree commit -b " + newBranch + " --tree ref=" + originalCsum + " --add-metadata-string version=" + newVersion
 		newCommit := c.MustSSH(m, createCommit)
 
+		// And no zincati because we're intentionally overriding, also it fails
+		c.RunCmdSync(m, "sudo systemctl mask --now zincati")
+
 		// use "rpm-ostree rebase" to get to the "new" commit
 		c.RunCmdSync(m, "sudo rpm-ostree rebase :"+newBranch)
 
