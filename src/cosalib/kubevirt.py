@@ -46,13 +46,16 @@ def kubevirt_run_ore(build, args):
     name = f"{build.build_name}"
     if args.name is not None:
         name = args.name
-    tag = f"{build.build_id}-{build.basearch}"
+    tags = [f"{build.build_id}-{build.basearch}"]
+    if args.tag is not None:
+        tags.extend(args.tag)
     full_name = os.path.join(args.repository, name)
 
     digest = run_verbose(["skopeo", "inspect", f"oci-archive:{build.image_path}", "-f", "{{.Digest}}"],
                          stdout=subprocess.PIPE).stdout.decode("utf-8").strip()
-    log.info(f"pushing {full_name}:{tag} with digest {digest}")
-    run_verbose(["skopeo", "copy", f"oci-archive:{build.image_path}", f"docker://{full_name}:{tag}"])
+    for tag in tags:
+        log.info(f"pushing {full_name}:{tag} with digest {digest}")
+        run_verbose(["skopeo", "copy", f"oci-archive:{build.image_path}", f"docker://{full_name}:{tag}"])
 
     build.meta['kubevirt'] = {
         'image': f"{full_name}@{digest}",
@@ -70,7 +73,8 @@ placeholder.
 def kubevirt_cli(parser):
     parser.add_argument("--name",
                         help="Name to append to the repository (e.g. fedora-coreos). Defaults to the build name.")
-    parser.add_argument("--repository", help="repository to push to (e.g. quay.io or quay.io/myorg)")
+    parser.add_argument("--repository", help="Repository to push to (e.g. quay.io or quay.io/myorg)")
+    parser.add_argument("--tag", action="append", help="Additional image tag. Can be provided multiple times.")
     return parser
 
 
