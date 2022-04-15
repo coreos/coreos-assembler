@@ -169,8 +169,21 @@ def append_build(out, input_):
 
     # KubeVirt specific additions: https://github.com/coreos/stream-metadata-go/pull/41
     if input_.get("kubevirt", None) is not None:
+        i = input_["kubevirt"]
         arch_dict["media"].setdefault("kubevirt", {}).setdefault("image", {})
-        arch_dict["media"]["kubevirt"]["image"].update(input_.get("kubevirt", {}))
+        if "image" in i:
+            if args.distro == 'rhcos':
+                # RHCOS pins to a digest rather than using tags
+                kubevirt_image = i["image"]
+            else:
+                # The tag-based pullspec isn't in meta.json because the FCOS
+                # pipeline moves the tag without invoking cosa.  Just
+                # hardcode the convention used by the release job.
+                kubevirt_image = f'{i["image"].split("@")[0]}:{out["stream"]}'
+            arch_dict["media"]["kubevirt"]["image"] = {
+                "image": kubevirt_image,
+                "digest-ref": i["image"],
+            }
 
     # Azure: https://github.com/coreos/stream-metadata-go/issues/13
     inputaz = input_.get("azure")
