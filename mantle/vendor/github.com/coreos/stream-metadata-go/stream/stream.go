@@ -56,7 +56,7 @@ type Images struct {
 	Aws      *AwsImage         `json:"aws,omitempty"`
 	Gcp      *GcpImage         `json:"gcp,omitempty"`
 	Ibmcloud *ReplicatedObject `json:"ibmcloud,omitempty"`
-	KubeVirt *SingleImage      `json:"kubevirt,omitempty"`
+	KubeVirt *ContainerImage   `json:"kubevirt,omitempty"`
 	PowerVS  *ReplicatedObject `json:"powervs,omitempty"`
 }
 
@@ -70,6 +70,14 @@ type ReplicatedImage struct {
 type SingleImage struct {
 	Release string `json:"release"`
 	Image   string `json:"image"`
+}
+
+// ContainerImage represents a tagged container image
+type ContainerImage struct {
+	Release string `json:"release"`
+	// Preferred way to reference the image, which might be by tag or digest
+	Image     string `json:"image"`
+	DigestRef string `json:"digest-ref"`
 }
 
 // AwsImage is a typedef for backwards compatibility.
