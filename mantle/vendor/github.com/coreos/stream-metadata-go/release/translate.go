@@ -138,9 +138,10 @@ func (releaseArch *Arch) toStreamArch(rel *Release) stream.Arch {
 			Formats: mapFormats(releaseArch.Media.KubeVirt.Artifacts),
 		}
 		if releaseArch.Media.KubeVirt.Image != nil {
-			cloudImages.KubeVirt = &stream.SingleImage{
-				Release: rel.Release,
-				Image:   releaseArch.Media.KubeVirt.Image.Image,
+			cloudImages.KubeVirt = &stream.ContainerImage{
+				Release:   rel.Release,
+				Image:     releaseArch.Media.KubeVirt.Image.Image,
+				DigestRef: releaseArch.Media.KubeVirt.Image.DigestRef,
 			}
 		}
 	}

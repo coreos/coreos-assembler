@@ -103,7 +103,7 @@ type PlatformIBMCloud struct {
 // PlatformKubeVirt containerDisk metadata
 type PlatformKubeVirt struct {
 	PlatformBase
-	Image *CloudImage `json:"image"`
+	Image *ContainerImage `json:"image"`
 }
 
 // ImageFormat contains all artifacts for a single OS image
@@ -125,6 +125,13 @@ type Artifact struct {
 // CloudImage generic image detail
 type CloudImage struct {
 	Image string `json:"image"`
+}
+
+// ContainerImage represents a tagged container image
+type ContainerImage struct {
+	// Preferred way to reference the image, which might be by tag or digest
+	Image     string `json:"image"`
+	DigestRef string `json:"digest-ref"`
 }
 
 // GcpImage represents a GCP cloud image
