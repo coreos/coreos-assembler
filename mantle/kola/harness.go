@@ -180,6 +180,10 @@ var (
 			desc:  "systemd ordering cycle",
 			match: regexp.MustCompile("Ordering cycle found"),
 		},
+		{
+			desc:  "oom killer",
+			match: regexp.MustCompile("invoked oom-killer"),
+		},
 	}
 )
 
