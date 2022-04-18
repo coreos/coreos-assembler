@@ -143,15 +143,20 @@ yaml2json() {
 prepare_build() {
     preflight
     preflight_kvm
+    workdir="$(pwd)"
+
     if ! [ -d builds ]; then
-        fatal "No $(pwd)/builds found; did you run coreos-assembler init?"
+        fatal "No ${workdir}/builds found; did you run coreos-assembler init?"
     fi
 
     if [ "$(stat -f --printf="%T" .)" = "overlayfs" ] && [ -z "${COSA_SKIP_OVERLAY:-}" ]; then
-        fatal "$(pwd) must be a volume"
+        fatal "${workdir} must be a volume"
     fi
 
-    workdir="$(pwd)"
+    if test '!' -w "${workdir}"; then
+        ls -ald "${workdir}"
+        fatal "${workdir} is not writable"
+    fi
 
     # Be nice to people who have older versions that
     # didn't create this in `init`.
