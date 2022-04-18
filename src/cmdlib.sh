@@ -5,18 +5,6 @@ set -euo pipefail
 DIR=$(dirname "$(realpath "${BASH_SOURCE[0]}")")
 RFC3339="%Y-%m-%dT%H:%M:%SZ"
 
-# Detect what platform we are on
-if grep -q '^Fedora' /etc/redhat-release; then
-    export ISFEDORA=1
-    export ISEL=''
-elif grep -q '^Red Hat' /etc/redhat-release; then
-    export ISFEDORA=''
-    export ISEL=1
-else
-    echo 1>&2 "should be on either RHEL or Fedora"
-    exit 1
-fi
-
 info() {
     echo "info: $*" 1>&2
 }
