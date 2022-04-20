@@ -9,11 +9,12 @@ dn=$(dirname "$0")
 FORCE=0
 BRANCH=""
 COMMIT=""
+GIT_CONFIG=""
 
 print_help() {
     cat 1>&2 <<'EOF'
 Usage: coreos-assembler init --help
-       coreos-assembler init [--force] [--branch BRANCH] 
+       coreos-assembler init [--force] [--branch BRANCH] [--git-config <name>=<value>]
                              [--commit COMMIT] GITCONFIG [SUBDIR]
 
   For example, you can use https://github.com/coreos/fedora-coreos-config
@@ -29,7 +30,7 @@ EOF
 
 # Call getopt to validate the provided input.
 rc=0
-options=$(getopt --options hfb:c: --longoptions help,force,branch:,commit: -- "$@") || rc=$?
+options=$(getopt --options hfb:c:g: --longoptions help,force,branch:,commit:,git-config: -- "$@") || rc=$?
 [ $rc -eq 0 ] || {
     print_help
     exit 1
@@ -59,6 +60,15 @@ while true; do
                 shift ;;
             *)
                 COMMIT="$2"
+                shift ;;
+        esac
+        ;;
+    -g | --git-config)
+        case "$2" in
+            "")
+                shift ;;
+            *)
+                GIT_CONFIG="-c $2"
                 shift ;;
         esac
         ;;
@@ -106,7 +116,7 @@ mkdir -p src
  if ! test -e config; then
      case "${source}" in
          /*) ln -s "${source}/${subdir}" config;;
-         *) git clone ${BRANCH:+--branch=${BRANCH}} --depth=1 --shallow-submodules --recurse-submodules "${source}" config
+         *) git $GIT_CONFIG clone ${BRANCH:+--branch=${BRANCH}} --depth=1 --shallow-submodules --recurse-submodules "${source}" config
             # If a commit was specified then we'll fetch and reset
             # the specified branch to that commit. This is useful when
             # doing pipeline builds and targetting a specific commit
