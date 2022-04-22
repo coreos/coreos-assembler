@@ -10,6 +10,62 @@ import os
 import subprocess
 import sys
 
+from cosalib.buildah import (
+    buildah_base_args
+)
+
+
+class MetadataNavigator:
+
+    def __init__(self, artifact):
+        self.artifact = artifact
+        with open('builds/builds.json') as f:
+            builds = json.load(f)['builds']
+        if len(builds) == 0:
+            cmdlib.fatal("No builds found")
+        self.latest_build_id = builds[0]['id']
+        self.latest_build_arches = builds[0]['arches']
+
+    def _get_archive(self, arch):
+        latest_build_path = f"builds/{self.latest_build_id}/{arch}"
+        metapath = f"{latest_build_path}/meta.json"
+        with open(metapath) as f:
+            meta = json.load(f)
+        try:
+            return os.path.join(latest_build_path, meta['images'][self.artifact]['path'])
+        except KeyError:
+            return None
+
+    def get_archives(self):
+        archives = {}
+        for arch in self.latest_build_arches:
+            ociarchive = self._get_archive(arch)
+            if ociarchive:
+                archives[arch] = ociarchive
+        return archives
+
+    def set_image(self, arch, image):
+        latest_build_path = f"builds/{self.latest_build_id}/{arch}"
+        metapath = f"{latest_build_path}/meta.json"
+        with open(metapath) as f:
+            meta = json.load(f)
+        if self.artifact not in meta:
+            meta[self.artifact] = {}
+        meta[self.artifact]["image"] = image
+        with open(metapath, 'w') as outfile:
+            json.dump(meta, outfile, indent=4)
+
+
+def digests_by_arch(inspect_result, container_name):
+    result = {}
+    for manifest in inspect_result["manifests"]:
+        arch = manifest["platform"]["architecture"]
+        if arch == "amd64":
+            arch = "x86_64"
+        result[arch] = f"{container_name.split(':')[0]}@{manifest['digest']}"
+    return result
+
+
 cosa_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, cosa_dir)
 
@@ -20,32 +76,46 @@ parser.add_argument("--authfile", help="Authentication file",
                     action='store')
 parser.add_argument("--format", help="Image format for destination", choices=['oci', 'v2s2'], action='store')
 parser.add_argument("name", help="destination image reference")
+parser.add_argument("artifact", nargs="?", default="ostree", help="Artifact to upload. Defaults to ostree")
 
 args = parser.parse_args()
 
-with open('builds/builds.json') as f:
-    builds = json.load(f)['builds']
-if len(builds) == 0:
-    cmdlib.fatal("No builds found")
-latest_build = builds[0]['id']
-arch = cmdlib.get_basearch()
-latest_build_path = f"builds/{latest_build}/{arch}"
+# collect ociarchives
+metadata = MetadataNavigator(args.artifact)
+archives = metadata.get_archives()
 
-metapath = f"{latest_build_path}/meta.json"
-with open(metapath) as f:
-    meta = json.load(f)
-ociarchive = os.path.join(latest_build_path, meta['images']['ostree']['path'])
+if not archives:
+    cmdlib.fatal("No oci archives published for this artifact")
 
-skopeoargs = ['skopeo', 'copy']
+container_name = args.name
+if ":" not in container_name:
+    container_name = f"{container_name}:{metadata.latest_build_id}"
+
+# build multiarch manifest
+buildah_base_argv = buildah_base_args()
+cmdlib.run_verbose(buildah_base_argv + ["manifest", "create", container_name])
+for arch, archive in archives.items():
+    cmdlib.run_verbose(
+        buildah_base_argv + ["manifest", "add", container_name, f"oci-archive:{archive}"])
+
+# push multiarch manifest
+buildahargs = ['manifest', "push", container_name, "--all"]
 if args.authfile is None:
     args.authfile = os.environ.get("REGISTRY_AUTH_FILE")
 if args.authfile is not None:
-    skopeoargs.extend(['--authfile', args.authfile])
+    buildahargs.extend(['--authfile', args.authfile])
 if args.format is not None:
-    skopeoargs.extend(['--format', args.format])
-container_name = args.name
-if ":" not in container_name:
-    container_name = f"{container_name}:{latest_build}-{arch}"
-skopeoargs.extend([f"oci-archive:{ociarchive}", f"docker://{container_name}"])
-print(subprocess.list2cmdline(skopeoargs))
-os.execvp('skopeo', skopeoargs)
+    buildahargs.extend(['--format', args.format])
+
+buildahargs.extend([f"docker://{container_name}"])
+cmdlib.run_verbose(buildah_base_argv + buildahargs)
+
+# Inspect and set the remote digest per architecture in the metadata.
+# Don't use the local digest of the oci archive, since depending on the push format the digest may differ
+# from the push result.
+cmdlib.run_verbose(buildah_base_argv + ["rmi", container_name])  # untag to check remote
+inspect_result = json.loads(
+    cmdlib.run_verbose(buildah_base_argv + ["inspect", container_name], stdout=subprocess.PIPE).stdout.decode(
+        "utf-8").strip())
+for arch, reference in digests_by_arch(inspect_result, container_name).items():
+    metadata.set_image(arch, reference)
