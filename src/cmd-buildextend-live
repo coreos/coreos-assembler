@@ -414,8 +414,14 @@ def generate_iso():
         os.makedirs(os.path.join(tmpisoroot, 'boot/grub'))
         # can be EFI/fedora or EFI/redhat
         grubpath = glob.glob(os.path.join(tmpisoroot, 'EFI/*/grub.cfg'))
-        shutil.move(grubpath[0], os.path.join(tmpisoroot, 'boot/grub/grub.cfg'))
-
+        grubpath = grubpath[0]
+        boot_grubpath = os.path.join(tmpisoroot, 'boot/grub/grub.cfg')
+        shutil.move(grubpath, boot_grubpath)
+        for key in list(files_with_karg_embed_areas):
+            if key == grubpath:
+                files_with_karg_embed_areas[boot_grubpath] = files_with_karg_embed_areas[key]
+                del files_with_karg_embed_areas[key]
+        
         # safely remove things we don't need in the final ISO tree
         for d in ['EFI', 'isolinux', 'zipl.prm']:
             run_verbose(['rm', '-rf', os.path.join(tmpisoroot, d)])
