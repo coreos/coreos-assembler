@@ -354,17 +354,10 @@ func downloadLatestReleasedRHCOS(target string) (string, error) {
 		return
 	}(releaseIndex, unique)
 
-	// The origin-clients package in Fedora doesn't `oc adm release info`
-	// ability.
-	ocUrl := fmt.Sprintf("https://mirror.openshift.com/pub/openshift-v4/%s/clients/ocp/latest/openshift-client-linux.tar.gz", system.RpmArch())
-	cmdString := fmt.Sprintf("curl -Ls %s | sudo tar -zxvf - -C /usr/bin", ocUrl)
-	if err := exec.Command("bash", "-c", cmdString).Run(); err != nil {
-		return "", err
-	}
-
 	var ocpRelease *OcpRelease
 	latestOcpPayload := graph.Nodes[difference[0]].Payload
-	cmd := exec.Command("oc", "adm", "release", "info", latestOcpPayload, "-o", "json")
+	// oc should be included in cosa since https://github.com/coreos/coreos-assembler/pull/2777
+	cmd := exec.Command("/usr/bin/oc", "adm", "release", "info", latestOcpPayload, "-o", "json")
 	output, err := cmd.Output()
 	if err != nil {
 		return "", err
