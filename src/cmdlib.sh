@@ -426,6 +426,8 @@ EOF
         # available in content_sets.yaml. The mapped repos are then available in content_manifest.json
         # Feature: https://issues.redhat.com/browse/GRPA-3731
         create_content_manifest "$configdir"/content_sets.yaml "${tmp_overridesdir}/contentsetrootfs/usr/share/buildinfo/content_manifest.json"
+        # adjust permissions to appease the ext.config.shared.files.file-directory-permissions test
+        chmod 0644 "${tmp_overridesdir}/contentsetrootfs/usr/share/buildinfo/content_manifest.json"
 
         echo -n "Committing ${tmp_overridesdir}/contentsetrootfs... "
         commit_ostree_layer "${tmp_overridesdir}/contentsetrootfs" contentset
