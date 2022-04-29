@@ -21,6 +21,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -35,6 +36,32 @@ import (
 	"github.com/coreos/mantle/system"
 	installer "github.com/coreos/mantle/util"
 )
+
+// Release represents an OCP version and release payload for that version
+type Release struct {
+	Version string `json:"version"`
+	Payload string `json:"payload"`
+}
+
+// Graph is a representation of the nodes + edges on an Cincinnati graph
+type Graph struct {
+	Nodes []Release `json:"nodes"`
+	Edges [][]int   `json:"edges"`
+}
+
+// MachineOS represents the version and display name of an RHCOS version
+type MachineOS struct {
+	Version     string `json:"Version"`
+	DisplayName string `json:"DisplayName"`
+}
+
+type DisplayVersions struct {
+	MachineOS MachineOS `json:"machine-os"`
+}
+
+type OcpRelease struct {
+	DisplayVersions DisplayVersions `json:"displayVersions"`
+}
 
 func init() {
 	register.RegisterUpgradeTest(&register.Test{
@@ -261,7 +288,6 @@ func rhcosUpgradeFromOcpRhcos(c cluster.TestCluster) {
 
 // getJSON retrieves a JSON URL and unmarshals it into an interface
 func getJson(url string, target interface{}) error {
-
 	myClient := &http.Client{Timeout: 10 * time.Second}
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
@@ -276,44 +302,40 @@ func getJson(url string, target interface{}) error {
 	return json.NewDecoder(r.Body).Decode(target)
 }
 
+// helper function to retrieve the upgrade graph for a given OCP release
+// returns a Graph object of the result
+func getOcpGraph(version string) Graph {
+	channel := "fast-" + version
+	var graph Graph
+	graphUrl := fmt.Sprintf("https://api.openshift.com/api/upgrades_info/v1/graph?channel=%s", channel)
+	getJson(graphUrl, &graph)
+
+	return graph
+}
+
 // Downloads the latest RHCOS from an OCP stream and decompresses it.
 // Returns the path to the decompressed file
 func downloadLatestReleasedRHCOS(target string) (string, error) {
 	buildID := kola.CosaBuild.Meta.BuildID
 	ocpVersion := strings.Split(buildID, ".")[0]
-	ocpVersionF := fmt.Sprintf("%s.%s", ocpVersion[:1], ocpVersion[1:])
-	channel := "fast-" + ocpVersionF
+	var ocpVersionF string
+	ocpVersionF = fmt.Sprintf("%s.%s", ocpVersion[:1], ocpVersion[1:])
 
-	type Release struct {
-		Version string `json:"version"`
-		Payload string `json:"payload"`
-	}
+	var graph Graph
+	graph = getOcpGraph(ocpVersionF)
 
-	type Graph struct {
-		Nodes []Release `json:"nodes"`
-		Edges [][]int   `json:"edges"`
-	}
-
-	type MachineOS struct {
-		Version     string `json:"Version"`
-		DisplayName string `json:"DisplayName"`
-	}
-
-	type DisplayVersions struct {
-		MachineOS MachineOS `json:"machine-os"`
-	}
-
-	type OcpRelease struct {
-		DisplayVersions DisplayVersions `json:"displayVersions"`
-	}
-
-	graph := &Graph{}
-	graphUrl := fmt.Sprintf("https://api.openshift.com/api/upgrades_info/v1/graph?channel=%s", channel)
-	getJson(graphUrl, &graph)
-
-	// no-op on unreleased OCP versions
 	if len(graph.Nodes) == 0 {
-		return "", nil
+		// Probably an testing an unreleased version of OCP/RHCOS, so let's try
+		// upgrading from the previously released version
+		minorVer, _ := strconv.Atoi(ocpVersion[1:])
+		newMinorVer := minorVer - 1
+		ocpVersionF = fmt.Sprintf("%s.%d", ocpVersion[:1], newMinorVer)
+		graph = getOcpGraph(ocpVersionF)
+		if len(graph.Nodes) == 0 {
+			// This is bad, likely means that the previous minor version (which
+			// should be released) has no nodes. Probably should never get here.
+			return "", nil
+		}
 	}
 
 	// Find the latest OCP release by looking at the edges and comparing it to
@@ -355,7 +377,7 @@ func downloadLatestReleasedRHCOS(target string) (string, error) {
 		return
 	}(releaseIndex, unique)
 
-	var ocpRelease *OcpRelease
+	var ocpRelease OcpRelease
 	latestOcpPayload := graph.Nodes[difference[0]].Payload
 	// oc should be included in cosa since https://github.com/coreos/coreos-assembler/pull/2777
 	cmd := exec.Command("/usr/bin/oc", "adm", "release", "info", latestOcpPayload, "-o", "json")
@@ -365,7 +387,7 @@ func downloadLatestReleasedRHCOS(target string) (string, error) {
 	}
 	json.Unmarshal(output, &ocpRelease)
 
-	var latestOcpRhcosBuild *cosa.Build
+	var latestOcpRhcosBuild cosa.Build
 	rhcosVersion := ocpRelease.DisplayVersions.MachineOS.Version
 	latestBaseUrl := fmt.Sprintf("https://rhcos-redirector.apps.art.xq1c.p1.openshiftapps.com/art/storage/releases/rhcos-%s/%s/%s",
 		ocpVersionF,
