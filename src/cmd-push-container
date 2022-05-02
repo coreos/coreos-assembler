@@ -19,6 +19,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--authfile", help="Authentication file",
                     action='store')
 parser.add_argument("--format", help="Image format for destination", choices=['oci', 'v2s2'], action='store')
+parser.add_argument("--base-image-name", help="Append extra 'base-image' to the name of the container image", action='store_true')
 parser.add_argument("name", help="destination image reference")
 
 args = parser.parse_args()
@@ -46,6 +47,8 @@ if args.format is not None:
 container_name = args.name
 if ":" not in container_name:
     container_name = f"{container_name}:{latest_build}-{arch}"
+if args.base_image_name:
+    container_name = f"{container_name}-base-image"
 skopeoargs.extend([f"oci-archive:{ociarchive}", f"docker://{container_name}"])
 print(subprocess.list2cmdline(skopeoargs))
 os.execvp('skopeo', skopeoargs)
