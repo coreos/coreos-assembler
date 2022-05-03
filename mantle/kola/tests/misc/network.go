@@ -41,11 +41,10 @@ func init() {
 	})
 	// TODO: rewrite test for NetworkManager
 	register.RegisterTest(&register.Test{
-		Run:              NetworkInitramfsSecondBoot,
-		ClusterSize:      1,
-		Name:             "coreos.network.initramfs.second-boot",
-		ExcludePlatforms: []string{"do"},
-		ExcludeDistros:   []string{"fcos", "rhcos"},
+		Run:            NetworkInitramfsSecondBoot,
+		ClusterSize:    1,
+		Name:           "coreos.network.initramfs.second-boot",
+		ExcludeDistros: []string{"fcos", "rhcos"},
 	})
 	// This test follows the same network configuration used on https://github.com/RHsyseng/rhcos-slb
 	// with a slight change, where the MCO script is run from ignition: https://github.com/RHsyseng/rhcos-slb/blob/main/setup-ovs.sh.

@@ -71,9 +71,8 @@ func init() {
 		NativeFuncs: map[string]register.NativeFuncWrap{
 			"Serve": register.CreateNativeFuncWrap(Serve),
 		},
-		Tags: []string{"ignition"},
-		// https://github.com/coreos/bugs/issues/2205
-		ExcludePlatforms: []string{"do", "qemu-unpriv"},
+		Tags:             []string{"ignition"},
+		ExcludePlatforms: []string{"qemu-unpriv"},
 		Timeout:          20 * time.Minute,
 	})
 }
