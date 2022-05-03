@@ -118,9 +118,6 @@ ostree_repo=${tmprepo}
 # Ensure that we have the cached unpacked commit
 import_ostree_commit_for_build "${build}"
 
-image_json=image.json
-extract_image_json "${tmprepo}" "${commit}" > "${image_json}"
-
 image_format=raw
 if [[ $image_type == qemu ]]; then
     image_format=qcow2

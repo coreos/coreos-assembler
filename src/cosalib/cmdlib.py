@@ -350,13 +350,6 @@ def cmdlib_sh(script):
     '''])
 
 
-# Should be used by disk image builds to extract the image.json from the
-# ostree commit.
-def extract_image_json(repo, commit):
-    out = subprocess.check_output(['ostree', f'--repo={repo}', 'cat', commit, '/usr/share/coreos-assembler/image.json'])
-    return json.loads(out)
-
-
 def generate_image_json(srcfile):
     r = yaml.safe_load(open("/usr/lib/coreos-assembler/image-default.yaml"))
     for k, v in flatten_image_yaml(srcfile).items():
