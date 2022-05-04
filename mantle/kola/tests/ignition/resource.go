@@ -91,21 +91,21 @@ func init() {
 			  {
 			      "path": "/var/resource/http",
 			      "contents": {
-				  "source": "http://rh-kola-fixtures.s3.amazonaws.com/resources/anonymous"
+				  "source": "http://ignition-test-fixtures.s3.amazonaws.com/resources/anonymous"
 			      },
 			      "mode": 420
 			  },
 			  {
 			      "path": "/var/resource/https",
 			      "contents": {
-				  "source": "https://rh-kola-fixtures.s3.amazonaws.com/resources/anonymous"
+				  "source": "https://ignition-test-fixtures.s3.amazonaws.com/resources/anonymous"
 			      },
 			      "mode": 420
 			  },
 			  {
 			      "path": "/var/resource/s3-anon",
 			      "contents": {
-				  "source": "s3://rh-kola-fixtures/resources/anonymous"
+				  "source": "s3://ignition-test-fixtures/resources/anonymous"
 			      },
 			      "mode": 420
 			  }
@@ -124,7 +124,7 @@ func init() {
 		      "version": "3.0.0",
 		      "config": {
 		          "merge": [{
-		              "source": "s3://rh-kola-fixtures/resources/authenticated-var-v3.ign"
+		              "source": "s3://ignition-test-fixtures/resources/authenticated-var-v3.ign"
 		          }]
 		      }
 		  },
@@ -133,7 +133,7 @@ func init() {
 			  {
 			      "path": "/var/resource/s3-auth",
 			      "contents": {
-				  "source": "s3://rh-kola-fixtures/resources/authenticated"
+				  "source": "s3://ignition-test-fixtures/resources/authenticated"
 			      },
 			      "mode": 420
 			  }
@@ -161,14 +161,14 @@ func init() {
 			  {
 			      "path": "/var/resource/original",
 			      "contents": {
-				  "source": "https://rh-kola-fixtures.s3.amazonaws.com/resources/versioned?versionId=Ym98GTx0npVaJznSAd0I1eUjFoZMP8Zo"
+				  "source": "https://ignition-test-fixtures.s3.amazonaws.com/resources/versioned?versionId=Y9YqVujoLyHHSHJ4DslyXoaLvcilQJnU"
 			      },
 			      "mode": 420
 			  },
 			  {
 			      "path": "/var/resource/latest",
 			      "contents": {
-				  "source": "https://rh-kola-fixtures.s3.amazonaws.com/resources/versioned"
+				  "source": "https://ignition-test-fixtures.s3.amazonaws.com/resources/versioned"
 			      },
 			      "mode": 420
 			  }
@@ -227,14 +227,14 @@ func resourceS3(c cluster.TestCluster) {
 
 	// verify that the objects are inaccessible anonymously
 	for _, objectName := range []string{"authenticated", "authenticated.ign"} {
-		_, _, err := m.SSH("curl -sf https://rh-kola-fixtures.s3.amazonaws.com/resources/" + objectName)
+		_, _, err := m.SSH("curl -sf https://ignition-test-fixtures.s3.amazonaws.com/resources/" + objectName)
 		if err == nil {
 			c.Fatal("anonymously fetching authenticated resource should have failed, but did not")
 		}
 	}
 
 	// ...but that the anonymous object is accessible
-	c.RunCmdSync(m, "curl -sf https://rh-kola-fixtures.s3.amazonaws.com/resources/anonymous")
+	c.RunCmdSync(m, "curl -sf https://ignition-test-fixtures.s3.amazonaws.com/resources/anonymous")
 }
 
 func resourceS3Versioned(c cluster.TestCluster) {
