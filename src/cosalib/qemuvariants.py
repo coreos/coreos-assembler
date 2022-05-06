@@ -102,6 +102,9 @@ VARIANTS = {
     "nutanix": {
         "image_format": "qcow2",
         "platform": "nutanix",
+        "convert_options": {
+            '-c': None
+        }
     },
     "vmware_vmdk": {
         "image_format": "vmdk",
@@ -249,7 +252,9 @@ class QemuVariantImage(_Build):
         cmd = ['qemu-img', 'convert', '-f', 'qcow2', '-O',
                self.image_format, self.tmp_image]
         for k, v in self.convert_options.items():
-            cmd.extend([k, v])
+            cmd.extend([k])
+            if v is not None:
+                cmd.extend([v])
         cmd.extend([work_img])
         run_verbose(cmd)
 
