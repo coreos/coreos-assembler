@@ -102,6 +102,7 @@ VARIANTS = {
     "nutanix": {
         "image_format": "qcow2",
         "platform": "nutanix",
+        "skip_compression": True,
         "convert_options": {
             '-c': None
         }
@@ -178,6 +179,7 @@ class QemuVariantImage(_Build):
         self.gzip = kwargs.pop("gzip", False)
         self.virtual_size = kwargs.pop("virtual_size", None)
         self.mutate_callback_creates_final_image = False
+        self.skip_compression = kwargs.pop("skip_compression", False)
 
         # this is used in case the image has a different disk
         # name than the platform
@@ -303,6 +305,11 @@ class QemuVariantImage(_Build):
                 'skip-compression': True,
                 'uncompressed-sha256': sha256,
                 'uncompressed-size': size,
+            })
+
+        if self.skip_compression:
+            meta_patch.update({
+                'skip-compression': True
             })
 
         return meta_patch
