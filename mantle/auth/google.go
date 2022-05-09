@@ -17,11 +17,16 @@ package auth
 
 import (
 	"context"
+	"io/ioutil"
 	"net/http"
+	"os/user"
+	"path/filepath"
 
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 )
+
+const GCEConfigPath = ".config/gce.json"
 
 var scopes = []string{
 	"https://www.googleapis.com/auth/devstorage.full_control",
@@ -43,6 +48,21 @@ func GoogleServiceClient() *http.Client {
 // the same manner as GoogleServiceClient().
 func GoogleServiceTokenSource() oauth2.TokenSource {
 	return google.ComputeTokenSource("")
+}
+
+func GoogleClientFromKeyFile(path string, scope ...string) (*http.Client, error) {
+	if path == "" {
+		user, err := user.Current()
+		if err != nil {
+			return nil, err
+		}
+		path = filepath.Join(user.HomeDir, GCEConfigPath)
+	}
+	b, err := ioutil.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	return GoogleClientFromJSONKey(b, scope...)
 }
 
 // GoogleClientFromJSONKey  provides an http.Client authorized with an
