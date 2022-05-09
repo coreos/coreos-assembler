@@ -94,6 +94,13 @@ func (a *API) mkinstance(userdata, name string, keys []*agent.Key) *compute.Inst
 				Network: instancePrefix + "/global/networks/" + a.options.Network,
 			},
 		},
+		// allow the instance to perform authenticated GCS fetches
+		ServiceAccounts: []*compute.ServiceAccount{
+			&compute.ServiceAccount{
+				Email:  a.options.ServiceAcct,
+				Scopes: []string{"https://www.googleapis.com/auth/devstorage.read_only"},
+			},
+		},
 	}
 	// add cloud config
 	if userdata != "" {
