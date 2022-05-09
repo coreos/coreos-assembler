@@ -71,7 +71,11 @@ func (p *Pending) Wait() error {
 	}
 	if op.Error != nil {
 		if len(op.Error.Errors) > 0 {
-			return fmt.Errorf("Operation %q failed: %+v", p.desc, op.Error.Errors)
+			var messages []string
+			for _, err := range op.Error.Errors {
+				messages = append(messages, err.Message)
+			}
+			return fmt.Errorf("Operation %q failed: %+v", p.desc, messages)
 		}
 		return fmt.Errorf("Operation %q failed to start", p.desc)
 	}
