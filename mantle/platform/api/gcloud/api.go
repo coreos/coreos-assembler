@@ -17,9 +17,7 @@ package gcloud
 
 import (
 	"context"
-	"fmt"
 	"google.golang.org/api/option"
-	"io/ioutil"
 	"net/http"
 	"time"
 
@@ -68,23 +66,12 @@ func New(opts *Options) (*API, error) {
 
 	if opts.ServiceAuth {
 		client = auth.GoogleServiceClient()
-	} else if opts.JSONKeyFile != "" {
-		b, err := ioutil.ReadFile(opts.JSONKeyFile)
+	} else {
+		client, err = auth.GoogleClientFromKeyFile(opts.JSONKeyFile)
 		if err != nil {
 			plog.Fatal(err)
+			return nil, err
 		}
-		client, err = auth.GoogleClientFromJSONKey(b)
-		if err != nil {
-			plog.Error(err)
-		}
-	} else {
-		err = fmt.Errorf("must specify --gce-json-key or --gce-service-auth")
-		plog.Error(err)
-		return nil, err
-	}
-
-	if err != nil {
-		return nil, err
 	}
 
 	ctx := context.Background()

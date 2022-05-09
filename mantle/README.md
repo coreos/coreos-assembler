@@ -313,12 +313,9 @@ The JSON file exported to the variable `AZURE_AUTH_LOCATION` should be generated
 ```
 
 ### gce
-`gce` uses the `~/.boto` file. When the `gce` platform is first used, it will print
-a link that can be used to log into your account with gce and get a verification code
-you can paste in. This will populate the `.boto` file.
-
-See [Google Cloud Platform's Documentation](https://cloud.google.com/storage/docs/boto-gsutil)
-for more information about the `.boto` file.
+`gce` uses `~/.config/gce.json`, which contains a JSON-formatted service
+account key. This can be downloaded from the Google Cloud console under
+IAM > Service Accounts > [account] > Keys.
 
 ### openstack
 `openstack` uses `~/.config/openstack.json`. This can be configured manually:
