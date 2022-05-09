@@ -40,7 +40,7 @@ func init() {
 	sv := GCloud.PersistentFlags().StringVar
 
 	sv(&opts.Image, "image", "", "image name")
-	sv(&opts.Project, "project", "coreos-gce-testing", "project")
+	sv(&opts.Project, "project", "fedora-coreos-devel", "project")
 	sv(&opts.Zone, "zone", "us-central1-a", "zone")
 	sv(&opts.MachineType, "machinetype", "n1-standard-1", "machine type")
 	sv(&opts.DiskType, "disktype", "pd-ssd", "disk type")
