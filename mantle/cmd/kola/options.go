@@ -113,6 +113,7 @@ func init() {
 	sv(&kola.GCEOptions.MachineType, "gce-machinetype", "n1-standard-1", "GCE machine type")
 	sv(&kola.GCEOptions.DiskType, "gce-disktype", "pd-ssd", "GCE disk type")
 	sv(&kola.GCEOptions.Network, "gce-network", "default", "GCE network")
+	sv(&kola.GCEOptions.ServiceAcct, "gce-service-account", "", "GCE service account to attach to instance (default project default)")
 	bv(&kola.GCEOptions.ServiceAuth, "gce-service-auth", false, "for non-interactive auth when running within GCE")
 	sv(&kola.GCEOptions.JSONKeyFile, "gce-json-key", "", "use a service account's JSON key for authentication (default \"~/"+auth.GCEConfigPath+"\")")
 

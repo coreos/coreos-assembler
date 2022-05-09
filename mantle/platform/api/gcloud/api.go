@@ -39,6 +39,7 @@ type Options struct {
 	MachineType string
 	DiskType    string
 	Network     string
+	ServiceAcct string
 	JSONKeyFile string
 	ServiceAuth bool
 	*platform.Options
@@ -79,6 +80,14 @@ func New(opts *Options) (*API, error) {
 	computeService, err := compute.NewService(ctx, option.WithHTTPClient(client))
 	if err != nil {
 		return nil, err
+	}
+
+	if opts.ServiceAcct == "" {
+		proj, err := computeService.Projects.Get(opts.Project).Do()
+		if err != nil {
+			return nil, err
+		}
+		opts.ServiceAcct = proj.DefaultServiceAccount
 	}
 
 	api := &API{
