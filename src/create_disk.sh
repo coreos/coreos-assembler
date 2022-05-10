@@ -425,6 +425,10 @@ ostree config --repo $rootfs/ostree/repo set sysroot.bootloader "${bootloader_ba
 # Opt-in to https://github.com/ostreedev/ostree/pull/1767 AKA
 # https://github.com/ostreedev/ostree/issues/1265
 ostree config --repo $rootfs/ostree/repo set sysroot.readonly true
+# enable support for GRUB password
+if [ "${bootloader_backend}" = "none" ]; then
+    ostree config --repo $rootfs/ostree/repo set sysroot.bls-append-except-default 'grub_users,""'
+fi
 
 touch $rootfs/boot/ignition.firstboot
 
