@@ -69,7 +69,7 @@ func (gc *cluster) NewMachineWithOptions(userdata *conf.UserData, options platfo
 		}
 	}
 
-	instance, err := gc.flight.api.CreateInstance(conf.String(), keys)
+	instance, err := gc.flight.api.CreateInstance(conf.String(), keys, !gc.RuntimeConf().NoInstanceCreds)
 	if err != nil {
 		return nil, err
 	}

@@ -764,6 +764,7 @@ type externalTestMeta struct {
 	TimeoutMin                int      `json:"timeoutMin"`
 	Conflicts                 []string `json:"conflicts"`
 	AllowConfigWarnings       bool     `json:"allowConfigWarnings"`
+	NoInstanceCreds           bool     `json:"noInstanceCreds"`
 }
 
 // metadataFromTestBinary extracts JSON-in-comment like:
@@ -986,6 +987,9 @@ ExecStart=%s
 		t.ExcludeDistros = strings.Fields(targetMeta.Distros[1:])
 	} else {
 		t.Distros = strings.Fields(targetMeta.Distros)
+	}
+	if targetMeta.NoInstanceCreds {
+		t.Flags = append(t.Flags, register.NoInstanceCreds)
 	}
 	t.Tags = append(t.Tags, strings.Fields(targetMeta.Tags)...)
 	// TODO validate tags here
@@ -1247,6 +1251,9 @@ func makeNonExclusiveTest(bucket int, tests []*register.Test, flight platform.Fl
 		if test.HasFlag(register.NoSSHKeyInMetadata) || test.HasFlag(register.NoSSHKeyInUserData) {
 			plog.Fatalf("Non-exclusive test %v cannot have NoSSHKeyIn* flag", test.Name)
 		}
+		if test.HasFlag(register.NoInstanceCreds) {
+			plog.Fatalf("Non-exclusive test %v cannot have NoInstanceCreds flag", test.Name)
+		}
 		if test.HasFlag(register.AllowConfigWarnings) {
 			plog.Fatalf("Non-exclusive test %v cannot have AllowConfigWarnings flag", test.Name)
 		}
@@ -1333,6 +1340,7 @@ func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flig
 		OutputDir:          h.OutputDir(),
 		NoSSHKeyInUserData: t.HasFlag(register.NoSSHKeyInUserData),
 		NoSSHKeyInMetadata: t.HasFlag(register.NoSSHKeyInMetadata),
+		NoInstanceCreds:    t.HasFlag(register.NoInstanceCreds),
 		WarningsAction:     conf.FailWarnings,
 		InternetAccess:     testRequiresInternet(t),
 	}

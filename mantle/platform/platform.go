@@ -199,6 +199,7 @@ type RuntimeConfig struct {
 
 	NoSSHKeyInUserData bool                // don't inject SSH key into Ignition/cloud-config
 	NoSSHKeyInMetadata bool                // don't add SSH key to platform metadata
+	NoInstanceCreds    bool                // don't grant credentials (AWS instance profile, GCP service account) to the instance
 	AllowFailedUnits   bool                // don't fail CheckMachine if a systemd unit has failed
 	WarningsAction     conf.WarningsAction // what to do on Ignition or Butane validation warnings
 
