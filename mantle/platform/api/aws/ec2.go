@@ -82,7 +82,7 @@ func (a *API) DeleteKey(name string) error {
 }
 
 // CreateInstances creates EC2 instances with a given name tag, optional ssh key name, user data. The image ID, instance type, and security group set in the API will be used. CreateInstances will block until all instances are running and have an IP address.
-func (a *API) CreateInstances(name, keyname, userdata string, count uint64, minDiskSize int64) ([]*ec2.Instance, error) {
+func (a *API) CreateInstances(name, keyname, userdata string, count uint64, minDiskSize int64, useInstanceProfile bool) ([]*ec2.Instance, error) {
 	cnt := int64(count)
 
 	var ud *string
@@ -91,9 +91,11 @@ func (a *API) CreateInstances(name, keyname, userdata string, count uint64, minD
 		ud = &tud
 	}
 
-	err := a.ensureInstanceProfile(a.opts.IAMInstanceProfile)
-	if err != nil {
-		return nil, fmt.Errorf("error verifying IAM instance profile: %v", err)
+	if useInstanceProfile {
+		err := a.ensureInstanceProfile(a.opts.IAMInstanceProfile)
+		if err != nil {
+			return nil, fmt.Errorf("error verifying IAM instance profile: %v", err)
+		}
 	}
 
 	sgId, err := a.getSecurityGroupID(a.opts.SecurityGroup)
@@ -131,17 +133,14 @@ func (a *API) CreateInstances(name, keyname, userdata string, count uint64, minD
 		})
 	}
 	inst := ec2.RunInstancesInput{
-		ImageId:          &a.opts.AMI,
-		MinCount:         &cnt,
-		MaxCount:         &cnt,
-		KeyName:          key,
-		InstanceType:     &a.opts.InstanceType,
-		SecurityGroupIds: []*string{&sgId},
-		SubnetId:         &subnetId,
-		UserData:         ud,
-		IamInstanceProfile: &ec2.IamInstanceProfileSpecification{
-			Name: &a.opts.IAMInstanceProfile,
-		},
+		ImageId:             &a.opts.AMI,
+		MinCount:            &cnt,
+		MaxCount:            &cnt,
+		KeyName:             key,
+		InstanceType:        &a.opts.InstanceType,
+		SecurityGroupIds:    []*string{&sgId},
+		SubnetId:            &subnetId,
+		UserData:            ud,
 		BlockDeviceMappings: rootBlockDev,
 		TagSpecifications: []*ec2.TagSpecification{
 			&ec2.TagSpecification{
@@ -158,6 +157,11 @@ func (a *API) CreateInstances(name, keyname, userdata string, count uint64, minD
 				},
 			},
 		},
+	}
+	if useInstanceProfile {
+		inst.IamInstanceProfile = &ec2.IamInstanceProfileSpecification{
+			Name: &a.opts.IAMInstanceProfile,
+		}
 	}
 
 	var reservations *ec2.Reservation
