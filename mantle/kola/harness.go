@@ -1190,7 +1190,7 @@ func createTestBuckets(tests []*register.Test) [][]*register.Test {
 			if _, found := testMap[conflict]; found {
 				testMap[conflict].Conflicts = append(testMap[conflict].Conflicts, test.Name)
 			} else {
-				plog.Fatalf("%v specified %v as a conflict but %v was not found. Double-check that it is marked as non-exclusive.",
+				plog.Debugf("%v specified %v as a conflict but %v was not found. If you are running both tests, verify that both are marked as non-exclusive.",
 					test.Name, conflict, conflict)
 			}
 		}
