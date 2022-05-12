@@ -113,9 +113,10 @@ This can be useful for e.g. serving locally built OSTree repos to qemu.
 	qemuImageDir       string
 	qemuImageDirIsTemp bool
 
-	runExternals []string
-	runMultiply  int
-	runRerunFlag bool
+	runExternals      []string
+	runMultiply       int
+	runRerunFlag      bool
+	allowRerunSuccess bool
 
 	nonexclusiveWrapperMatch = regexp.MustCompile(`^non-exclusive-test-bucket-[0-9]$`)
 )
@@ -125,6 +126,7 @@ func init() {
 	cmdRun.Flags().StringArrayVarP(&runExternals, "exttest", "E", nil, "Externally defined tests (will be found in DIR/tests/kola)")
 	cmdRun.Flags().IntVar(&runMultiply, "multiply", 0, "Run the provided tests N times (useful to find race conditions)")
 	cmdRun.Flags().BoolVar(&runRerunFlag, "rerun", false, "re-run failed tests once")
+	cmdRun.Flags().BoolVar(&allowRerunSuccess, "allow-rerun-success", false, "Allow kola test run to be successful when tests pass during re-run")
 
 	root.AddCommand(cmdList)
 	cmdList.Flags().StringArrayVarP(&runExternals, "exttest", "E", nil, "Externally defined tests in directory")
@@ -232,7 +234,7 @@ func kolaRunPatterns(patterns []string, rerun bool) error {
 		return err
 	}
 
-	runErr := kola.RunTests(patterns, runMultiply, rerun, kolaPlatform, outputDir, !kola.Options.NoTestExitError)
+	runErr := kola.RunTests(patterns, runMultiply, rerun, allowRerunSuccess, kolaPlatform, outputDir, !kola.Options.NoTestExitError)
 
 	// needs to be after RunTests() because harness empties the directory
 	if err := writeProps(); err != nil {

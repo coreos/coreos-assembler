@@ -545,7 +545,7 @@ func filterTests(tests map[string]*register.Test, patterns []string, pltfrm stri
 // register tests in their init() function.  outputDir is where various test
 // logs and data will be written for analysis after the test run. If it already
 // exists it will be erased!
-func runProvidedTests(testsBank map[string]*register.Test, patterns []string, multiply int, rerun bool, pltfrm, outputDir string, propagateTestErrors bool) error {
+func runProvidedTests(testsBank map[string]*register.Test, patterns []string, multiply int, rerun bool, allowRerunSuccess bool, pltfrm, outputDir string, propagateTestErrors bool) error {
 	var versionStr string
 
 	// Avoid incurring cost of starting machine in getClusterSemver when
@@ -685,7 +685,10 @@ func runProvidedTests(testsBank map[string]*register.Test, patterns []string, mu
 	if len(testsToRerun) > 0 && rerun {
 		newOutputDir := filepath.Join(outputDir, "rerun")
 		fmt.Printf("\n\n======== Re-running failed tests (flake detection) ========\n\n")
-		runProvidedTests(testsBank, testsToRerun, multiply, false, pltfrm, newOutputDir, propagateTestErrors)
+		reRunErr := runProvidedTests(testsBank, testsToRerun, multiply, false, allowRerunSuccess, pltfrm, newOutputDir, propagateTestErrors)
+		if allowRerunSuccess {
+			return reRunErr
+		}
 	}
 
 	// If the intial run failed and the rerun passed, we still return an error
@@ -739,12 +742,12 @@ func getRerunnable(tests []*harness.H) []string {
 	return testsToRerun
 }
 
-func RunTests(patterns []string, multiply int, rerun bool, pltfrm, outputDir string, propagateTestErrors bool) error {
-	return runProvidedTests(register.Tests, patterns, multiply, rerun, pltfrm, outputDir, propagateTestErrors)
+func RunTests(patterns []string, multiply int, rerun bool, allowRerunSuccess bool, pltfrm, outputDir string, propagateTestErrors bool) error {
+	return runProvidedTests(register.Tests, patterns, multiply, rerun, allowRerunSuccess, pltfrm, outputDir, propagateTestErrors)
 }
 
 func RunUpgradeTests(patterns []string, rerun bool, pltfrm, outputDir string, propagateTestErrors bool) error {
-	return runProvidedTests(register.UpgradeTests, patterns, 0, rerun, pltfrm, outputDir, propagateTestErrors)
+	return runProvidedTests(register.UpgradeTests, patterns, 0, rerun, false, pltfrm, outputDir, propagateTestErrors)
 }
 
 // externalTestMeta is parsed from kola.json in external tests
