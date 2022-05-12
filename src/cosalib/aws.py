@@ -77,6 +77,7 @@ def aws_run_ore_replicate(build, args):
     ore_args.extend(region_list)
     print("+ {}".format(subprocess.list2cmdline(ore_args)))
 
+    ore_data = ""
     try:
         ore_data = subprocess.check_output(ore_args, encoding='utf-8')
     except subprocess.CalledProcessError as e:
