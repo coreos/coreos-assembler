@@ -26,6 +26,9 @@ jobs:
           # in case the fork is out of date and we need to bring it up
           # to date.
           fetch-depth: 0
+      # https://github.com/actions/checkout/issues/766
+      - name: Mark git checkout as safe
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
       - name: bump nocache line
         run: |
           datestr=$(date +%D)
