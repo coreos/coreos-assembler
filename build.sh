@@ -56,6 +56,11 @@ install_rpms() {
     # Process our base dependencies + build dependencies and install
     (echo "${builddeps}" && "${srcdir}"/src/print-dependencies.sh) | xargs yum -y install
 
+    # Delete file that only exists on ppc64le because it is causing
+    # sudo to not work.
+    # https://bugzilla.redhat.com/show_bug.cgi?id=2082149
+    rm -f /etc/security/limits.d/95-kvm-memlock.conf
+
     # Commented out for now, see above
     #dnf remove -y ${builddeps}
     # can't remove grubby on el7 because libguestfs-tools depends on it
