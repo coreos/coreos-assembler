@@ -427,7 +427,7 @@ ostree config --repo $rootfs/ostree/repo set sysroot.bootloader "${bootloader_ba
 ostree config --repo $rootfs/ostree/repo set sysroot.readonly true
 # enable support for GRUB password
 if [ "${bootloader_backend}" = "none" ]; then
-    ostree config --repo $rootfs/ostree/repo set sysroot.bls-append-except-default 'grub_users,""'
+    ostree config --repo $rootfs/ostree/repo set sysroot.bls-append-except-default 'grub_users=""'
 fi
 
 touch $rootfs/boot/ignition.firstboot
