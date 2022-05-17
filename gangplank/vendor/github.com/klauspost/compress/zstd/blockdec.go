@@ -5,9 +5,14 @@
 package zstd
 
 import (
+	"bytes"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
+	"os"
+	"path/filepath"
 	"sync"
 
 	"github.com/klauspost/compress/huff0"
@@ -37,6 +42,9 @@ const (
 const (
 	// maxCompressedBlockSize is the biggest allowed compressed block size (128KB)
 	maxCompressedBlockSize = 128 << 10
+
+	compressedBlockOverAlloc    = 16
+	maxCompressedBlockSizeAlloc = 128<<10 + compressedBlockOverAlloc
 
 	// Maximum possible block size (all Raw+Uncompressed).
 	maxBlockSize = (1 << 21) - 1
@@ -136,7 +144,7 @@ func (b *blockDec) reset(br byteBuffer, windowSize uint64) error {
 	b.Type = blockType((bh >> 1) & 3)
 	// find size.
 	cSize := int(bh >> 3)
-	maxSize := maxBlockSize
+	maxSize := maxCompressedBlockSizeAlloc
 	switch b.Type {
 	case blockTypeReserved:
 		return ErrReservedBlockType
@@ -157,15 +165,20 @@ func (b *blockDec) reset(br byteBuffer, windowSize uint64) error {
 			println("Data size on stream:", cSize)
 		}
 		b.RLESize = 0
-		maxSize = maxCompressedBlockSize
+		maxSize = maxCompressedBlockSizeAlloc
 		if windowSize < maxCompressedBlockSize && b.lowMem {
-			maxSize = int(windowSize)
+			maxSize = int(windowSize) + compressedBlockOverAlloc
 		}
 		if cSize > maxCompressedBlockSize || uint64(cSize) > b.WindowSize {
 			if debugDecoder {
 				printf("compressed block too big: csize:%d block: %+v\n", uint64(cSize), b)
 			}
 			return ErrCompressedSizeTooBig
+		}
+		// Empty compressed blocks must at least be 2 bytes
+		// for Literals_Block_Type and one for Sequences_Section_Header.
+		if cSize < 2 {
+			return ErrBlockTooSmall
 		}
 	case blockTypeRaw:
 		if cSize > maxCompressedBlockSize || cSize > int(b.WindowSize) {
@@ -185,9 +198,9 @@ func (b *blockDec) reset(br byteBuffer, windowSize uint64) error {
 	// Read block data.
 	if cap(b.dataStorage) < cSize {
 		if b.lowMem || cSize > maxCompressedBlockSize {
-			b.dataStorage = make([]byte, 0, cSize)
+			b.dataStorage = make([]byte, 0, cSize+compressedBlockOverAlloc)
 		} else {
-			b.dataStorage = make([]byte, 0, maxCompressedBlockSize)
+			b.dataStorage = make([]byte, 0, maxCompressedBlockSizeAlloc)
 		}
 	}
 	if cap(b.dst) <= maxSize {
@@ -481,9 +494,14 @@ func (b *blockDec) decodeCompressed(hist *history) error {
 		b.dst = append(b.dst, hist.decoders.literals...)
 		return nil
 	}
-	err = hist.decoders.decodeSync(hist)
+	before := len(hist.decoders.out)
+	err = hist.decoders.decodeSync(hist.b[hist.ignoreBuffer:])
 	if err != nil {
 		return err
+	}
+	if hist.decoders.maxSyncLen > 0 {
+		hist.decoders.maxSyncLen += uint64(before)
+		hist.decoders.maxSyncLen -= uint64(len(hist.decoders.out))
 	}
 	b.dst = hist.decoders.out
 	hist.recentOffsets = hist.decoders.prevOffset
@@ -491,6 +509,9 @@ func (b *blockDec) decodeCompressed(hist *history) error {
 }
 
 func (b *blockDec) prepareSequences(in []byte, hist *history) (err error) {
+	if debugDecoder {
+		printf("prepareSequences: %d byte(s) input\n", len(in))
+	}
 	// Decode Sequences
 	// https://github.com/facebook/zstd/blob/dev/doc/zstd_compression_format.md#sequences-section
 	if len(in) < 1 {
@@ -499,8 +520,6 @@ func (b *blockDec) prepareSequences(in []byte, hist *history) (err error) {
 	var nSeqs int
 	seqHeader := in[0]
 	switch {
-	case seqHeader == 0:
-		in = in[1:]
 	case seqHeader < 128:
 		nSeqs = int(seqHeader)
 		in = in[1:]
@@ -516,6 +535,13 @@ func (b *blockDec) prepareSequences(in []byte, hist *history) (err error) {
 		}
 		nSeqs = 0x7f00 + int(in[1]) + (int(in[2]) << 8)
 		in = in[3:]
+	}
+	if nSeqs == 0 && len(in) != 0 {
+		// When no sequences, there should not be any more data...
+		if debugDecoder {
+			printf("prepareSequences: 0 sequences, but %d byte(s) left on stream\n", len(in))
+		}
+		return ErrUnexpectedBlockSize
 	}
 
 	var seqs = &hist.decoders
@@ -619,6 +645,22 @@ func (b *blockDec) prepareSequences(in []byte, hist *history) (err error) {
 		println("initializing sequences:", err)
 		return err
 	}
+	// Extract blocks...
+	if false && hist.dict == nil {
+		fatalErr := func(err error) {
+			if err != nil {
+				panic(err)
+			}
+		}
+		fn := fmt.Sprintf("n-%d-lits-%d-prev-%d-%d-%d-win-%d.blk", hist.decoders.nSeqs, len(hist.decoders.literals), hist.recentOffsets[0], hist.recentOffsets[1], hist.recentOffsets[2], hist.windowSize)
+		var buf bytes.Buffer
+		fatalErr(binary.Write(&buf, binary.LittleEndian, hist.decoders.litLengths.fse))
+		fatalErr(binary.Write(&buf, binary.LittleEndian, hist.decoders.matchLengths.fse))
+		fatalErr(binary.Write(&buf, binary.LittleEndian, hist.decoders.offsets.fse))
+		buf.Write(in)
+		ioutil.WriteFile(filepath.Join("testdata", "seqs", fn), buf.Bytes(), os.ModePerm)
+	}
+
 	return nil
 }
 
@@ -635,7 +677,9 @@ func (b *blockDec) decodeSequences(hist *history) error {
 		hist.decoders.seqSize = len(hist.decoders.literals)
 		return nil
 	}
+	hist.decoders.windowSize = hist.windowSize
 	hist.decoders.prevOffset = hist.recentOffsets
+
 	err := hist.decoders.decode(b.sequence)
 	hist.recentOffsets = hist.decoders.prevOffset
 	return err

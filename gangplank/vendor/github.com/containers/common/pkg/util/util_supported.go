@@ -1,6 +1,7 @@
-// +build linux darwin
+//go:build linux || darwin || freebsd
+// +build linux darwin freebsd
 
-package config
+package util
 
 import (
 	"fmt"
@@ -19,8 +20,14 @@ var (
 	rootlessRuntimeDir     string
 )
 
-// getRuntimeDir returns the runtime directory
-func getRuntimeDir() (string, error) {
+// isWriteableOnlyByOwner checks that the specified permission mask allows write
+// access only to the owner.
+func isWriteableOnlyByOwner(perm os.FileMode) bool {
+	return (perm & 0o722) == 0o700
+}
+
+// GetRuntimeDir returns the runtime directory
+func GetRuntimeDir() (string, error) {
 	var rootlessRuntimeDirError error
 
 	rootlessRuntimeDirOnce.Do(func() {
@@ -39,21 +46,21 @@ func getRuntimeDir() (string, error) {
 		uid := fmt.Sprintf("%d", unshare.GetRootlessUID())
 		if runtimeDir == "" {
 			tmpDir := filepath.Join("/run", "user", uid)
-			if err := os.MkdirAll(tmpDir, 0700); err != nil {
+			if err := os.MkdirAll(tmpDir, 0o700); err != nil {
 				logrus.Debugf("unable to make temp dir: %v", err)
 			}
 			st, err := os.Stat(tmpDir)
-			if err == nil && int(st.Sys().(*syscall.Stat_t).Uid) == os.Geteuid() && st.Mode().Perm() == 0700 {
+			if err == nil && int(st.Sys().(*syscall.Stat_t).Uid) == os.Geteuid() && isWriteableOnlyByOwner(st.Mode().Perm()) {
 				runtimeDir = tmpDir
 			}
 		}
 		if runtimeDir == "" {
 			tmpDir := filepath.Join(os.TempDir(), fmt.Sprintf("podman-run-%s", uid))
-			if err := os.MkdirAll(tmpDir, 0700); err != nil {
+			if err := os.MkdirAll(tmpDir, 0o700); err != nil {
 				logrus.Debugf("unable to make temp dir %v", err)
 			}
 			st, err := os.Stat(tmpDir)
-			if err == nil && int(st.Sys().(*syscall.Stat_t).Uid) == os.Geteuid() && st.Mode().Perm() == 0700 {
+			if err == nil && int(st.Sys().(*syscall.Stat_t).Uid) == os.Geteuid() && isWriteableOnlyByOwner(st.Mode().Perm()) {
 				runtimeDir = tmpDir
 			}
 		}

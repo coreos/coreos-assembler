@@ -1,3 +1,4 @@
+//go:build linux && apparmor
 // +build linux,apparmor
 
 package apparmor
@@ -97,22 +98,22 @@ func InstallDefault(name string) error {
 	}
 	if err := cmd.Start(); err != nil {
 		if pipeErr := pipe.Close(); pipeErr != nil {
-			logrus.Errorf("unable to close AppArmor pipe: %q", pipeErr)
+			logrus.Errorf("Unable to close AppArmor pipe: %q", pipeErr)
 		}
 		return errors.Wrapf(err, "start %s command", apparmorParserPath)
 	}
 	if err := p.generateDefault(apparmorParserPath, pipe); err != nil {
 		if pipeErr := pipe.Close(); pipeErr != nil {
-			logrus.Errorf("unable to close AppArmor pipe: %q", pipeErr)
+			logrus.Errorf("Unable to close AppArmor pipe: %q", pipeErr)
 		}
 		if cmdErr := cmd.Wait(); cmdErr != nil {
-			logrus.Errorf("unable to wait for AppArmor command: %q", cmdErr)
+			logrus.Errorf("Unable to wait for AppArmor command: %q", cmdErr)
 		}
 		return errors.Wrap(err, "generate default profile into pipe")
 	}
 
 	if pipeErr := pipe.Close(); pipeErr != nil {
-		logrus.Errorf("unable to close AppArmor pipe: %q", pipeErr)
+		logrus.Errorf("Unable to close AppArmor pipe: %q", pipeErr)
 	}
 
 	return errors.Wrap(cmd.Wait(), "wait for AppArmor command")
@@ -232,7 +233,6 @@ func parseAAParserVersion(output string) (int, error) {
 	// major*10^5 + minor*10^3 + patch*10^0
 	numericVersion := majorVersion*1e5 + minorVersion*1e3 + patchLevel
 	return numericVersion, nil
-
 }
 
 // CheckProfileAndLoadDefault checks if the specified profile is loaded and
@@ -252,7 +252,7 @@ func CheckProfileAndLoadDefault(name string) (string, error) {
 		if name != "" {
 			return "", errors.Wrapf(ErrApparmorRootless, "cannot load AppArmor profile %q", name)
 		} else {
-			logrus.Debug("skipping loading default AppArmor profile (rootless mode)")
+			logrus.Debug("Skipping loading default AppArmor profile (rootless mode)")
 			return "", nil
 		}
 	}
@@ -292,7 +292,7 @@ func CheckProfileAndLoadDefault(name string) (string, error) {
 		if err != nil {
 			return "", errors.Wrapf(err, "install profile %s", name)
 		}
-		logrus.Infof("successfully loaded AppAmor profile %q", name)
+		logrus.Infof("Successfully loaded AppAmor profile %q", name)
 	} else {
 		logrus.Infof("AppAmor profile %q is already loaded", name)
 	}
