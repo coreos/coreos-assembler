@@ -443,7 +443,8 @@
        "qemu",
        "virtualbox",
        "vmware",
-       "vultr"
+       "vultr",
+       "qemu-secex"
       ],
      "properties": {
        "ostree": {
@@ -468,6 +469,12 @@
          "$id":"#/properties/images/properties/qemu",
          "type":"object",
          "title":"Qemu",
+         "$ref": "#/definitions/artifact"
+       },
+       "qemu-secex": {
+         "$id":"#/properties/images/properties/secex",
+         "type":"object",
+         "title":"Secure Execution Qemu",
          "$ref": "#/definitions/artifact"
         },
        "metal": {
