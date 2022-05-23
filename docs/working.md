@@ -192,6 +192,29 @@ You'll need to
 [manually configure autologin](https://docs.fedoraproject.org/en-US/fedora-coreos/tutorial-autologin/)
 in the Ignition config, since kola won't be able to do it for you.
 
+## Performing an in-place OS update manually
+
+The output of coreos-assembler is conceptually two things:
+
+- an ostree container image
+- disk images (ISO, AWS AMI, qemu .qcow2, etc)
+
+In many cases, rather than booting from a new disk image with the new OS, you will
+want to explicitly test in-place upgrades.  This uses an [ostree native container](https://fedoraproject.org/wiki/Changes/OstreeNativeContainer), which is in the form of an `.ociarchive` file generated
+by `cosa build ostree` (as well as the default `cosa build`, which *also* generates a `qemu` disk image).
+
+You will need to make the container image available to your targeted system (VM or physical).  One
+way to do this is to push the container to a public registry such as quay.io:
+
+`cosa push-container quay.io/exampleuser/fcos`
+
+Performing an in-place update from the `cosa build` output boils down to invoking a command of the form:
+
+```
+$ rpm-ostree rebase --experimental ostree-unverified-registry:quay.io/exampleuser/fcos
+$ systemctl reboot
+```
+
 ## Using different CA certificates
 
 If you need access to CA certificates on your host (for example, when you need to access
