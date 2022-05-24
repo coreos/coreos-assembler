@@ -102,6 +102,9 @@ install_ocp_tools() {
 
 make_and_makeinstall() {
     make && make install
+    # Remove go build cache
+    # https://github.com/coreos/coreos-assembler/issues/2872
+    rm -rf /root/.cache/go-build
 }
 
 configure_user(){
