@@ -61,6 +61,9 @@ systemd:
         ConditionFirstBoot=true
         Requires=dev-mapper-mpatha.device
         After=dev-mapper-mpatha.device
+        # See https://github.com/coreos/coreos-assembler/pull/2457
+        # and https://github.com/openshift/os/issues/743
+        After=ostree-remount.service
         Before=kubelet.service
         DefaultDependencies=no
 
@@ -77,8 +80,6 @@ systemd:
       contents: |
         [Unit]
         Description=Mount /var/lib/containers
-        # See https://github.com/coreos/coreos-assembler/pull/2457
-        After=ostree-remount.service
         After=mpath-var-lib-containers.service
         Before=kubelet.service
 
