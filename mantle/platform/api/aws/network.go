@@ -139,8 +139,9 @@ func (a *API) createSecurityGroup(name string) (string, error) {
 // createVPC creates a VPC with an IPV4 CidrBlock of 172.31.0.0/16
 func (a *API) createVPC(name string) (string, error) {
 	vpc, err := a.ec2.CreateVpc(&ec2.CreateVpcInput{
-		CidrBlock:         aws.String("172.31.0.0/16"),
-		TagSpecifications: tagSpecCreatedByMantle(name, ec2.ResourceTypeVpc),
+		AmazonProvidedIpv6CidrBlock: aws.Bool(true),
+		CidrBlock:                   aws.String("172.31.0.0/16"),
+		TagSpecifications:           tagSpecCreatedByMantle(name, ec2.ResourceTypeVpc),
 	})
 	if err != nil {
 		return "", fmt.Errorf("creating VPC: %v", err)
@@ -181,8 +182,9 @@ func (a *API) createVPC(name string) (string, error) {
 	return *vpc.Vpc.VpcId, nil
 }
 
-// createRouteTable creates a RouteTable with a local target for destination
-// 172.31.0.0/16 as well as an InternetGateway for destination 0.0.0.0/0
+// createRouteTable creates a RouteTable with local targets for subnets for
+// destination CIDRs in the VPC as well as an InternetGateway all IPv4/IPv6
+// destinations.
 func (a *API) createRouteTable(name, vpcId string) (string, error) {
 	rt, err := a.ec2.CreateRouteTable(&ec2.CreateRouteTableInput{
 		VpcId:             &vpcId,
@@ -204,6 +206,15 @@ func (a *API) createRouteTable(name, vpcId string) (string, error) {
 		DestinationCidrBlock: aws.String("0.0.0.0/0"),
 		GatewayId:            aws.String(igw),
 		RouteTableId:         rt.RouteTable.RouteTableId,
+	})
+	if err != nil {
+		return "", fmt.Errorf("creating remote route: %v", err)
+	}
+
+	_, err = a.ec2.CreateRoute(&ec2.CreateRouteInput{
+		DestinationIpv6CidrBlock: aws.String("::/0"),
+		GatewayId:                aws.String(igw),
+		RouteTableId:             rt.RouteTable.RouteTableId,
 	})
 	if err != nil {
 		return "", fmt.Errorf("creating remote route: %v", err)
@@ -241,6 +252,22 @@ func (a *API) createSubnets(name, vpcId, routeTableId string) error {
 		return fmt.Errorf("retrieving availability zones: %v", err)
 	}
 
+	// We need to determine the block of IPv6 addresses that were assigned
+	// to us. Let's get that information from the VPC
+	request, err := a.ec2.DescribeVpcs(&ec2.DescribeVpcsInput{
+		VpcIds: []*string{&vpcId},
+	})
+	if err != nil {
+		return fmt.Errorf("retrieving info about vpc: %v", err)
+	}
+	vpcIpv6CidrBlock := *request.Vpcs[0].Ipv6CidrBlockAssociationSet[0].Ipv6CidrBlock
+
+	// We were given a /56. When we create subnets they want a /64, which
+	// means there are 32 (8 bits) subnets we can create. The loop below only
+	// runs 16 times so we only need to pull off the last digit of the hex based
+	// ipv6 address (which will be a 0). So we pull off '0::/56' here.
+	ipv6CidrBlockPart := vpcIpv6CidrBlock[:len(vpcIpv6CidrBlock)-6]
+
 	for i, az := range azs.AvailabilityZones {
 		// 16 is the maximum amount of zones possible when giving them a /20
 		// CIDR range inside of a /16 network.
@@ -254,11 +281,13 @@ func (a *API) createSubnets(name, vpcId, routeTableId string) error {
 
 		name := *az.ZoneName
 		sub, err := a.ec2.CreateSubnet(&ec2.CreateSubnetInput{
-			AvailabilityZone: aws.String(name),
-			VpcId:            &vpcId,
-			// Increment the CIDR block by 16 every time
-			CidrBlock:         aws.String(fmt.Sprintf("172.31.%d.0/20", i*16)),
+			AvailabilityZone:  aws.String(name),
+			VpcId:             &vpcId,
 			TagSpecifications: tagSpecCreatedByMantle(name, ec2.ResourceTypeSubnet),
+			// Increment the CIDR block by 16 every time
+			CidrBlock: aws.String(fmt.Sprintf("172.31.%d.0/20", i*16)),
+			// Increment the Ipv6CidrBlock by 1 every time (new /64)
+			Ipv6CidrBlock: aws.String(fmt.Sprintf("%s%x::/64", ipv6CidrBlockPart, i)),
 		})
 		if err != nil {
 			// Some availability zones get returned but cannot have subnets
@@ -274,6 +303,15 @@ func (a *API) createSubnets(name, vpcId, routeTableId string) error {
 		_, err = a.ec2.ModifySubnetAttribute(&ec2.ModifySubnetAttributeInput{
 			SubnetId: sub.Subnet.SubnetId,
 			MapPublicIpOnLaunch: &ec2.AttributeBooleanValue{
+				Value: aws.Bool(true),
+			},
+		})
+		if err != nil {
+			return err
+		}
+		_, err = a.ec2.ModifySubnetAttribute(&ec2.ModifySubnetAttributeInput{
+			SubnetId: sub.Subnet.SubnetId,
+			AssignIpv6AddressOnCreation: &ec2.AttributeBooleanValue{
 				Value: aws.Bool(true),
 			},
 		})
