@@ -50,14 +50,15 @@ func (a *API) getSecurityGroupID(name string) (string, error) {
 // createSecurityGroup creates a security group with tcp/22 access allowed from the
 // internet.
 func (a *API) createSecurityGroup(name string) (string, error) {
-	vpcId, err := a.createVPC()
+	vpcId, err := a.createVPC(name)
 	if err != nil {
 		return "", err
 	}
 	sg, err := a.ec2.CreateSecurityGroup(&ec2.CreateSecurityGroupInput{
-		GroupName:   aws.String(name),
-		Description: aws.String("mantle security group for testing"),
-		VpcId:       aws.String(vpcId),
+		GroupName:         aws.String(name),
+		Description:       aws.String("mantle security group for testing"),
+		VpcId:             aws.String(vpcId),
+		TagSpecifications: tagSpecCreatedByMantle(name, ec2.ResourceTypeSecurityGroup),
 	})
 	if err != nil {
 		return "", err
@@ -136,10 +137,10 @@ func (a *API) createSecurityGroup(name string) (string, error) {
 }
 
 // createVPC creates a VPC with an IPV4 CidrBlock of 172.31.0.0/16
-func (a *API) createVPC() (string, error) {
+func (a *API) createVPC(name string) (string, error) {
 	vpc, err := a.ec2.CreateVpc(&ec2.CreateVpcInput{
 		CidrBlock:         aws.String("172.31.0.0/16"),
-		TagSpecifications: tagSpecCreatedByMantle(ec2.ResourceTypeVpc),
+		TagSpecifications: tagSpecCreatedByMantle(name, ec2.ResourceTypeVpc),
 	})
 	if err != nil {
 		return "", fmt.Errorf("creating VPC: %v", err)
@@ -167,12 +168,12 @@ func (a *API) createVPC() (string, error) {
 		return "", fmt.Errorf("enabling DNS Support VPC attribute: %v", err)
 	}
 
-	routeTable, err := a.createRouteTable(*vpc.Vpc.VpcId)
+	routeTable, err := a.createRouteTable(name, *vpc.Vpc.VpcId)
 	if err != nil {
 		return "", fmt.Errorf("creating RouteTable: %v", err)
 	}
 
-	err = a.createSubnets(*vpc.Vpc.VpcId, routeTable)
+	err = a.createSubnets(name, *vpc.Vpc.VpcId, routeTable)
 	if err != nil {
 		return "", fmt.Errorf("creating subnets: %v", err)
 	}
@@ -182,10 +183,10 @@ func (a *API) createVPC() (string, error) {
 
 // createRouteTable creates a RouteTable with a local target for destination
 // 172.31.0.0/16 as well as an InternetGateway for destination 0.0.0.0/0
-func (a *API) createRouteTable(vpcId string) (string, error) {
+func (a *API) createRouteTable(name, vpcId string) (string, error) {
 	rt, err := a.ec2.CreateRouteTable(&ec2.CreateRouteTableInput{
 		VpcId:             &vpcId,
-		TagSpecifications: tagSpecCreatedByMantle(ec2.ResourceTypeRouteTable),
+		TagSpecifications: tagSpecCreatedByMantle(name, ec2.ResourceTypeRouteTable),
 	})
 	if err != nil {
 		return "", err
@@ -194,7 +195,7 @@ func (a *API) createRouteTable(vpcId string) (string, error) {
 		return "", fmt.Errorf("route table was nil after creation")
 	}
 
-	igw, err := a.createInternetGateway(vpcId)
+	igw, err := a.createInternetGateway(name, vpcId)
 	if err != nil {
 		return "", fmt.Errorf("creating internet gateway: %v", err)
 	}
@@ -212,9 +213,9 @@ func (a *API) createRouteTable(vpcId string) (string, error) {
 }
 
 // creates an InternetGateway and attaches it to the given VPC
-func (a *API) createInternetGateway(vpcId string) (string, error) {
+func (a *API) createInternetGateway(name, vpcId string) (string, error) {
 	igw, err := a.ec2.CreateInternetGateway(&ec2.CreateInternetGatewayInput{
-		TagSpecifications: tagSpecCreatedByMantle(ec2.ResourceTypeInternetGateway),
+		TagSpecifications: tagSpecCreatedByMantle(name, ec2.ResourceTypeInternetGateway),
 	})
 	if err != nil {
 		return "", err
@@ -234,7 +235,7 @@ func (a *API) createInternetGateway(vpcId string) (string, error) {
 
 // createSubnets creates a subnet in each availability zone for the region
 // that is associated with the given VPC associated with the given RouteTable
-func (a *API) createSubnets(vpcId, routeTableId string) error {
+func (a *API) createSubnets(name, vpcId, routeTableId string) error {
 	azs, err := a.ec2.DescribeAvailabilityZones(&ec2.DescribeAvailabilityZonesInput{})
 	if err != nil {
 		return fmt.Errorf("retrieving availability zones: %v", err)
@@ -257,7 +258,7 @@ func (a *API) createSubnets(vpcId, routeTableId string) error {
 			VpcId:            &vpcId,
 			// Increment the CIDR block by 16 every time
 			CidrBlock:         aws.String(fmt.Sprintf("172.31.%d.0/20", i*16)),
-			TagSpecifications: tagSpecCreatedByMantle(ec2.ResourceTypeSubnet),
+			TagSpecifications: tagSpecCreatedByMantle(name, ec2.ResourceTypeSubnet),
 		})
 		if err != nil {
 			// Some availability zones get returned but cannot have subnets
