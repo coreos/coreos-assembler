@@ -259,9 +259,12 @@ if [ "${rootfs_type}" = "ext4verity" ]; then
 fi
 
 # Compute kargs
-# Note that $ignition_firstboot is interpreted by grub at boot time,
-# *not* the shell here.  Hence the backslash escape.
-allkargs="$extrakargs \$ignition_firstboot"
+allkargs="$extrakargs"
+if [ "$arch" != s390x ]; then
+    # Note that $ignition_firstboot is interpreted by grub at boot time,
+    # *not* the shell here.  Hence the backslash escape.
+    allkargs+=" \$ignition_firstboot"
+fi
 
 if test -n "${deploy_via_container}"; then
     kargsargs=""
