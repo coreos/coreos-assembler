@@ -258,17 +258,14 @@ cat >image-dynamic.json << EOF
 }
 EOF
 cat "${image_json}" image-dynamic.json | jq -s add > image-for-disk.json
-platforms_json=
-if [ -e "${configdir}/platforms.yaml" ]; then
-    platforms_json="${workdir}/tmp/platforms.json"
-    yaml2json "${configdir}/platforms.yaml" "${platforms_json}"
-fi
+platforms_json="${workdir}/tmp/platforms.json"
+yaml2json "${configdir}/platforms.yaml" "${platforms_json}"
 runvm "${qemu_args[@]}" -- \
         /usr/lib/coreos-assembler/create_disk.sh \
             --config "$(pwd)"/image-for-disk.json \
             --kargs "${kargs}" \
             --platform "${ignition_platform_id}" \
-            ${platforms_json:+--platforms-json "${platforms_json}"} \
+            --platforms-json "${platforms_json}" \
             "${disk_args[@]}"
 
 if [[ $secure_execution -eq "1" && -z "${hostkey}" ]]; then

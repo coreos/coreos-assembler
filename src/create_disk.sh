@@ -71,31 +71,15 @@ udevtrig() {
 export PATH=$PATH:/sbin:/usr/sbin
 arch="$(uname -m)"
 
-if [ -n "$platforms_json" ]; then
-    # just copy it over to /tmp and work from there to minimize 9p I/O
-    cp "${platforms_json}" /tmp/platforms.json
-    platforms_json=/tmp/platforms.json
+if [ -z "$platforms_json" ]; then
+    echo "Missing --platforms-json" >&2
+    exit 1
 fi
-
-if [ -n "$platforms_json" ]; then
-    platform_grub_cmds=$(jq -r ".${arch}.${platform}.grub_commands // [] | join(\"\\\\n\")" < "${platforms_json}")
-    platform_kargs=$(jq -r ".${arch}.${platform}.kernel_arguments // [] | join(\" \")" < "${platforms_json}")
-else
-    # Add legacy kargs and console settings
-    platform_grub_cmds='serial --speed=115200\nterminal_input serial console\nterminal_output serial console'
-    # shellcheck source=src/cmdlib.sh
-    DEFAULT_TERMINAL=$(. "$(dirname "$0")"/cmdlib.sh; echo "$DEFAULT_TERMINAL")
-    # On each s390x hypervisor, a tty would be automatically detected by the
-    # kernel and systemd, there is no need to specify one.  However, we keep
-    # DEFAULT_TERMINAL as ttysclp0, which is helpful for building/testing
-    # with KVM+virtio (cmd-run).  For aarch64, ttyAMA0 is used as the
-    # default console
-    # shellcheck disable=SC2031
-    case "$arch" in
-        "aarch64"|"s390x") platform_kargs= ;;
-        *) platform_kargs="console=tty0 console=${DEFAULT_TERMINAL},115200n8" ;;
-    esac
-fi
+# just copy it over to /tmp and work from there to minimize 9p I/O
+cp "${platforms_json}" /tmp/platforms.json
+platforms_json=/tmp/platforms.json
+platform_grub_cmds=$(jq -r ".${arch}.${platform}.grub_commands // [] | join(\"\\\\n\")" < "${platforms_json}")
+platform_kargs=$(jq -r ".${arch}.${platform}.kernel_arguments // [] | join(\" \")" < "${platforms_json}")
 if [ -n "${platform_kargs}" ]; then
     extrakargs="${extrakargs} ${platform_kargs}"
 fi
@@ -445,13 +429,11 @@ install_grub_cfg() {
     printf "%s\n" "$grub_script" | \
         sed -E 's@(^# CONSOLE-SETTINGS-START$)@\1'"${platform_grub_cmds:+\\n${platform_grub_cmds}}"'@' \
         > $rootfs/boot/grub2/grub.cfg
-    if [ -n "$platforms_json" ]; then
-        # Copy platforms table if it's non-empty for this arch
-        # shellcheck disable=SC2031
-        if jq -e ".$arch" < "$platforms_json" > /dev/null; then
-            mkdir -p "$rootfs/boot/coreos"
-            jq ".$arch" < "$platforms_json" > "$rootfs/boot/coreos/platforms.json"
-        fi
+    # Copy platforms table if it's non-empty for this arch
+    # shellcheck disable=SC2031
+    if jq -e ".$arch" < "$platforms_json" > /dev/null; then
+        mkdir -p "$rootfs/boot/coreos"
+        jq ".$arch" < "$platforms_json" > "$rootfs/boot/coreos/platforms.json"
     fi
 }
 
