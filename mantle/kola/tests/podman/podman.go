@@ -290,7 +290,7 @@ func podmanNetworksReliably(c cluster.TestCluster) {
 
 	numPass := strings.Count(string(output), "PASS")
 
-	if numPass != 100 {
-		c.Fatalf("Expected 100 passes, but output was: %s", output)
+	if numPass <= 98 {
+		c.Fatalf("Expected more than or equal to 98/100 passes, but output was: %s", output)
 	}
 }
