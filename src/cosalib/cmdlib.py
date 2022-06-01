@@ -234,25 +234,26 @@ def rm_allow_noent(path):
 
 
 def extract_image_json(workdir, commit):
-    repo = os.path.join(workdir, 'tmp/repo')
-    path = os.path.join(workdir, 'tmp/image.json')
-    tmppath = path + '.tmp'
-    with open(tmppath, 'w') as f:
-        rc = subprocess.call(['ostree', f'--repo={repo}', 'cat', commit, '/usr/share/coreos-assembler/image.json'], stdout=f)
-        if rc == 0:
-            # Happy path, we have image.json in the ostree commit, rename it into place and we're done.
-            os.rename(tmppath, path)
-            return
-    # Otherwise, we are operating on a legacy build; clean up our tempfile.
-    os.remove(tmppath)
-    if not os.path.isfile(path):
-        # In the current build system flow, image builds will have already
-        # regenerated tmp/image.json from src/config.  If that doesn't already
-        # exist, then something went wrong.
-        raise Exception("Failed to extract image.json")
-    else:
-        # Warn about this case; but it's not fatal.
-        print("Warning: Legacy operating on ostree image that does not contain image.json")
+    with Lock(os.path.join(workdir, 'tmp/image.json.lock')):
+        repo = os.path.join(workdir, 'tmp/repo')
+        path = os.path.join(workdir, 'tmp/image.json')
+        tmppath = path + '.tmp'
+        with open(tmppath, 'w') as f:
+            rc = subprocess.call(['ostree', f'--repo={repo}', 'cat', commit, '/usr/share/coreos-assembler/image.json'], stdout=f)
+            if rc == 0:
+                # Happy path, we have image.json in the ostree commit, rename it into place and we're done.
+                os.rename(tmppath, path)
+                return
+        # Otherwise, we are operating on a legacy build; clean up our tempfile.
+        os.remove(tmppath)
+        if not os.path.isfile(path):
+            # In the current build system flow, image builds will have already
+            # regenerated tmp/image.json from src/config.  If that doesn't already
+            # exist, then something went wrong.
+            raise Exception("Failed to extract image.json")
+        else:
+            # Warn about this case; but it's not fatal.
+            print("Warning: Legacy operating on ostree image that does not contain image.json")
 
 
 # In coreos-assembler, we are strongly oriented towards the concept of a single
@@ -264,47 +265,48 @@ def extract_image_json(workdir, commit):
 #
 # Call this function to ensure that the ostree commit for a given build is in tmp/repo.
 def import_ostree_commit(workdir, buildpath, buildmeta, force=False):
-    repo = os.path.join(workdir, 'tmp/repo')
-    commit = buildmeta['ostree-commit']
-    tarfile = os.path.join(buildpath, buildmeta['images']['ostree']['path'])
-    # create repo in case e.g. tmp/ was cleared out; idempotent
-    subprocess.check_call(['ostree', 'init', '--repo', repo, '--mode=archive'])
+    with Lock(os.path.join(workdir, 'tmp/repo.import.lock')):
+        repo = os.path.join(workdir, 'tmp/repo')
+        commit = buildmeta['ostree-commit']
+        tarfile = os.path.join(buildpath, buildmeta['images']['ostree']['path'])
+        # create repo in case e.g. tmp/ was cleared out; idempotent
+        subprocess.check_call(['ostree', 'init', '--repo', repo, '--mode=archive'])
 
-    # in the common case where we're operating on a recent build, the OSTree
-    # commit should already be in the tmprepo
-    commitpartial = os.path.join(repo, f'state/{commit}.commitpartial')
-    if (subprocess.call(['ostree', 'show', '--repo', repo, commit],
-                        stdout=subprocess.DEVNULL,
-                        stderr=subprocess.DEVNULL) == 0
-            and not os.path.isfile(commitpartial)
-            and not force):
-        extract_image_json(workdir, commit)
-        return
+        # in the common case where we're operating on a recent build, the OSTree
+        # commit should already be in the tmprepo
+        commitpartial = os.path.join(repo, f'state/{commit}.commitpartial')
+        if (subprocess.call(['ostree', 'show', '--repo', repo, commit],
+                            stdout=subprocess.DEVNULL,
+                            stderr=subprocess.DEVNULL) == 0
+                and not os.path.isfile(commitpartial)
+                and not force):
+            extract_image_json(workdir, commit)
+            return
 
-    print(f"Extracting {commit}")
-    assert tarfile.endswith('.ociarchive')
-    # We do this in two stages, because right now ex-container only writes to
-    # non-archive repos.  Also, in the privileged case we need sudo to write
-    # to `repo-build`, though it might be good to change this by default.
-    if os.environ.get('COSA_PRIVILEGED', '') == '1':
-        build_repo = os.path.join(repo, '../../cache/repo-build')
-        subprocess.check_call(['sudo', 'ostree', 'container', 'import', '--repo', build_repo,
-                               '--write-ref', buildmeta['buildid'],
-                               'ostree-unverified-image:oci-archive:' + tarfile])
-        subprocess.check_call(['sudo', 'ostree', f'--repo={repo}', 'pull-local', build_repo, buildmeta['buildid']])
-        uid = os.getuid()
-        gid = os.getgid()
-        subprocess.check_call(['sudo', 'chown', '-hR', f"{uid}:{gid}", repo])
-    else:
-        with tempfile.TemporaryDirectory() as tmpd:
-            subprocess.check_call(['ostree', 'init', '--repo', tmpd, '--mode=bare-user'])
-            subprocess.check_call(['ostree', 'container', 'import', '--repo', tmpd,
+        print(f"Extracting {commit}")
+        assert tarfile.endswith('.ociarchive')
+        # We do this in two stages, because right now ex-container only writes to
+        # non-archive repos.  Also, in the privileged case we need sudo to write
+        # to `repo-build`, though it might be good to change this by default.
+        if os.environ.get('COSA_PRIVILEGED', '') == '1':
+            build_repo = os.path.join(repo, '../../cache/repo-build')
+            subprocess.check_call(['sudo', 'ostree', 'container', 'import', '--repo', build_repo,
                                    '--write-ref', buildmeta['buildid'],
                                    'ostree-unverified-image:oci-archive:' + tarfile])
-            subprocess.check_call(['ostree', f'--repo={repo}', 'pull-local', tmpd, buildmeta['buildid']])
+            subprocess.check_call(['sudo', 'ostree', f'--repo={repo}', 'pull-local', build_repo, buildmeta['buildid']])
+            uid = os.getuid()
+            gid = os.getgid()
+            subprocess.check_call(['sudo', 'chown', '-hR', f"{uid}:{gid}", repo])
+        else:
+            with tempfile.TemporaryDirectory() as tmpd:
+                subprocess.check_call(['ostree', 'init', '--repo', tmpd, '--mode=bare-user'])
+                subprocess.check_call(['ostree', 'container', 'import', '--repo', tmpd,
+                                       '--write-ref', buildmeta['buildid'],
+                                       'ostree-unverified-image:oci-archive:' + tarfile])
+                subprocess.check_call(['ostree', f'--repo={repo}', 'pull-local', tmpd, buildmeta['buildid']])
 
-    # Also extract image.json since it's commonly needed by image builds
-    extract_image_json(workdir, commit)
+        # Also extract image.json since it's commonly needed by image builds
+        extract_image_json(workdir, commit)
 
 
 def get_basearch():
