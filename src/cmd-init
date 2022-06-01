@@ -9,11 +9,12 @@ dn=$(dirname "$0")
 FORCE=0
 BRANCH=""
 COMMIT=""
+TRANSIENT=0
 
 print_help() {
     cat 1>&2 <<'EOF'
 Usage: coreos-assembler init --help
-       coreos-assembler init [--force] [--branch BRANCH] 
+       coreos-assembler init [--force] [--transient] [--branch BRANCH] 
                              [--commit COMMIT] GITCONFIG [SUBDIR]
 
   For example, you can use https://github.com/coreos/fedora-coreos-config
@@ -24,12 +25,15 @@ Usage: coreos-assembler init --help
 
   If specified, SUBDIR is a subdirectory of the git repository that should
   contain manifest.yaml and image.yaml (or image.ks).
+
+  Use `--transient` for builds that will throw away all cached data on success/failure,
+  and should hence not invoke `fsync()` for example.
 EOF
 }
 
 # Call getopt to validate the provided input.
 rc=0
-options=$(getopt --options hfb:c: --longoptions help,force,branch:,commit: -- "$@") || rc=$?
+options=$(getopt --options hfb:c: --longoptions help,force,transient,branch:,commit: -- "$@") || rc=$?
 [ $rc -eq 0 ] || {
     print_help
     exit 1
@@ -43,6 +47,9 @@ while true; do
         ;;
     -f | --force)
         FORCE=1
+        ;;
+    --transient)
+        TRANSIENT=1
         ;;
     -b | --branch)
         case "$2" in
@@ -136,3 +143,7 @@ mkdir -p builds
 mkdir -p tmp
 mkdir -p overrides/rpm
 mkdir -p overrides/rootfs
+
+if test "${TRANSIENT}" = 1; then
+    touch tmp/cosa-transient
+fi
