@@ -147,3 +147,6 @@ mkdir -p overrides/rootfs
 if test "${TRANSIENT}" = 1; then
     touch tmp/cosa-transient
 fi
+
+set +x
+echo "Initialized $PWD as coreos-assembler working directory."
