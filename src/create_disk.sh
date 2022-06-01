@@ -406,7 +406,7 @@ s390x)
     # this is only a temporary solution until we are able to do firstboot check at bootloader
     # stage on s390x, either through zipl->grub2-emu or zipl standalone.
     # See https://github.com/coreos/ignition-dracut/issues/84
-    # A similar hack is present in https://github.com/coreos/coreos-assembler/blob/main/src/gf-set-platform#L55
+    # There's a similar hack in gf-set-platform
     echo "$(grep options $blsfile | cut -d' ' -f2-) ignition.firstboot" > $tmpfile
 
     # ideally we want to invoke zipl with bls and zipl.conf but we might need
