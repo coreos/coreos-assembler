@@ -206,6 +206,9 @@ prepare_build() {
             rm -f "${tmprepo}/summary"
         else
             ostree init --repo="${tmprepo}" --mode=archive
+            # This archive repo is transient, so lower the compression
+            # level to avoid burning excessive CPU.
+            ostree --repo="${tmprepo}" config set archive.zlib-level 2
         fi
     fi
 
