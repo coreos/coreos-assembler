@@ -207,6 +207,11 @@ prepare_build() {
         else
             ostree init --repo="${tmprepo}" --mode=archive
         fi
+
+        # No need to fsync for transient flows
+        if test -f "${workdir}/tmp/cosa-transient"; then
+            ostree --repo="${tmprepo}" config set 'core.fsync' 'false'
+        fi
     fi
 
     configdir_gitrepo=${configdir}
