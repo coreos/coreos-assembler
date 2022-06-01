@@ -235,8 +235,24 @@ def rm_allow_noent(path):
 
 def extract_image_json(workdir, commit):
     repo = os.path.join(workdir, 'tmp/repo')
-    with open(os.path.join(workdir, 'tmp/image.json'), 'w') as f:
-        subprocess.check_call(['ostree', f'--repo={repo}', 'cat', commit, '/usr/share/coreos-assembler/image.json'], stdout=f)
+    path = os.path.join(workdir, 'tmp/image.json')
+    tmppath = path + '.tmp'
+    with open(tmppath, 'w') as f:
+        rc = subprocess.call(['ostree', f'--repo={repo}', 'cat', commit, '/usr/share/coreos-assembler/image.json'], stdout=f)
+        if rc == 0:
+            # Happy path, we have image.json in the ostree commit, rename it into place and we're done.
+            os.rename(tmppath, path)
+            return
+    # Otherwise, we are operating on a legacy build; clean up our tempfile.
+    os.remove(tmppath)
+    if not os.path.isfile(path):
+        # In the current build system flow, image builds will have already
+        # regenerated tmp/image.json from src/config.  If that doesn't already
+        # exist, then something went wrong.
+        raise Exception("Failed to extract image.json")
+    else:
+        # Warn about this case; but it's not fatal.
+        print("Warning: Legacy operating on ostree image that does not contain image.json")
 
 
 # In coreos-assembler, we are strongly oriented towards the concept of a single
