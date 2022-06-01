@@ -210,6 +210,11 @@ prepare_build() {
             # level to avoid burning excessive CPU.
             ostree --repo="${tmprepo}" config set archive.zlib-level 2
         fi
+
+        # No need to fsync for transient flows
+        if test -f "${workdir}/tmp/cosa-transient"; then
+            ostree --repo="${tmprepo}" config set 'core.fsync' 'false'
+        fi
     fi
 
     configdir_gitrepo=${configdir}
