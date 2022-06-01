@@ -60,7 +60,7 @@ var (
 	
 	if [[ $FROM_KERNEL == "default" && $TO_KERNEL == "rt-kernel" ]]; then
 		# Switch from default to RT Kernel
-		# https://github.com/openshift/machine-config-operator/blob/master/pkg/daemon/update.go#L711
+		# https://github.com/openshift/machine-config-operator/blob/e246be62e7839a086bc4494203472349c406dcae/pkg/daemon/update.go#L711
 		RT_KERNEL_REPO=$3
 		if [[ -z $(ls ${RT_KERNEL_REPO}) ]]; then
 			echo "No kernel-rt package available in the repo: ${RT_KERNEL_REPO}"
