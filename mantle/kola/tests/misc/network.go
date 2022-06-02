@@ -165,6 +165,9 @@ func NetworkListeners(c cluster.TestCluster) {
 		// https://serverfault.com/a/929642
 		{"tcp", "5355", "systemd-resolve"},
 		{"udp", "5355", "systemd-resolve"},
+		// DHCPv6 from NetworkManager (when IPv6 network available)
+		// https://github.com/coreos/fedora-coreos-tracker/issues/1216
+		{"udp", "546", "NetworkManager"},
 	}
 	checkList := func() error {
 		return checkListeners(c, expectedListeners)
