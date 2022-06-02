@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
-	"os"
 	"os/exec"
 	"strconv"
 	"strings"
@@ -49,7 +47,6 @@ func init() {
 		NativeFuncs: map[string]register.NativeFuncWrap{
 			"PortSSH":        register.CreateNativeFuncWrap(TestPortSsh),
 			"DbusPerms":      register.CreateNativeFuncWrap(TestDbusPerms),
-			"NetworkScripts": register.CreateNativeFuncWrap(TestNetworkScripts, []string{"s390x"}...),
 			"ServicesActive": register.CreateNativeFuncWrap(TestServicesActive),
 			"ReadOnly":       register.CreateNativeFuncWrap(TestReadOnlyFs),
 			"Useradd":        register.CreateNativeFuncWrap(TestUseradd),
@@ -246,21 +243,6 @@ func TestReadOnlyFs() error {
 		}
 	}
 	return fmt.Errorf("could not find /usr or / mount points.")
-}
-
-func TestNetworkScripts() error {
-	networkScriptsDir := "/etc/sysconfig/network-scripts"
-	entries, err := ioutil.ReadDir(networkScriptsDir)
-	if err != nil {
-		if !os.IsNotExist(err) {
-			return err
-		}
-		return nil
-	}
-	if len(entries) > 0 {
-		return fmt.Errorf("Found content in %s", networkScriptsDir)
-	}
-	return nil
 }
 
 // Test that the root disk's GUID was set to a random one on first boot.
