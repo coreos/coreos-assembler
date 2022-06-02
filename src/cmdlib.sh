@@ -119,6 +119,12 @@ preflight_kvm() {
     fi
 }
 
+# Use this for things like disabling fsync.
+# For more information, see the docs of `cosa init --transient`.
+is_transient() {
+    test -f "${workdir}"/tmp/cosa-transient
+}
+
 # Picks between yaml or json based on which version exists. Errors out if both
 # exists. If neither exist, prefers the extension in ${2}, or otherwise YAML.
 pick_yaml_or_else_json() {
@@ -512,7 +518,11 @@ impl_rpmostree_compose() {
         fi
         # And remove the old one
         rm -vf "${workdir}"/cache/cache.qcow2
-        compose_qemu_args+=("-drive" "if=none,id=cache,discard=unmap,file=${workdir}/cache/cache2.qcow2" \
+        local cachedriveargs="discard=unmap"
+        if is_transient; then
+            cachedriveargs="cache=unsafe,discard=ignore"
+        fi
+        compose_qemu_args+=("-drive" "if=none,id=cache,$cachedriveargs,file=${workdir}/cache/cache2.qcow2" \
                             "-device" "virtio-blk,drive=cache")
         runvm "${compose_qemu_args[@]}" -- "$@"
     fi
