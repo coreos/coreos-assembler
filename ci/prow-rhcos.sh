@@ -17,5 +17,5 @@ esac
 export COSA_SKIP_OVERLAY=1
 # Create a temporary cosa workdir
 cd "$(mktemp -d)"
-cosa init -b "${RHCOS_BRANCH}" https://github.com/openshift/os
+cosa init --transient -b "${RHCOS_BRANCH}" https://github.com/openshift/os
 exec src/config/ci/prow-build-test-qemu.sh
