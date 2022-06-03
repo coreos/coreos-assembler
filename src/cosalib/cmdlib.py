@@ -277,7 +277,8 @@ def import_ostree_commit(repo, buildpath, buildmeta, force=False):
             gid = os.getgid()
             subprocess.check_call(['sudo', 'chown', '-hR', f"{uid}:{gid}", repo])
         else:
-            with tempfile.TemporaryDirectory() as tmpd:
+            tmpdir = os.path.join(os.getcwd(), 'tmp')
+            with tempfile.TemporaryDirectory(dir=tmpdir) as tmpd:
                 subprocess.check_call(['ostree', 'init', '--repo', tmpd, '--mode=bare-user'])
                 subprocess.check_call(['rpm-ostree', 'ex-container', 'import', '--repo', tmpd,
                                        '--write-ref', buildmeta['buildid'], 'ostree-unverified-image:oci-archive:' + tarfile])
