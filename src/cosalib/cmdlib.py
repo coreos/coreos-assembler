@@ -265,8 +265,9 @@ def extract_image_json(workdir, commit):
 #
 # Call this function to ensure that the ostree commit for a given build is in tmp/repo.
 def import_ostree_commit(workdir, buildpath, buildmeta, force=False):
+    tmpdir = os.path.join(workdir, 'tmp')
     with Lock(os.path.join(workdir, 'tmp/repo.import.lock')):
-        repo = os.path.join(workdir, 'tmp/repo')
+        repo = os.path.join(tmpdir, 'repo')
         commit = buildmeta['ostree-commit']
         tarfile = os.path.join(buildpath, buildmeta['images']['ostree']['path'])
         # create repo in case e.g. tmp/ was cleared out; idempotent
@@ -298,7 +299,7 @@ def import_ostree_commit(workdir, buildpath, buildmeta, force=False):
             gid = os.getgid()
             subprocess.check_call(['sudo', 'chown', '-hR', f"{uid}:{gid}", repo])
         else:
-            with tempfile.TemporaryDirectory() as tmpd:
+            with tempfile.TemporaryDirectory(dir=tmpdir) as tmpd:
                 subprocess.check_call(['ostree', 'init', '--repo', tmpd, '--mode=bare-user'])
                 subprocess.check_call(['ostree', 'container', 'import', '--repo', tmpd,
                                        '--write-ref', buildmeta['buildid'],
