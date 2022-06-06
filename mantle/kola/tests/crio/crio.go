@@ -40,6 +40,11 @@ type simplifiedCrioInfo struct {
 	CgroupDriver  string `json:"cgroup_driver"`
 }
 
+// overrideCrioOperationTimeoutSeconds replaces the currently *extremely* low
+// default crio operation timeouts that cause flakes in our CI.
+// See https://github.com/openshift/os/issues/818
+const overrideCrioOperationTimeoutSeconds = "300s"
+
 // crioPodTemplate is a simple string template required for creating a pod in crio
 // It takes two strings: the name (which will be expanded) and the generated image name
 var crioPodTemplate = `{
@@ -283,12 +288,13 @@ func crioNetwork(c cluster.TestCluster) {
 	}
 
 	listener := func(ctx context.Context) error {
-		podID, err := c.SSHf(dest, "sudo crictl runp %s", crioConfigPod)
+		podID, err := c.SSHf(dest, "sudo crictl runp -T %s %s", overrideCrioOperationTimeoutSeconds, crioConfigPod)
 		if err != nil {
 			return err
 		}
 
-		containerID, err := c.SSHf(dest, "sudo crictl create --no-pull %s %s %s",
+		containerID, err := c.SSHf(dest, "sudo crictl create -T %s --no-pull %s %s %s",
+			overrideCrioOperationTimeoutSeconds,
 			podID, crioConfigContainer, crioConfigPod)
 		if err != nil {
 			return err
@@ -326,12 +332,13 @@ func crioNetwork(c cluster.TestCluster) {
 				time.Sleep(100 * time.Millisecond)
 			}
 		}
-		podID, err := c.SSHf(src, "sudo crictl runp %s", crioConfigPod)
+		podID, err := c.SSHf(src, "sudo crictl runp -T %s %s", overrideCrioOperationTimeoutSeconds, crioConfigPod)
 		if err != nil {
 			return err
 		}
 
-		containerID, err := c.SSHf(src, "sudo crictl create --no-pull %s %s %s",
+		containerID, err := c.SSHf(src, "sudo crictl create -T %s --no-pull %s %s %s",
+			overrideCrioOperationTimeoutSeconds,
 			podID, crioConfigContainer, crioConfigPod)
 		if err != nil {
 			return err
@@ -379,9 +386,10 @@ func crioNetworksReliably(c cluster.TestCluster) {
 			c.Fatal(err)
 		}
 
-		cmdCreatePod := fmt.Sprintf("sudo crictl runp %s", crioConfigPod)
+		cmdCreatePod := fmt.Sprintf("sudo crictl runp -T %s %s", overrideCrioOperationTimeoutSeconds, crioConfigPod)
 		podID := c.MustSSH(m, cmdCreatePod)
-		containerID := c.MustSSH(m, fmt.Sprintf("sudo crictl create --no-pull %s %s %s",
+		containerID := c.MustSSH(m, fmt.Sprintf("sudo crictl create -T %s --no-pull %s %s %s",
+			overrideCrioOperationTimeoutSeconds,
 			podID, crioConfigContainer, crioConfigPod))
 		output = output + string(c.MustSSH(m, fmt.Sprintf("sudo crictl exec %s ping -i 0.2 %s -w 1 >/dev/null && echo PASS || echo FAIL", containerID, hostIP)))
 	}
@@ -441,9 +449,10 @@ func crioPodContinuesDuringServiceRestart(c cluster.TestCluster) {
 	if err != nil {
 		c.Fatal(err)
 	}
-	cmdCreatePod := fmt.Sprintf("sudo crictl runp %s", crioConfigPod)
+	cmdCreatePod := fmt.Sprintf("sudo crictl runp -T %s %s", overrideCrioOperationTimeoutSeconds, crioConfigPod)
 	podID := c.MustSSH(m, cmdCreatePod)
-	containerID := c.MustSSH(m, fmt.Sprintf("sudo crictl create --no-pull %s %s %s",
+	containerID := c.MustSSH(m, fmt.Sprintf("sudo crictl create -T %s --no-pull %s %s %s",
+		overrideCrioOperationTimeoutSeconds,
 		podID, crioConfigContainer, crioConfigPod))
 
 	cmd := fmt.Sprintf("sudo crictl exec %s bash -c \"sleep 25 && echo PASS > /tmp/test/restart-test\"", containerID)
