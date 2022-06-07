@@ -1,0 +1,132 @@
+#!/usr/bin/python3 -u
+
+import sys
+import argparse
+from os import environ
+from subprocess import check_call, check_output, CalledProcessError
+
+def run_cmd(command, output=None):
+    '''
+    Run the given command using check_call/check_output and verify its return code.
+    @param str command command to be executed
+    '''
+    if output:
+        try:
+            output = check_output(command.split())
+        except CalledProcessError as e:
+            raise SystemExit(f"Failed to invoke command: {e}")
+        return output
+    else:
+        try:
+            check_call(command.split())
+        except CalledProcessError as e:
+            raise SystemExit(f"Failed to invoke command: {e}")
+
+def build(labels, gitURL, gitRef, repo, tag):
+    '''
+    Build the image  using podman remote and push to the registry
+    @param repo str registry repository
+    @param tag  str image tag
+    @param time str expiration time for Quay images
+    '''
+    cmd = f"podman --remote build {gitURL}#{gitRef} --tag {repo}:{tag}"
+    for label in labels:
+        cmd += f" --label={label}"
+    run_cmd(cmd)
+
+def push(repo, tag, force=None):
+    '''
+    Push image to registry
+    @param repo str registry repository
+    @param tag str image tag
+    '''
+    tag_exists_in_repo = search(repo, tag)
+    if force or not tag_exists_in_repo:
+        run_cmd(f"podman --remote push {repo}:{tag}")
+        # Even though check_call only returns after the cmd completion,
+        # Quay seems to take more time to publish images in some occasions
+        run_cmd("sleep 50")
+        if search(repo, tag) is True:
+            print(f"Build and Push done successfully via tag: {tag}")
+        else:
+            raise SystemExit(f"Image pushed but not viewable in registry: tag:{tag}")
+    else:
+        raise SystemExit(f"Registry tag:{tag} found in {repo}. If you want to overwride it use --force")
+
+def search(repo, tag):
+    '''
+    Search for a tag in the registry
+    @param force str ignore if image is found
+    @param repo str registry repository
+    @param tag  str image tag
+    '''
+    # Podman remote doesn't allow push using digestfile. That's why the tag check is done
+    tags = run_cmd(f"podman search --list-tags {repo}", True)
+    if (tag in str(tags)):
+        return True
+    return False
+
+def main():
+    parse_args()
+
+def parse_args():
+    parser = argparse.ArgumentParser(
+        prog="CoreOS Assembler Remote Build",
+        description="Build coreos-assembler remotely",
+        usage="""
+Run multi-arch builds using podman remote.
+In order to get cmd-remote-build-container working the CONTAINER_SSHKEY and CONTAINER_HOST environment variables
+must be defined
+
+Examples:
+    $ cosa remote-build-container \
+        --arch aarch64 \
+        --label quay.labels-after=4d \
+        --git-ref main \
+        --git-url https://github.com/coreos/coreos-assembler.git \
+        --repo quay.io/coreos/coreos-assembler-staging \
+        --push-to-registry """)
+
+    parser.add_argument(
+        '--arch', required=True,
+        help='Build Architecture')
+    parser.add_argument(
+        '--label', default=[], action='append',
+        required=False, help='Add image label(s)')
+    parser.add_argument(
+        '--force', required=False, action='store_true',
+        help='Force image overwrite')
+    parser.add_argument(
+        '--git-ref', required=True,
+        help='Git branch or tag')
+    parser.add_argument(
+        '--git-url', required=True,
+        help='Git URL')
+    parser.add_argument(
+        '--push-to-registry', required=False, action='store_true',
+         help='Push image to registry. You must be logged in before pushing images')
+    parser.add_argument(
+        '--repo', required=True,
+        help='Registry repository')
+    parser.add_argument(
+        '--tag', required=False,
+        help='Force image tag. The default is arch-commit')
+
+    args = parser.parse_args()
+
+    if environ.get('CONTAINER_HOST') is None or environ.get('CONTAINER_SSHKEY') is None:
+        sys.exit('You must have CONTAINER_HOST and CONTAINER_SSHKEY environment variables setup')
+
+    if not args.tag:
+        # If a tag wasn't passed then use the git
+        # short commit hash
+        commit = run_cmd(f"git ls-remote {args.git_url} {args.git_ref}", 'True')[0:6].decode("utf-8")
+        tag = f"{args.arch}-{commit}"
+    else:
+        tag = args.tag
+    build(args.label, args.git_url, args.git_ref, args.repo, tag)
+    if args.push_to_registry:
+        push(args.repo, tag, args.force)
+
+if __name__ == '__main__':
+    sys.exit(main())
