@@ -205,6 +205,7 @@
    "amis",
    "azure",
    "azurestack",
+   "base-oscontainer",
    "build-url",
    "digitalocean",
    "exoscale",
@@ -835,6 +836,21 @@
      "type":"object",
      "title":"Azure",
      "$ref": "#/definitions/cloudartifact"
+    },
+    "base-oscontainer": {
+      "$id":"#/properties/base-oscontainer",
+      "type":"object",
+      "title":"Base OS container",
+      "required": [
+        "image"
+      ],
+      "properties": {
+        "image": {
+          "$id":"#/properties/base-oscontainer/image",
+          "type":"string",
+          "title":"Image"
+        }
+      }
     },
    "gcp": {
      "$id":"#/properties/gcp",
