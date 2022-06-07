@@ -45,7 +45,7 @@ build_commands="init fetch build run prune clean list"
 # commands more likely to be used in a prod pipeline only
 advanced_build_commands="buildfetch buildupload oc-adm-release push-container upload-oscontainer"
 buildextend_commands="aliyun aws azure digitalocean exoscale gcp ibmcloud kubevirt live metal metal4k nutanix openstack qemu virtualbox vmware vultr"
-utility_commands="aws-replicate compress generate-hashlist koji-upload kola remote-prune sign tag"
+utility_commands="aws-replicate compress generate-hashlist koji-upload kola remote-build-container remote-prune sign tag"
 other_commands="shell meta"
 if [ -z "${cmd}" ]; then
     echo Usage: "coreos-assembler CMD ..."
