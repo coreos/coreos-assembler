@@ -83,6 +83,11 @@ tools:
 schema:
 	$(MAKE) -C schema
 
+# To update the coreos-assembler schema:
+# Edit src/v1.json
+# $ cp src/v1.json schema/
+# $ make schema
+# $ for d in mantle gangplank; do (cd $d && go mod vendor); done
 .PHONY: schema-check
 schema-check: DIGEST = $(shell sha256sum src/v1.json | awk '{print $$1}')
 schema-check:
