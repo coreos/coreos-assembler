@@ -186,7 +186,7 @@ def robosign_ostree(args, s3, build, gpgkey):
         # Detect and use the replace-detached-metadata API only if available
         verb = "replace-detached-metadata"
         tmp_image = 'tmp.ociarchive'
-        if subprocess.check_output(['ostree', 'container', 'image', '--help']).find(verb) >= 0:
+        if subprocess.check_output(['ostree', 'container', 'image', '--help'], encoding='UTF-8').find(verb) >= 0:
             subprocess.check_call(['ostree', 'container', 'image', verb, f'--src={exported_ostree_ref}', f'--dest=oci-archive:{tmp_image}:latest', metapath])
             os.rename(tmp_image, exported_ostree_path)
         else:
