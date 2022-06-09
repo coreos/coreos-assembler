@@ -383,10 +383,16 @@ else
     ostree_tarfile_path="${name}-${buildid}-ostree.${basearch}.ociarchive"
     gitsrc=$(jq -r .git.origin < "${PWD}/coreos-assembler-config-git.json")
     cmd=(ostree container encapsulate --copymeta="rpmostree.inputhash")
+
+    # The ostree-ext default is 64, but this is still too much apparently
+    # for (older?) versions of podman AKA containers/storage (or maybe)
+    # a kernel limitation?  For example
+    # `cannot mount layer, mount label "" too large 4168 > page size 4096`
+    MAX_OSTREECONTAINER_LAYERS=50
     case "${ostree_format}" in
         oci) ;;
         # Note rpm-ostree always copies the rpmostree.inputhash key
-        oci-chunked) cmd=(rpm-ostree container-encapsulate) ;;
+        oci-chunked) cmd=(rpm-ostree container-encapsulate --max-layers="$MAX_OSTREECONTAINER_LAYERS") ;;
         *) fatal "Unknown ostree-format: ${ostree_format}"
     esac
     runv "${cmd[@]}" --repo="${tmprepo}" \
