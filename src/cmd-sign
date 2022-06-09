@@ -179,18 +179,15 @@ def robosign_ostree(args, s3, build, gpgkey):
         ostree_image = build['images']['ostree']
         exported_ostree_path = os.path.join(builddir, ostree_image['path'])
         exported_ostree_ref = f'oci-archive:{exported_ostree_path}:latest'
-        # Files stored in the build directory are mode 0600 to prevent
-        # accidental mutation.  Remove the existing one because otherwise
-        # we'll try to `open(O_TRUNC)` it and fail.
-        os.unlink(exported_ostree_path)
         # Detect and use the replace-detached-metadata API only if available
         verb = "replace-detached-metadata"
-        tmp_image = 'tmp.ociarchive'
+        tmp_image = os.path.join(d, 'tmp.ociarchive')
+        tmp_ref = f"oci-archive:{tmp_image}:latest"
         if subprocess.check_output(['ostree', 'container', 'image', '--help'], encoding='UTF-8').find(verb) >= 0:
-            subprocess.check_call(['ostree', 'container', 'image', verb, f'--src={exported_ostree_ref}', f'--dest=oci-archive:{tmp_image}:latest', metapath])
-            os.rename(tmp_image, exported_ostree_path)
+            subprocess.check_call(['ostree', 'container', 'image', verb, f'--src={exported_ostree_ref}', f'--dest={tmp_ref}', metapath])
         else:
-            subprocess.check_call(['ostree', 'container', 'export', '--repo=tmp/repo', checksum, exported_ostree_ref])
+            subprocess.check_call(['ostree', 'container', 'export', '--repo=tmp/repo', checksum, tmp_ref])
+        os.rename(tmp_image, exported_ostree_path)
         # Finalize the export by making it not writable.
         os.chmod(exported_ostree_path, 0o400)
         ostree_image['size'] = os.path.getsize(exported_ostree_path)
