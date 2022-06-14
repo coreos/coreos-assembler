@@ -13,7 +13,7 @@ PYIGNORE ?= E128,E241,E402,E501,E722,W503,W504
 
 MANTLE_BINARIES := ore kola plume
 
-all: tools mantle gangplank
+all: bin/coreos-assembler tools mantle gangplank
 
 src:=$(shell find src -maxdepth 1 -type f -executable -print)
 pysources=$(shell find src -type f -name '*.py') $(shell for x in $(src); do if head -1 $$x | grep -q python; then echo $$x; fi; done)
@@ -30,12 +30,16 @@ else ifeq ($(GOARCH),aarch64)
         GOARCH="arm64"
 endif
 
+bin/coreos-assembler:
+	cd cmd && go build -mod vendor -o ../$@
+.PHONY: bin/coreos-assembler
+
 .%.shellchecked: %
 	./tests/check_one.sh $< $@
 
 shellcheck: ${src_checked} ${tests_checked} ${cwd_checked}
 
-check: shellcheck flake8 pycheck schema-check mantle-check gangplank-check
+check: shellcheck flake8 pycheck schema-check mantle-check gangplank-check cosa-go-check
 	echo OK
 
 pycheck:
@@ -52,6 +56,11 @@ flake8:
 unittest:
 	COSA_TEST_META_PATH=`pwd`/fixtures \
 		PYTHONPATH=`pwd`/src python3 -m pytest tests/
+
+cosa-go-check:
+	(cd cmd && go test -mod=vendor)
+	go test -mod=vendor github.com/coreos/coreos-assembler/internal/pkg/bashexec
+	go test -mod=vendor github.com/coreos/coreos-assembler/internal/pkg/cosash
 
 clean:
 	rm -f ${src_checked} ${tests_checked} ${cwd_checked}
@@ -111,7 +120,7 @@ install:
 	install -d $(DESTDIR)$(PREFIX)/lib/coreos-assembler/cosalib
 	install -D -t $(DESTDIR)$(PREFIX)/lib/coreos-assembler/cosalib $$(find src/cosalib/ -maxdepth 1 -type f)
 	install -d $(DESTDIR)$(PREFIX)/bin
-	ln -sf ../lib/coreos-assembler/coreos-assembler $(DESTDIR)$(PREFIX)/bin/
+	install bin/coreos-assembler $(DESTDIR)$(PREFIX)/bin/
 	ln -sf ../lib/coreos-assembler/cp-reflink $(DESTDIR)$(PREFIX)/bin/
 	ln -sf coreos-assembler $(DESTDIR)$(PREFIX)/bin/cosa
 	install -d $(DESTDIR)$(PREFIX)/lib/coreos-assembler/tests/kola
