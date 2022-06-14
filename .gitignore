@@ -10,3 +10,4 @@ maipo/
 .coverage
 tools/bin
 .idea
+bin/
