@@ -524,17 +524,17 @@ func CheckMachine(ctx context.Context, m Machine) error {
 		if err != nil {
 			return fmt.Errorf("failed to query systemd for failed units: %s: %v: %s", out, err, stderr)
 		}
+		err = checkSystemdUnitFailures(string(out), distribution)
+		if err != nil {
+			return err
+		}
+
 		// Ensure no systemd units stuck in activating state
 		out, stderr, err = m.SSH(activatingUnitsCmd)
 		if err != nil {
 			return fmt.Errorf("failed to query systemd for activating units: %s: %v: %s", out, err, stderr)
 		}
 		err = checkSystemdUnitStuck(string(out), m)
-		if err != nil {
-			return err
-		}
-
-		err = checkSystemdUnitFailures(string(out), distribution)
 		if err != nil {
 			return err
 		}
