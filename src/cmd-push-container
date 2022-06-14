@@ -50,12 +50,14 @@ container_name = container_name_and_tag = args.name
 if args.base_image_name:
     container_name = f"{container_name}-base-image"
 if ":" not in container_name_and_tag:
+    # If a specific tag wasn't requested, add a default one
     container_name_and_tag = f"{container_name}:{latest_build}-{arch}"
-if ":" in container_name:
+else:
+    # Strip the tag out, as we will be injecting the digest below
     container_name = container_name.rsplit(':')[0]
 with tempfile.NamedTemporaryFile(dir='tmp', prefix='push-container-digestfile') as df:
     skopeoargs.append(f"--digestfile={df.name}")
-    skopeoargs.extend([f"oci-archive:{ociarchive}", f"docker://{container_name}"])
+    skopeoargs.extend([f"oci-archive:{ociarchive}", f"docker://{container_name_and_tag}"])
     print(subprocess.list2cmdline(skopeoargs))
     subprocess.check_call(skopeoargs)
     df.seek(0)
