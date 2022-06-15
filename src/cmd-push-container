@@ -21,8 +21,8 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--authfile", help="Authentication file",
                     action='store')
 parser.add_argument("--format", help="Image format for destination", choices=['oci', 'v2s2'], action='store')
-parser.add_argument("--name-suffix", metavar='SUFFIX', help="Append SUFFIX to container name")
-parser.add_argument("name", help="destination image reference")
+parser.add_argument("--tag-suffix", metavar='SUFFIX', help="Append SUFFIX to container tag")
+parser.add_argument("name", metavar='NAME[:TAG]', help="destination image reference")
 
 args = parser.parse_args()
 
@@ -54,8 +54,8 @@ else:
     # Strip the tag out, as we will be injecting the digest below
     # Note this implicitly errors out if there's more than one ':'
     container_name, container_tag = args.name.rsplit(':')
-if args.name_suffix:
-    container_name = f"{container_name}-{args.name_suffix}"
+if args.tag_suffix:
+    container_tag = f"{container_tag}-{args.tag_suffix}"
 with tempfile.NamedTemporaryFile(dir='tmp', prefix='push-container-digestfile') as df:
     skopeoargs.append(f"--digestfile={df.name}")
     skopeoargs.extend([f"oci-archive:{ociarchive}", f"docker://{container_name}:{container_tag}"])
