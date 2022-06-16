@@ -198,6 +198,11 @@ var (
 			desc:  "oom killer",
 			match: regexp.MustCompile("invoked oom-killer"),
 		},
+		{
+			// https://github.com/coreos/fedora-coreos-config/pull/1797
+			desc:  "systemd generator failure",
+			match: regexp.MustCompile(`systemd\[[0-9]+\]: (.*) failed with exit status`),
+		},
 	}
 )
 
