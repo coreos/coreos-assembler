@@ -105,7 +105,7 @@ preflight_kvm() {
 
     if test -z "${COSA_NO_KVM:-}"; then
         if ! test -c /dev/kvm; then
-            fatal "Missing /dev/kvm"
+            fatal "Missing /dev/kvm; you can set COSA_NO_KVM=1 to bypass this at the cost of performance."
         fi
         if ! [ -w /dev/kvm ]; then
             if ! has_privileges; then
