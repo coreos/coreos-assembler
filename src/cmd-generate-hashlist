@@ -127,7 +127,6 @@ class HashListV1(dict):
                 filepath = os.path.join(dirpath, fname)
                 # Skip symlinks
                 if os.path.islink(filepath):
-                    print(f'Skipping symlink {filepath}')
                     continue
                 try:
                     filehash = sha256sum_file(filepath)
