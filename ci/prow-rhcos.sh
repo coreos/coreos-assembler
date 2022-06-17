@@ -18,4 +18,5 @@ export COSA_SKIP_OVERLAY=1
 # Create a temporary cosa workdir
 cd "$(mktemp -d)"
 cosa init --transient -b "${RHCOS_BRANCH}" https://github.com/openshift/os
-exec src/config/ci/prow-entrypoint.sh rhcos-86-build-test-qemu
+# Use a COSA specifc test entry point to focus on tests relevant for COSA
+exec src/config/ci/prow-entrypoint.sh rhcos-cosa-prow-pr-ci
