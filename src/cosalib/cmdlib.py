@@ -264,7 +264,7 @@ def extract_image_json(workdir, commit):
 # a metal image, we may not have preserved that cache.
 #
 # Call this function to ensure that the ostree commit for a given build is in tmp/repo.
-def import_ostree_commit(workdir, buildpath, buildmeta, force=False):
+def import_ostree_commit(workdir, buildpath, buildmeta):
     tmpdir = os.path.join(workdir, 'tmp')
     with Lock(os.path.join(workdir, 'tmp/repo.import.lock')):
         repo = os.path.join(tmpdir, 'repo')
@@ -279,8 +279,7 @@ def import_ostree_commit(workdir, buildpath, buildmeta, force=False):
         if (subprocess.call(['ostree', 'show', '--repo', repo, commit],
                             stdout=subprocess.DEVNULL,
                             stderr=subprocess.DEVNULL) == 0
-                and not os.path.isfile(commitpartial)
-                and not force):
+                and not os.path.isfile(commitpartial)):
             extract_image_json(workdir, commit)
             return
 
