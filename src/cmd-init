@@ -11,12 +11,14 @@ BRANCH=""
 COMMIT=""
 TRANSIENT=0
 YUMREPOS=""
+VARIANT=""
 
 print_help() {
     cat 1>&2 <<'EOF'
 Usage: coreos-assembler init --help
        coreos-assembler init [--force] [--transient] [--branch BRANCH] 
-                             [--commit COMMIT] [--yumrepos GITREPO] GITCONFIG
+                             [--commit COMMIT] [--yumrepos GITREPO]
+                             [-V/--variant VARIANT] GITCONFIG
 
   For example, you can use https://github.com/coreos/fedora-coreos-config
   as GITCONFIG, or fork it.  Another option useful for local development
@@ -31,12 +33,26 @@ Usage: coreos-assembler init --help
 
   Use `--transient` for builds that will throw away all cached data on success/failure,
   and should hence not invoke `fsync()` for example.
+
+  Each config repo must include a default set of manifests for COSA to be able
+  to build an ostree commit and disk images (respectively with 'manifest.yaml'
+  and 'image.yaml'). You can also optionally provide another manifest to build
+  extensions (via extensions.yaml).
+
+  Config repos may also include additional variants and you can select which one
+  to use with the '--variant' flag. The manifests for those variants should
+  follow the following naming convention: 'manifest-$VARIANT.yaml'
+  'image-$VARIANT.yaml' 'extensions-$VARIANT.yaml'.
+
+  The selected variant will be stored in 'src/variant.json'. Make sure to clean
+  all caches with 'cosa clean --all' if you manually switch the variant after
+  'cosa init'.
 EOF
 }
 
 # Call getopt to validate the provided input.
 rc=0
-options=$(getopt --options hfb:c: --longoptions help,force,transient,branch:,commit:,yumrepos: -- "$@") || rc=$?
+options=$(getopt --options hfb:c:V: --longoptions help,force,transient,branch:,commit:,yumrepos:,variant: -- "$@") || rc=$?
 [ $rc -eq 0 ] || {
     print_help
     exit 1
@@ -78,6 +94,15 @@ while true; do
                 shift ;;
             *)
                 YUMREPOS="$2"
+                shift ;;
+        esac
+        ;;
+    -V | --variant)
+        case "$2" in
+            "")
+                shift ;;
+            *)
+                VARIANT="$2"
                 shift ;;
         esac
         ;;
@@ -138,12 +163,30 @@ mkdir -p src
             (set +x; cd config && echo -n "Config commit: " && git describe --tags --always --abbrev=42)
             ;;
      esac
-     manifest=config/manifest.yaml
-     if ! [ -f "${manifest}" ]; then
-         echo 1>&2 "Failed to find src/${manifest}"
-         fatal "If using a custom configuration, be sure it has a manifest.yaml."
-     fi
  fi)
+
+# Default paths for manifest.yaml & image.yaml
+manifest="src/config/manifest.yaml"
+image="src/config/image.yaml"
+if [[ ! -f "${manifest}" ]] || [[ ! -f "${image}" ]]; then
+    echo 1>&2 "Could not find default manifests (${manifest} & ${image})"
+    fatal "If you are using a custom configuration, be sure it has a manifest.yaml & image.yaml."
+fi
+
+# Select the variant if requested
+if [[ -n "${VARIANT}" ]] && [[ "${VARIANT}" != "default" ]]; then
+    manifest="src/config/manifest-${VARIANT}.yaml"
+    image="src/config/image-${VARIANT}.yaml"
+    if [[ ! -f "${manifest}" ]] || [[ ! -f "${image}" ]]; then
+        fatal "Could not find the manifests (${manifest} & ${image}) for the '${VARIANT}' variant"
+    fi
+    echo "Using variant: '${VARIANT}'"
+    cat > "src/config.json" <<EOF
+{
+  "coreos-assembler.config-variant": "${VARIANT}"
+}
+EOF
+fi
 
 mkdir -p cache
 mkdir -p builds
