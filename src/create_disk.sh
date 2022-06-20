@@ -507,7 +507,11 @@ s390x)
         # in case builder itself runs with SecureExecution
         rdcore_args+=("--secex-mode=disable")
     fi
-    ${deploy_root}/usr/lib/dracut/modules.d/50rdcore/rdcore zipl ${rdcore_args[@]}
+    # chroot, cause userspace may be not same as the supermin environment
+    for mnt in dev proc sys run var tmp; do
+        mount --rbind "/$mnt" "${deploy_root}/$mnt"
+    done
+    chroot ${deploy_root} /usr/lib/dracut/modules.d/50rdcore/rdcore zipl ${rdcore_args[@]}
     ;;
 esac
 
