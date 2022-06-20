@@ -112,7 +112,7 @@ mkdir -p src
 (cd src
  if ! test -e config; then
      case "${source}" in
-         /*) ln -s "${source}/${subdir}" config;;
+         /*) ln -s "${source}" config;;
          *) git clone ${BRANCH:+--branch=${BRANCH}} --depth=1 --shallow-submodules --recurse-submodules "${source}" config
             # If a commit was specified then we'll fetch and reset
             # the specified branch to that commit. This is useful when
@@ -124,13 +124,13 @@ mkdir -p src
                 git -C ./config fetch origin "$COMMIT"
                 git -C ./config reset --hard "$COMMIT"
             fi
-            if [ -n "${subdir}" ]; then
-                mv config config-git
-                ln -sr config-git/"${subdir}" config
-            fi
             (set +x; cd config && echo -n "Config commit: " && git describe --tags --always --abbrev=42)
             ;;
      esac
+     if [ -n "${subdir}" ]; then
+         mv config config-git
+         ln -s config-git/"${subdir}" config
+     fi
      manifest=config/manifest.yaml
      if ! [ -f "${manifest}" ]; then
          echo 1>&2 "Failed to find src/${manifest}"
