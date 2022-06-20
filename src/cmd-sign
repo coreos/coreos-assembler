@@ -134,7 +134,7 @@ def robosign_ostree(args, s3, build, gpgkey):
     # Ensure we have an unpacked repo with the ostree content
     if not os.path.exists('tmp/repo'):
         subprocess.check_call(['ostree', '--repo=tmp/repo', 'init', '--mode=archive'])
-    import_ostree_commit(os.getcwd(), builddir, build, force=True)
+    import_ostree_commit(os.getcwd(), builddir, build)
     repo = OSTree.Repo.new(Gio.File.new_for_path('tmp/repo'))
     repo.open(None)
 
