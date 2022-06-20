@@ -16,16 +16,13 @@ print_help() {
     cat 1>&2 <<'EOF'
 Usage: coreos-assembler init --help
        coreos-assembler init [--force] [--transient] [--branch BRANCH] 
-                             [--commit COMMIT] [--yumrepos GITREPO] GITCONFIG [SUBDIR]
+                             [--commit COMMIT] [--yumrepos GITREPO] GITCONFIG
 
   For example, you can use https://github.com/coreos/fedora-coreos-config
   as GITCONFIG, or fork it.  Another option useful for local development
   (if you're running a shell inside this container) is to pass a file path
   starting with `/` - a symlink to it will be created and then used directly.
   You can specify a branch of a git repo with the `--branch` flag.
-
-  If specified, SUBDIR is a subdirectory of the git repository that should
-  contain manifest.yaml and image.yaml (or image.ks).
 
   Use --yumrepos for builds that need .repo files and a content_sets.yaml which
   are not in GITCONFIG. For example: files need to be hidden behind a firewall
@@ -98,7 +95,7 @@ while true; do
 done
 
 # If user did not provide a repo then error out
-if [ $# = 0 ]; then
+if [ $# -ne 1 ]; then
     print_help
     fatal "ERROR: Missing GITCONFIG"
     exit 1
@@ -111,7 +108,6 @@ if [ "$FORCE" != "1" ] && [ -n "$(ls ./)" ]; then
 fi
 
 source=$1; shift
-subdir=${1:-}
 
 preflight
 
@@ -127,7 +123,7 @@ mkdir -p src
 (cd src
  if ! test -e config; then
      case "${source}" in
-         /*) ln -s "${source}/${subdir}" config;;
+         /*) ln -s "${source}" config;;
          *) git clone ${BRANCH:+--branch=${BRANCH}} --depth=1 --shallow-submodules --recurse-submodules "${source}" config
             # If a commit was specified then we'll fetch and reset
             # the specified branch to that commit. This is useful when
@@ -138,10 +134,6 @@ mkdir -p src
             if [ -n "${COMMIT}" ]; then
                 git -C ./config fetch origin "$COMMIT"
                 git -C ./config reset --hard "$COMMIT"
-            fi
-            if [ -n "${subdir}" ]; then
-                mv config config-git
-                ln -sr config-git/"${subdir}" config
             fi
             (set +x; cd config && echo -n "Config commit: " && git describe --tags --always --abbrev=42)
             ;;
