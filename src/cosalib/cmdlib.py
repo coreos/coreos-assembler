@@ -27,7 +27,7 @@ from tenacity import (
 gi.require_version("RpmOstree", "1.0")
 from gi.repository import RpmOstree
 
-from datetime import datetime, timezone
+import datetime
 
 retry_stop = (stop_after_delay(10) | stop_after_attempt(5))
 retry_boto_exception = (retry_if_exception_type(ConnectionClosedError) |
@@ -212,7 +212,7 @@ def rfc3339_time(t=None):
     :rtype: str
     """
     if t is None:
-        t = datetime.utcnow()
+        t = datetime.datetime.utcnow()
     else:
         # if the need arises, we can convert to UTC, but let's just enforce
         # this doesn't slip by for now
@@ -327,8 +327,8 @@ def parse_date_string(date_string):
     :rtype: datetime.datetime
     :raises: ValueError, TypeError
     """
-    dt = datetime.strptime(date_string, '%Y-%m-%dT%H:%M:%SZ')
-    return dt.replace(tzinfo=timezone.utc)
+    dt = datetime.datetime.strptime(date_string, '%Y-%m-%dT%H:%M:%SZ')
+    return dt.replace(tzinfo=datetime.timezone.utc)
 
 
 def get_timestamp(entry):
