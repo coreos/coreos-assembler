@@ -1,6 +1,7 @@
 #!/usr/bin/python3 -u
 
 import argparse
+import json
 import os
 import shutil
 import sys
@@ -28,8 +29,17 @@ def main():
         print("Use --force to force a rebuild")
         return
 
-    treefile_src = 'src/config/manifest.yaml'
-    extensions_src = 'src/config/extensions.yaml'
+    init_config = 'src/config.json'
+    if os.path.exists(init_config):
+        with open(init_config, encoding='utf-8') as f:
+            init_cfg = json.loads(f.read())
+            variant = init_cfg["coreos-assembler.config-variant"]
+            treefile_src = f"src/config/manifest-{variant}.yaml"
+            extensions_src = f"src/config/extensions-{variant}.yaml"
+    else:
+        treefile_src = 'src/config/manifest.yaml'
+        extensions_src = 'src/config/extensions.yaml'
+
     if not os.path.exists(extensions_src):
         raise Exception(f"Missing {extensions_src}")
 

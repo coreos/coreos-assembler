@@ -174,7 +174,19 @@ prepare_build() {
     mkdir "${tmp_builddir}"
 
     configdir=${workdir}/src/config
-    manifest=${configdir}/manifest.yaml
+    initconfig="${workdir}/src/config.json"
+    if [[ -f "${initconfig}" ]]; then
+        variant="$(jq --raw-output '."coreos-assembler.config-variant"' "${initconfig}")"
+        manifest="${configdir}/manifest-${variant}.yaml"
+        image="${configdir}/image-${variant}.yaml"
+        # Currently unused as cmd-buildextend-extensions is in Python
+        # extensions="${configdir}/extensions-${variant}.yaml"
+    else
+        manifest="${configdir}/manifest.yaml"
+        image="${configdir}/image.yaml"
+        # Currently unused as cmd-buildextend-extensions is in Python
+        # extensions="${configdir}/extensions.yaml"
+    fi
     # for the base lockfile, we default to JSON since that's what rpm-ostree
     # actually outputs
     manifest_lock=$(pick_yaml_or_else_json "${configdir}/manifest-lock.${basearch}" json)
@@ -183,7 +195,7 @@ prepare_build() {
     fetch_stamp="${workdir}"/cache/fetched-stamp
 
     export image_json="${workdir}/tmp/image.json"
-    write_image_json "${configdir}/image.yaml" "${image_json}"
+    write_image_json "${image}" "${image_json}"
     # These need to be absolute paths right now for rpm-ostree
     composejson="$(readlink -f "${workdir}"/tmp/compose.json)"
     export composejson
