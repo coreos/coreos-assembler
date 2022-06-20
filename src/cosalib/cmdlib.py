@@ -29,6 +29,9 @@ from gi.repository import RpmOstree
 
 import datetime
 
+# there's no way to say "forever", so just use a huge number
+LOCK_DEFAULT_LIFETIME = datetime.timedelta(weeks=52)
+
 retry_stop = (stop_after_delay(10) | stop_after_attempt(5))
 retry_boto_exception = (retry_if_exception_type(ConnectionClosedError) |
                       retry_if_exception_type(ConnectTimeoutError) |
@@ -119,7 +122,7 @@ def write_json(path, data, lock_path=None, merge_func=None):
     if not lock_path:
         lock_path = get_lock_path(path)
 
-    with Lock(lock_path):
+    with Lock(lock_path, lifetime=LOCK_DEFAULT_LIFETIME):
         if callable(merge_func):
             try:
                 disk_data = load_json(path, require_exclusive=False)
@@ -155,7 +158,7 @@ def load_json(path, require_exclusive=True, lock_path=None):
     if require_exclusive:
         if not lock_path:
             lock_path = get_lock_path(path)
-        lock = Lock(lock_path)
+        lock = Lock(lock_path, lifetime=LOCK_DEFAULT_LIFETIME)
         lock.lock()
     try:
         with open(path) as f:
@@ -234,7 +237,8 @@ def rm_allow_noent(path):
 
 
 def extract_image_json(workdir, commit):
-    with Lock(os.path.join(workdir, 'tmp/image.json.lock')):
+    with Lock(os.path.join(workdir, 'tmp/image.json.lock'),
+              lifetime=LOCK_DEFAULT_LIFETIME):
         repo = os.path.join(workdir, 'tmp/repo')
         path = os.path.join(workdir, 'tmp/image.json')
         tmppath = path + '.tmp'
@@ -266,7 +270,8 @@ def extract_image_json(workdir, commit):
 # Call this function to ensure that the ostree commit for a given build is in tmp/repo.
 def import_ostree_commit(workdir, buildpath, buildmeta):
     tmpdir = os.path.join(workdir, 'tmp')
-    with Lock(os.path.join(workdir, 'tmp/repo.import.lock')):
+    with Lock(os.path.join(workdir, 'tmp/repo.import.lock'),
+              lifetime=LOCK_DEFAULT_LIFETIME):
         repo = os.path.join(tmpdir, 'repo')
         commit = buildmeta['ostree-commit']
         tarfile = os.path.join(buildpath, buildmeta['images']['ostree']['path'])
