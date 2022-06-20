@@ -198,7 +198,7 @@ prepare_build() {
     echo "Using manifest: ${manifest}"
 
     # backcompat for local setups that initialized with `ln -sr`
-    if [ -L "${configdir}" ]; then
+    if [ -L "${configdir}" ] && [ ! -e "${workdir}/src/config-git" ]; then
         if [[ $(readlink "${configdir}") != /* ]]; then
             ln -sfn "$(realpath "${configdir}")" "${configdir}"
         fi
