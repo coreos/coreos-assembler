@@ -37,8 +37,11 @@ umask 002
 # https://github.com/coreos/coreos-assembler/issues/2171
 mkdir -p "${workdir:?}"
 mount -t 9p -o rw,trans=virtio,version=9p2000.L,msize=10485760 workdir "${workdir}"
-# These two invocations pair with virtfs setups for qemu in cmdlib.sh.  Keep them in sync.
-if [ -L "${workdir}"/src/config ]; then
+# These invocations pair with virtfs setups for qemu in cmdlib.sh.  Keep them in sync.
+if [ -L "${workdir}"/src/config-git ]; then
+    mkdir -p "$(readlink "${workdir}"/src/config-git)"
+    mount -t 9p -o rw,trans=virtio,version=9p2000.L,msize=10485760 source "${workdir}"/src/config-git
+elif [ -L "${workdir}"/src/config ]; then
     mkdir -p "$(readlink "${workdir}"/src/config)"
     mount -t 9p -o rw,trans=virtio,version=9p2000.L,msize=10485760 source "${workdir}"/src/config
 fi

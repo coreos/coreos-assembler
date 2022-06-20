@@ -673,7 +673,10 @@ EOF
 
     # support local dev cases where src/config is a symlink.  Note if you change or extend to this set,
     # you also need to update supermin-init-prelude.sh to mount it inside the VM.
-    if [ -L "${workdir}/src/config" ]; then
+    if [ -L "${workdir}/src/config-git" ]; then
+        # qemu follows symlinks
+        base_qemu_args+=("-virtfs" 'local,id=source,path='"${workdir}"'/src/config-git,security_model=none,mount_tag=source')
+    elif [ -L "${workdir}/src/config" ]; then
         # qemu follows symlinks
         base_qemu_args+=("-virtfs" 'local,id=source,path='"${workdir}"'/src/config,security_model=none,mount_tag=source')
     fi
