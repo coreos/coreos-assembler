@@ -36,12 +36,10 @@ func CheckUserShells(c cluster.TestCluster) {
 	var badusers []string
 
 	ValidUsers := map[string]string{
-		"sync":                 "/bin/sync",
-		"shutdown":             "/sbin/shutdown",
-		"halt":                 "/sbin/halt",
-		"core":                 "/bin/bash",
-		"fedora-coreos-pinger": "/usr/sbin/nologin",
-		"zincati":              "/usr/sbin/nologin",
+		"sync":     "/bin/sync",
+		"shutdown": "/sbin/shutdown",
+		"halt":     "/sbin/halt",
+		"core":     "/bin/bash",
 	}
 
 	output := c.MustSSH(m, "getent passwd")
