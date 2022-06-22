@@ -1,9 +1,0 @@
-FROM quay.io/openshift/origin-cli AS openshift-origin
-
-FROM quay.io/coreos-assembler/coreos-assembler:latest
-
-COPY --from=openshift-origin /usr/bin/oc /usr/bin
-
-WORKDIR /srv/
-USER builder
-ENTRYPOINT ["/usr/bin/dumb-init", "/usr/bin/gangway"]
