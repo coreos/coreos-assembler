@@ -207,10 +207,8 @@ func (bc *BaseCluster) RenderUserData(userdata *platformConf.UserData, ignitionV
 		conf.CopyKeys(keys)
 	}
 
-	// disable Zincati & Pinger by default
+	// disable Zincati by default
 	if bc.Distribution() == "fcos" {
-		conf.AddFile("/etc/fedora-coreos-pinger/config.d/90-disable-reporting.toml", `[reporting]
-enabled = false`, 0644)
 		conf.AddFile("/etc/zincati/config.d/90-disable-auto-updates.toml", `[updates]
 enabled = false`, 0644)
 	}
