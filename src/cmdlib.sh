@@ -640,6 +640,7 @@ EOF
         cat "${tmp_builddir}/supermin.out"
         fatal "Failed to run: supermin --build"
     fi
+    superminrootfsuuid=$(blkid --output=value --match-tag=UUID "${vmbuilddir}/root")
 
     # this is the command run in the supermin container
     # we hardcode a umask of 0022 here to make sure that composes are run
@@ -663,12 +664,12 @@ EOF
                --console-to-file "${runvm_console}")
 
     base_qemu_args=(-drive 'if=none,id=root,format=raw,snapshot=on,file='"${vmbuilddir}"'/root,index=1' \
-                    -device 'virtio-blk,drive=root'
+                    -device 'virtio-blk,drive=root' \
                     -kernel "${vmbuilddir}/kernel" -initrd "${vmbuilddir}/initrd" \
                     -no-reboot -nodefaults \
                     -device virtio-serial \
                     -virtfs 'local,id=workdir,path='"${workdir}"',security_model=none,mount_tag=workdir' \
-                    -append "root=/dev/vda console=${DEFAULT_TERMINAL} selinux=1 enforcing=0 autorelabel=1" \
+                    -append "root=UUID=${superminrootfsuuid} console=${DEFAULT_TERMINAL} selinux=1 enforcing=0 autorelabel=1" \
                    )
 
     # support local dev cases where src/config is a symlink.  Note if you change or extend to this set,
