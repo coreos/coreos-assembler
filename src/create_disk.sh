@@ -26,7 +26,6 @@ Fedora CoreOS style disk image from an OSTree.
 
 Options:
     --config: JSON-formatted image.yaml
-    --disk: disk device to use
     --help: show this help
     --kargs: kernel CLI args
     --platform: Ignition platform ID
@@ -50,7 +49,6 @@ do
     flag="${1}"; shift;
     case "${flag}" in
         --config)                config="${1}"; shift;;
-        --disk)                  disk="${1}"; shift;;
         --help)                  usage; exit;;
         --kargs)                 extrakargs="${extrakargs} ${1}"; shift;;
         --no-x86-bios-bootloader) x86_bios_bootloader=0;;
