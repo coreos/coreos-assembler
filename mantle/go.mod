@@ -12,7 +12,7 @@ require (
 	github.com/aliyun/aliyun-oss-go-sdk v2.0.3+incompatible
 	github.com/aws/aws-sdk-go v1.34.28
 	github.com/baiyubin/aliyun-sts-go-sdk v0.0.0-20180326062324-cfa1a18b161f // indirect
-	github.com/coreos/butane v0.14.0
+	github.com/coreos/butane v0.15.0
 	github.com/coreos/coreos-assembler-schema v0.0.0-00010101000000-000000000000
 	github.com/coreos/go-semver v0.3.0
 	github.com/coreos/go-systemd v0.0.0-20190321100706-95778dfbb74e
@@ -20,7 +20,7 @@ require (
 	github.com/coreos/ignition/v2 v2.14.0
 	github.com/coreos/pkg v0.0.0-20180928190104-399ea9e2e55f
 	github.com/coreos/stream-metadata-go v0.3.0
-	github.com/coreos/vcontext v0.0.0-20211021162308-f1dbbca7bef4
+	github.com/coreos/vcontext v0.0.0-20220603180515-2076d8d16945
 	github.com/digitalocean/go-libvirt v0.0.0-20200810224808-b9c702499bf7 // indirect
 	github.com/digitalocean/go-qemu v0.0.0-20200529005954-1b453d036a9c
 	github.com/digitalocean/godo v1.33.0

@@ -16,6 +16,7 @@ package v1_5_exp
 
 import (
 	"github.com/coreos/butane/config/common"
+	"github.com/coreos/ignition/v2/config/util"
 
 	"github.com/coreos/vcontext/path"
 	"github.com/coreos/vcontext/report"
@@ -43,6 +44,17 @@ func (m BootDeviceMirror) Validate(c path.ContextPath) (r report.Report) {
 func (e Extension) Validate(c path.ContextPath) (r report.Report) {
 	if e.Name == "" {
 		r.AddOnError(c.Append("name"), common.ErrExtensionNameRequired)
+	}
+	return
+}
+
+func (user GrubUser) Validate(c path.ContextPath) (r report.Report) {
+	if user.Name == "" {
+		r.AddOnError(c.Append("name"), common.ErrGrubUserNameNotSpecified)
+	}
+
+	if !util.NotEmpty(user.PasswordHash) {
+		r.AddOnError(c.Append("password_hash"), common.ErrGrubPasswordNotSpecified)
 	}
 	return
 }

@@ -24,8 +24,23 @@ import (
 	"github.com/vincent-petithory/dataurl"
 )
 
-func MakeDataURL(contents []byte, currentCompression *string, allowCompression bool) (uri string, gzipped bool, err error) {
+func MakeDataURL(contents []byte, currentCompression *string, allowCompression bool) (uri string, compression *string, err error) {
 	// try three different encodings, and select the smallest one
+
+	if util.NilOrEmpty(currentCompression) {
+		// The config does not specify compression.  We need to
+		// explicitly set the compression field to avoid a child
+		// config inheriting a compression setting from the parent,
+		// which may not have used the same compression algorithm.
+		compression = util.StrToPtr("")
+	} else {
+		// The config specifies compression, meaning that the
+		// contents were compressed by the user, so we can pick a
+		// data URL encoding but we can't compress again.  Return a
+		// nil compression value so the caller knows not to record a
+		// translation from input contents to output compression.
+		compression = nil
+	}
 
 	// URL-escaped, useful for ASCII text
 	opaque := "," + dataurl.Escape(contents)
@@ -53,10 +68,10 @@ func MakeDataURL(contents []byte, currentCompression *string, allowCompression b
 			return
 		}
 		gz := ";base64," + base64.StdEncoding.EncodeToString(buf.Bytes())
-		// Account for space needed by "compression": "gzip".
-		if len(gz)+25 < len(opaque) {
+		// Account for space needed by the compression value
+		if len(gz)+len("gzip") < len(opaque) {
 			opaque = gz
-			gzipped = true
+			compression = util.StrToPtr("gzip")
 		}
 	}
 

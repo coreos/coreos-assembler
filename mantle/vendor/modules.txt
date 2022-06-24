@@ -156,7 +156,7 @@ github.com/aws/aws-sdk-go/service/sts
 github.com/aws/aws-sdk-go/service/sts/stsiface
 # github.com/clarketm/json v1.14.1
 github.com/clarketm/json
-# github.com/coreos/butane v0.14.0
+# github.com/coreos/butane v0.15.0
 github.com/coreos/butane/base/util
 github.com/coreos/butane/base/v0_1
 github.com/coreos/butane/base/v0_2
@@ -171,10 +171,14 @@ github.com/coreos/butane/config/fcos/v1_2
 github.com/coreos/butane/config/fcos/v1_3
 github.com/coreos/butane/config/fcos/v1_4
 github.com/coreos/butane/config/fcos/v1_5_exp
+github.com/coreos/butane/config/flatcar/v1_0
+github.com/coreos/butane/config/flatcar/v1_1_exp
 github.com/coreos/butane/config/openshift/v4_10
 github.com/coreos/butane/config/openshift/v4_10/result
-github.com/coreos/butane/config/openshift/v4_11_exp
-github.com/coreos/butane/config/openshift/v4_11_exp/result
+github.com/coreos/butane/config/openshift/v4_11
+github.com/coreos/butane/config/openshift/v4_11/result
+github.com/coreos/butane/config/openshift/v4_12_exp
+github.com/coreos/butane/config/openshift/v4_12_exp/result
 github.com/coreos/butane/config/openshift/v4_8
 github.com/coreos/butane/config/openshift/v4_8/result
 github.com/coreos/butane/config/openshift/v4_9
@@ -227,7 +231,7 @@ github.com/coreos/stream-metadata-go/release
 github.com/coreos/stream-metadata-go/release/rhcos
 github.com/coreos/stream-metadata-go/stream
 github.com/coreos/stream-metadata-go/stream/rhcos
-# github.com/coreos/vcontext v0.0.0-20211021162308-f1dbbca7bef4
+# github.com/coreos/vcontext v0.0.0-20220603180515-2076d8d16945
 github.com/coreos/vcontext/json
 github.com/coreos/vcontext/path
 github.com/coreos/vcontext/report
@@ -554,5 +558,5 @@ google.golang.org/protobuf/types/known/timestamppb
 gopkg.in/ini.v1
 # gopkg.in/yaml.v2 v2.4.0
 gopkg.in/yaml.v2
-# gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
+# gopkg.in/yaml.v3 v3.0.1
 gopkg.in/yaml.v3
