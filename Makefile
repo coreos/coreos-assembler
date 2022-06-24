@@ -9,7 +9,7 @@ DESTDIR ?=
 # W504 line break after binary operator
 PYIGNORE ?= E128,E241,E402,E501,E722,W503,W504
 
-.PHONY: all check flake8 pycheck unittest clean mantle mantle-check install gangplank gangplank-check tools
+.PHONY: all check shellcheck flake8 pycheck unittest clean mantle mantle-check install gangplank gangplank-check tools
 
 MANTLE_BINARIES := ore kola plume
 
@@ -33,7 +33,9 @@ endif
 .%.shellchecked: %
 	./tests/check_one.sh $< $@
 
-check: ${src_checked} ${tests_checked} ${cwd_checked} flake8 pycheck schema-check mantle-check gangplank-check
+shellcheck: ${src_checked} ${tests_checked} ${cwd_checked}
+
+check: shellcheck flake8 pycheck schema-check mantle-check gangplank-check
 	echo OK
 
 pycheck:
