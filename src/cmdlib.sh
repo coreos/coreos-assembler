@@ -184,6 +184,9 @@ prepare_build() {
 
     export image_json="${workdir}/tmp/image.json"
     write_image_json "${configdir}/image.yaml" "${image_json}"
+    # These need to be absolute paths right now for rpm-ostree
+    composejson="$(readlink -f "${workdir}"/tmp/compose.json)"
+    export composejson
 
     export workdir configdir manifest manifest_lock manifest_lock_overrides manifest_lock_arch_overrides
     export fetch_stamp
