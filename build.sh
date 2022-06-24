@@ -66,6 +66,9 @@ install_rpms() {
     # as we want to enable fast iteration there.
     yum -y --enablerepo=updates-testing upgrade rpm-ostree
 
+    # https://github.com/openshift/os/issues/862
+    yum -y --setopt=releasever=35 distro-sync edk2-ovmf
+
     # Delete file that only exists on ppc64le because it is causing
     # sudo to not work.
     # https://bugzilla.redhat.com/show_bug.cgi?id=2082149
