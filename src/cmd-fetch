@@ -115,8 +115,10 @@ fi
 # shellcheck disable=SC2086
 prepare_compose_overlays ${IGNORE_COSA_OVERRIDES_ARG}
 
+# Use --force-nocache to ensure we always download packages, regardless of
+# whether the package set didn't changed since the last build.
 # shellcheck disable=SC2086
-runcompose_tree --download-only ${args}
+runcompose_tree --download-only ${args} --force-nocache
 # This stamp file signifies we successfully fetched once; it's
 # validated in cmd-build.
 touch "${fetch_stamp}"
