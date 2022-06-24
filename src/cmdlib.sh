@@ -414,7 +414,10 @@ EOF
         # the same RPMs: the `dnf repoquery` below is to pick the latest one
         dnf repoquery  --repofrompath=tmp,"file://${overridesdir}/rpm" \
             --disablerepo '*' --enablerepo tmp --refresh --latest-limit 1 \
-            --exclude '*.src' --qf '%{NAME}\t%{EVR}\t%{ARCH}' --quiet | python3 -c '
+            --exclude '*.src' --qf '%{NAME}\t%{EVR}\t%{ARCH}' \
+            --quiet > "${tmp_overridesdir}/pkgs.txt"
+
+        < "${tmp_overridesdir}/pkgs.txt" python3 -c '
 import sys, json
 lockfile = {"packages": {}}
 for line in sys.stdin:
@@ -422,12 +425,25 @@ for line in sys.stdin:
     lockfile["packages"][name] = {"evra": f"{evr}.{arch}"}
 json.dump(lockfile, sys.stdout)' > "${local_overrides_lockfile}"
 
+        < "${tmp_overridesdir}/pkgs.txt" python3 -c '
+import sys, yaml
+manifest = {
+    "repos": ["coreos-assembler-local-overrides"],
+    "repo-packages": [
+        {
+            "repo": "coreos-assembler-local-overrides",
+            "packages": []
+        }
+    ]
+}
+for line in sys.stdin:
+    name, evr, arch = line.strip().split("\t")
+    manifest["repo-packages"][0]["packages"] += [name]
+yaml.dump(manifest, sys.stdout)' >> "${override_manifest}"
+        rm "${tmp_overridesdir}/pkgs.txt"
+
         echo "Using RPM overrides from: ${overridesdir}/rpm"
         touch "${overrides_active_stamp}"
-        cat >> "${override_manifest}" <<EOF
-repos:
-  - coreos-assembler-local-overrides
-EOF
         cat > "${tmp_overridesdir}"/coreos-assembler-local-overrides.repo <<EOF
 [coreos-assembler-local-overrides]
 name=coreos-assembler-local-overrides
