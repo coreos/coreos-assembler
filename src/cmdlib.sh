@@ -487,30 +487,15 @@ runcompose_tree() {
         # we need our overrides to be at the end of the list
         set - "$@" --ex-lockfile="${tmp_overridesdir}/local-overrides.json"
     fi
-    impl_rpmostree_compose tree --unified-core "${manifest}" "$@"
-    if has_privileges; then
-        sudo chown -R -h "${USER}":"${USER}" "${tmprepo}"
-    fi
-}
 
-runcompose_extensions() {
-    local outputdir=$1; shift
-    impl_rpmostree_compose extensions "$@" --output-dir "$outputdir"
-    if has_privileges; then
-        sudo chown -R -h "${USER}":"${USER}" "${outputdir}"
-    fi
-}
-
-impl_rpmostree_compose() {
-    local cmd=$1; shift
     local workdir=${workdir:-$(pwd)}
     local repo=${tmprepo:-${workdir}/tmp/repo}
 
     rm -f "${changed_stamp}"
     # shellcheck disable=SC2086
-    set - ${COSA_RPMOSTREE_GDB:-} rpm-ostree compose "${cmd}" --repo="${repo}" \
+    set - ${COSA_RPMOSTREE_GDB:-} rpm-ostree compose tree --repo="${repo}" \
             --touch-if-changed "${changed_stamp}" --cachedir="${workdir}"/cache \
-            ${COSA_RPMOSTREE_ARGS:-} "$@"
+            ${COSA_RPMOSTREE_ARGS:-} --unified-core "${manifest}" "$@"
 
     echo "Running: $*"
 
@@ -519,6 +504,31 @@ impl_rpmostree_compose() {
         # we hardcode a umask of 0022 here to make sure that composes are run
         # with a consistent value, regardless of the environment
         (umask 0022 && sudo -E "$@")
+        sudo chown -R -h "${USER}":"${USER}" "${tmprepo}"
+    else
+        runvm_with_cache "$@"
+    fi
+}
+
+runcompose_extensions() {
+    local outputdir=$1; shift
+    local workdir=${workdir:-$(pwd)}
+    local repo=${tmprepo:-${workdir}/tmp/repo}
+
+    rm -f "${changed_stamp}"
+    # shellcheck disable=SC2086
+    set - ${COSA_RPMOSTREE_GDB:-} rpm-ostree compose extensions --repo="${repo}" \
+            --touch-if-changed "${changed_stamp}" --cachedir="${workdir}"/cache \
+            ${COSA_RPMOSTREE_ARGS:-} "$@" --output-dir "$outputdir"
+
+    echo "Running: $*"
+
+    # this is the heart of the privs vs no privs dual path
+    if has_privileges; then
+        # we hardcode a umask of 0022 here to make sure that composes are run
+        # with a consistent value, regardless of the environment
+        (umask 0022 && sudo -E "$@")
+        sudo chown -R -h "${USER}":"${USER}" "${outputdir}"
     else
         runvm_with_cache "$@"
     fi
