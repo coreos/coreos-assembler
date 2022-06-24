@@ -411,8 +411,8 @@ EOF
     export ostree_image_json="/usr/share/coreos-assembler/image.json"
     mkdir -p "${imagejsondir}/usr/share/coreos-assembler/"
     cp "${image_json}" "${imagejsondir}${ostree_image_json}"
-    commit_overlay cosa-image-json "${imagejsondir}"
-    layers="${layers} cosa-image-json"
+    commit_overlay overlay/cosa-image-json "${imagejsondir}"
+    layers="${layers} overlay/cosa-image-json"
 
     local_overrides_lockfile="${tmp_overridesdir}/local-overrides.json"
     if [ -n "${with_cosa_overrides}" ] && [[ -n $(ls "${overridesdir}/rpm/"*.rpm 2> /dev/null) ]]; then
