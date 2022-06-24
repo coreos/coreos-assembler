@@ -35,7 +35,7 @@ EOF
 hostkey=src/config/secex-hostkey
 rc=0
 build=
-options=$(getopt --options h --longoptions help,build,hostkey: -- "$@") || rc=$?
+options=$(getopt --options h --longoptions help,build:,hostkey: -- "$@") || rc=$?
 [ $rc -eq 0 ] || {
     print_help
     exit 1
