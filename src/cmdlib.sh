@@ -496,8 +496,7 @@ runcompose_tree() {
 
     rm -f "${changed_stamp}"
     # shellcheck disable=SC2086
-    set - ${COSA_RPMOSTREE_GDB:-} rpm-ostree compose tree --repo="${repo}" \
-            --write-composejson-to "${composejson}" \
+    set - ${COSA_RPMOSTREE_GDB:-} rpm-ostree compose tree \
             --touch-if-changed "${changed_stamp}" --cachedir="${workdir}"/cache \
             ${COSA_RPMOSTREE_ARGS:-} --unified-core "${manifest}" "$@"
 
@@ -505,12 +504,30 @@ runcompose_tree() {
 
     # this is the heart of the privs vs no privs dual path
     if has_privileges; then
+        set - "$@" --repo "${repo}" --write-composejson-to "${composejson}"
         # we hardcode a umask of 0022 here to make sure that composes are run
         # with a consistent value, regardless of the environment
         (umask 0022 && sudo -E "$@")
         sudo chown -R -h "${USER}":"${USER}" "${tmprepo}"
     else
-        runvm_with_cache "$@"
+        local tarball="${workdir}/tmp/repo/commit.tar"
+        rm -f "${tarball}"
+        runvm_with_cache /usr/lib/coreos-assembler/compose.sh \
+            "${tarball}" "${composejson}" "$@"
+        if [ ! -f "${tarball}" ]; then
+            return
+        fi
+        local commit
+        commit=$(jq -r '.["ostree-commit"]' < "${composejson}")
+        local import_repo="${workdir}/tmp/repo-import"
+        rm -rf "${import_repo}" && mkdir "${import_repo}"
+        tar -C "${import_repo}" -xf "${tarball}" && rm -f "${tarball}"
+        # this is archive to archive so will hardlink
+        ostree pull-local --repo "${repo}" "${import_repo}" "${commit}"
+        if [ -n "${ref}" ]; then
+            ostree refs --repo "${repo}" "${commit}" --create "${ref}" --force
+        fi
+        rm -rf "${import_repo}"
     fi
 }
 
