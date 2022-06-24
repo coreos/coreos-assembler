@@ -27,3 +27,5 @@ gdisk xfsprogs e2fsprogs dosfstools btrfs-progs
 
 # needed for basic CA support
 ca-certificates
+
+tar
