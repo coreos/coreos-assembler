@@ -189,6 +189,9 @@ prepare_build() {
     # by the shell script in create_disk.sh.
     image_json="${workdir}/tmp/image.json"
     yaml2json "${image_yaml}" "${image_json}"
+    # These need to be absolute paths right now for rpm-ostree
+    composejson="$(readlink -f "${workdir}"/tmp/compose.json)"
+    export composejson
 
     export workdir configdir manifest manifest_lock manifest_lock_overrides manifest_lock_arch_overrides
     export fetch_stamp image_json
