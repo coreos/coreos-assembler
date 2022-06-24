@@ -22,6 +22,7 @@ type Config struct {
 	base.Config `yaml:",inline"`
 	BootDevice  BootDevice  `yaml:"boot_device"`
 	Extensions  []Extension `yaml:"extensions"`
+	Grub        Grub        `yaml:"grub"`
 }
 
 type BootDevice struct {
@@ -42,4 +43,13 @@ type BootDeviceMirror struct {
 
 type Extension struct {
 	Name string `yaml:"name"`
+}
+
+type Grub struct {
+	Users []GrubUser `yaml:"users"`
+}
+
+type GrubUser struct {
+	Name         string  `yaml:"name"`
+	PasswordHash *string `yaml:"password_hash"`
 }

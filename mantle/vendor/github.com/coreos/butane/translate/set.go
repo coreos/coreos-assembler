@@ -105,6 +105,19 @@ func (ts TranslationSet) AddFromCommonSource(common path.ContextPath, toPrefix p
 	ts.AddTranslation(common, toPrefix)
 }
 
+// AddFromCommonObject adds translations for all of the paths in to. The paths being translated
+// are prefixed by fromPrefix and the translated paths are prefixed by toPrefix.
+// This is useful when we want to copy all the fields of an object to another with the same field names.
+func (ts TranslationSet) AddFromCommonObject(fromPrefix path.ContextPath, toPrefix path.ContextPath, to interface{}) {
+	vTo := reflect.ValueOf(to)
+	vPaths := getAllPaths(vTo, ts.ToTag, true)
+
+	for _, path := range vPaths {
+		ts.AddTranslation(fromPrefix.Append(path.Path...), toPrefix.Append(path.Path...))
+	}
+	ts.AddTranslation(fromPrefix, toPrefix)
+}
+
 // Merge adds all the entries to the set. It mutates the Set in place.
 func (ts TranslationSet) Merge(from TranslationSet) {
 	for _, t := range from.Set {
@@ -156,6 +169,24 @@ OUTER:
 		}
 		subtreePath := path.New(tr.To.Tag, tr.To.Path[len(to.Path):]...)
 		ret.AddTranslation(tr.From, subtreePath)
+	}
+	return ret
+}
+
+// Map returns a new TranslationSet with To translation paths further
+// translated through mappings.  Translations not listed in mappings are
+// copied unmodified.
+func (ts TranslationSet) Map(mappings TranslationSet) TranslationSet {
+	if mappings.FromTag != ts.ToTag || mappings.ToTag != ts.ToTag {
+		panic(fmt.Sprintf("mappings have incorrect tag; %q != %q || %q != %q", mappings.FromTag, ts.ToTag, mappings.ToTag, ts.ToTag))
+	}
+	ret := NewTranslationSet(ts.FromTag, ts.ToTag)
+	ret.Merge(ts)
+	for _, mapping := range mappings.Set {
+		if t, ok := ret.Set[mapping.From.String()]; ok {
+			delete(ret.Set, mapping.From.String())
+			ret.AddTranslation(t.From, mapping.To)
+		}
 	}
 	return ret
 }

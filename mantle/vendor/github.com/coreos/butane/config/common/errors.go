@@ -64,12 +64,20 @@ var (
 	ErrFileSchemeSupport      = errors.New("file contents source must be data URL in this spec version")
 	ErrFileAppendSupport      = errors.New("appending to files is not supported in this spec version")
 	ErrFileCompressionSupport = errors.New("file compression is not supported in this spec version")
+	ErrFileSpecialModeSupport = errors.New("special mode bits are not supported in this spec version")
 	ErrLinkSupport            = errors.New("links are not supported in this spec version")
 	ErrGroupSupport           = errors.New("groups are not supported in this spec version")
 	ErrUserFieldSupport       = errors.New("fields other than \"name\" and \"ssh_authorized_keys\" are not supported in this spec version")
 	ErrUserNameSupport        = errors.New("users other than \"core\" are not supported in this spec version")
 	ErrKernelArgumentSupport  = errors.New("this field cannot be used for kernel arguments in this spec version; use openshift.kernel_arguments instead")
 
+	// Storage
+	ErrClevisSupport = errors.New("clevis is not supported in this spec version")
+
 	// Extensions
 	ErrExtensionNameRequired = errors.New("field \"name\" is required")
+
+	// Grub
+	ErrGrubUserNameNotSpecified = errors.New("field \"name\" is required")
+	ErrGrubPasswordNotSpecified = errors.New("field \"password_hash\" is required")
 )
