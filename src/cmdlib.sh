@@ -497,6 +497,7 @@ runcompose_tree() {
     rm -f "${changed_stamp}"
     # shellcheck disable=SC2086
     set - ${COSA_RPMOSTREE_GDB:-} rpm-ostree compose tree --repo="${repo}" \
+            --write-composejson-to "${composejson}" \
             --touch-if-changed "${changed_stamp}" --cachedir="${workdir}"/cache \
             ${COSA_RPMOSTREE_ARGS:-} --unified-core "${manifest}" "$@"
 
