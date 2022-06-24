@@ -175,6 +175,9 @@ if [ -n "${previous_commit}" ]; then
         ostree refs --repo="${tmprepo}" --create "${ref}" "${previous_commit}"
     fi
 
+    # also make sure the previous build ref exists
+    ostree refs --repo="${tmprepo}" --create "${previous_build}" "${previous_commit}" --force
+
     # Corner-case here: if the previous build was for a different ref, then we
     # want to make sure rpm-ostree doesn't select the same version. Do this by
     # pretending the ref is currently pointing at the last commit on the
