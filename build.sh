@@ -67,7 +67,8 @@ install_rpms() {
     yum -y --enablerepo=updates-testing upgrade rpm-ostree
 
     # https://github.com/openshift/os/issues/862
-    yum -y --setopt=releasever=35 distro-sync edk2-ovmf
+    # On arches others than x86 this package is not available, just ignore the error
+    yum -y --setopt=releasever=35 distro-sync edk2-ovmf || :
 
     # Delete file that only exists on ppc64le because it is causing
     # sudo to not work.
