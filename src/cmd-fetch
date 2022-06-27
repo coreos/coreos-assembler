@@ -20,7 +20,7 @@ fi
 print_help() {
     cat 1>&2 <<'EOF'
 Usage: coreos-assembler fetch --help
-       coreos-assembler fetch [--update-lockfile] [--write-lockfile-to=file] [--with-cosa-overrides] [--strict]
+       coreos-assembler fetch [--update-lockfile] [--write-lockfile-to=file] [--with-cosa-overrides] [--strict] [--force]
 
   Fetch and import the latest packages.
 EOF
@@ -30,9 +30,10 @@ UPDATE_LOCKFILE=
 OUTPUT_LOCKFILE=
 IGNORE_COSA_OVERRIDES_ARG=--ignore-cosa-overrides
 DRY_RUN=
+FORCE_ARG=
 STRICT=
 rc=0
-options=$(getopt --options h --longoptions help,update-lockfile,dry-run,with-cosa-overrides,write-lockfile-to:,strict -- "$@") || rc=$?
+options=$(getopt --options h --longoptions help,update-lockfile,dry-run,with-cosa-overrides,write-lockfile-to:,strict,force -- "$@") || rc=$?
 [ $rc -eq 0 ] || {
     print_help
     exit 1
@@ -60,6 +61,9 @@ while true; do
             ;;
         --strict)
             STRICT=1
+            ;;
+        --force)
+            FORCE_ARG=--force-nocache
             ;;
         --)
             shift
@@ -115,10 +119,8 @@ fi
 # shellcheck disable=SC2086
 prepare_compose_overlays ${IGNORE_COSA_OVERRIDES_ARG}
 
-# Use --force-nocache to ensure we always download packages, regardless of
-# whether the package set didn't changed since the last build.
 # shellcheck disable=SC2086
-runcompose_tree --download-only ${args} --force-nocache
+runcompose_tree --download-only ${args} ${FORCE_ARG}
 # This stamp file signifies we successfully fetched once; it's
 # validated in cmd-build.
 touch "${fetch_stamp}"
