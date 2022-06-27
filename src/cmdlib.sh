@@ -457,7 +457,7 @@ EOF
         chmod 0644 "${tmp_overridesdir}/contentsetrootfs/usr/share/buildinfo/content_manifest.json"
 
         echo -n "Committing ${tmp_overridesdir}/contentsetrootfs... "
-        commit_ostree_layer "${tmp_overridesdir}/contentsetrootfs" overlay/contentset
+        commit_overlay overlay/contentset "${tmp_overridesdir}/contentsetrootfs"
         layers="${layers} overlay/contentset"
     fi
 
@@ -470,9 +470,8 @@ EOF
 
     rootfs_overrides="${overridesdir}/rootfs"
     if [[ -d "${rootfs_overrides}" && -n $(ls -A "${rootfs_overrides}") ]]; then
-        echo -n "Committing ${rootfs_overrides}... "
         touch "${overrides_active_stamp}"
-        commit_ostree_layer "${rootfs_overrides}" "overlay/cosa-overrides-rootfs"
+        commit_overlay "overlay/cosa-overrides-rootfs" "${rootfs_overrides}"
           cat >> "${override_manifest}" << EOF
 ostree-override-layers:
   - overlay/cosa-overrides-rootfs
