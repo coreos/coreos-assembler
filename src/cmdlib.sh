@@ -412,10 +412,10 @@ EOF
     if [[ -d "${rootfs_overrides}" && -n $(ls -A "${rootfs_overrides}") ]]; then
         echo -n "Committing ${rootfs_overrides}... "
         touch "${overrides_active_stamp}"
-        commit_ostree_layer "${rootfs_overrides}" "cosa-overrides-rootfs"
+        commit_ostree_layer "${rootfs_overrides}" "overlay/cosa-overrides-rootfs"
           cat >> "${override_manifest}" << EOF
 ostree-override-layers:
-  - cosa-overrides-rootfs
+  - overlay/cosa-overrides-rootfs
 EOF
     fi
 }
