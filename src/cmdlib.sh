@@ -300,7 +300,7 @@ commit_overlay() {
     # files, but we do.
     touch "${TMPDIR}/overlay/statoverride"
     echo -n "Committing ${name}: ${path} ... "
-    commit_ostree_layer "${TMPDIR}/overlay" "${name}" \
+    commit_ostree_layer "${TMPDIR}/overlay" "overlay/${name}" \
         --statoverride <(sed -e '/^#/d' "${TMPDIR}/overlay/statoverride") \
         --skip-list <(echo /statoverride)
 }
@@ -361,18 +361,8 @@ EOF
             if ! [ -d "${n}" ]; then
                 continue
             fi
-            local bn ovlname
-            bn=$(basename "${n}")
-            ovlname="${name}-config-overlay-${bn}"
-            commit_overlay "${ovlname}" "${n}"
-            layers="${layers} ${ovlname}"
-        done
-    fi
-
-    if [ -n "${layers}" ]; then
-        echo "ostree-layers:" >> "${override_manifest}"
-        for layer in ${layers}; do
-            echo "  - ${layer}" >> "${override_manifest}"
+            commit_overlay "$(basename "${n}")" "${n}"
+            layers="${layers} overlay/$(basename "${n}")"
         done
     fi
 
@@ -408,10 +398,18 @@ EOF
     else
         rm -vf "${local_overrides_lockfile}"
     fi
+
+    if [ -n "${layers}" ]; then
+        echo "ostree-layers:" >> "${override_manifest}"
+        for layer in ${layers}; do
+            echo "  - ${layer}" >> "${override_manifest}"
+        done
+    fi
+
     rootfs_overrides="${overridesdir}/rootfs"
     if [[ -d "${rootfs_overrides}" && -n $(ls -A "${rootfs_overrides}") ]]; then
         touch "${overrides_active_stamp}"
-        commit_overlay "overlay/cosa-overrides-rootfs" "${rootfs_overrides}"
+        commit_overlay cosa-overrides-rootfs "${rootfs_overrides}"
           cat >> "${override_manifest}" << EOF
 ostree-override-layers:
   - overlay/cosa-overrides-rootfs
