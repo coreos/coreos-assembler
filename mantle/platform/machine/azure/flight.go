@@ -93,11 +93,17 @@ func (af *flight) NewCluster(rconf *platform.RuntimeConfig) (platform.Cluster, e
 
 	ac.StorageAccount, err = af.api.CreateStorageAccount(ac.ResourceGroup)
 	if err != nil {
+		if e := af.api.TerminateResourceGroup(ac.ResourceGroup); e != nil {
+			plog.Errorf("Deleting resource group %v: %v", ac.ResourceGroup, e)
+		}
 		return nil, err
 	}
 
 	_, err = af.api.PrepareNetworkResources(ac.ResourceGroup)
 	if err != nil {
+		if e := af.api.TerminateResourceGroup(ac.ResourceGroup); e != nil {
+			plog.Errorf("Deleting resource group %v: %v", ac.ResourceGroup, e)
+		}
 		return nil, err
 	}
 
