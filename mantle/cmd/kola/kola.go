@@ -18,12 +18,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"net/http"
 	"os"
 	"path/filepath"
 	"regexp"
 	"sort"
 	"text/tabwriter"
+	"time"
 
 	"github.com/coreos/pkg/capnslog"
 	"github.com/pkg/errors"
@@ -146,6 +148,8 @@ func init() {
 }
 
 func main() {
+	// initialize global state
+	rand.Seed(time.Now().UnixNano())
 	cli.Execute(root)
 }
 
