@@ -930,7 +930,6 @@ func (builder *QemuBuilder) addDiskImpl(disk *Disk, primary bool) error {
 		// Each disk is presented on its own controller.
 
 		// The WWN needs to be a unique uint64 number
-		rand.Seed(time.Now().UnixNano())
 		wwn := rand.Uint64()
 
 		var bus string
