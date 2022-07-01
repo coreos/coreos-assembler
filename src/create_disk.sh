@@ -62,7 +62,7 @@ create_luks_partition() {
     dd if=/dev/urandom of=$key bs=1024 count=4
     chmod 0400 $key
     cryptsetup luksFormat -q \
-                        --type luks2 \
+                        --type luks2 --integrity hmac-sha256 \
                         --label="$lbl" \
                         --key-file=$key \
                         $dev
