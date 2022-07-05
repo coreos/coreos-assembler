@@ -2,12 +2,7 @@ import collections
 import json
 import os
 
-from cosalib.s3 import (
-    head_object,
-    list_objects,
-    download_file,
-    delete_object
-)
+from cosalib.s3 import S3
 
 from cosalib.aws import (
     deregister_ami,
@@ -30,7 +25,7 @@ def get_unreferenced_s3_builds(active_build_set, bucket, prefix):
     :type active_build_set: list
     """
     print(f"Looking for unreferenced builds in s3://{bucket}/{prefix}")
-    s3_subdirs = list_objects(bucket, f"{prefix}/", result_key='CommonPrefixes')
+    s3_subdirs = S3().list_objects(bucket, f"{prefix}/", result_key='CommonPrefixes')
     s3_matched = set()
     s3_unmatched = set()
     for prefixKey in s3_subdirs:
@@ -58,10 +53,10 @@ def fetch_build_meta(builds, buildid, arch, bucket, prefix):
         os.makedirs(build_dir, exist_ok=True)
         s3_key = f"{prefix}/{buildid}/{arch}/meta.json"
         print(f"Fetching meta.json for '{buildid}' from s3://{bucket}/{prefix} to {meta_json_path}")
-        head_result = head_object(bucket, s3_key)
+        head_result = S3().head_object(bucket, s3_key)
         if head_result:
             print(f"Found s3 key at {s3_key}")
-            download_file(bucket, s3_key, meta_json_path)
+            S3().download_file(bucket, s3_key, meta_json_path)
         else:
             print(f"Failed to find object at {s3_key}")
             return None
@@ -143,4 +138,4 @@ def delete_build(build, bucket, prefix, cloud_config, force=False):
 
     # Delete s3 bucket
     print(f"Deleting key {prefix}{build.id} from bucket {bucket}")
-    delete_object(bucket, f"{prefix}{str(build.id)}")
+    S3().delete_object(bucket, f"{prefix}{str(build.id)}")
