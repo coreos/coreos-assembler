@@ -57,6 +57,8 @@ def parse_args():
                     "and set Content-Disposition names", action='store_true')
     s3.add_argument("--endpoint-url", help="URL of S3-compatible server",
                     action="store", metavar="URL")
+    s3.add_argument("--aws-config-file", metavar='CONFIG', default="",
+                    help="Path to AWS config file")
     s3.set_defaults(func=cmd_upload_s3)
 
     return parser.parse_args()
@@ -65,6 +67,8 @@ def parse_args():
 def cmd_upload_s3(args):
     bucket, prefix = args.url.split('/', 1)
     builds = Builds()
+    if args.aws_config_file:
+        os.environ["AWS_CONFIG_FILE"] = args.aws_config_file
     s3_client = boto3.client('s3', endpoint_url=args.endpoint_url)
     # This can't be an error for backcompat reasons, but let's print something
     if not os.path.isfile(BUILDFILES['sourceurl']):
