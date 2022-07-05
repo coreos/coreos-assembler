@@ -22,7 +22,7 @@ from cosalib.cmdlib import (
     retry_stop,
     rm_allow_noent,
     sha256sum_file)
-from cosalib.s3 import download_file, head_bucket, head_object
+from cosalib.s3 import S3
 
 retry_requests_exception = (retry_if_exception_type(requests.Timeout) |
                             retry_if_exception_type(requests.ReadTimeout) |
@@ -34,6 +34,8 @@ FCOS_STREAMS_URL = "https://builds.coreos.fedoraproject.org/prod/streams"
 
 def main():
     args = parse_args()
+    if args.aws_config_file:
+        os.environ["AWS_CONFIG_FILE"] = args.aws_config_file
 
     url = args.url or f'{FCOS_STREAMS_URL}/{args.stream}/builds'
     if url.startswith("s3://"):
@@ -157,6 +159,8 @@ def parse_args():
                         help="the target architecture(s)")
     parser.add_argument("--artifact", default=[], action='append',
                         help="Fetch given image artifact(s)", metavar="ARTIFACT")
+    parser.add_argument("--aws-config-file", metavar='CONFIG', default="",
+                        help="Path to AWS config file")
     return parser.parse_args()
 
 
@@ -221,20 +225,23 @@ class HTTPFetcher(Fetcher):
 
 
 class S3Fetcher(Fetcher):
+    def __init__(self, url_base):
+        super().__init__(url_base)
+        self.s3_client = S3()
 
     def fetch_impl(self, url, dest):
         assert url.startswith("s3://")
         bucket, key = url[len("s3://"):].split('/', 1)
         # this function does not need to be retried with the decorator as download_file would
         # retry automatically based on s3config settings
-        download_file(bucket, key, dest)
+        self.s3_client.download_file(bucket, key, dest)
 
     def exists_impl(self, url):
         assert url.startswith("s3://")
         bucket, key = url[len("s3://"):].split('/', 1)
         # sanity check that the bucket exists and we have access to it
-        head_bucket(bucket=bucket)
-        return head_object(bucket=bucket, key=key)
+        self.s3_client.head_bucket(bucket=bucket)
+        return self.s3_client.head_object(bucket=bucket, key=key)
 
 
 class LocalFetcher(Fetcher):
