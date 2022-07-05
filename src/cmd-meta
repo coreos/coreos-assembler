@@ -65,7 +65,7 @@ def new_cli():
 
     def pather(val):
         path = val.split('.')
-        if val.startswith("coreos-assembler."):
+        if val.startswith("coreos-assembler.") or val.startswith("fedora-coreos."):
             new_path = [f"{path[0]}.{path[1]}"]
             new_path.extend(path[2:])
             return ".".join(new_path)
