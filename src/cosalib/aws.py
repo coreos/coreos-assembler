@@ -1,5 +1,6 @@
 import boto3
 import json
+import os
 import subprocess
 import sys
 
@@ -113,6 +114,9 @@ def aws_run_ore(build, args):
     if args.force:
         ore_args.extend(['--force'])
 
+    if args.credentials_file:
+        ore_args.extend(['--credentials-file', args.credentials_file])
+
     region = "us-east-1"
     if args.region is not None and len(args.region) > 0:
         region = args.region[0]
@@ -159,6 +163,8 @@ def aws_run_ore(build, args):
 
 def aws_cli(parser):
     parser.add_argument("--bucket", help="S3 Bucket")
+    parser.add_argument("--credentials-file", help="AWS config file",
+                        default=os.environ.get("AWS_CONFIG_FILE"))
     parser.add_argument("--name-suffix", help="Suffix for name")
     parser.add_argument("--grant-user", help="Grant user launch permission",
                         nargs="*", default=[])
