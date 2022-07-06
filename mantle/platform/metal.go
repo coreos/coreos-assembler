@@ -467,7 +467,7 @@ func (t *installerRun) run() (*QemuInstance, error) {
 	builder := t.builder
 	netdev := fmt.Sprintf("%s,netdev=mynet0,mac=52:54:00:12:34:56", t.pxe.networkdevice)
 	if t.pxe.bootindex == "" {
-		builder.Append("-boot", "once=n", "-option-rom", "/usr/share/qemu/pxe-rtl8139.rom")
+		builder.Append("-boot", "once=n")
 	} else {
 		netdev += fmt.Sprintf(",bootindex=%s", t.pxe.bootindex)
 	}
