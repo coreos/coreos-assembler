@@ -80,7 +80,9 @@ func CreateSSHAuthorizedKey(tmpd string) ([]byte, string, error) {
 	var err error
 	sshKeyPath := filepath.Join(tmpd, "ssh.key")
 	sshPubKeyPath := sshKeyPath + ".pub"
-	err = exec.Command("ssh-keygen", "-N", "", "-t", "ed25519", "-f", sshKeyPath).Run()
+	c := exec.Command("ssh-keygen", "-N", "", "-t", "ed25519", "-f", sshKeyPath)
+	c.Stderr = os.Stderr
+	err = c.Run()
 	if err != nil {
 		return nil, "", errors.Wrapf(err, "running ssh-keygen")
 	}
