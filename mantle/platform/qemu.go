@@ -1150,7 +1150,7 @@ func (builder *QemuBuilder) setupUefi(secureBoot bool) error {
 		}
 
 		fdset := builder.AddFd(vars)
-		builder.Append("-drive", "file=/usr/share/edk2/aarch64/QEMU_EFI-pflash.raw,if=pflash,format=raw,unit=0,readonly=on,auto-read-only=off")
+		builder.Append("-drive", "file=/usr/share/edk2/aarch64/QEMU_EFI-silent-pflash.raw,if=pflash,format=raw,unit=0,readonly=on,auto-read-only=off")
 		builder.Append("-drive", fmt.Sprintf("file=%s,if=pflash,format=raw,unit=1,readonly=off,auto-read-only=off", fdset))
 	default:
 		panic(fmt.Sprintf("Architecture %s doesn't have support for UEFI in qemu.", system.RpmArch()))
