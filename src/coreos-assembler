@@ -27,10 +27,16 @@ if ! whoami &> /dev/null; then
   fi
 fi
 
-# https://github.com/containers/libpod/issues/1448
+# Ensure we've unshared our mount namespace so
+# the later umount doesn't affect the host potentially
 if [ -e /sys/fs/selinux/status ]; then
-    echo "error: /sys/fs/selinux appears to be mounted but should not be" 1>&2
-    exit 1
+    if [ -z "${coreos_assembler_unshared:-}" ]; then
+        exec sudo -E -- env coreos_assembler_unshared=1 unshare -m -- runuser -u "${USER}" -- "$0" "$@"
+    else
+        # Work around https://github.com/containers/libpod/issues/1448
+        # https://github.com/cgwalters/coretoolbox/blob/04e36894cdb912cd4d4c91b26436c57a2d96707d/src/coretoolbox.rs#L616
+        sudo mount --bind /usr/share/empty /sys/fs/selinux
+    fi
 fi
 
 cmd=${1:-}
