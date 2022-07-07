@@ -195,7 +195,7 @@ case "$arch" in
         -U "${uninitialized_gpt_uuid}" \
         -n 1:0:+1M -c 1:BIOS-BOOT -t 1:21686148-6449-6E6F-744E-656564454649 \
         -n ${EFIPN}:0:+127M -c ${EFIPN}:EFI-SYSTEM -t ${EFIPN}:C12A7328-F81F-11D2-BA4B-00A0C93EC93B \
-        -n ${BOOTPN}:0:+384M -c ${BOOTPN}:boot \
+        -n ${BOOTPN}:0:+512M -c ${BOOTPN}:boot \
         -n ${ROOTPN}:0:${rootfs_size} -c ${ROOTPN}:root -t ${ROOTPN}:0FC63DAF-8483-4772-8E79-3D69D8477DE4
         sgdisk -p "$disk"
         ;;
