@@ -425,20 +425,25 @@ for line in sys.stdin:
     lockfile["packages"][name] = {"evra": f"{evr}.{arch}"}
 json.dump(lockfile, sys.stdout)' > "${local_overrides_lockfile}"
 
+        # for all the repo packages in the manifest for which we have an
+        # override, create a new repo-packages entry to make sure our overrides
+        # win.
         < "${tmp_overridesdir}/pkgs.txt" python3 -c "
 import sys, yaml
+flattened = yaml.safe_load(open('${flattened_manifest}'))
+all_overrides = set()
+for line in sys.stdin:
+    all_overrides.add(line.strip().split('\t')[0])
+repo_overrides = set()
+for repopkg in flattened.get('repo-packages', []):
+    repo_overrides.update(all_overrides.intersection(set(repopkg['packages'])))
 manifest = {
     'repos': ['coreos-assembler-local-overrides'],
-    'repo-packages': [
-        {
-            'repo': 'coreos-assembler-local-overrides',
-            'packages': []
-        }
-    ]
+    'repo-packages': [{
+        'repo': 'coreos-assembler-local-overrides',
+        'packages': list(repo_overrides)
+    }]
 }
-for line in sys.stdin:
-    name, evr, arch = line.strip().split('\t')
-    manifest['repo-packages'][0]['packages'] += [name]
 yaml.dump(manifest, sys.stdout)" >> "${override_manifest}"
         rm "${tmp_overridesdir}/pkgs.txt"
 
