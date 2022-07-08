@@ -432,7 +432,7 @@ func checkSystemdUnitFailures(output string, distribution string) error {
 		}
 	}
 	if len(failedUnits) > 0 {
-		return fmt.Errorf("some systemd units failed:\n%s", output)
+		return fmt.Errorf("some systemd units failed: %s", failedUnits)
 	}
 
 	return nil
