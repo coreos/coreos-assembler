@@ -417,7 +417,8 @@ EOF
             --exclude '*.src' --qf '%{NAME}\t%{EVR}\t%{ARCH}' \
             --quiet > "${tmp_overridesdir}/pkgs.txt"
 
-        < "${tmp_overridesdir}/pkgs.txt" python3 -c '
+        # shellcheck disable=SC2002
+        cat "${tmp_overridesdir}/pkgs.txt" | python3 -c '
 import sys, json
 lockfile = {"packages": {}}
 for line in sys.stdin:
@@ -428,7 +429,8 @@ json.dump(lockfile, sys.stdout)' > "${local_overrides_lockfile}"
         # for all the repo packages in the manifest for which we have an
         # override, create a new repo-packages entry to make sure our overrides
         # win.
-        < "${tmp_overridesdir}/pkgs.txt" python3 -c "
+        # shellcheck disable=SC2002
+        cat "${tmp_overridesdir}/pkgs.txt" | python3 -c "
 import sys, yaml
 flattened = yaml.safe_load(open('${flattened_manifest}'))
 all_overrides = set()
