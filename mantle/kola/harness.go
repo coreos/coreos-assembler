@@ -280,6 +280,15 @@ func hasString(s string, slice []string) bool {
 	return false
 }
 
+func testSkipBaseChecks(test *register.Test) bool {
+	for _, tag := range test.Tags {
+		if tag == SkipBaseChecksTag {
+			return true
+		}
+	}
+	return false
+}
+
 func testRequiresInternet(test *register.Test) bool {
 	for _, flag := range test.Flags {
 		if flag == register.RequiresInternetAccess {
@@ -1340,6 +1349,7 @@ func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flig
 	h.SetSubtests(t.Subtests)
 
 	rconf := &platform.RuntimeConfig{
+		AllowFailedUnits:   testSkipBaseChecks(t),
 		InternetAccess:     testRequiresInternet(t),
 		NoInstanceCreds:    t.HasFlag(register.NoInstanceCreds),
 		NoSSHKeyInMetadata: t.HasFlag(register.NoSSHKeyInMetadata),
@@ -1359,11 +1369,9 @@ func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flig
 	defer func() {
 		h.StopExecTimer()
 		c.Destroy()
-		for _, k := range t.Tags {
-			if k == SkipBaseChecksTag {
-				plog.Debugf("Skipping base checks for %s", t.Name)
-				return
-			}
+		if testSkipBaseChecks(t) {
+			plog.Debugf("Skipping base checks for %s", t.Name)
+			return
 		}
 		for id, output := range c.ConsoleOutput() {
 			for _, badness := range CheckConsole([]byte(output), t) {
