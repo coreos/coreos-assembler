@@ -425,21 +425,21 @@ for line in sys.stdin:
     lockfile["packages"][name] = {"evra": f"{evr}.{arch}"}
 json.dump(lockfile, sys.stdout)' > "${local_overrides_lockfile}"
 
-        < "${tmp_overridesdir}/pkgs.txt" python3 -c '
+        < "${tmp_overridesdir}/pkgs.txt" python3 -c "
 import sys, yaml
 manifest = {
-    "repos": ["coreos-assembler-local-overrides"],
-    "repo-packages": [
+    'repos': ['coreos-assembler-local-overrides'],
+    'repo-packages': [
         {
-            "repo": "coreos-assembler-local-overrides",
-            "packages": []
+            'repo': 'coreos-assembler-local-overrides',
+            'packages': []
         }
     ]
 }
 for line in sys.stdin:
-    name, evr, arch = line.strip().split("\t")
-    manifest["repo-packages"][0]["packages"] += [name]
-yaml.dump(manifest, sys.stdout)' >> "${override_manifest}"
+    name, evr, arch = line.strip().split('\t')
+    manifest['repo-packages'][0]['packages'] += [name]
+yaml.dump(manifest, sys.stdout)" >> "${override_manifest}"
         rm "${tmp_overridesdir}/pkgs.txt"
 
         echo "Using RPM overrides from: ${overridesdir}/rpm"
