@@ -1340,12 +1340,12 @@ func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flig
 	h.SetSubtests(t.Subtests)
 
 	rconf := &platform.RuntimeConfig{
-		OutputDir:          h.OutputDir(),
-		NoSSHKeyInUserData: t.HasFlag(register.NoSSHKeyInUserData),
-		NoSSHKeyInMetadata: t.HasFlag(register.NoSSHKeyInMetadata),
-		NoInstanceCreds:    t.HasFlag(register.NoInstanceCreds),
-		WarningsAction:     conf.FailWarnings,
 		InternetAccess:     testRequiresInternet(t),
+		NoInstanceCreds:    t.HasFlag(register.NoInstanceCreds),
+		NoSSHKeyInMetadata: t.HasFlag(register.NoSSHKeyInMetadata),
+		NoSSHKeyInUserData: t.HasFlag(register.NoSSHKeyInUserData),
+		OutputDir:          h.OutputDir(),
+		WarningsAction:     conf.FailWarnings,
 	}
 	if t.HasFlag(register.AllowConfigWarnings) {
 		rconf.WarningsAction = conf.IgnoreWarnings
