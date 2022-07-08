@@ -205,6 +205,9 @@ type RuntimeConfig struct {
 
 	// InternetAccess is true if the cluster should be Internet connected
 	InternetAccess bool
+
+	// whether a Manhole into a machine should be created on detected failure
+	SSHOnTestFailure bool
 }
 
 // Wrap a StdoutPipe as a io.ReadCloser
@@ -542,6 +545,12 @@ func CheckMachine(ctx context.Context, m Machine) error {
 	}
 
 	if systemdFailures && !m.RuntimeConf().AllowFailedUnits {
+		if m.RuntimeConf().SSHOnTestFailure {
+			plog.Error("dropping to shell: detected failed or stuck systemd units")
+			if err := Manhole(m); err != nil {
+				plog.Errorf("failed to get terminal via ssh: %v", err)
+			}
+		}
 		return fmt.Errorf("detected failed or stuck systemd units")
 	}
 
