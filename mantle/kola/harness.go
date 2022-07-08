@@ -966,7 +966,7 @@ ExecStart=%s
 				} else {
 					fmt.Printf("Fetching status failed: %v\n", suberr)
 				}
-				if Options.SSHOnTestFailure {
+				if mach.RuntimeConf().SSHOnTestFailure {
 					plog.Errorf("dropping to shell: kolet failed: %v: %s", err, stderr)
 					if err := platform.Manhole(mach); err != nil {
 						plog.Errorf("failed to get terminal via ssh: %v", err)
@@ -1355,6 +1355,7 @@ func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flig
 		NoSSHKeyInMetadata: t.HasFlag(register.NoSSHKeyInMetadata),
 		NoSSHKeyInUserData: t.HasFlag(register.NoSSHKeyInUserData),
 		OutputDir:          h.OutputDir(),
+		SSHOnTestFailure:   Options.SSHOnTestFailure,
 		WarningsAction:     conf.FailWarnings,
 	}
 	if t.HasFlag(register.AllowConfigWarnings) {
