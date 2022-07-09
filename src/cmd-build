@@ -392,7 +392,13 @@ else
     case "${ostree_format}" in
         oci) ;;
         # Note rpm-ostree always copies the rpmostree.inputhash key
-        oci-chunked) cmd=(rpm-ostree container-encapsulate --max-layers="$MAX_OSTREECONTAINER_LAYERS") ;;
+        oci-chunked)
+            cmd=(rpm-ostree container-encapsulate --max-layers="$MAX_OSTREECONTAINER_LAYERS") 
+            # rpm-ostree currently conservatively defaults to format-version=0, but we want 1
+            if rpm-ostree container-encapsulate --help 2>&1 |grep -qFe '--format-version'; then
+                cmd+=(--format-version=1)
+            fi
+        ;;
         *) fatal "Unknown ostree-format: ${ostree_format}"
     esac
     runv "${cmd[@]}" --repo="${tmprepo}" \
