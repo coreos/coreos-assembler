@@ -15,7 +15,7 @@ import (
 var buildCommands = []string{"init", "fetch", "build", "run", "prune", "clean", "list"}
 var advancedBuildCommands = []string{"buildfetch", "buildupload", "oc-adm-release", "push-container", "upload-oscontainer"}
 var buildextendCommands = []string{"aliyun", "aws", "azure", "digitalocean", "exoscale", "gcp", "ibmcloud", "kubevirt", "live", "metal", "metal4k", "nutanix", "openstack", "qemu", "secex", "virtualbox", "vmware", "vultr"}
-var utilityCommands = []string{"aws-replicate", "compress", "generate-hashlist", "koji-upload", "kola", "remote-build-container", "remote-prune", "sign", "tag"}
+var utilityCommands = []string{"aws-replicate", "compress", "generate-hashlist", "koji-upload", "kola", "remote-build-container", "remote-prune", "remote-session", "sign", "tag"}
 var otherCommands = []string{"shell", "meta"}
 
 func init() {
@@ -68,12 +68,24 @@ func run(argv []string) error {
 		os.Exit(1)
 	}
 
+	// if the COREOS_ASSEMBLER_REMOTE_SESSION environment variable is
+	// set then we "intercept" the command here and redirect it to
+	// `cosa remote-session exec`, which will execute the commands
+	// via `podman --remote` on a remote machine.
+	session, ok := os.LookupEnv("COREOS_ASSEMBLER_REMOTE_SESSION")
+	if ok && session != "" && cmd != "remote-session" {
+		argv = append([]string{"exec", "--", cmd}, argv...)
+		cmd = "remote-session"
+	}
+
 	// Manual argument parsing here for now; once we get to "phase 1"
 	// of the Go conversion we can vendor cobra (and other libraries)
 	// at the toplevel.
 	switch cmd {
 	case "clean":
 		return runClean(argv)
+	case "remote-session":
+		return runRemoteSession(argv)
 	}
 
 	target := fmt.Sprintf("/usr/lib/coreos-assembler/cmd-%s", cmd)
