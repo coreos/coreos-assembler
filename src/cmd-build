@@ -27,6 +27,7 @@ Usage: coreos-assembler build --help
   --force             Always create a new OSTree commit, even if nothing appears to have changed
   --force-image       Force an image rebuild even if there were no changes to image input
   --skip-prune        Skip prunning previous builds
+  -F | --fetch        Also perform a fetch
   --strict            Only allow installing locked packages when using lockfiles
   --tag TAG           Set the given tag in the build metadata
   --version VERSION   Use the given version instead of generating one based on current time
@@ -43,6 +44,7 @@ EOF
 DELAY_META_MERGE=false
 FORCE=
 FORCE_IMAGE=
+FETCH=
 SKIP_PRUNE=0
 VERSION=
 PARENT=
@@ -50,7 +52,7 @@ PARENT_BUILD=
 TAG=
 STRICT=
 rc=0
-options=$(getopt --options hft: --longoptions tag:,help,force,version:,parent:,parent-build:,delay-meta-merge,force-nocache,force-image,skip-prune,strict -- "$@") || rc=$?
+options=$(getopt --options hfFt: --longoptions tag:,help,fetch,force,version:,parent:,parent-build:,delay-meta-merge,force-nocache,force-image,skip-prune,strict -- "$@") || rc=$?
 [ $rc -eq 0 ] || {
     print_help
     exit 1
@@ -64,6 +66,9 @@ while true; do
             ;;
         -f | --force | --force-nocache)
             FORCE="--force-nocache"
+            ;;
+        -F | --fetch)
+            FETCH=1
             ;;
         --delay-meta-merge)
             DELAY_META_MERGE=true
@@ -108,6 +113,13 @@ while true; do
     esac
     shift
 done
+
+# TODO: In the future optimize this to avoid doing all the "prepare_build"
+# stuff twice.  Also in a `cosa init --transient` case we can avoid writing
+# any cache data at all for the RPMs.
+if test -n "${FETCH}"; then
+    cosa fetch
+fi
 
 if [ $# -eq 0 ]; then
     set -- qemu
