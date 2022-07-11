@@ -90,6 +90,7 @@ class OVA(QemuVariantImage):
         with open(os.path.join(self._workdir, 'tmp/image.json')) as f:
             image_json = json.load(f)
 
+        secure_boot = image_json['vmware-secure-boot']
         system_type = 'vmx-{}'.format(image_json['vmware-hw-version'])
         os_type = image_json['vmware-os-type']
         disk_info = image_info(vmdk)
@@ -102,6 +103,7 @@ class OVA(QemuVariantImage):
         params = {
             'ovf_cpu_count':                    cpu,
             'ovf_memory_mb':                    memory,
+            'secure_boot':                      secure_boot,
             'vsphere_image_name':               image,
             'vsphere_product_name':             product,
             'vsphere_product_vendor_name':      vendor,
