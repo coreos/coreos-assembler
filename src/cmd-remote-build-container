@@ -1,26 +1,10 @@
 #!/usr/bin/python3 -u
 
-import sys
 import argparse
-from os import environ
-from subprocess import check_call, check_output, CalledProcessError
+import sys
 
-def run_cmd(command, output=None):
-    '''
-    Run the given command using check_call/check_output and verify its return code.
-    @param str command command to be executed
-    '''
-    if output:
-        try:
-            output = check_output(command.split())
-        except CalledProcessError as e:
-            raise SystemExit(f"Failed to invoke command: {e}")
-        return output
-    else:
-        try:
-            check_call(command.split())
-        except CalledProcessError as e:
-            raise SystemExit(f"Failed to invoke command: {e}")
+from cosalib.utils import run_cmd
+from os import environ
 
 def build(labels, gitURL, gitRef, repo, tag):
     '''
@@ -61,7 +45,7 @@ def search(repo, tag):
     @param tag  str image tag
     '''
     # Podman remote doesn't allow push using digestfile. That's why the tag check is done
-    tags = run_cmd(f"podman search --list-tags {repo}", True)
+    tags = run_cmd(f"podman search --list-tags {repo}")
     if (tag in str(tags)):
         return True
     return False
@@ -120,7 +104,7 @@ Examples:
     if not args.tag:
         # If a tag wasn't passed then use the git
         # short commit hash
-        commit = run_cmd(f"git ls-remote {args.git_url} {args.git_ref}", 'True')[0:6].decode("utf-8")
+        commit = run_cmd(f"git ls-remote {args.git_url} {args.git_ref}")[0:6].decode("utf-8")
         tag = f"{args.arch}-{commit}"
     else:
         tag = args.tag
