@@ -1,4 +1,6 @@
-#!/bin/sh
+#!/bin/bash
+set -euo pipefail
+
 # This script is run in supermin to create a Fedora CoreOS style
 # disk image, very much in the spirit of the original
 # Container Linux (orig CoreOS) disk layout, although adapted
@@ -8,7 +10,6 @@
 # although see also https://github.com/coreos/coreos-assembler/pull/298
 # For people building "derived"/custom FCOS-like systems, feel free to file
 # an issue and we can discuss configuration needs.
-set -euo pipefail
 
 # This fixed UUID is detected in ignition-dracut and changed
 # on firstboot:
