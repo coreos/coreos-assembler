@@ -44,15 +44,16 @@ propagate_luks_config() {
     local key="$1"
     local lbl="crypt_${1}fs"
     # Moving key file to final destination
-    mkdir -m 700 -p $deploy_root/etc/luks
-    mv /tmp/${key}-luks-key $deploy_root/etc/luks/$key
-    chmod 0400 $deploy_root/etc/luks/$key
-    local uuid=$(cryptsetup luksUUID /dev/disk/by-label/$lbl)
+    mkdir -m 700 "$deploy_root/etc/luks"
+    mv "/tmp/${key}-luks-key" "$deploy_root/etc/luks/$key"
+    chmod 0400 "$deploy_root/etc/luks/$key"
+    local uuid
+    uuid=$(cryptsetup luksUUID "/dev/disk/by-label/$lbl")
     if [[ ! -e $deploy_root/etc/crypttab ]]; then
-        touch $deploy_root/etc/crypttab
-        chmod 0600 $deploy_root/etc/crypttab
+        touch "$deploy_root/etc/crypttab"
+        chmod 0600 "$deploy_root/etc/crypttab"
     fi
-    echo "$lbl UUID=${uuid} /etc/luks/$key luks" >> $deploy_root/etc/crypttab
+    echo "$lbl UUID=${uuid} /etc/luks/$key luks" >> "$deploy_root/etc/crypttab"
 }
 
 create_luks_partition() {
@@ -60,17 +61,17 @@ create_luks_partition() {
     local lbl="crypt_${1}fs"
     local dev="$2"
     # Generating random key
-    dd if=/dev/urandom of=$key bs=1024 count=4
-    chmod 0400 $key
+    dd if=/dev/urandom of="$key" bs=1024 count=4
+    chmod 0400 "$key"
     cryptsetup luksFormat -q \
                         --type luks2 --integrity hmac-sha256 \
                         --label="$lbl" \
-                        --key-file=$key \
-                        $dev
+                        --key-file="$key" \
+                        "$dev"
 
-    cryptsetup luksOpen $dev \
-                        $lbl \
-                        --key-file=$key
+    cryptsetup luksOpen "$dev" \
+                        "$lbl" \
+                        --key-file="$key"
 
 }
 
@@ -111,12 +112,14 @@ if [ -n "$platforms_json" ]; then
 else
     # Add legacy kargs and console settings
     platform_grub_cmds='serial --speed=115200\nterminal_input serial console\nterminal_output serial console'
-    DEFAULT_TERMINAL=$(. $(dirname "$0")/cmdlib.sh; echo $DEFAULT_TERMINAL)
+    # shellcheck source=src/cmdlib.sh
+    DEFAULT_TERMINAL=$(. "$(dirname "$0")"/cmdlib.sh; echo "$DEFAULT_TERMINAL")
     # On each s390x hypervisor, a tty would be automatically detected by the
     # kernel and systemd, there is no need to specify one.  However, we keep
     # DEFAULT_TERMINAL as ttysclp0, which is helpful for building/testing
     # with KVM+virtio (cmd-run).  For aarch64, ttyAMA0 is used as the
     # default console
+    # shellcheck disable=SC2031
     case "$arch" in
         "aarch64"|"s390x") platform_kargs= ;;
         *) platform_kargs="console=tty0 console=${DEFAULT_TERMINAL},115200n8" ;;
@@ -139,7 +142,7 @@ trap dump_err_info ERR
 # Parse the passed config JSON and extract a mandatory value
 getconfig() {
     k=$1
-    jq -re .'"'$k'"' < ${config}
+    jq -re .\""$k"\" < "${config}"
 }
 # Return a configuration value, or default if not set
 getconfig_def() {
@@ -147,7 +150,7 @@ getconfig_def() {
     shift
     default=$1
     shift
-    jq -re .'"'$k'"'//'"'${default}'"' < ${config}
+    jq -re .\""$k"\"//\""${default}"\" < "${config}"
 }
 
 rootfs_type=$(getconfig rootfs)
@@ -189,44 +192,45 @@ ROOTPN=4
 if [ "${rootfs_size}" != "0" ]; then
     rootfs_size="+${rootfs_size}"
 fi
+# shellcheck disable=SC2031
 case "$arch" in
     x86_64)
         EFIPN=2
-        sgdisk -Z $disk \
+        sgdisk -Z "$disk" \
         -U "${uninitialized_gpt_uuid}" \
         -n 1:0:+1M -c 1:BIOS-BOOT -t 1:21686148-6449-6E6F-744E-656564454649 \
         -n ${EFIPN}:0:+127M -c ${EFIPN}:EFI-SYSTEM -t ${EFIPN}:C12A7328-F81F-11D2-BA4B-00A0C93EC93B \
         -n ${BOOTPN}:0:+384M -c ${BOOTPN}:boot \
-        -n ${ROOTPN}:0:${rootfs_size} -c ${ROOTPN}:root -t ${ROOTPN}:0FC63DAF-8483-4772-8E79-3D69D8477DE4
+        -n ${ROOTPN}:0:"${rootfs_size}" -c ${ROOTPN}:root -t ${ROOTPN}:0FC63DAF-8483-4772-8E79-3D69D8477DE4
         sgdisk -p "$disk"
         ;;
     aarch64)
         RESERVEDPN=1
         EFIPN=2
-        sgdisk -Z $disk \
+        sgdisk -Z "$disk" \
         -U "${uninitialized_gpt_uuid}" \
         -n ${RESERVEDPN}:0:+1M -c ${RESERVEDPN}:reserved -t ${RESERVEDPN}:8DA63339-0007-60C0-C436-083AC8230908 \
         -n ${EFIPN}:0:+127M -c ${EFIPN}:EFI-SYSTEM -t ${EFIPN}:C12A7328-F81F-11D2-BA4B-00A0C93EC93B \
         -n ${BOOTPN}:0:+384M -c ${BOOTPN}:boot \
-        -n ${ROOTPN}:0:${rootfs_size} -c ${ROOTPN}:root -t ${ROOTPN}:0FC63DAF-8483-4772-8E79-3D69D8477DE4
+        -n ${ROOTPN}:0:"${rootfs_size}" -c ${ROOTPN}:root -t ${ROOTPN}:0FC63DAF-8483-4772-8E79-3D69D8477DE4
         sgdisk -p "$disk"
         ;;
     s390x)
         if [[ ${secure_execution} -eq 1 ]]; then
-            sgdisk -Z $disk \
+            sgdisk -Z "$disk" \
                 -U "${uninitialized_gpt_uuid}" \
                 -n ${SDPART}:0:+200M -c ${SDPART}:se -t ${SDPART}:0FC63DAF-8483-4772-8E79-3D69D8477DE4 \
                 -n ${BOOTPN}:0:+384M -c ${BOOTPN}:boot \
-                -n ${ROOTPN}:0:${rootfs_size} -c ${ROOTPN}:root -t ${ROOTPN}:0FC63DAF-8483-4772-8E79-3D69D8477DE4
+                -n ${ROOTPN}:0:"${rootfs_size}" -c ${ROOTPN}:root -t ${ROOTPN}:0FC63DAF-8483-4772-8E79-3D69D8477DE4
         else
             # NB: in the bare metal case when targeting ECKD DASD disks, this
             # partition table is not what actually gets written to disk in the end:
             # coreos-installer has code which transforms it into a DASD-compatible
             # partition table and copies each partition individually bitwise.
-            sgdisk -Z $disk \
+            sgdisk -Z "$disk" \
                 -U "${uninitialized_gpt_uuid}" \
                 -n ${BOOTPN}:0:+384M -c ${BOOTPN}:boot \
-                -n ${ROOTPN}:0:${rootfs_size} -c ${ROOTPN}:root -t ${ROOTPN}:0FC63DAF-8483-4772-8E79-3D69D8477DE4
+                -n ${ROOTPN}:0:"${rootfs_size}" -c ${ROOTPN}:root -t ${ROOTPN}:0FC63DAF-8483-4772-8E79-3D69D8477DE4
         fi
         sgdisk -p "$disk"
         ;;
@@ -234,12 +238,12 @@ case "$arch" in
         PREPPN=1
         RESERVEDPN=2
         # ppc64le doesn't use special uuid for root partition
-        sgdisk -Z $disk \
+        sgdisk -Z "$disk" \
         -U "${uninitialized_gpt_uuid}" \
         -n ${PREPPN}:0:+4M -c ${PREPPN}:PowerPC-PReP-boot -t ${PREPPN}:9E1A2D38-C612-4316-AA26-8B49521E5A8B \
         -n ${RESERVEDPN}:0:+1M -c ${RESERVEDPN}:reserved -t ${RESERVEDPN}:8DA63339-0007-60C0-C436-083AC8230908 \
         -n ${BOOTPN}:0:+384M -c ${BOOTPN}:boot \
-        -n ${ROOTPN}:0:${rootfs_size} -c ${ROOTPN}:root -t ${ROOTPN}:0FC63DAF-8483-4772-8E79-3D69D8477DE4
+        -n ${ROOTPN}:0:"${rootfs_size}" -c ${ROOTPN}:root -t ${ROOTPN}:0FC63DAF-8483-4772-8E79-3D69D8477DE4
         sgdisk -p "$disk"
         ;;
 esac
@@ -271,16 +275,18 @@ esac
 
 if [[ ${secure_execution} -eq 1 ]]; then
     # Unencrypted partition for sd-boot
+    # shellcheck disable=SC2086
     mkfs.ext4 ${bootargs} "${zipl_dev}" -L se -U random
     # /boot must be encrypted
-    create_luks_partition boot ${boot_dev}
+    create_luks_partition boot "${boot_dev}"
     # / must be encrypted
-    create_luks_partition root ${root_dev}
+    create_luks_partition root "${root_dev}"
     # reset to devmapper devices
     boot_dev="/dev/mapper/crypt_bootfs"
     root_dev="/dev/mapper/crypt_rootfs"
 fi
 
+# shellcheck disable=SC2086
 mkfs.ext4 ${bootargs} "${boot_dev}" -L boot -U "${bootfs_uuid}"
 udevtrig
 
@@ -300,12 +306,15 @@ case "${rootfs_type}" in
         # So basically, we're choosing performance over half-implemented security.
         # Eventually, we'd like both - once XFS gains verity (probably not too hard),
         # we could unconditionally enable it there.
-        mkfs.ext4 -b $(getconf PAGE_SIZE) -O verity -L root "${root_dev}" -U "${rootfs_uuid}" ${rootfs_args}
+        # shellcheck disable=SC2086
+        mkfs.ext4 -b "$(getconf PAGE_SIZE)" -O verity -L root "${root_dev}" -U "${rootfs_uuid}" ${rootfs_args}
         ;;
     btrfs)
+        # shellcheck disable=SC2086
         mkfs.btrfs -L root "${root_dev}" -U "${rootfs_uuid}" ${rootfs_args}
         ;;
     xfs|"")
+        # shellcheck disable=SC2086
         mkfs.xfs "${root_dev}" -L root -m reflink=1 -m uuid="${rootfs_uuid}" ${rootfs_args}
         ;;
     *)
@@ -323,20 +332,20 @@ rootfs=/tmp/rootfs
 rm -rf ${rootfs}
 mkdir -p ${rootfs}
 mount -o discard "${root_dev}" ${rootfs}
-chcon $(matchpathcon -n /) ${rootfs}
+chcon "$(matchpathcon -n /)" ${rootfs}
 mkdir ${rootfs}/boot
-chcon $(matchpathcon -n /boot) $rootfs/boot
+chcon "$(matchpathcon -n /boot)" $rootfs/boot
 mount "${boot_dev}" $rootfs/boot
-chcon $(matchpathcon -n /boot) $rootfs/boot
+chcon "$(matchpathcon -n /boot)" $rootfs/boot
 # FAT doesn't support SELinux labeling, it uses "genfscon", so we
 # don't need to give it a label manually.
 if [ ${EFIPN:+x} ]; then
-    mkdir $rootfs/boot/efi
+    mkdir ${rootfs}/boot/efi
     mount "${disk}${EFIPN}" $rootfs/boot/efi
 fi
 if [[ ${secure_execution} -eq 1 ]]; then
     mkdir ${rootfs}/se
-    chcon $(matchpathcon -n /boot) $rootfs/se
+    chcon "$(matchpathcon -n /boot)" $rootfs/se
 fi
 
 # Now that we have the basic disk layout, initialize the basic
@@ -352,6 +361,7 @@ fi
 
 # Compute kargs
 allkargs="$extrakargs"
+# shellcheck disable=SC2031
 if [ "$arch" != s390x ]; then
     # Note that $ignition_firstboot is interpreted by grub at boot time,
     # *not* the shell here.  Hence the backslash escape.
@@ -364,6 +374,7 @@ if test -n "${deploy_via_container}"; then
     do
         kargsargs+="--karg=$karg "
     done
+    # shellcheck disable=SC2086
     ostree container image deploy --imgref "${ostree_container}" \
         ${container_imgref:+--target-imgref $container_imgref} \
         --write-commitid-to /tmp/commit.txt \
@@ -385,6 +396,7 @@ else
     do
         kargsargs+="--karg-append=$karg "
     done
+    # shellcheck disable=SC2086
     ostree admin deploy "${deploy_ref}" --sysroot $rootfs --os "$os_name" $kargsargs
     deploy_commit=$commit
 fi
@@ -427,11 +439,12 @@ install_uefi() {
     # We have a "static" grub config file that basically configures grub to look
     # in the RAID called "md-boot", if it exists, or the partition labeled "boot".
     local target_efi="$rootfs/boot/efi"
-    local grubefi=$(find "${target_efi}/EFI/" -maxdepth 1 -type d | grep -v BOOT)
+    local grubefi
+    grubefi=$(find "${target_efi}/EFI/" -maxdepth 1 -type d | grep -v BOOT)
     local vendor_id="${grubefi##*/}"
     local vendordir="${target_efi}/EFI/${vendor_id}"
     mkdir -p "${vendordir}"
-	cat > ${vendordir}/grub.cfg << 'EOF'
+	cat > "${vendordir}/grub.cfg" << 'EOF'
 if [ -e (md/md-boot) ]; then
   # The search command might pick a RAID component rather than the RAID,
   # since the /boot RAID currently uses superblock 1.0.  See the comment in
@@ -458,12 +471,13 @@ EOF
 install_grub_cfg() {
     # 0700 to match the RPM permissions which I think are mainly in case someone has
     # manually set a grub password
-    mkdir -p -m 0700 $rootfs/boot/grub2
+    mkdir -m 0700 $rootfs/boot/grub2
     printf "%s\n" "$grub_script" | \
         sed -E 's@(^# CONSOLE-SETTINGS-START$)@\1'"${platform_grub_cmds:+\\n${platform_grub_cmds}}"'@' \
         > $rootfs/boot/grub2/grub.cfg
     if [ -n "$platforms_json" ]; then
         # Copy platforms table if it's non-empty for this arch
+        # shellcheck disable=SC2031
         if jq -e ".$arch" < "$platforms_json" > /dev/null; then
             mkdir -p "$rootfs/boot/coreos"
             jq ".$arch" < "$platforms_json" > "$rootfs/boot/coreos/platforms.json"
@@ -472,6 +486,7 @@ install_grub_cfg() {
 }
 
 # Other arch-specific bootloader changes
+# shellcheck disable=SC2031
 case "$arch" in
 x86_64)
     # UEFI
@@ -483,7 +498,7 @@ x86_64)
             --target i386-pc \
             --boot-directory $rootfs/boot \
             --modules mdraid1x \
-            $disk
+            "$disk"
     fi
     ;;
 aarch64)
@@ -510,7 +525,8 @@ s390x)
     for mnt in dev proc sys run var tmp; do
         mount --rbind "/$mnt" "${deploy_root}/$mnt"
     done
-    chroot ${deploy_root} /usr/lib/dracut/modules.d/50rdcore/rdcore zipl ${rdcore_args[@]}
+    # shellcheck disable=SC2068
+    chroot "${deploy_root}" /usr/lib/dracut/modules.d/50rdcore/rdcore zipl ${rdcore_args[@]}
     ;;
 esac
 
