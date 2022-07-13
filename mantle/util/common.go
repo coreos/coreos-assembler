@@ -116,7 +116,7 @@ func RunCmdTimeout(timeout time.Duration, cmd string, args ...string) error {
 	case <-time.After(timeout):
 		// this uses the waitid(WNOWAIT) trick to avoid racing:
 		// https://github.com/golang/go/commit/cea29c4a358004d84d8711a07628c2f856b381e8
-		c.Process.Kill()
+		_ = c.Process.Kill()
 		<-errc
 		return fmt.Errorf("%s timed out after %s", cmd, timeout)
 	}

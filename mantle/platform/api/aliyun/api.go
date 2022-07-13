@@ -146,7 +146,12 @@ func (a *API) CopyImage(source_id, dest_name, dest_region, dest_description, kms
 	// queuing would explain some of the delays observed.
 	if wait_for_ready {
 		plog.Infof("waiting for %v in %v to be available before returning", response.ImageId, dest_region)
-		a.WaitForImageReady(dest_region, response.ImageId)
+		if err = a.WaitForImageReady(dest_region, response.ImageId); err != nil {
+			// Waiting failed... Let's just log it and move on since this is
+			// just to be nice. if we do have to use the image right after,
+			// we'll fail.
+			plog.Warningf("failed to wait: %v", err)
+		}
 	}
 	return response.ImageId, nil
 }

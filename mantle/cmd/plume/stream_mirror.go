@@ -48,9 +48,13 @@ var (
 
 func init() {
 	cmdStreamMirror.Flags().StringVar(&srcFile, "src-file", "", "Source path for stream JSON")
-	cmdStreamMirror.MarkFlagRequired("src-file")
+	if err := cmdStreamMirror.MarkFlagRequired("src-file"); err != nil {
+		panic(err)
+	}
 	cmdStreamMirror.Flags().StringVar(&dest, "dest", "", "Write images to this directory")
-	cmdStreamMirror.MarkFlagRequired("dest")
+	if err := cmdStreamMirror.MarkFlagRequired("dest"); err != nil {
+		panic(err)
+	}
 	cmdStreamMirror.Flags().StringVar(&destFile, "dest-file", "", "Destination path for stream JSON (only useful with --url)")
 	cmdStreamMirror.Flags().StringVar(&newBaseURLArg, "url", "", "New base URL for build")
 	cmdStreamMirror.Flags().StringArrayVarP(&artifactTypes, "artifact", "a", nil, "Only fetch this specific artifact type")

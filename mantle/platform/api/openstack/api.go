@@ -609,7 +609,7 @@ func (a *API) DeleteImage(imageID string, force bool) error {
 					NewProtected: false,
 				},
 			}
-			image, err = images.Update(a.imageClient, imageID, updateOpts).Extract()
+			_, err = images.Update(a.imageClient, imageID, updateOpts).Extract()
 			if err != nil {
 				return fmt.Errorf(
 					"Error removing protection from image %s: %v", imageID, err)

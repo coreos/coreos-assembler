@@ -35,7 +35,6 @@ import (
 
 const workdir = "/var/srv/upgrade"
 const ostreeRepo = workdir + "/repo"
-const zincatiMetricsSocket = "/run/zincati/public/metrics.promsock"
 
 var plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "kola/tests/upgrade")
 

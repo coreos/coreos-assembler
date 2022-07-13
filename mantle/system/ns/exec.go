@@ -37,9 +37,14 @@ func (cmd *Cmd) CombinedOutput() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer nsExit()
 
-	return cmd.ExecCmd.CombinedOutput()
+	r, rerr := cmd.ExecCmd.CombinedOutput()
+
+	if err := nsExit(); err != nil {
+		return nil, err
+	}
+
+	return r, rerr
 }
 
 func (cmd *Cmd) Output() ([]byte, error) {
@@ -47,9 +52,14 @@ func (cmd *Cmd) Output() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer nsExit()
 
-	return cmd.ExecCmd.Output()
+	r, rerr := cmd.ExecCmd.Output()
+
+	if err := nsExit(); err != nil {
+		return nil, err
+	}
+
+	return r, rerr
 }
 
 func (cmd *Cmd) Run() error {
@@ -57,9 +67,14 @@ func (cmd *Cmd) Run() error {
 	if err != nil {
 		return err
 	}
-	defer nsExit()
 
-	return cmd.ExecCmd.Run()
+	rerr := cmd.ExecCmd.Run()
+
+	if err := nsExit(); err != nil {
+		return err
+	}
+
+	return rerr
 }
 
 func (cmd *Cmd) Start() error {
@@ -67,7 +82,12 @@ func (cmd *Cmd) Start() error {
 	if err != nil {
 		return err
 	}
-	defer nsExit()
 
-	return cmd.ExecCmd.Start()
+	rerr := cmd.ExecCmd.Start()
+
+	if err := nsExit(); err != nil {
+		return err
+	}
+
+	return rerr
 }

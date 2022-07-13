@@ -143,11 +143,12 @@ func (qc *Cluster) NewMachineWithQemuOptions(userdata *conf.UserData, options pl
 		primaryDisk.BackingFile = options.OverrideBackingFile
 	}
 
-	err = builder.AddBootDisk(&primaryDisk)
-	if err != nil {
+	if err = builder.AddBootDisk(&primaryDisk); err != nil {
 		return nil, err
 	}
-	builder.AddDisksFromSpecs(options.AdditionalDisks)
+	if err = builder.AddDisksFromSpecs(options.AdditionalDisks); err != nil {
+		return nil, err
+	}
 
 	if len(options.HostForwardPorts) > 0 {
 		builder.EnableUsermodeNetworking(options.HostForwardPorts)
