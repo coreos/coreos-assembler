@@ -1,0 +1,43 @@
+name: golangci-lint
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches:
+      - main
+      - rhcos-*
+
+permissions:
+  contents: read
+
+jobs:
+  golangci:
+    name: lint
+    runs-on: ubuntu-latest
+    steps:
+      # this is needed by containers/storage which we're using in gangplank
+      - name: Install deps
+        run: sudo apt-get install -y libgpgme-dev libbtrfs-dev libdevmapper-dev
+      - uses: actions/setup-go@v3
+        with:
+          go-version: 1.18
+      - uses: actions/checkout@v3
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v3
+        with:
+          version: v1.46.2
+          working-directory: gangplank
+          args: --timeout=5m
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v3
+        with:
+          version: v1.46.2
+          working-directory: mantle
+          args: --timeout=5m
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v3
+        with:
+          version: v1.46.2
+          working-directory: schema
+          args: --timeout=5m
