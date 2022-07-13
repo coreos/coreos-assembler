@@ -26,11 +26,6 @@ docs:
 fmt:
 	gofmt -d -e -l $(shell find . -iname "*.go"  -not -path "./vendor/*")
 
-.PHONY: staticanalysis
-staticanalysis:
-	golangci-lint run -v --build-tags ${buildtags},gangway ./...
-	env CGO_ENABLED=0 golangci-lint run -v --build-tags ${buildtags},gangway ./...
-
 .PHONY: test
 test: miniotag ?= ",!minio"
 test: fmt
