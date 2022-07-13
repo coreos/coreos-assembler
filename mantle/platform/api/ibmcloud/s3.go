@@ -130,10 +130,8 @@ func (a *API) checkIfObjectExists(objectName, bucketName string) bool {
 	}
 
 	_, err := a.s3client.s3Session.GetObject(input)
-	if err != nil {
-		return false
-	}
-	return true
+	// XXX: this should actually check the exact error returned
+	return err == nil
 }
 
 //UploadObject - upload to s3 bucket

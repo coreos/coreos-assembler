@@ -27,7 +27,7 @@ import (
 
 	"github.com/pkg/errors"
 	"golang.org/x/crypto/ssh"
-	"golang.org/x/crypto/ssh/terminal"
+	"golang.org/x/term"
 )
 
 // Manhole connects os.Stdin, os.Stdout, and os.Stderr to an interactive shell
@@ -36,13 +36,13 @@ import (
 // error.
 func Manhole(m Machine) (err error) {
 	fd := int(os.Stdin.Fd())
-	if !terminal.IsTerminal(fd) {
+	if !term.IsTerminal(fd) {
 		return nil
 	}
 
-	tstate, _ := terminal.MakeRaw(fd)
+	tstate, _ := term.MakeRaw(fd)
 	defer func() {
-		e := terminal.Restore(fd, tstate)
+		e := term.Restore(fd, tstate)
 		if err != nil {
 			err = fmt.Errorf("%v; %v", err, e)
 		} else {
@@ -73,7 +73,7 @@ func Manhole(m Machine) (err error) {
 		ssh.TTY_OP_OSPEED: 115200,
 	}
 
-	cols, lines, err := terminal.GetSize(int(os.Stdin.Fd()))
+	cols, lines, err := term.GetSize(int(os.Stdin.Fd()))
 	if err != nil {
 		return err
 	}

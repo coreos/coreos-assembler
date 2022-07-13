@@ -390,6 +390,9 @@ func (c *Conf) MaybeCompress() (string, error) {
 	var buff bytes.Buffer
 	config := c.String()
 	writer, err := gzip.NewWriterLevel(&buff, gzip.BestCompression)
+	if err != nil {
+		return "", err
+	}
 	defer writer.Close()
 	if _, err := writer.Write([]byte(config)); err != nil {
 		return "", err

@@ -307,7 +307,9 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 		}
 		builder.Memory = int(parsedMem)
 	}
-	builder.AddDisksFromSpecs(addDisks)
+	if err = builder.AddDisksFromSpecs(addDisks); err != nil {
+		return err
+	}
 	if cpuCountHost {
 		builder.Processors = -1
 	}

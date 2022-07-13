@@ -36,7 +36,7 @@ import (
 	"github.com/coreos/mantle/platform/conf"
 	"github.com/coreos/mantle/util"
 	"github.com/pkg/errors"
-	"golang.org/x/crypto/ssh/terminal"
+	"golang.org/x/term"
 )
 
 const devshellHostname = "cosa-devsh"
@@ -64,10 +64,10 @@ func displayStatusMsg(status, msg string, termMaxWidth int) {
 }
 
 func runDevShellSSH(ctx context.Context, builder *platform.QemuBuilder, conf *conf.Conf, sshCommand string) error {
-	if !terminal.IsTerminal(0) {
+	if !term.IsTerminal(0) {
 		return fmt.Errorf("stdin is not a tty")
 	}
-	termMaxWidth, _, err := terminal.GetSize(0)
+	termMaxWidth, _, err := term.GetSize(0)
 	if err != nil {
 		termMaxWidth = 100
 	}
@@ -100,7 +100,9 @@ func runDevShellSSH(ctx context.Context, builder *platform.QemuBuilder, conf *co
 	// stateChan reports in-instance state such as shutdown, reboot, etc.
 	stateChan := make(chan guestState)
 
-	watchJournal(builder, conf, stateChan, errChan)
+	if err = watchJournal(builder, conf, stateChan, errChan); err != nil {
+		return err
+	}
 
 	// SerialPipe is the pipe output from the serial console.
 	serialPipe, err := builder.SerialPipe()
@@ -180,7 +182,7 @@ func runDevShellSSH(ctx context.Context, builder *platform.QemuBuilder, conf *co
 		// it directly to the instance. The intercept of ctrl-c will only happen when
 		// ssh is not in the foreground.
 		case <-sigintChan:
-			inst.Kill()
+			_ = inst.Kill()
 
 		// handle console messages. If SSH is not ready, then display a
 		// a status message on the console.
@@ -218,7 +220,7 @@ func runDevShellSSH(ctx context.Context, builder *platform.QemuBuilder, conf *co
 					statusMsg = "QEMU guest is shutting down"
 				case guestStateHalted:
 					statusMsg = "QEMU guest is halted"
-					inst.Kill()
+					_ = inst.Kill()
 				case guestStateInReboot:
 					statusMsg = "QEMU guest initiated reboot"
 				case guestStateOpenSshStopped:

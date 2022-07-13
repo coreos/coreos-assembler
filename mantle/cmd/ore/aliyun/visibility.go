@@ -64,7 +64,7 @@ func changeVisibility(cmd *cobra.Command, args []string) error {
 	}
 
 	for _, pair := range args {
-		if strings.Contains(pair, ":") == false {
+		if !strings.Contains(pair, ":") {
 			return fmt.Errorf("Argument isn't a valid region:image pair: %v\n", pair)
 		}
 

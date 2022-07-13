@@ -46,11 +46,17 @@ func init() {
 	cmdCopyObject.Flags().StringVar(&copyCloudObjectStorage, "cloud-object-storage", "coreos-dev-image-ibmcloud", "cloud object storage to be used")
 	cmdCopyObject.Flags().StringVar(&sourceBucket, "source-bucket", "coreos-dev-image-ibmcloud-us-east", "bucket where object needs to be copied from")
 	cmdCopyObject.Flags().StringVar(&sourceName, "source-name", "", "name of object to be copied")
-	cmdCopyObject.MarkFlagRequired("source-name")
+	if err := cmdCopyObject.MarkFlagRequired("source-name"); err != nil {
+		panic(err)
+	}
 	cmdCopyObject.Flags().StringVar(&destRegion, "destination-region", "", "region to be copied to")
-	cmdCopyObject.MarkFlagRequired("destination-region")
+	if err := cmdCopyObject.MarkFlagRequired("destination-region"); err != nil {
+		panic(err)
+	}
 	cmdCopyObject.Flags().StringVar(&destBucket, "destination-bucket", "", "destination bucket to copy to")
-	cmdCopyObject.MarkFlagRequired("destination-bucket")
+	if err := cmdCopyObject.MarkFlagRequired("destination-bucket"); err != nil {
+		panic(err)
+	}
 }
 
 func runCopyObject(cmd *cobra.Command, args []string) error {

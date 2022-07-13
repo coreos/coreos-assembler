@@ -84,16 +84,6 @@ func podmanRunner(term termChan, cp CosaPodder, envVars []v1.EnvVar) error {
 	if err != nil {
 		return err
 	}
-	stdIn, stdOut, stdErr := clusterCtx.GetStdIO()
-	if stdOut == nil {
-		stdOut = os.Stdout
-	}
-	if stdErr == nil {
-		stdErr = os.Stdout
-	}
-	if stdIn == nil {
-		stdIn = os.Stdin
-	}
 
 	s := specgen.NewSpecGenerator(podSpec.Spec.Containers[0].Image, false)
 	s.CapAdd = podmanCaps
