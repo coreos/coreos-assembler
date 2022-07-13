@@ -90,7 +90,7 @@ class OVA(QemuVariantImage):
         with open(os.path.join(self._workdir, 'tmp/image.json')) as f:
             image_json = json.load(f)
 
-        secure_boot = image_json['vmware-secure-boot']
+        secure_boot = 'true' if image_json['vmware-secure-boot'] else 'false'
         system_type = 'vmx-{}'.format(image_json['vmware-hw-version'])
         os_type = image_json['vmware-os-type']
         disk_info = image_info(vmdk)
