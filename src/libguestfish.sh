@@ -43,6 +43,8 @@ coreos_gf_run() {
         return
     fi
     coreos_gf_launch "$@"
+    # Allow mksquashfs to parallelize
+    coreos_gf set-smp "$(kola ncpu)"
     coreos_gf run
     GUESTFISH_RUNNING=1
 }
