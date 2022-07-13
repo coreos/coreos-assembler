@@ -63,7 +63,7 @@ func run(argv []string) error {
 		argv = argv[1:]
 	}
 
-	if cmd == "" {
+	if cmd == "" || cmd == "--help" {
 		printUsage()
 		os.Exit(1)
 	}
