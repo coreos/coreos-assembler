@@ -44,7 +44,7 @@ propagate_luks_config() {
     local key="$1"
     local lbl="crypt_${1}fs"
     # Moving key file to final destination
-    mkdir -m 700 "$deploy_root/etc/luks"
+    [ ! -d "$deploy_root/etc/luks" ] && mkdir -m 700 "$deploy_root/etc/luks"
     mv "/tmp/${key}-luks-key" "$deploy_root/etc/luks/$key"
     chmod 0400 "$deploy_root/etc/luks/$key"
     local uuid
