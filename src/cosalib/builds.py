@@ -4,7 +4,6 @@ Builds interacts with builds.json
 
 import json
 import os
-import semver
 import gi
 import collections
 
@@ -45,14 +44,10 @@ class Builds:  # pragma: nocover
                 'builds': []
             }
             self.flush()
-        self._version = semver.parse_version_info(
-            self._data.get('schema-version', "0.0.1"))
-        # we understand < 2.0.0 only
-        if self._version._major >= 2:
-            raise Exception("Builds schema too new; please update cosa")
-        if self._version._major < 1:
-            err = f"Unsupported build metadata version {self._version}"
-            raise SystemExit(err)
+        ver = self._data.get('schema-version', "0.0.1")
+        parts = ver.split('.')
+        if int(parts[0]) != 1:
+            raise SystemExit(f"Unsupported build metadata version {ver}")
 
     def _path(self, path):
         if not self._workdir:
