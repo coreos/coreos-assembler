@@ -46,9 +46,6 @@ jq
 # For interacting with AWS/Aliyun/HTTP
 awscli golang-github-aliyun-cli python3-boto3 python3-requests
 
-# For metadata versioning
-python3-semver
-
 # For python retries
 python3-tenacity
 
