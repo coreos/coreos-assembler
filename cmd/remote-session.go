@@ -10,8 +10,9 @@ import (
 )
 
 type RemoteSessionOptions struct {
-	Image      string
-	Expiration string
+	CreateImage      string
+	CreateExpiration string
+	SyncQuiet        bool
 }
 
 var (
@@ -136,8 +137,8 @@ func runCreate(c *cobra.Command, args []string) error {
 		"--security-opt=label=disable", "--volume=/srv/",
 		"--uidmap=1000:0:1", "--uidmap=0:1:1000", "--uidmap=1001:1001:64536",
 		"--device=/dev/kvm", "--device=/dev/fuse", "--tmpfs=/tmp",
-		"--entrypoint=/usr/bin/dumb-init", remoteSessionOpts.Image,
-		"sleep", remoteSessionOpts.Expiration}
+		"--entrypoint=/usr/bin/dumb-init", remoteSessionOpts.CreateImage,
+		"sleep", remoteSessionOpts.CreateExpiration}
 	cmd := exec.Command("podman", podmanargs...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -205,10 +206,6 @@ func runPS(c *cobra.Command, args []string) error {
 //
 // [1] https://github.com/moby/moby/issues/13660
 func runSync(c *cobra.Command, args []string) error {
-	// check environment
-	if err := checkEnv(); err != nil {
-		return err
-	}
 	// check arguments. Need one with pre-pended ':'
 	found := 0
 	for index, arg := range args {
@@ -219,11 +216,14 @@ func runSync(c *cobra.Command, args []string) error {
 		}
 	}
 	if found != 1 {
-		return fmt.Errorf("Must pass in a single arg to rsync with `:` prepended")
+		return fmt.Errorf("Must pass in a single arg with `:` prepended")
 	}
 	// build command and execute
-	rsyncargs := []string{"-avh", "--mkpath", "--blocking-io",
-		"--rsh", "podman --remote exec --user root -i"}
+	rsyncargs := []string{"-ah", "--mkpath", "--blocking-io",
+		"--compress", "--rsh", "podman --remote exec -i"}
+	if !remoteSessionOpts.SyncQuiet {
+		rsyncargs = append(rsyncargs, "-v")
+	}
 	rsyncargs = append(rsyncargs, args...)
 	cmd := exec.Command("rsync", rsyncargs...)
 	cmd.Stdout = os.Stdout
@@ -240,12 +240,17 @@ func init() {
 
 	// cmdRemoteSessionCreate options
 	cmdRemoteSessionCreate.Flags().StringVarP(
-		&remoteSessionOpts.Image, "image", "",
+		&remoteSessionOpts.CreateImage, "image", "",
 		"quay.io/coreos-assembler/coreos-assembler:latest",
 		"The COSA container image to use on the remote")
 	cmdRemoteSessionCreate.Flags().StringVarP(
-		&remoteSessionOpts.Expiration, "expiration", "", "infinity",
+		&remoteSessionOpts.CreateExpiration, "expiration", "", "infinity",
 		"The amount of time before the remote-session auto-exits")
+
+	// cmdRemoteSessionSync options
+	cmdRemoteSessionSync.Flags().BoolVarP(
+		&remoteSessionOpts.SyncQuiet, "quiet", "", false,
+		"Make the sync output less verbose")
 }
 
 // execute the cmdRemoteSession cobra command
