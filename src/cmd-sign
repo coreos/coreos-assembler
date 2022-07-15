@@ -53,6 +53,8 @@ def parse_args():
                                     'RoboSignatory via fedora-messaging')
     robosig.add_argument("--s3", metavar='<BUCKET>[/PREFIX]', required=True,
                          help="bucket and prefix to S3 builds/ dir")
+    robosig.add_argument("--aws-config-file", metavar='CONFIG', default="",
+                         help="Path to AWS config file")
     group = robosig.add_mutually_exclusive_group(required=True)
     group.add_argument("--ostree", help="sign commit", action='store_true')
     group.add_argument("--images", help="sign images", action='store_true')
@@ -72,6 +74,8 @@ def parse_args():
 
 
 def cmd_robosignatory(args):
+    if args.aws_config_file:
+        os.environ["AWS_CONFIG_FILE"] = args.aws_config_file
     s3 = boto3.client('s3')
     args.bucket, args.prefix = get_bucket_and_prefix(args.s3)
 
