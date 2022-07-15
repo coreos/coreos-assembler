@@ -471,7 +471,8 @@ EOF
 install_grub_cfg() {
     # 0700 to match the RPM permissions which I think are mainly in case someone has
     # manually set a grub password
-    mkdir -m 0700 $rootfs/boot/grub2
+    mkdir -p $rootfs/boot/grub2
+    chmod 0700 $rootfs/boot/grub2
     printf "%s\n" "$grub_script" | \
         sed -E 's@(^# CONSOLE-SETTINGS-START$)@\1'"${platform_grub_cmds:+\\n${platform_grub_cmds}}"'@' \
         > $rootfs/boot/grub2/grub.cfg
