@@ -136,14 +136,15 @@ class Builds:  # pragma: nocover
         genver_key = 'coreos-assembler.image-genver'
         if not self.is_empty():
             previous_buildid = parent_build or self.get_latest()
-            metapath = self.get_build_dir(previous_buildid) + '/meta.json'
-            with open(metapath) as f:
-                previous_buildmeta = json.load(f)
-            previous_commit = previous_buildmeta['ostree-commit']
-            previous_image_genver = int(previous_buildmeta[genver_key])
-            if previous_commit == ostree_commit:
-                image_genver = previous_image_genver + 1
-                buildid = f"{version}-{image_genver}"
+            if get_basearch() in self.get_build_arches(previous_buildid):
+                metapath = self.get_build_dir(previous_buildid) + '/meta.json'
+                with open(metapath) as f:
+                    previous_buildmeta = json.load(f)
+                previous_commit = previous_buildmeta['ostree-commit']
+                previous_image_genver = int(previous_buildmeta[genver_key])
+                if previous_commit == ostree_commit:
+                    image_genver = previous_image_genver + 1
+                    buildid = f"{version}-{image_genver}"
         meta = {
             'buildid': buildid,
             genver_key: image_genver
