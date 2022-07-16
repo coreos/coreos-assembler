@@ -305,6 +305,10 @@ func FetchAndParseBuild(url string) (*Build, error) {
 		return nil, err
 	}
 	defer res.Body.Close()
+    if res.StatusCode != 200 {
+        return nil, fmt.Errorf(
+            "Received a %d error in http response for: %s", res.StatusCode, url)
+    }
 	return buildParser(res.Body)
 }
 
