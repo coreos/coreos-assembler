@@ -205,6 +205,7 @@ type RuntimeConfig struct {
 
 	// InternetAccess is true if the cluster should be Internet connected
 	InternetAccess bool
+	EarlyRelease   func()
 
 	// whether a Manhole into a machine should be created on detected failure
 	SSHOnTestFailure bool

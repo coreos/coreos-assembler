@@ -69,6 +69,7 @@ type H struct {
 	name     string    // Name of test.
 	start    time.Time // Time test started
 	duration time.Duration
+	released bool      // Indicates whether the test has already released its parallel slot
 	barrier  chan bool // To signal parallel subtests they may start.
 	signal   chan bool // To signal a test is done.
 	sub      []*H      // Queue of subtests to be run in parallel.
@@ -104,6 +105,14 @@ func (t *H) runTimeoutCheck(ctx context.Context, timeout time.Duration, f func()
 	case <-ioCompleted:
 		// Finish the test
 		return
+	}
+}
+
+// This functionn is robust to being called multiple times
+func (t *H) Release() {
+	if !t.released {
+		t.released = true
+		t.suite.release()
 	}
 }
 
@@ -500,7 +509,7 @@ func tRunner(t *H, fn func(t *H)) {
 		if len(t.sub) > 0 {
 			// Run parallel subtests.
 			// Decrease the running count for this test.
-			t.suite.release()
+			t.Release()
 			// Release the parallel subtests.
 			close(t.barrier)
 			// Wait for subtests to complete.
@@ -514,7 +523,7 @@ func tRunner(t *H, fn func(t *H)) {
 		} else if t.isParallel {
 			// Only release the count for this test if it was run as a parallel
 			// test. See comment in Run method.
-			t.suite.release()
+			t.Release()
 		}
 		t.report() // Report after all subtests have finished.
 
