@@ -41,6 +41,12 @@ type BaseCluster struct {
 	bf    *BaseFlight
 	name  string
 	rconf *RuntimeConfig
+
+	// the number of machines running (have not been released)
+	// Note: numMachines <= len(machmap), since numMachines
+	// is decremented before the machine destroy process begins, and
+	// machmap is updated usually near the end.
+	numMachines int
 }
 
 func NewBaseCluster(bf *BaseFlight, rconf *RuntimeConfig) (*BaseCluster, error) {
@@ -158,6 +164,7 @@ func (bc *BaseCluster) AddMach(m Machine) {
 	if err := bc.appendSSH(m); err != nil {
 		panic(err)
 	}
+	bc.numMachines++
 }
 
 func (bc *BaseCluster) DelMach(m Machine) {
@@ -247,6 +254,7 @@ WantedBy=multi-user.target
 // Destroy destroys each machine in the cluster.
 func (bc *BaseCluster) Destroy() {
 	for _, m := range bc.Machines() {
+		bc.numMachines--
 		m.Destroy()
 	}
 }
@@ -289,4 +297,12 @@ func (bc *BaseCluster) JournalOutput() map[string]string {
 		ret[k] = v.JournalOutput()
 	}
 	return ret
+}
+
+func (bc *BaseCluster) EarlyRelease() {
+	bc.machlock.Lock()
+	defer bc.machlock.Unlock()
+	if bc.rconf.EarlyRelease != nil && bc.numMachines == 0 {
+		bc.rconf.EarlyRelease()
+	}
 }

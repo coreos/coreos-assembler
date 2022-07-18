@@ -1355,6 +1355,7 @@ func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flig
 		OutputDir:          h.OutputDir(),
 		SSHOnTestFailure:   Options.SSHOnTestFailure,
 		WarningsAction:     conf.FailWarnings,
+		EarlyRelease:       h.Release,
 	}
 	if t.HasFlag(register.AllowConfigWarnings) {
 		rconf.WarningsAction = conf.IgnoreWarnings
