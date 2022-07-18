@@ -94,6 +94,7 @@ func (am *machine) Destroy() {
 		am.journal.Destroy()
 	}
 
+	am.cluster.EarlyRelease()
 	if err := am.saveConsole(origConsole); err != nil {
 		plog.Errorf("Error saving console for instance %v: %v", am.ID(), err)
 	}
