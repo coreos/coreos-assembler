@@ -55,8 +55,6 @@ python3-tenacity
 # For ignition file validation in cmd-run
 /usr/bin/ignition-validate
 
-# shellcheck for test
-ShellCheck
 
 # For python testing
 python3-flake8 python3-pytest python3-pytest-cov pylint

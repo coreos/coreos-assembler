@@ -1,0 +1,27 @@
+name: lints
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches:
+      - main
+      - rhcos-*
+
+permissions:
+  contents: read
+
+jobs:
+  shellcheck:
+    name: Shellcheck
+    runs-on: ubuntu-latest
+    container: registry.ci.openshift.org/coreos/fcos-buildroot:testing-devel
+    steps:
+      - name: Install deps
+        run: yum -y install ShellCheck
+      - name: Checkout repository
+        uses: actions/checkout@v2
+      # https://github.com/actions/checkout/issues/760
+      - name: Mark git checkout as safe
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+      - run: make shellcheck
