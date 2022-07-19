@@ -39,7 +39,7 @@ bin/coreos-assembler:
 
 shellcheck: ${src_checked} ${tests_checked} ${cwd_checked}
 
-check: shellcheck flake8 pycheck schema-check mantle-check gangplank-check cosa-go-check
+check: flake8 pycheck schema-check mantle-check gangplank-check cosa-go-check
 	echo OK
 
 pycheck:
