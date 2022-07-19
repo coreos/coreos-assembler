@@ -63,13 +63,14 @@ create_luks_partition() {
                         --key-file="$key" \
                         "$dev"
 
+    cryptsetup token add --key-description secex:"${1}" -S 0 "$dev"
+
     cryptsetup luksOpen "$dev" \
                         "$lbl" \
                         --key-file="$key"
-
     local uuid
     uuid=$(cryptsetup luksUUID "$dev")
-    echo "$lbl UUID=${uuid} /etc/luks/$1 luks" >> "$dstdir/etc/crypttab"
+    echo "$lbl UUID=${uuid} none noauto" >> "$dstdir/etc/crypttab"
 }
 
 config=
@@ -365,6 +366,12 @@ if [ "$arch" != s390x ]; then
     allkargs+=" \$ignition_firstboot"
 fi
 
+# Use custom 'init', which loads LUKS keys into keyring and removes them from
+# initrd, and only than gives control to systemd.
+if [[ ${secure_execution} -eq 1 ]]; then
+    allkargs+=" rdinit=/secex-init"
+fi
+
 if test -n "${deploy_via_container}"; then
     kargsargs=""
     for karg in $allkargs
@@ -510,9 +517,9 @@ ppc64le)
     ;;
 s390x)
     bootloader_backend=zipl
-    rdcore_args=("--boot-mount=$rootfs/boot" "--kargs=ignition.firstboot")
+    rdcore_args=("--boot-mount=$rootfs/boot" "--append-karg=ignition.firstboot")
     if [[ ${secure_execution} -eq 1 ]]; then
-        rdcore_args+=("--secex-mode=enforce" "--rootfs=$deploy_root" "--hostkey=/dev/disk/by-id/virtio-hostkey")
+        rdcore_args+=("--secex-mode=enforce" "--append-karg=lockdown=confidentiality" "--rootfs=$deploy_root" "--hostkey=/dev/disk/by-id/virtio-hostkey")
         propagate_luks_config
     else
         # in case builder itself runs with SecureExecution
