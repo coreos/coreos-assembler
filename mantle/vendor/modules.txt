@@ -348,7 +348,7 @@ github.com/pmezard/go-difflib/difflib
 github.com/rs/xid
 # github.com/sirupsen/logrus v1.8.1
 github.com/sirupsen/logrus
-# github.com/spf13/cobra v0.0.6
+# github.com/spf13/cobra v1.5.0
 github.com/spf13/cobra
 # github.com/spf13/pflag v1.0.6-0.20210604193023-d5e0c0615ace
 github.com/spf13/pflag
