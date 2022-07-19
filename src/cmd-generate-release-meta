@@ -154,6 +154,9 @@ def append_build(out, input_):
                     "bucket": cloud_dict[bucket_field],
                     "url": cloud_dict[url_field]
                 }
+    # IBM Secure Execution specific additions
+    if input_.get("images", {}).get("qemu-secex", None) is not None:
+        arch_dict["media"]["qemu-secex"]["artifacts"]["ignition-gpg-key"] = url_builder(out.get('stream'), out.get('release'), arch, "ignition.gpg.pub")
 
     # GCP specific additions
     if input_.get("gcp", None) is not None:

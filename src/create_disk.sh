@@ -45,6 +45,7 @@ disk=
 platform=metal
 platforms_json=
 secure_execution=0
+ignition_pubkey=
 x86_bios_bootloader=1
 extrakargs=""
 
@@ -52,13 +53,14 @@ while [ $# -gt 0 ];
 do
     flag="${1}"; shift;
     case "${flag}" in
-        --config)                config="${1}"; shift;;
-        --help)                  usage; exit;;
-        --kargs)                 extrakargs="${extrakargs} ${1}"; shift;;
-        --no-x86-bios-bootloader) x86_bios_bootloader=0;;
-        --platform)              platform="${1}"; shift;;
-        --platforms-json)        platforms_json="${1}"; shift;;
-        --with-secure-execution) secure_execution=1;;
+        --config)                   config="${1}"; shift;;
+        --help)                     usage; exit;;
+        --kargs)                    extrakargs="${extrakargs} ${1}"; shift;;
+        --no-x86-bios-bootloader)   x86_bios_bootloader=0;;
+        --platform)                 platform="${1}"; shift;;
+        --platforms-json)           platforms_json="${1}"; shift;;
+        --with-secure-execution)    secure_execution=1;;
+        --write-ignition-pubkey-to) ignition_pubkey="${1}"; shift;;
          *) echo "${flag} is not understood."; usage; exit 10;;
      esac;
 done
@@ -449,6 +451,15 @@ chroot_run() {
     done
 }
 
+generate_gpgkeys() {
+    local tmp_home
+    tmp_home=$(mktemp -d /tmp/gpg-XXXXXX)
+    gpg --homedir "${tmp_home}" --batch --passphrase '' --yes --quick-gen-key secex default
+    gpg --homedir "${tmp_home}" --armor --export secex > "${ignition_pubkey}"
+    gpg --homedir "${tmp_home}" --armor --export-secret-key secex > "/tmp/ignition.asc"
+    rm -rf "${tmp_home}"
+}
+
 # Other arch-specific bootloader changes
 # shellcheck disable=SC2031
 case "$arch" in
@@ -485,6 +496,8 @@ s390x)
         # in case builder itself runs with SecureExecution
         rdcore_zipl_args+=("--secex-mode=disable")
         chroot_run /usr/lib/dracut/modules.d/50rdcore/rdcore zipl "${rdcore_zipl_args[@]}"
+    else
+        generate_gpgkeys
     fi
     ;;
 esac
@@ -574,7 +587,6 @@ if [[ ${secure_execution} -eq 1 ]]; then
     # set up dm-verity for the rootfs and bootfs
     create_dmverity root $rootfs
     create_dmverity boot $rootfs/boot
-
     # We need to run the genprotimg step in a separate step for rhcos release images
     if [ ! -e /dev/disk/by-id/virtio-genprotimg ]; then
         echo "Building local Secure Execution Image, running zipl and genprotimg"
@@ -582,6 +594,7 @@ if [[ ${secure_execution} -eq 1 ]]; then
         rdcore_zipl_args+=("--secex-mode=enforce" "--hostkey=/dev/disk/by-id/virtio-hostkey")
         rdcore_zipl_args+=("--append-karg=rootfs.roothash=$(cat /tmp/root-roothash)")
         rdcore_zipl_args+=("--append-karg=bootfs.roothash=$(cat /tmp/boot-roothash)")
+        rdcore_zipl_args+=("--append-file=/tmp/ignition.asc")
         chroot_run /usr/lib/dracut/modules.d/50rdcore/rdcore zipl "${rdcore_zipl_args[@]}"
     else
         echo "Building release Secure Execution Image, zipl and genprotimg will be run later"

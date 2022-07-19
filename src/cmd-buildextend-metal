@@ -36,6 +36,7 @@ EOF
 # Parse options
 hostkey=
 genprotimgvm=/data.secex/genprotimgvm.qcow2
+ignition_pubkey=
 rc=0
 build=
 force=
@@ -186,7 +187,8 @@ disk_args=()
 qemu_args=()
 # SecureExecution extra stuff
 if [[ $secure_execution -eq "1" ]]; then
-    disk_args+=("--with-secure-execution")
+    ignition_pubkey=$(mktemp -p "${tmp_builddir}")
+    disk_args+=("--with-secure-execution" "--write-ignition-pubkey-to" "${ignition_pubkey}")
     if [ -z "${hostkey}" ]; then
         if [ ! -f "${genprotimgvm}" ]; then
             fatal "No genprotimgvm provided at ${genprotimgvm}"
@@ -291,6 +293,9 @@ json.dump(j, sys.stdout, indent=4)
 cosa meta --workdir "${workdir}" --build "${build}" --artifact "${image_type}" --artifact-json "$(readlink -f meta.json.new)"
 /usr/lib/coreos-assembler/finalize-artifact "${img}" "${builddir}/${img}"
 
+if [[ -n "${ignition_pubkey}" ]]; then
+    /usr/lib/coreos-assembler/finalize-artifact "${ignition_pubkey}" "${builddir}/ignition.gpg.pub"
+fi
 # Quiet for the rest of this so the last thing we see is a success message
 set +x
 # clean up the tmpild
