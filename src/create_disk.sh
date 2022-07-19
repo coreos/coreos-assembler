@@ -528,6 +528,10 @@ s390x)
     done
     # shellcheck disable=SC2068
     chroot "${deploy_root}" /usr/lib/dracut/modules.d/50rdcore/rdcore zipl ${rdcore_args[@]}
+    # keys no longer needed after rdcore zipled 'sdboot' image
+    if [[ ${secure_execution} -eq 1 ]]; then
+        rm "${deploy_root}/etc/luks/root" "${deploy_root}/etc/luks/boot" "${deploy_root}/etc/crypttab"
+    fi
     ;;
 esac
 
