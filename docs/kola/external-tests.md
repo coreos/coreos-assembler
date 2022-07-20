@@ -229,6 +229,12 @@ In the example above, the test would only run if `--tag special` was provided.
 The `additionalDisks` key has the same semantics as the `--add-disk` argument
 to `qemuexec`. It is currently only supported on `qemu-unpriv`.
 
+The `injectContainer` boolean if set will cause the framework to inject
+the ostree base image container into the target system; the path can be
+found in the environment variable `KOLA_OSTREE_OCIARCHIVE`.  This will be
+an `.ociarchive` file that can be e.g. loaded into the containers storage
+via `skopeo copy oci-archive:$KOLA_OSTREE_OCIARCHIVE containers-storage:localhost/os`.
+
 The `minDisk` key takes a size in GB and ensures that an instance type with at
 least the specified amount of primary disk space is used. On QEMU, this is
 equivalent to the `--qemu-size` argument to `qemuexec`. This is currently only

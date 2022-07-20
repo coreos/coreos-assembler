@@ -78,6 +78,9 @@ type Test struct {
 	// "5G:mpath,foo,bar"]) -- defaults to none.
 	AdditionalDisks []string
 
+	// InjectContainer will cause the ostree base image to be injected into the target
+	InjectContainer bool
+
 	// Minimum amount of memory in MB required for test.
 	MinMemory int
 
