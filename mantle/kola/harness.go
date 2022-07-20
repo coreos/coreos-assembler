@@ -194,6 +194,9 @@ const (
 	// kolaExtBinDataEnv is an environment variable pointing to the above
 	kolaExtBinDataEnv = "KOLA_EXT_DATA"
 
+	// kolaExtContainerDataEnv includes the path to the ostree base container image in oci-archive format.
+	kolaExtContainerDataEnv = "KOLA_EXT_OSTREE_OCIARCHIVE"
+
 	// kolaExtBinDataName is the name for test dependency data
 	kolaExtBinDataName = "data"
 )
@@ -765,6 +768,7 @@ type externalTestMeta struct {
 	Tags                      string   `json:"tags,omitempty"`
 	RequiredTag               string   `json:"requiredTag,omitempty"`
 	AdditionalDisks           []string `json:"additionalDisks,omitempty"`
+	InjectContainer           bool     `json:"injectContainer,omitempty"`
 	MinMemory                 int      `json:"minMemory,omitempty"`
 	MinDiskSize               int      `json:"minDisk,omitempty"`
 	AdditionalNics            int      `json:"additionalNics,omitempty"`
@@ -925,6 +929,13 @@ Environment=KOLA_TEST_EXE=%s
 Environment=%s=%s
 ExecStart=%s
 `, unitName, testname, base, kolaExtBinDataEnv, destDataDir, remotepath)
+	if targetMeta.InjectContainer {
+		if CosaBuild == nil {
+			return fmt.Errorf("test %v uses injectContainer, but no cosa build found", testname)
+		}
+		ostreeContainer := CosaBuild.Meta.BuildArtifacts.Ostree
+		unit += fmt.Sprintf("Environment=%s=/home/core/%s\n", kolaExtContainerDataEnv, ostreeContainer.Path)
+	}
 	config.AddSystemdUnit(unitName, unit, conf.NoState)
 
 	// Architectures using 64k pages use slightly more memory, ask for more than requested
@@ -944,6 +955,7 @@ ExecStart=%s
 		Tags:          []string{"external"},
 
 		AdditionalDisks:           targetMeta.AdditionalDisks,
+		InjectContainer:           targetMeta.InjectContainer,
 		MinMemory:                 targetMeta.MinMemory,
 		MinDiskSize:               targetMeta.MinDiskSize,
 		AdditionalNics:            targetMeta.AdditionalNics,
@@ -1455,6 +1467,17 @@ func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flig
 	// drop kolet binary on machines
 	if t.ExternalTest != "" || t.NativeFuncs != nil {
 		if err := scpKolet(tcluster.Machines()); err != nil {
+			h.Fatal(err)
+		}
+	}
+
+	if t.InjectContainer {
+		if CosaBuild == nil {
+			h.Fatalf("Test %s uses injectContainer, but no cosa build found", t.Name)
+		}
+		ostreeContainer := CosaBuild.Meta.BuildArtifacts.Ostree
+		ostreeContainerPath := filepath.Join(CosaBuild.Dir, ostreeContainer.Path)
+		if err := cluster.DropFile(tcluster.Machines(), ostreeContainerPath); err != nil {
 			h.Fatal(err)
 		}
 	}
