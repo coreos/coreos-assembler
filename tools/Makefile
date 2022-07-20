@@ -12,15 +12,11 @@ build:
 		go install github.com/idubinskiy/schematyper@latest
 	test -e bin/gomarkdoc || \
 		go install github.com/princjef/gomarkdoc/cmd/gomarkdoc@latest
-	# Freeze on 2022-05-26 release of minio for now.
-	# https://github.com/coreos/coreos-assembler/pull/2895#issuecomment-1145558105
-	test -e bin/minio || \
-		curl -sSfL --output minio --output-dir $(GOPATH)/bin https://dl.min.io/server/minio/release/linux-$(GOARCH)/archive/minio.RELEASE.2022-05-26T05-48-41Z && chmod +x $(GOPATH)/bin/minio
 	rm -rf pkg
 
 clean:
 	rm -rfv bin
 	rm -rfv pkg
 
-install: bin/gomarkdoc bin/minio bin/schematyper
-	install -v -D -t $(DESTDIR)$(PREFIX)/bin bin/{gomarkdoc,minio,schematyper}
+install: bin/gomarkdoc bin/schematyper
+	install -v -D -t $(DESTDIR)$(PREFIX)/bin bin/{gomarkdoc,schematyper}
