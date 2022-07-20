@@ -108,7 +108,12 @@ func (t *H) runTimeoutCheck(ctx context.Context, timeout time.Duration, f func()
 	}
 }
 
-// This functionn is robust to being called multiple times
+// This functionn is robust to being called multiple times.
+// Previously t.suite.release() was only called by tRunner, so
+// tRunner ensured that a test is released only once. Since we are
+// now exposing the release mechanism outside the package level, it is
+// important to introduce idempotence to avoid any corrupted test queue
+// states that may result from one test being released multiple times.
 func (t *H) Release() {
 	if !t.released {
 		t.released = true
