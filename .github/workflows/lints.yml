@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   shellcheck:
-    name: Shellcheck
+    name: ShellCheck
     runs-on: ubuntu-latest
     container: registry.ci.openshift.org/coreos/fcos-buildroot:testing-devel
     steps:
