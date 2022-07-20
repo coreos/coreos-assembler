@@ -9,11 +9,11 @@ DESTDIR ?=
 # W504 line break after binary operator
 PYIGNORE ?= E128,E241,E402,E501,E722,W503,W504
 
-.PHONY: all check shellcheck flake8 pycheck unittest clean mantle mantle-check install gangplank gangplank-check tools
+.PHONY: all check shellcheck flake8 pycheck unittest clean mantle mantle-check install tools
 
 MANTLE_BINARIES := ore kola plume
 
-all: bin/coreos-assembler tools mantle gangplank
+all: bin/coreos-assembler tools mantle
 
 src:=$(shell find src -maxdepth 1 -type f -executable -print)
 pysources=$(shell find src -type f -name '*.py') $(shell for x in $(src); do if head -1 $$x | grep -q python; then echo $$x; fi; done)
@@ -39,7 +39,7 @@ bin/coreos-assembler:
 
 shellcheck: ${src_checked} ${tests_checked} ${cwd_checked}
 
-check: flake8 pycheck schema-check mantle-check gangplank-check cosa-go-check
+check: flake8 pycheck schema-check mantle-check cosa-go-check
 	echo OK
 
 pycheck:
@@ -78,12 +78,6 @@ $(MANTLE_BINARIES) kolet:
 mantle-check:
 	cd mantle && $(MAKE) test
 
-gangplank:
-	cd gangplank && $(MAKE)
-
-gangplank-check:
-	cd gangplank && $(MAKE) test
-
 tools:
 	cd tools && $(MAKE)
 
@@ -106,8 +100,6 @@ schema-check:
 	grep -q "$(DIGEST)" schema/cosa/schema_doc.go
 	# Are the vendored copies of the generated code synced with the
 	# canonical ones?
-	diff -u gangplank/vendor/github.com/coreos/coreos-assembler-schema/cosa/cosa_v1.go schema/cosa/cosa_v1.go
-	diff -u gangplank/vendor/github.com/coreos/coreos-assembler-schema/cosa/schema_doc.go schema/cosa/schema_doc.go
 	diff -u mantle/vendor/github.com/coreos/coreos-assembler-schema/cosa/cosa_v1.go schema/cosa/cosa_v1.go
 	diff -u mantle/vendor/github.com/coreos/coreos-assembler-schema/cosa/schema_doc.go schema/cosa/schema_doc.go
 
@@ -126,4 +118,3 @@ install:
 	install -d $(DESTDIR)$(PREFIX)/lib/coreos-assembler/tests/kola
 	cd tools && $(MAKE) install DESTDIR=$(DESTDIR)
 	cd mantle && $(MAKE) install DESTDIR=$(DESTDIR)
-	cd gangplank && $(MAKE) install DESTDIR=$(DESTDIR)
