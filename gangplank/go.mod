@@ -24,7 +24,7 @@ require (
 	github.com/onsi/ginkgo v1.16.5 // indirect
 	github.com/onsi/gomega v1.18.1 // indirect
 	github.com/opencontainers/image-spec v1.0.3-0.20220303224323-02efb9a75ee1 // indirect
-	github.com/opencontainers/runc v1.1.0
+	github.com/opencontainers/runc v1.1.2
 	github.com/opencontainers/runtime-spec v1.0.3-0.20220225203953-7ceeb8af5259
 	github.com/openshift/api v0.0.0-20210521075222-e273a339932a
 	github.com/prometheus/client_golang v1.12.1 // indirect
