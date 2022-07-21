@@ -41,23 +41,17 @@ EOC
 }
 
 propagate_luks_config() {
-    local key="$1"
-    local lbl="crypt_${1}fs"
-    # Moving key file to final destination
     [ ! -d "$deploy_root/etc/luks" ] && mkdir -m 700 "$deploy_root/etc/luks"
-    mv "/tmp/${key}-luks-key" "$deploy_root/etc/luks/$key"
-    chmod 0400 "$deploy_root/etc/luks/$key"
-    local uuid
-    uuid=$(cryptsetup luksUUID "/dev/disk/by-label/$lbl")
-    if [[ ! -e $deploy_root/etc/crypttab ]]; then
-        touch "$deploy_root/etc/crypttab"
-        chmod 0600 "$deploy_root/etc/crypttab"
-    fi
-    echo "$lbl UUID=${uuid} /etc/luks/$key luks" >> "$deploy_root/etc/crypttab"
+    mount --bind "/tmp/secex/etc/luks" "$deploy_root/etc/luks"
+    [ ! -f "$deploy_root/etc/crypttab" ] && touch "$deploy_root/etc/crypttab"
+    mount -o ro,bind "/tmp/secex/etc/crypttab" "$deploy_root/etc/crypttab"
 }
 
 create_luks_partition() {
-    local key="/tmp/${1}-luks-key"
+    local dstdir=/tmp/secex
+    local keydir="$dstdir/etc/luks"
+    mkdir -p "$keydir"
+    local key="$keydir/${1}"
     local lbl="crypt_${1}fs"
     local dev="$2"
     # Generating random key
@@ -73,6 +67,9 @@ create_luks_partition() {
                         "$lbl" \
                         --key-file="$key"
 
+    local uuid
+    uuid=$(cryptsetup luksUUID "$dev")
+    echo "$lbl UUID=${uuid} /etc/luks/$1 luks" >> "$dstdir/etc/crypttab"
 }
 
 config=
@@ -516,8 +513,7 @@ s390x)
     rdcore_args=("--boot-mount=$rootfs/boot" "--kargs=ignition.firstboot")
     if [[ ${secure_execution} -eq 1 ]]; then
         rdcore_args+=("--secex-mode=enforce" "--rootfs=$deploy_root" "--hostkey=/dev/disk/by-id/virtio-hostkey")
-        propagate_luks_config boot
-        propagate_luks_config root
+        propagate_luks_config
     else
         # in case builder itself runs with SecureExecution
         rdcore_args+=("--secex-mode=disable")
@@ -528,10 +524,6 @@ s390x)
     done
     # shellcheck disable=SC2068
     chroot "${deploy_root}" /usr/lib/dracut/modules.d/50rdcore/rdcore zipl ${rdcore_args[@]}
-    # keys no longer needed after rdcore zipled 'sdboot' image
-    if [[ ${secure_execution} -eq 1 ]]; then
-        rm "${deploy_root}/etc/luks/root" "${deploy_root}/etc/luks/boot" "${deploy_root}/etc/crypttab"
-    fi
     ;;
 esac
 
