@@ -221,25 +221,22 @@ enabled = false`, 0644)
 	}
 
 	if bc.bf.baseopts.OSContainer != "" {
-		if bc.Distribution() != "rhcos" {
-			return nil, fmt.Errorf("oscontainer is only supported on the rhcos distribution")
-		}
-		conf.AddSystemdUnitDropin("pivot.service", "00-before-sshd.conf", `[Unit]
-Before=sshd.service`)
-		conf.AddSystemdUnit("pivot.service", "", platformConf.Enable)
-		conf.AddSystemdUnit("pivot-write-reboot-needed.service", `[Unit]
-Description=Touch /run/pivot/reboot-needed
-ConditionFirstBoot=true
+		conf.AddSystemdUnit("kola-container-rebase.service", fmt.Sprintf(`[Unit]
+Description=Rebase to target container
+ConditionPathExists=!/etc/kola-rebase-done
+Before=sshd.service
+Wants=network-online.target
+After=network-online.target
 
 [Service]
 Type=oneshot
-ExecStart=/usr/bin/mkdir -p /run/pivot
-ExecStart=/usr/bin/touch /run/pivot/reboot-needed
+ExecStart=rpm-ostree rebase --experimental %s
+ExecStart=touch /etc/kola-rebase-done
+ExecStart=systemctl reboot
 
 [Install]
 WantedBy=multi-user.target
-`, platformConf.Enable)
-		conf.AddFile("/etc/pivot/image-pullspec", bc.bf.baseopts.OSContainer, 0644)
+`, bc.bf.baseopts.OSContainer), platformConf.Enable)
 	}
 
 	if conf.IsIgnition() {

@@ -289,10 +289,6 @@ func syncOptionsImpl(useCosa bool) error {
 		})
 	}
 
-	if kola.Options.OSContainer != "" && kola.Options.Distribution != "rhcos" {
-		return fmt.Errorf("oscontainer is only supported on rhcos")
-	}
-
 	if kola.Options.Distribution == "" {
 		kola.Options.Distribution = kolaDistros[0]
 	} else if kola.Options.Distribution == "scos" {
