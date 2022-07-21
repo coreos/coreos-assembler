@@ -6,7 +6,7 @@ import sys
 from cosalib.utils import run_cmd
 from os import environ
 
-def build(labels, gitURL, gitRef, repo, tag):
+def build_container_image(labels, gitURL, gitRef, repo, tag):
     '''
     Build the image  using podman remote and push to the registry
     @param repo str registry repository
@@ -18,26 +18,26 @@ def build(labels, gitURL, gitRef, repo, tag):
         cmd += f" --label={label}"
     run_cmd(cmd)
 
-def push(repo, tag, force=None):
+def push_container_image(repo, tag, force=None):
     '''
     Push image to registry
     @param repo str registry repository
     @param tag str image tag
     '''
-    tag_exists_in_repo = search(repo, tag)
+    tag_exists_in_repo = is_tag_in_registry(repo, tag)
     if force or not tag_exists_in_repo:
         run_cmd(f"podman --remote push {repo}:{tag}")
         # Even though check_call only returns after the cmd completion,
         # Quay seems to take more time to publish images in some occasions
         run_cmd("sleep 50")
-        if search(repo, tag) is True:
+        if is_tag_in_registry(repo, tag):
             print(f"Build and Push done successfully via tag: {tag}")
         else:
             raise SystemExit(f"Image pushed but not viewable in registry: tag:{tag}")
     else:
         raise SystemExit(f"Registry tag:{tag} found in {repo}. If you want to overwride it use --force")
 
-def search(repo, tag):
+def is_tag_in_registry(repo, tag):
     '''
     Search for a tag in the registry
     @param force str ignore if image is found
@@ -62,9 +62,9 @@ def main():
         commit = run_cmd(f"git ls-remote {args.git_url} {args.git_ref}")[0:6].decode("utf-8")
         args.tag = f"{args.arch}-{commit}"
 
-    build(args.label, args.git_url, args.git_ref, args.repo, args.tag)
+    build_container_image(args.label, args.git_url, args.git_ref, args.repo, args.tag)
     if args.push_to_registry:
-        push(args.repo, args.tag, args.force)
+        push_container_image(args.repo, args.tag, args.force)
 
 def parse_args():
     parser = argparse.ArgumentParser(
