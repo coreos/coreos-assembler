@@ -33,9 +33,9 @@ def push_container_image(repo, tag, force=None):
         if is_tag_in_registry(repo, tag):
             print(f"Build and Push done successfully via tag: {tag}")
         else:
-            raise SystemExit(f"Image pushed but not viewable in registry: tag:{tag}")
+            raise Exception(f"Image pushed but not viewable in registry: tag:{tag}")
     else:
-        raise SystemExit(f"Registry tag:{tag} found in {repo}. If you want to overwride it use --force")
+        raise Exception(f"Registry tag:{tag} found in {repo}. If you want to override it use --force")
 
 def is_tag_in_registry(repo, tag):
     '''
