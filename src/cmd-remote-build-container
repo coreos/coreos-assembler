@@ -56,16 +56,15 @@ def main():
     if environ.get('CONTAINER_HOST') is None or environ.get('CONTAINER_SSHKEY') is None:
         sys.exit('You must have CONTAINER_HOST and CONTAINER_SSHKEY environment variables setup')
 
+    # If a tag wasn't passed then use the git
+    # short commit hash
     if not args.tag:
-        # If a tag wasn't passed then use the git
-        # short commit hash
         commit = run_cmd(f"git ls-remote {args.git_url} {args.git_ref}")[0:6].decode("utf-8")
-        tag = f"{args.arch}-{commit}"
-    else:
-        tag = args.tag
-    build(args.label, args.git_url, args.git_ref, args.repo, tag)
+        args.tag = f"{args.arch}-{commit}"
+
+    build(args.label, args.git_url, args.git_ref, args.repo, args.tag)
     if args.push_to_registry:
-        push(args.repo, tag, args.force)
+        push(args.repo, args.tag, args.force)
 
 def parse_args():
     parser = argparse.ArgumentParser(
