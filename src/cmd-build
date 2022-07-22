@@ -151,11 +151,15 @@ prepare_build
 ostree --version
 rpm-ostree --version
 
-previous_build=$(get_latest_build)
+previous_build=$(get_latest_build_for_arch "$basearch")
+echo "Previous build: ${previous_build:-none}"
 if [ -n "${previous_build}" ]; then
     previous_builddir=$(get_build_dir "${previous_build}")
+    if [ ! -d "${previous_builddir}" ]; then
+        echo "Previous build directory doesn't exist locally. Ignoring..."
+        previous_build=""
+    fi
 fi
-echo "Previous build: ${previous_build:-none}"
 
 previous_commit=
 previous_ostree_tarfile_path=
