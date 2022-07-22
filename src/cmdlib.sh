@@ -761,6 +761,18 @@ get_latest_build() {
     fi
 }
 
+get_latest_build_for_arch() {
+    local arch=$1; shift
+    # yup, this is happening
+    (python3 -c "
+import sys
+sys.path.insert(0, '${DIR}')
+from cosalib.builds import Builds
+buildid = Builds('${workdir:-$(pwd)}').get_latest_for_arch('${arch}')
+if buildid:
+    print(buildid)")
+}
+
 get_build_dir() {
     local buildid=$1; shift
     # yup, this is happening
