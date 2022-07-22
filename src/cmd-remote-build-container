@@ -18,29 +18,24 @@ def build_container_image(labels, gitURL, gitRef, repo, tag):
         cmd += f" --label={label}"
     run_cmd(cmd)
 
-def push_container_image(repo, tag, force=None):
+def push_container_image(repo, tag):
     '''
     Push image to registry
     @param repo str registry repository
     @param tag str image tag
     '''
-    tag_exists_in_repo = is_tag_in_registry(repo, tag)
-    if force or not tag_exists_in_repo:
-        run_cmd(f"podman --remote push {repo}:{tag}")
-        # Even though check_call only returns after the cmd completion,
-        # Quay seems to take more time to publish images in some occasions
-        run_cmd("sleep 50")
-        if is_tag_in_registry(repo, tag):
-            print(f"Build and Push done successfully via tag: {tag}")
-        else:
-            raise Exception(f"Image pushed but not viewable in registry: tag:{tag}")
+    run_cmd(f"podman --remote push {repo}:{tag}")
+    # Even though check_call only returns after the cmd completion,
+    # Quay seems to take more time to publish images in some occasions
+    run_cmd("sleep 50")
+    if is_tag_in_registry(repo, tag):
+        print(f"Build and Push done successfully via tag: {tag}")
     else:
-        raise Exception(f"Registry tag:{tag} found in {repo}. If you want to override it use --force")
+        raise Exception(f"Image pushed but not viewable in registry: tag:{tag}")
 
 def is_tag_in_registry(repo, tag):
     '''
     Search for a tag in the registry
-    @param force str ignore if image is found
     @param repo str registry repository
     @param tag  str image tag
     '''
@@ -62,9 +57,17 @@ def main():
         commit = run_cmd(f"git ls-remote {args.git_url} {args.git_ref}")[0:6].decode("utf-8")
         args.tag = f"{args.arch}-{commit}"
 
+    if args.push_to_registry and is_tag_in_registry(args.repo, args.tag):
+        print(f"Container image at {args.repo}:{args.tag} exists.")
+        if args.force:
+            print(f"--force was passed. Will overwrite container at {args.repo}:{args.tag}")
+        else:
+            print(f"No work to do. You can force with --force. Skipping build/push.")
+            return
+
     build_container_image(args.label, args.git_url, args.git_ref, args.repo, args.tag)
     if args.push_to_registry:
-        push_container_image(args.repo, args.tag, args.force)
+        push_container_image(args.repo, args.tag)
 
 def parse_args():
     parser = argparse.ArgumentParser(
