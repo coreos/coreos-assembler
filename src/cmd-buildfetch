@@ -97,10 +97,10 @@ def main():
     for arch in arches:
         # If the architecture doesn't exist then assume there were
         # no builds for this architecture yet, which can only happen
-        # if someone passed in the architecture value. return early
+        # if someone passed in architecture value(s)
         if arch not in builds.get_build_arches(buildid):
             print(f"No {arch} artifacts for build {buildid}")
-            return
+            continue
 
         builddir = builds.get_build_dir(buildid, arch)
         os.makedirs(builddir, exist_ok=True)
