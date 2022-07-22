@@ -132,17 +132,17 @@ def main():
                 print(f"Expected  sha256sum: {img['sha256']}")
                 raise Exception(f"Downloaded checksum for {imgpath} does not match expected")
 
+        # also nuke the any local matching OStree ref, since we want to build on
+        # top of this new one
+        if 'ref' in buildmeta and os.path.isdir('tmp/repo'):
+            subprocess.check_call(['ostree', 'refs', '--repo', 'tmp/repo',
+                                   '--delete', buildmeta['ref']],
+                                  stdout=subprocess.DEVNULL)
+
     # and finally the symlink
     if args.build is None:
         rm_allow_noent('builds/latest')
         os.symlink(buildid, 'builds/latest')
-
-    # also nuke the any local matching OStree ref, since we want to build on
-    # top of this new one
-    if 'ref' in buildmeta and os.path.isdir('tmp/repo'):
-        subprocess.check_call(['ostree', 'refs', '--repo', 'tmp/repo',
-                               '--delete', buildmeta['ref']],
-                              stdout=subprocess.DEVNULL)
 
 
 def parse_args():
