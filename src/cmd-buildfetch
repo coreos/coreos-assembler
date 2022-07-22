@@ -94,6 +94,19 @@ def main():
     else:
         arches = args.arch
 
+    # If someone passed in --find-build-for-arch they want us to
+    # find the most recent build that was successful for $arch.
+    # Since this may be a different build ID for the different
+    # given possible architectures we'll limit the use of this option
+    # to a single given arch.
+    if args.find_build_for_arch:
+        if len(arches) != 1:
+            raise Exception("Must provide single arch when finding build for architecture")
+        buildid = builds.get_latest_for_arch(arches[0])
+        if buildid is None:
+            print(f"No builds for arch {arches[0]} found in the history")
+            return
+
     for arch in arches:
         # If the architecture doesn't exist then assume there were
         # no builds for this architecture yet, which can only happen
@@ -161,6 +174,8 @@ def parse_args():
                         help="Fetch given image artifact(s)", metavar="ARTIFACT")
     parser.add_argument("--aws-config-file", metavar='CONFIG', default="",
                         help="Path to AWS config file")
+    parser.add_argument("--find-build-for-arch", action='store_true',
+                        help="Traverse build history to find latest for given architecture")
     return parser.parse_args()
 
 
