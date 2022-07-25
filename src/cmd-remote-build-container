@@ -33,6 +33,14 @@ def push_container_image(repo, tag):
     else:
         raise Exception(f"Image pushed but not viewable in registry: tag:{tag}")
 
+def is_tag_in_podman_storage(repo, tag):
+    '''
+    Search for a tag in the local podman storage
+    @param repo str registry repository
+    @param tag  str image tag
+    '''
+    return subprocess.run(f"podman image exists {repo}:{tag}").returncode == 0
+
 def is_tag_in_registry(repo, tag):
     '''
     Search for a tag in the registry
@@ -65,7 +73,20 @@ def main():
             print(f"No work to do. You can force with --force. Skipping build/push.")
             return
 
-    build_container_image(args.label, args.git_url, args.git_ref, args.repo, args.tag)
+    # Check first if the build already exists in local storage on the builder
+    if is_tag_in_podman_storage(args.repo, args.tag):
+        if args.force:
+            print(f"--force was passed. Will overwrite built container with tag {args.repo}:{args.tag}")
+            needbuild = True
+        else:
+            print(f"Re-using existing built container with tag {args.repo}:{args.tag}")
+            needbuild = False
+    else:
+        needbuild = True
+    # Build the container if needed.
+    if needbuild:
+        build_container_image(args.label, args.git_url, args.git_ref, args.repo, args.tag)
+
     if args.push_to_registry:
         push_container_image(args.repo, args.tag)
 
