@@ -55,16 +55,16 @@ def is_tag_in_registry(repo, tag):
 
 def main():
     args = parse_args()
-
+    # Check for requisite env vars
     if environ.get('CONTAINER_HOST') is None or environ.get('CONTAINER_SSHKEY') is None:
         sys.exit('You must have CONTAINER_HOST and CONTAINER_SSHKEY environment variables setup')
-
     # If a tag wasn't passed then use the git
     # short commit hash
     if not args.tag:
         commit = run_cmd(f"git ls-remote {args.git_url} {args.git_ref}")[0:6].decode("utf-8")
         args.tag = f"{args.arch}-{commit}"
-
+    print(f"Targetting a container image for {args.repo}:{args.tag}")
+    # Sanity check the registry if asked to push to a registry
     if args.push_to_registry and is_tag_in_registry(args.repo, args.tag):
         print(f"Container image at {args.repo}:{args.tag} exists.")
         if args.force:
@@ -72,7 +72,6 @@ def main():
         else:
             print(f"No work to do. You can force with --force. Skipping build/push.")
             return
-
     # Check first if the build already exists in local storage on the builder
     if is_tag_in_podman_storage(args.repo, args.tag):
         if args.force:
@@ -85,9 +84,11 @@ def main():
         needbuild = True
     # Build the container if needed.
     if needbuild:
+        print("Building container via podman")
         build_container_image(args.label, args.git_url, args.git_ref, args.repo, args.tag)
-
+    # Push to the registry if needed
     if args.push_to_registry:
+        print("Pushing to remote registry")
         push_container_image(args.repo, args.tag)
 
 def parse_args():
