@@ -15,7 +15,6 @@ if [ ! -f /etc/cosa-supermin ]; then
     osmet_dest=$1; shift
     checksum=$1; shift
     speed=$1; shift
-    coreinst=${1:-${OSMET_PACK_COREOS_INSTALLER:-}}
 
     workdir=$(pwd)
     TMPDIR=$(readlink -f tmp/tmp-osmet-pack)
@@ -23,10 +22,6 @@ if [ ! -f /etc/cosa-supermin ]; then
     mkdir -p "${TMPDIR}"
 
     set -- "${TMPDIR}/osmet.bin" "${checksum}" "${speed}"
-    if [ -n "${coreinst:-}" ]; then
-        cp "${coreinst}" "${TMPDIR}/coreos-installer"
-        set -- "$@" "${TMPDIR}/coreos-installer"
-    fi
 
     device_opts=
     if [[ "${img_src}" == *metal4k* ]]; then
@@ -49,7 +44,6 @@ fi
 osmet_dest=$1; shift
 checksum=$1; shift
 speed=$1; shift
-coreinst=${1:-}
 
 set -x
 
@@ -61,14 +55,11 @@ deploydir=$(find "/sysroot/ostree/deploy/$osname/deploy" -mindepth 1 -maxdepth 1
 # shellcheck disable=SC1090,SC1091
 description=$(. "${deploydir}/etc/os-release" && echo "${PRETTY_NAME}")
 
-if [ -z "${coreinst}" ]; then
-    # if we weren't given a custom coreos-installer, then we want to use the one
-    # from the target system itself; chroot into it to avoid linking issues
-    for mnt in dev proc sys run var tmp; do
-        mount --rbind /$mnt "${deploydir}/$mnt"
-    done
-    coreinst="chroot ${deploydir} coreos-installer"
-fi
+# we want to use the coreos-installer from the target system but we need to
+# chroot into it to avoid linking issues
+for mnt in dev proc sys run var tmp; do
+    mount --rbind /$mnt "${deploydir}/$mnt"
+done
 
 case "$speed" in
     fast)      fast=--fast ;;
@@ -76,9 +67,10 @@ case "$speed" in
     *)         exit 1      ;;
 esac
 
-# We don't want double quotes (for both `coreinst` and `fast`, which may be '')
+# We don't want double quotes for `fast`, which may be ''
 # shellcheck disable=SC2086
-RUST_BACKTRACE=full ${coreinst} pack osmet /dev/disk/by-id/virtio-osmet \
+RUST_BACKTRACE=full chroot "${deploydir}" coreos-installer pack osmet \
+    /dev/disk/by-id/virtio-osmet \
     --description "${description}" \
     --checksum "${checksum}" \
     --output /tmp/osmet.bin $fast
