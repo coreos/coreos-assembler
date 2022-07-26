@@ -7,6 +7,11 @@ if [ ! -f /etc/cosa-supermin ]; then
     . "${dn}"/cmdlib.sh
 
     img_src=$1; shift
+    if [[ $img_src == *.gz || $img_src == *.xz ]]; then
+        img="$(basename "$img_src")"
+        fatal "Cannot pack osmet from $img; not an uncompressed image"
+    fi
+
     sector_size=$1; shift
     osmet_dest=$1; shift
     checksum=$1; shift
@@ -17,11 +22,6 @@ if [ ! -f /etc/cosa-supermin ]; then
     TMPDIR=$(readlink -f tmp/tmp-osmet-pack)
     rm -rf "${TMPDIR}"
     mkdir -p "${TMPDIR}"
-
-    if [[ $img_src == *.gz || $img_src == *.xz ]]; then
-        img="$(basename "$img_src")"
-        fatal "Cannot pack osmet from $img; not an uncompressed image"
-    fi
 
     set -- "${TMPDIR}/osmet.bin" "${checksum}" "${speed}"
     if [ -n "${coreinst:-}" ]; then
