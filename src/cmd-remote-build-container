@@ -3,7 +3,7 @@
 import argparse
 import sys
 
-from cosalib.utils import run_cmd
+from cosalib.utils import runcmd
 from os import environ
 
 def build_container_image(labels, gitURL, gitRef, repo, tag):
@@ -13,10 +13,11 @@ def build_container_image(labels, gitURL, gitRef, repo, tag):
     @param tag  str image tag
     @param time str expiration time for Quay images
     '''
-    cmd = f"podman --remote build {gitURL}#{gitRef} --tag {repo}:{tag}"
+    cmd = ["podman", "--remote", "build", f"{gitURL}#{gitRef}", f"--tag={repo}:{tag}"]
     for label in labels:
-        cmd += f" --label={label}"
-    run_cmd(cmd)
+        cmd.extend([f"--label={label}"])
+    # Long running command. Send output to stdout for logging
+    runcmd(cmd, capture_output=False)
 
 def push_container_image(repo, tag):
     '''
@@ -24,10 +25,12 @@ def push_container_image(repo, tag):
     @param repo str registry repository
     @param tag str image tag
     '''
-    run_cmd(f"podman --remote push {repo}:{tag}")
+    cmd = ["podman", "--remote", "push", f"{repo}:{tag}"]
+    # Long running command. Send output to stdout for logging
+    runcmd(cmd, capture_output=False)
     # Even though check_call only returns after the cmd completion,
     # Quay seems to take more time to publish images in some occasions
-    run_cmd("sleep 50")
+    runcmd(["sleep", "50"])
     if is_tag_in_registry(repo, tag):
         print(f"Build and Push done successfully via tag: {tag}")
     else:
@@ -39,7 +42,8 @@ def is_tag_in_podman_storage(repo, tag):
     @param repo str registry repository
     @param tag  str image tag
     '''
-    return subprocess.run(f"podman image exists {repo}:{tag}").returncode == 0
+    cmd = ["podman", "--remote", "image", "exists", f"{repo}:{tag}"]
+    return runcmd(cmd, check=False).returncode == 0
 
 def is_tag_in_registry(repo, tag):
     '''
@@ -48,7 +52,7 @@ def is_tag_in_registry(repo, tag):
     @param tag  str image tag
     '''
     # Podman remote doesn't allow push using digestfile. That's why the tag check is done
-    tags = run_cmd(f"podman search --list-tags {repo}")
+    tags = runcmd(["podman", "search", "--list-tags", repo]).stdout.strip().decode()
     if (tag in str(tags)):
         return True
     return False
@@ -61,7 +65,8 @@ def main():
     # If a tag wasn't passed then use the git
     # short commit hash
     if not args.tag:
-        commit = run_cmd(f"git ls-remote {args.git_url} {args.git_ref}")[0:6].decode("utf-8")
+        cmd = ["git", "ls-remote", args.git_url, args.git_ref]
+        commit = runcmd(cmd).stdout.strip().decode()[0:6]
         args.tag = f"{args.arch}-{commit}"
     print(f"Targetting a container image for {args.repo}:{args.tag}")
     # Sanity check the registry if asked to push to a registry
