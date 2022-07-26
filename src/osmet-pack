@@ -29,10 +29,6 @@ fi
 
 # This runs inside supermin
 
-osmet_dest=$1; shift
-checksum=$1; shift
-speed=$1; shift
-
 set -x
 
 mkdir -p /sysroot
@@ -40,8 +36,6 @@ rootfs=/dev/disk/by-id/virtio-coreos-part4
 mount -o ro "${rootfs}" /sysroot
 osname=$(ls /sysroot/ostree/deploy)
 deploydir=$(find "/sysroot/ostree/deploy/$osname/deploy" -mindepth 1 -maxdepth 1 -type d)
-# shellcheck disable=SC1090,SC1091
-description=$(. "${deploydir}/etc/os-release" && echo "${PRETTY_NAME}")
 
 # we want to use the coreos-installer from the target system but we need to
 # chroot into it to avoid linking issues
@@ -49,16 +43,4 @@ for mnt in dev proc sys run var tmp; do
     mount --rbind /$mnt "${deploydir}/$mnt"
 done
 
-case "$speed" in
-    fast)      fast=--fast ;;
-    normal)    fast=       ;;
-    *)         exit 1      ;;
-esac
-
-# We don't want double quotes for `fast`, which may be ''
-# shellcheck disable=SC2086
-RUST_BACKTRACE=full chroot "${deploydir}" coreos-installer pack osmet \
-    /dev/disk/by-id/virtio-coreos \
-    --description "${description}" \
-    --checksum "${checksum}" \
-    --output "${osmet_dest}" $fast
+RUST_BACKTRACE=full chroot "${deploydir}" coreos-installer "$@"
