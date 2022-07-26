@@ -1,4 +1,4 @@
-from cosalib.utils import run_cmd
+from cosalib.utils import runcmd
 
 
 def create(repo, tag, imageTags):
@@ -8,9 +8,12 @@ def create(repo, tag, imageTags):
     @param repo str registry repository
     @param tag str manifest tag
     '''
-    run_cmd(f"podman manifest create {repo}:{tag}")
+    cmd = ["podman", "manifest", "create", f"{repo}:{tag}"]
+    runcmd(cmd, capture_output=False)
     for imgtag in imageTags:
-        run_cmd(f"podman manifest add {repo}:{tag} docker://{repo}:{imgtag}")
+        cmd = ["podman", "manifest", "add",
+               f"{repo}:{tag}", f"docker://{repo}:{imgtag}"]
+        runcmd(cmd, capture_output=False)
 
 
 def push(repo, tag, v2s2=None):
@@ -20,9 +23,11 @@ def push(repo, tag, v2s2=None):
     @param tag str manifest tag
     @param v2s2 boolean use force v2s2
     '''
-    # ` --remove-signatures -f v2s2` is an workaround for when you try to create a manifest with 2 different mediaType. It seems
-    # an Quay issue
+    cmd = ["podman", "manifest",
+           "push", "--all", f"{repo}:{tag}"]
     if v2s2:
-        run_cmd(f"podman manifest push --all {repo}:{tag} docker://{repo}:{tag}  --remove-signatures -f v2s2")
-    else:
-        run_cmd(f"podman manifest push --all {repo}:{tag} docker://{repo}:{tag}")
+        # `--remove-signatures -f v2s2` is a workaround for when you try
+        # to create a manifest with 2 different mediaType. It seems to be
+        # a Quay issue.
+        cmd.extend(["--remove-signatures", "-f", "v2s2"])
+    runcmd(cmd, capture_output=False)
