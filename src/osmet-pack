@@ -28,9 +28,9 @@ if [ ! -f /etc/cosa-supermin ]; then
         device_opts=",physical_block_size=4096,logical_block_size=4096"
     fi
 
-    # stamp it with "osmet" serial so we find it easily in the VM
-    runvm -drive "if=none,id=osmet,format=raw,readonly=on,file=${img_src}" \
-        -device "virtio-blk,serial=osmet,drive=osmet${device_opts}" -- \
+    # stamp it with "coreos" serial so we find it easily in the VM
+    runvm -drive "if=none,id=coreos,format=raw,readonly=on,file=${img_src}" \
+        -device "virtio-blk,serial=coreos,drive=coreos${device_opts}" -- \
         /usr/lib/coreos-assembler/osmet-pack "$@"
 
     mv "${TMPDIR}/osmet.bin" "${osmet_dest}"
@@ -48,7 +48,7 @@ speed=$1; shift
 set -x
 
 mkdir -p /sysroot
-rootfs=/dev/disk/by-id/virtio-osmet-part4
+rootfs=/dev/disk/by-id/virtio-coreos-part4
 mount -o ro "${rootfs}" /sysroot
 osname=$(ls /sysroot/ostree/deploy)
 deploydir=$(find "/sysroot/ostree/deploy/$osname/deploy" -mindepth 1 -maxdepth 1 -type d)
@@ -70,7 +70,7 @@ esac
 # We don't want double quotes for `fast`, which may be ''
 # shellcheck disable=SC2086
 RUST_BACKTRACE=full chroot "${deploydir}" coreos-installer pack osmet \
-    /dev/disk/by-id/virtio-osmet \
+    /dev/disk/by-id/virtio-coreos \
     --description "${description}" \
     --checksum "${checksum}" \
     --output /tmp/osmet.bin $fast
