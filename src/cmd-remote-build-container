@@ -3,6 +3,7 @@
 import argparse
 import logging
 import sys
+import tenacity
 
 from cosalib.utils import runcmd
 from os import environ
@@ -33,13 +34,22 @@ def push_container_image(repo, tag):
     cmd = ["podman", "--remote", "push", f"{repo}:{tag}"]
     # Long running command. Send output to stdout for logging
     runcmd(cmd, capture_output=False)
-    # Even though check_call only returns after the cmd completion,
-    # Quay seems to take more time to publish images in some occasions
-    runcmd(["sleep", "50"])
-    if is_tag_in_registry(repo, tag):
-        logger.info(f"Build and Push done successfully via tag: {tag}")
+    # Quay seems to take some time to publish images in some occasions.
+    # After the push let's wait for it to show up in the registry
+    # before moving on.
+    retryer = tenacity.Retrying(
+        stop=tenacity.stop_after_delay(600),
+        wait=tenacity.wait_fixed(15),
+        retry=tenacity.retry_if_result(lambda x: x is False),
+        before_sleep=tenacity.before_sleep_log(logging, logging.INFO))
+    try:
+        in_repo = retryer(is_tag_in_registry, repo, tag)
+    except tenacity.RetryError:
+        in_repo = False
+    if in_repo:
+        print(f"Build and Push done successfully via tag: {tag}")
     else:
-        raise Exception(f"Image pushed but not viewable in registry: tag:{tag}")
+        raise Exception(f"Image pushed but not viewable in registry: tag: {tag}")
 
 def is_tag_in_podman_storage(repo, tag):
     '''
