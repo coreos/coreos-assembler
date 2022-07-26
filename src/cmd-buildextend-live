@@ -676,8 +676,9 @@ boot
     if basearch == "x86_64":
         runcmd(['/usr/bin/isohybrid', '--uefi', f'{tmpisofile}.minimal'])
     # this consumes the minimal image
-    runcmd(['coreos-installer', 'pack', 'minimal-iso',
-           tmpisofile, f'{tmpisofile}.minimal', "--consume"])
+    runcmd(['/usr/lib/coreos-assembler/runvm-coreos-installer', img_metal,
+            'pack', 'minimal-iso', tmpisofile, f'{tmpisofile}.minimal',
+            '--consume'])
 
     buildmeta['images'].update({
         'live-iso': {
