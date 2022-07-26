@@ -1,10 +1,15 @@
 #!/usr/bin/python3 -u
 
 import argparse
+import logging
 import sys
 
 from cosalib.utils import runcmd
 from os import environ
+
+# Set up logging
+logging.basicConfig(level=logging.INFO,
+                    format="%(asctime)s %(levelname)s - %(message)s")
 
 def build_container_image(labels, gitURL, gitRef, repo, tag):
     '''
@@ -32,7 +37,7 @@ def push_container_image(repo, tag):
     # Quay seems to take more time to publish images in some occasions
     runcmd(["sleep", "50"])
     if is_tag_in_registry(repo, tag):
-        print(f"Build and Push done successfully via tag: {tag}")
+        logger.info(f"Build and Push done successfully via tag: {tag}")
     else:
         raise Exception(f"Image pushed but not viewable in registry: tag:{tag}")
 
@@ -58,6 +63,7 @@ def is_tag_in_registry(repo, tag):
     return False
 
 def main():
+    # Arguments
     args = parse_args()
     # Check for requisite env vars
     if environ.get('CONTAINER_HOST') is None or environ.get('CONTAINER_SSHKEY') is None:
@@ -68,32 +74,32 @@ def main():
         cmd = ["git", "ls-remote", args.git_url, args.git_ref]
         commit = runcmd(cmd).stdout.strip().decode()[0:6]
         args.tag = f"{args.arch}-{commit}"
-    print(f"Targetting a container image for {args.repo}:{args.tag}")
+    logging.info(f"Targetting a container image for {args.repo}:{args.tag}")
     # Sanity check the registry if asked to push to a registry
     if args.push_to_registry and is_tag_in_registry(args.repo, args.tag):
-        print(f"Container image at {args.repo}:{args.tag} exists.")
+        logging.info(f"Container image at {args.repo}:{args.tag} exists.")
         if args.force:
-            print(f"--force was passed. Will overwrite container at {args.repo}:{args.tag}")
+            logging.info(f"--force was passed. Will overwrite container at {args.repo}:{args.tag}")
         else:
-            print(f"No work to do. You can force with --force. Skipping build/push.")
+            logging.info("No work to do. You can force with --force. Skipping build/push.")
             return
     # Check first if the build already exists in local storage on the builder
     if is_tag_in_podman_storage(args.repo, args.tag):
         if args.force:
-            print(f"--force was passed. Will overwrite built container with tag {args.repo}:{args.tag}")
+            logging.info(f"--force was passed. Will overwrite built container with tag {args.repo}:{args.tag}")
             needbuild = True
         else:
-            print(f"Re-using existing built container with tag {args.repo}:{args.tag}")
+            logging.info(f"Re-using existing built container with tag {args.repo}:{args.tag}")
             needbuild = False
     else:
         needbuild = True
     # Build the container if needed.
     if needbuild:
-        print("Building container via podman")
+        logging.info("Building container via podman")
         build_container_image(args.label, args.git_url, args.git_ref, args.repo, args.tag)
     # Push to the registry if needed
     if args.push_to_registry:
-        print("Pushing to remote registry")
+        logging.info("Pushing to remote registry")
         push_container_image(args.repo, args.tag)
 
 def parse_args():
