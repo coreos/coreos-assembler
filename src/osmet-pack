@@ -12,16 +12,7 @@ if [ ! -f /etc/cosa-supermin ]; then
         fatal "Cannot pack osmet from $img; not an uncompressed image"
     fi
 
-    osmet_dest=$1; shift
-    checksum=$1; shift
-    speed=$1; shift
-
     workdir=$(pwd)
-    TMPDIR=$(readlink -f tmp/tmp-osmet-pack)
-    rm -rf "${TMPDIR}"
-    mkdir -p "${TMPDIR}"
-
-    set -- "${TMPDIR}/osmet.bin" "${checksum}" "${speed}"
 
     device_opts=
     if [[ "${img_src}" == *metal4k* ]]; then
@@ -32,9 +23,6 @@ if [ ! -f /etc/cosa-supermin ]; then
     runvm -drive "if=none,id=coreos,format=raw,readonly=on,file=${img_src}" \
         -device "virtio-blk,serial=coreos,drive=coreos${device_opts}" -- \
         /usr/lib/coreos-assembler/osmet-pack "$@"
-
-    mv "${TMPDIR}/osmet.bin" "${osmet_dest}"
-    rm -rf "${TMPDIR}"
 
     exit 0
 fi
@@ -73,6 +61,4 @@ RUST_BACKTRACE=full chroot "${deploydir}" coreos-installer pack osmet \
     /dev/disk/by-id/virtio-coreos \
     --description "${description}" \
     --checksum "${checksum}" \
-    --output /tmp/osmet.bin $fast
-
-mv /tmp/osmet.bin "${osmet_dest}"
+    --output "${osmet_dest}" $fast
