@@ -41,8 +41,10 @@ install_rpms() {
     local builddeps
     local frozendeps
 
-    # no frozen deps right now
-    frozendeps=""
+    # freeze coreos-installer to 0.12.0 because newer releases dropped support
+    # for the legacy `iso extract pack-minimal-iso` alias:
+    # https://github.com/openshift/os/issues/916
+    frozendeps="coreos-installer-0.12.0-2.fc35"
 
     # First, a general update; this is best practice.  We also hit an issue recently
     # where qemu implicitly depended on an updated libusbx but didn't have a versioned
