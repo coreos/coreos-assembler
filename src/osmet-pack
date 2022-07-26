@@ -12,7 +12,6 @@ if [ ! -f /etc/cosa-supermin ]; then
         fatal "Cannot pack osmet from $img; not an uncompressed image"
     fi
 
-    sector_size=$1; shift
     osmet_dest=$1; shift
     checksum=$1; shift
     speed=$1; shift
@@ -30,8 +29,8 @@ if [ ! -f /etc/cosa-supermin ]; then
     fi
 
     device_opts=
-    if [ "$sector_size" != 512 ]; then
-        device_opts=",physical_block_size=${sector_size},logical_block_size=${sector_size}"
+    if [[ "${img_src}" == *metal4k* ]]; then
+        device_opts=",physical_block_size=4096,logical_block_size=4096"
     fi
 
     # stamp it with "osmet" serial so we find it easily in the VM

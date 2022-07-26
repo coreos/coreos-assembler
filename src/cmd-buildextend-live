@@ -301,13 +301,13 @@ def generate_iso():
     tmp_osmet = os.path.join(tmpinitrd_rootfs, img_metal_obj['path'] + '.osmet')
     print('Generating osmet file for 512b metal image')
     runcmd(['/usr/lib/coreos-assembler/osmet-pack',
-           img_metal, '512', tmp_osmet, img_metal_checksum,
+           img_metal, tmp_osmet, img_metal_checksum,
            'fast' if args.fast else 'normal'])
     if img_metal4k_obj:
         tmp_osmet4k = os.path.join(tmpinitrd_rootfs, img_metal4k_obj['path'] + '.osmet')
         print('Generating osmet file for 4k metal image')
         runcmd(['/usr/lib/coreos-assembler/osmet-pack',
-               img_metal4k, '4096', tmp_osmet4k, img_metal4k_checksum,
+               img_metal4k, tmp_osmet4k, img_metal4k_checksum,
                'fast' if args.fast else 'normal'])
 
     # Generate root squashfs
