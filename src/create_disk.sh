@@ -544,16 +544,61 @@ create_dmverity() {
     mount -o ro "/dev/mapper/${partlabel}" "${mountpoint}"
 }
 
+# Save genprotimg input for later and don't run zipl here
+rdcore_replacement() {
+    local se_kargs_append se_initrd se_kernel se_parmfile
+    local blsfile kernel initrd
+    local se_script_dir se_tmp_disk se_tmp_mount se_tmp_boot
+
+    se_kargs_append=("ignition.firstboot")
+    while [ $# -gt 0 ]; do
+        se_kargs_append+=("$1")
+        shift
+    done
+
+    se_script_dir="/usr/lib/coreos-assembler/secex-genprotimgvm-scripts"
+    se_tmp_disk=$(realpath /dev/disk/by-id/virtio-genprotimg)
+    se_tmp_mount=$(mktemp -d /tmp/genprotimg-XXXXXX)
+    se_tmp_boot="${se_tmp_mount}/genprotimg"
+    mount "${se_tmp_disk}" "${se_tmp_mount}"
+    mkdir "${se_tmp_boot}"
+
+    se_initrd="${se_tmp_boot}/initrd.img"
+    se_kernel="${se_tmp_boot}/vmlinuz"
+    se_parmfile="${se_tmp_boot}/parmfile"
+
+    blsfile=$(find "${rootfs}"/boot/loader/entries/*.conf)
+    echo "$(grep options "${blsfile}" | cut -d' ' -f2-)" "${se_kargs_append[@]}" > "${se_parmfile}"
+    kernel="${rootfs}/boot/$(grep linux "${blsfile}" | cut -d' ' -f2)"
+    initrd="${rootfs}/boot/$(grep initrd "${blsfile}" | cut -d' ' -f2)"
+    cp "${kernel}" "${se_kernel}"
+    cp "${initrd}" "${se_initrd}"
+
+    # genprotimg and zipl will be done outside this script
+    # copy scripts for that step to the tmp disk
+    cp "${se_script_dir}/genprotimg-script.sh" "${se_script_dir}/post-script.sh" "${se_tmp_mount}/"
+
+    umount "${se_tmp_mount}"
+    rmdir "${se_tmp_mount}"
+}
+
 if [[ ${secure_execution} -eq 1 ]]; then
     # set up dm-verity for the rootfs and bootfs
     create_dmverity root $rootfs
     create_dmverity boot $rootfs/boot
 
-    # run zipl with root hashes as kargs
-    rdcore_zipl_args+=("--secex-mode=enforce" "--hostkey=/dev/disk/by-id/virtio-hostkey")
-    rdcore_zipl_args+=("--append-karg=rootfs.roothash=$(cat /tmp/root-roothash)")
-    rdcore_zipl_args+=("--append-karg=bootfs.roothash=$(cat /tmp/boot-roothash)")
-    chroot_run /usr/lib/dracut/modules.d/50rdcore/rdcore zipl "${rdcore_zipl_args[@]}"
+    # We need to run the genprotimg step in a separate step for rhcos release images
+    if [ ! -e /dev/disk/by-id/virtio-genprotimg ]; then
+        echo "Building local Secure Execution Image, running zipl and genprotimg"
+        # run zipl with root hashes as kargs
+        rdcore_zipl_args+=("--secex-mode=enforce" "--hostkey=/dev/disk/by-id/virtio-hostkey")
+        rdcore_zipl_args+=("--append-karg=rootfs.roothash=$(cat /tmp/root-roothash)")
+        rdcore_zipl_args+=("--append-karg=bootfs.roothash=$(cat /tmp/boot-roothash)")
+        chroot_run /usr/lib/dracut/modules.d/50rdcore/rdcore zipl "${rdcore_zipl_args[@]}"
+    else
+        echo "Building release Secure Execution Image, zipl and genprotimg will be run later"
+        rdcore_replacement "rootfs.roothash=$(cat /tmp/root-roothash)" "bootfs.roothash=$(cat /tmp/boot-roothash)"
+    fi
 
     # unmount and close everything
     umount -R $rootfs

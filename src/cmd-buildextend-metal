@@ -35,10 +35,11 @@ EOF
 
 # Parse options
 hostkey=src/config/secex-hostkey
+genprotimgvm=
 rc=0
 build=
 force=
-options=$(getopt --options h --longoptions help,force,build:,hostkey: -- "$@") || rc=$?
+options=$(getopt --options h --longoptions help,force,build:,hostkey:,genprotimgvm: -- "$@") || rc=$?
 [ $rc -eq 0 ] || {
     print_help
     exit 1
@@ -58,8 +59,13 @@ while true; do
             shift
             ;;
         --hostkey)
-            hostkey="$2"
-            shift;;
+            hostkey=$(realpath "$2")
+            shift
+            ;;
+        --genprotimgvm)
+            genprotimgvm="$2"
+            shift
+            ;;
         --)
             shift
             break
@@ -87,15 +93,6 @@ esac
 
 if [[ "$basearch" != "s390x" && $image_type == dasd ]]; then
     fatal "$basearch is not supported for building dasd images"
-fi
-disk_args=()
-# SecureExecution extra stuff
-secex_hostkey_drive=()
-if [[ $secure_execution -eq "1" ]]; then
-    hostkey=$(realpath "$hostkey")
-    disk_args+=("--with-secure-execution")
-    secex_hostkey_drive=("-drive" "if=none,id=hostkey,format=raw,file=$hostkey,readonly=on" \
-                         "-device" "virtio-blk,serial=hostkey,drive=hostkey")
 fi
 
 # shellcheck disable=SC2031
@@ -185,6 +182,23 @@ if [ "${rootfs_type}" = "ext4verity" ]; then
     BLKSIZE="$(getconf PAGE_SIZE)"
 fi
 
+disk_args=()
+qemu_args=()
+# SecureExecution extra stuff
+if [[ $secure_execution -eq "1" ]]; then
+    disk_args+=("--with-secure-execution")
+    if [ -z "${genprotimgvm}" ]; then
+        qemu_args+=("-drive" "if=none,id=hostkey,format=raw,file=$hostkey,readonly=on" \
+                            "-device" "virtio-blk,serial=hostkey,drive=hostkey")
+    else
+        genprotimg_img="${PWD}/secex-genprotimg.img"
+        qemu-img create -f raw "${genprotimg_img}" 512M
+        mkfs.ext4 "${genprotimg_img}"
+        qemu_args+=("-drive" "if=none,id=genprotimg,format=raw,file=${genprotimg_img}" \
+                            "-device" "virtio-blk,serial=genprotimg,drive=genprotimg")
+    fi
+fi
+
 echo "Estimating disk size..."
 # The additional 35% here is obviously a hack, but we can't easily completely fill the filesystem,
 # and doing so has apparently negative performance implications.
@@ -223,7 +237,7 @@ extra_target_device_opts=""
 if [[ $image_type == dasd || $image_type == metal4k ]]; then
   extra_target_device_opts=",physical_block_size=4096,logical_block_size=4096"
 fi
-target_drive=("-drive" "if=none,id=target,format=${image_format},file=${path}.tmp,cache=unsafe" \
+qemu_args+=("-drive" "if=none,id=target,format=${image_format},file=${path}.tmp,cache=unsafe" \
               "-device" "virtio-blk,serial=target,drive=target${extra_target_device_opts}")
 
 # Generate the JSON describing the disk we want to build
@@ -246,13 +260,19 @@ if [ -e "${configdir}/platforms.yaml" ]; then
     platforms_json="${workdir}/tmp/platforms.json"
     yaml2json "${configdir}/platforms.yaml" "${platforms_json}"
 fi
-runvm "${target_drive[@]}" "${secex_hostkey_drive[@]}" -- \
+runvm "${qemu_args[@]}" -- \
         /usr/lib/coreos-assembler/create_disk.sh \
             --config "$(pwd)"/image-for-disk.json \
             --kargs "\"${kargs}\"" \
             --platform "${ignition_platform_id}" \
             ${platforms_json:+--platforms-json "${platforms_json}"} \
             "${disk_args[@]}"
+
+if [[ $secure_execution -eq "1" && -n "${genprotimgvm}" ]]; then
+    /usr/lib/coreos-assembler/secex-genprotimgvm-scripts/runvm.sh \
+        --genprotimgvm "${genprotimgvm}" -- "${qemu_args[@]}"
+fi
+
 /usr/lib/coreos-assembler/finalize-artifact "${path}.tmp" "${path}"
 
 sha256=$(sha256sum_str < "${img}")
