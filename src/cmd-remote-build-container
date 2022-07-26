@@ -82,7 +82,7 @@ def main():
     # short commit hash
     if not args.tag:
         cmd = ["git", "ls-remote", args.git_url, args.git_ref]
-        commit = runcmd(cmd).stdout.strip().decode()[0:6]
+        commit = runcmd(cmd).stdout.strip().decode()[0:7]
         args.tag = f"{args.arch}-{commit}"
     logging.info(f"Targetting a container image for {args.repo}:{args.tag}")
     # Sanity check the registry if asked to push to a registry
