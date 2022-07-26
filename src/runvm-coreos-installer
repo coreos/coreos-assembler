@@ -1,6 +1,11 @@
 #!/bin/bash
 set -euo pipefail
 
+# This script runs the coreos-installer found in the compose itself inside a
+# chroot inside a supermin VM. The first argument is the path to the metal
+# image. All following arguments are passed as is to coreos-installer.
+# The metal image is available as /dev/disk/by-id/virtio-coreos.
+
 if [ ! -f /etc/cosa-supermin ]; then
     dn=$(dirname "$0")
     # shellcheck source=src/cmdlib.sh
@@ -22,7 +27,7 @@ if [ ! -f /etc/cosa-supermin ]; then
     # stamp it with "coreos" serial so we find it easily in the VM
     runvm -drive "if=none,id=coreos,format=raw,readonly=on,file=${img_src}" \
         -device "virtio-blk,serial=coreos,drive=coreos${device_opts}" -- \
-        /usr/lib/coreos-assembler/osmet-pack "$@"
+        /usr/lib/coreos-assembler/runvm-coreos-installer "$@"
 
     exit 0
 fi
