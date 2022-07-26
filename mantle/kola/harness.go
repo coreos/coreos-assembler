@@ -1267,6 +1267,9 @@ func makeNonExclusiveTest(bucket int, tests []*register.Test, flight platform.Fl
 		if test.HasFlag(register.AllowConfigWarnings) {
 			plog.Fatalf("Non-exclusive test %v cannot have AllowConfigWarnings flag", test.Name)
 		}
+		if test.AppendKernelArgs != "" {
+			plog.Fatalf("Non-exclusive test %v cannot have AppendKernelArgs", test.Name)
+		}
 		if !internetAccess && testRequiresInternet(test) {
 			flags = append(flags, register.RequiresInternetAccess)
 			internetAccess = true
