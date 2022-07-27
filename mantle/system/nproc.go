@@ -15,12 +15,11 @@
 package system
 
 import (
-	"io/ioutil"
+	"fmt"
+	"math"
 	"os"
 	"strconv"
 	"strings"
-
-	"github.com/pkg/errors"
 
 	"github.com/coreos/mantle/system/exec"
 )
@@ -29,29 +28,78 @@ import (
 // this value is appropriate to pass to e.g. make -J as well as
 // qemu -smp for example.
 func GetProcessors() (uint, error) {
-	// Note this code originated in cmdlib.sh; the git history there will
-	// have a bit more info.
-	proc1cgroup, err := ioutil.ReadFile("/proc/1/cgroup")
-	if err != nil {
-		if !os.IsNotExist(err) {
-			return 0, err
-		}
-	} else {
-		// only use 1 core on kubernetes since we can't determine how much we can actually use
-		if strings.Contains(string(proc1cgroup), "kubepods") {
-			return 1, nil
-		}
-	}
-
+	// Get available CPU count, including sched_getaffinity()
 	nprocBuf, err := exec.Command("nproc").CombinedOutput()
 	if err != nil {
-		return 0, errors.Wrapf(err, "executing nproc")
+		return 0, fmt.Errorf("executing nproc: %w", err)
 	}
-
-	nproc, err := strconv.ParseInt(strings.TrimSpace(string(nprocBuf)), 10, 32)
+	nproc, err := strconv.ParseUint(strings.TrimSpace(string(nprocBuf)), 10, 32)
 	if err != nil {
-		return 0, errors.Wrapf(err, "parsing nproc output")
+		return 0, fmt.Errorf("parsing nproc output: %w", err)
 	}
 
+	// Compute the available CPU quota
+	quota, err := getCpuQuota()
+	if err != nil {
+		return 0, err
+	}
+
+	if quota < uint(nproc) {
+		return quota, nil
+	}
 	return uint(nproc), nil
+}
+
+func getCpuQuota() (uint, error) {
+	// cgroups v2
+	buf, err := os.ReadFile("/sys/fs/cgroup/cpu.max")
+	if err == nil {
+		vals := strings.SplitN(strings.TrimSpace(string(buf)), " ", 2)
+		if len(vals) != 2 {
+			return 0, fmt.Errorf("invalid cpu.max value")
+		}
+		if vals[0] != "max" {
+			quota, err := strconv.ParseUint(vals[0], 10, 32)
+			if err != nil {
+				return 0, fmt.Errorf("invalid CPU quota: %w", err)
+			}
+			period, err := strconv.ParseUint(vals[1], 10, 32)
+			if err != nil {
+				return 0, fmt.Errorf("invalid CPU period: %w", err)
+			}
+			if quota > 0 && period > 0 {
+				return uint((quota + period - 1) / period), nil
+			}
+		}
+	} else if !os.IsNotExist(err) {
+		return 0, fmt.Errorf("reading cpu.max: %w", err)
+	}
+
+	// cgroups v1
+	buf, err = os.ReadFile("/sys/fs/cgroup/cpu/cpu.cfs_quota_us")
+	if os.IsNotExist(err) {
+		return math.MaxUint, nil
+	} else if err != nil {
+		return 0, fmt.Errorf("reading cpu.cfs_quota_us: %w", err)
+	}
+	// can be -1
+	quota, err := strconv.ParseInt(strings.TrimSpace(string(buf)), 10, 32)
+	if err != nil {
+		return 0, fmt.Errorf("invalid CPU quota: %w", err)
+	}
+	buf, err = os.ReadFile("/sys/fs/cgroup/cpu/cpu.cfs_period_us")
+	if os.IsNotExist(err) {
+		return math.MaxUint, nil
+	} else if err != nil {
+		return 0, fmt.Errorf("reading cpu.cfs_period_us: %w", err)
+	}
+	period, err := strconv.ParseUint(strings.TrimSpace(string(buf)), 10, 32)
+	if err != nil {
+		return 0, fmt.Errorf("invalid CPU period: %w", err)
+	}
+	if quota > 0 && period > 0 {
+		return uint((uint64(quota) + period - 1) / period), nil
+	}
+
+	return math.MaxUint, nil
 }
