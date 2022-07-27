@@ -2,7 +2,7 @@ import subprocess
 import logging as log
 import json
 import sys
-from cosalib.cmdlib import runcmd_verbose
+from cosalib.cmdlib import runcmd
 from tenacity import (
     retry,
     stop_after_attempt
@@ -12,7 +12,7 @@ from tenacity import (
 def remove_aliyun_image(aliyun_id, region):
     print(f"aliyun: removing image {aliyun_id} in {region}")
     try:
-        runcmd_verbose([
+        runcmd([
             'ore',
             'aliyun', '--log-level', 'debug', 'delete-image',
             '--id', aliyun_id,

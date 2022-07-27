@@ -69,8 +69,8 @@ def oscontainer_extract(containers_storage, tmpdir, src, dest,
         cmd.append("--cert-dir={}".format(cert_dir))
     tmp_tarball = tmpdir + '/container.tar'
     cmd += ['copy', "docker://" + src, 'docker-archive://' + tmp_tarball]
-    cmdlib.runcmd_verbose(cmd)
-    cmdlib.runcmd_verbose(['tar', 'xf', tmp_tarball], cwd=tmpdir)
+    cmdlib.runcmd(cmd)
+    cmdlib.runcmd(['tar', 'xf', tmp_tarball], cwd=tmpdir)
     os.unlink(tmp_tarball)
     # This is a brutal hack to extract all the layers; we don't even bother with ordering
     # because we know we're not removing anything in higher layers.
@@ -81,9 +81,9 @@ def oscontainer_extract(containers_storage, tmpdir, src, dest,
     repo = tmpdir + '/srv/repo'
     commit = find_commit_from_oscontainer(repo)
     print(f"commit: {commit}")
-    cmdlib.runcmd_verbose(["ostree", "--repo=" + dest, "pull-local", repo, commit])
+    cmdlib.runcmd(["ostree", "--repo=" + dest, "pull-local", repo, commit])
     if ref is not None:
-        cmdlib.runcmd_verbose([
+        cmdlib.runcmd([
             "ostree", "--repo=" + dest, "refs", '--create=' + ref, commit])
 
 
@@ -128,7 +128,7 @@ def oscontainer_build(containers_storage, tmpdir, src, ref, image_name_and_tag,
         # because the repo will be put into a container image and the build
         # process should handle its own fsync (or choose not to).
         print("Copying ostree commit into container: {} ...".format(rev))
-        cmdlib.runcmd_verbose(["ostree", "--repo=" + dest_repo, "pull-local", "--disable-fsync", src, rev])
+        cmdlib.runcmd(["ostree", "--repo=" + dest_repo, "pull-local", "--disable-fsync", src, rev])
 
         for d in add_directories:
             with os.scandir(d) as it:
@@ -181,7 +181,7 @@ def oscontainer_build(containers_storage, tmpdir, src, ref, image_name_and_tag,
             tarball = os.path.abspath(os.path.join(builddir, meta['extensions']['path']))
             dest_dir = os.path.join(mnt, 'extensions')
             os.makedirs(dest_dir, exist_ok=True)
-            cmdlib.runcmd_verbose(["tar", "-xf", tarball], cwd=dest_dir)
+            cmdlib.runcmd(["tar", "-xf", tarball], cwd=dest_dir)
 
             with open(os.path.join(dest_dir, 'extensions.json')) as f:
                 extensions = json.load(f)
@@ -198,7 +198,7 @@ def oscontainer_build(containers_storage, tmpdir, src, ref, image_name_and_tag,
         if display_name is not None:
             config += ['-l', 'io.openshift.build.version-display-names=machine-os=' + display_name,
                        '-l', 'io.openshift.build.versions=machine-os=' + ostree_version]
-        cmdlib.runcmd_verbose(buildah_base_argv + ['config'] + config + [bid])
+        cmdlib.runcmd(buildah_base_argv + ['config'] + config + [bid])
         print("Committing container...")
         iid = run_get_string(buildah_base_argv + ['commit', bid, image_name_and_tag])
         print("{} {}".format(image_name_and_tag, iid))
@@ -229,7 +229,7 @@ def oscontainer_build(containers_storage, tmpdir, src, ref, image_name_and_tag,
 
         podCmd.append(image_name_and_tag)
 
-        cmdlib.runcmd_verbose(podCmd)
+        cmdlib.runcmd(podCmd)
     elif digestfile is not None:
         inspect = run_get_json(buildah_base_argv + ['inspect', image_name_and_tag])[0]
         with open(digestfile, 'w') as f:

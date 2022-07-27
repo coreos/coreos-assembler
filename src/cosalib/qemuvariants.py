@@ -19,7 +19,7 @@ from cosalib.build import (
 from cosalib.cmdlib import (
     get_basearch,
     image_info,
-    runcmd_verbose,
+    runcmd,
     sha256sum_file,
     import_ostree_commit
 )
@@ -222,8 +222,8 @@ class QemuVariantImage(_Build):
             return None
 
     def set_platform(self):
-        runcmd_verbose(['/usr/lib/coreos-assembler/gf-set-platform',
-                     self.image_qemu, self.tmp_image, self.platform])
+        runcmd(['/usr/lib/coreos-assembler/gf-set-platform',
+               self.image_qemu, self.tmp_image, self.platform])
 
     def mutate_image(self):
         """
@@ -254,7 +254,7 @@ class QemuVariantImage(_Build):
         if self.virtual_size is not None:
             resize_cmd = ['qemu-img', 'resize',
                           self.tmp_image, self.virtual_size]
-            runcmd_verbose(resize_cmd)
+            runcmd(resize_cmd)
 
         cmd = ['qemu-img', 'convert', '-f', 'qcow2', '-O',
                self.image_format, self.tmp_image]
@@ -263,7 +263,7 @@ class QemuVariantImage(_Build):
             if v is not None:
                 cmd.extend([v])
         cmd.extend([work_img])
-        runcmd_verbose(cmd)
+        runcmd(cmd)
 
         img_info = image_info(work_img)
         if self.image_format != img_info.get("format"):
@@ -294,7 +294,7 @@ class QemuVariantImage(_Build):
             tar_cmd.extend(self.tar_flags)
             tar_cmd.extend(['-f', final_img])
             tar_cmd.extend(tarlist)
-            runcmd_verbose(tar_cmd)
+            runcmd(tar_cmd)
         elif not self.mutate_callback_creates_final_image:
             log.info(f"Moving {work_img} to {final_img}")
             shutil.move(work_img, final_img)
@@ -304,7 +304,7 @@ class QemuVariantImage(_Build):
             size = os.stat(final_img).st_size
             temp_path = f"{final_img}.tmp"
             with open(temp_path, "wb") as fh:
-                runcmd_verbose(['gzip', '-9c', final_img], stdout=fh)
+                runcmd(['gzip', '-9c', final_img], stdout=fh)
             shutil.move(temp_path, final_img)
             meta_patch.update({
                 'skip-compression': True,

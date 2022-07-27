@@ -46,7 +46,7 @@ with open(metapath) as f:
 # for backcompat, we auto-build extensions if they're missing
 if os.path.exists('src/config/extensions.yaml'):
     if 'extensions' not in meta:
-        cmdlib.runcmd_verbose(['coreos-assembler', 'buildextend-extensions'])
+        cmdlib.runcmd(['coreos-assembler', 'buildextend-extensions'])
         with open(metapath) as f:
             meta = json.load(f)
     assert 'extensions' in meta
@@ -82,9 +82,9 @@ if not os.path.exists(tmprepo):
 
 tmp_osreleasedir = 'tmp/usrlib-osrelease'
 subprocess.check_call(['rm', '-rf', tmp_osreleasedir])
-cmdlib.runcmd_verbose(['/usr/bin/ostree', 'checkout', '--repo', tmprepo,
-                      '--user-mode', '--subpath=/usr/lib/os-release', ostree_commit,
-                      tmp_osreleasedir])
+cmdlib.runcmd(['/usr/bin/ostree', 'checkout', '--repo', tmprepo,
+              '--user-mode', '--subpath=/usr/lib/os-release', ostree_commit,
+              tmp_osreleasedir])
 display_name = None
 with open(os.path.join(tmp_osreleasedir, "os-release")) as f:
     display_name = subprocess.check_output(['/bin/sh', '-c', 'set -euo pipefail; . /proc/self/fd/0 && echo $NAME'], stdin=f, encoding='UTF-8').strip()

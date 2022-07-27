@@ -14,7 +14,7 @@ from cosalib.builds import Builds
 from cosalib.cmdlib import (
     ncpu,
     rm_allow_noent,
-    runcmd_verbose,
+    runcmd,
     sha256sum_file,
     write_json)
 
@@ -121,9 +121,9 @@ def compress_one_builddir(builddir):
             with open(tmpfile, 'wb') as f:
                 if args.compressor == 'xz':
                     t = ncpu()
-                    runcmd_verbose(['xz', '-c9', f'-T{t}', filepath], stdout=f)
+                    runcmd(['xz', '-c9', f'-T{t}', filepath], stdout=f)
                 else:
-                    runcmd_verbose(['gzip', f'-{gzip_level}', '-c', filepath], stdout=f)
+                    runcmd(['gzip', f'-{gzip_level}', '-c', filepath], stdout=f)
             file_with_ext = file + ext
             filepath_with_ext = filepath + ext
             compressed_size = os.path.getsize(tmpfile)
@@ -199,9 +199,9 @@ def uncompress_one_builddir(builddir):
             with open(tmpfile, 'wb') as f:
                 if file.endswith('xz'):
                     t = ncpu()
-                    runcmd_verbose(['xz', '-dc', f'-T{t}', filepath], stdout=f)
+                    runcmd(['xz', '-dc', f'-T{t}', filepath], stdout=f)
                 elif file.endswith('gz'):
-                    runcmd_verbose(['gzip', '-dc', filepath], stdout=f)
+                    runcmd(['gzip', '-dc', filepath], stdout=f)
                 else:
                     print(f"Unknown sufix of file {file}")
             file_without_ext = strip_ext(file)

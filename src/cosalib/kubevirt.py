@@ -3,7 +3,7 @@ import subprocess
 import logging as log
 
 from cosalib.cmdlib import (
-    runcmd_verbose,
+    runcmd,
 )
 
 from cosalib.buildah import (
@@ -34,11 +34,11 @@ class KubeVirtImage(QemuVariantImage):
         final_img = os.path.join(os.path.abspath(self.build_dir),
                                  self.image_name)
         cmd = buildah_base_argv + ["from", "scratch"]
-        buildah_img = runcmd_verbose(cmd, capture_output=True).stdout.decode("utf-8").strip()
-        runcmd_verbose(buildah_base_argv + ["add", "--chmod", "0555", buildah_img, image_name, "/disk/coreos.img"])
+        buildah_img = runcmd(cmd, capture_output=True).stdout.decode("utf-8").strip()
+        runcmd(buildah_base_argv + ["add", "--chmod", "0555", buildah_img, image_name, "/disk/coreos.img"])
         cmd = buildah_base_argv + ["commit", buildah_img]
-        digest = runcmd_verbose(cmd, capture_output=True).stdout.decode("utf-8").strip()
-        runcmd_verbose(buildah_base_argv + ["push", "--format", "oci", digest, f"oci-archive:{final_img}"])
+        digest = runcmd(cmd, capture_output=True).stdout.decode("utf-8").strip()
+        runcmd(buildah_base_argv + ["push", "--format", "oci", digest, f"oci-archive:{final_img}"])
 
 
 def kubevirt_run_ore(build, args):
@@ -53,11 +53,11 @@ def kubevirt_run_ore(build, args):
         tags.extend(args.tag)
     full_name = os.path.join(args.repository, name)
 
-    digest = runcmd_verbose(["skopeo", "inspect", f"oci-archive:{build.image_path}", "-f", "{{.Digest}}"],
-                            stdout=subprocess.PIPE).stdout.decode("utf-8").strip()
+    digest = runcmd(["skopeo", "inspect", f"oci-archive:{build.image_path}", "-f", "{{.Digest}}"],
+                    stdout=subprocess.PIPE).stdout.decode("utf-8").strip()
     for tag in tags:
         log.info(f"pushing {full_name}:{tag} with digest {digest}")
-        runcmd_verbose(["skopeo", "copy", f"oci-archive:{build.image_path}", f"docker://{full_name}:{tag}"])
+        runcmd(["skopeo", "copy", f"oci-archive:{build.image_path}", f"docker://{full_name}:{tag}"])
 
     build.meta['kubevirt'] = {
         'image': f"{full_name}@{digest}",
