@@ -1,6 +1,6 @@
 import os
 import urllib
-from cosalib.cmdlib import run_verbose
+from cosalib.cmdlib import runcmd_verbose
 from tenacity import (
     retry,
     stop_after_attempt
@@ -11,7 +11,7 @@ from tenacity import (
 def remove_azure_image(image, resource_group, auth, profile):
     print(f"Azure: removing image {image}")
     try:
-        run_verbose([
+        runcmd_verbose([
             'ore', 'azure',
             '--azure-auth', auth,
             '--azure-profile', profile,
@@ -51,7 +51,7 @@ def azure_run_ore(build, args):
     ]
     if args.force:
         ore_args.append('--overwrite')
-    run_verbose(ore_args)
+    runcmd_verbose(ore_args)
 
     url_path = urllib.parse.quote((
         f"{args.storage_account}.blob.core.windows.net/"

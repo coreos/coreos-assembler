@@ -13,17 +13,17 @@ from cosalib import cmdlib
 PY_MAJOR, PY_MINOR, PY_PATCH = platform.python_version_tuple()
 
 
-def test_run_verbose():
+def test_runcmd():
     """
-    Verify run_verbose returns expected information
+    Verify runcmd returns expected information
     """
-    result = cmdlib.run_verbose(['echo', 'hi'])
+    result = cmdlib.runcmd(['echo', 'hi'])
     assert result.stdout is None
     with pytest.raises(FileNotFoundError):
-        cmdlib.run_verbose(['idonotexist'])
+        cmdlib.runcmd(['idonotexist'])
     # If we are not at least on Python 3.7 we must skip the following test
     if PY_MAJOR == 3 and PY_MINOR >= 7:
-        result = cmdlib.run_verbose(['echo', 'hi'], capture_output=True)
+        result = cmdlib.runcmd(['echo', 'hi'], capture_output=True)
         assert result.stdout == b'hi\n'
 
 
@@ -103,10 +103,10 @@ def test_rm_allow_noent(tmpdir):
 
 
 def test_image_info(tmpdir):
-    cmdlib.run_verbose([
+    cmdlib.runcmd([
         "qemu-img", "create", "-f", "qcow2", f"{tmpdir}/test.qcow2", "10M"])
     assert cmdlib.image_info(f"{tmpdir}/test.qcow2").get('format') == "qcow2"
-    cmdlib.run_verbose([
+    cmdlib.runcmd([
         "qemu-img", "create", "-f", "vpc",
         '-o', 'force_size,subformat=fixed',
         f"{tmpdir}/test.vpc", "10M"])

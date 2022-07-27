@@ -1,6 +1,6 @@
 import os
 import re
-from cosalib.cmdlib import run_verbose
+from cosalib.cmdlib import runcmd_verbose
 from tenacity import (
     retry,
     stop_after_attempt
@@ -21,7 +21,7 @@ GCP_NAMING_RE = r"[a-z](?:[-a-z0-9]{0,61}[a-z0-9])?|[1-9][0-9]{0,19}"
 def remove_gcp_image(gcp_id, json_key, project):
     print(f"GCP: removing image {gcp_id}")
     try:
-        run_verbose([
+        runcmd_verbose([
             'ore', 'gcloud', 'delete-images', gcp_id,
             '--json-key', json_key,
             '--project', project
@@ -75,7 +75,7 @@ def gcp_run_ore(build, args):
         ore_upload_cmd.extend(['--create-image=false'])
     for license in args.license or DEFAULT_LICENSES:
         ore_upload_cmd.extend(['--license', license])
-    run_verbose(ore_upload_cmd)
+    runcmd_verbose(ore_upload_cmd)
 
     # Run deprecate image to deprecate if requested
     if args.deprecated:
@@ -84,7 +84,7 @@ def gcp_run_ore(build, args):
             '--image', gcp_name,
             '--state', 'DEPRECATED'
         ]
-        run_verbose(ore_deprecate_cmd)
+        runcmd_verbose(ore_deprecate_cmd)
 
     # Run update-image to add to an image family if requested.
     # We run this as a separate API call because we want to run
@@ -95,7 +95,7 @@ def gcp_run_ore(build, args):
             '--image', gcp_name,
             '--family', args.family
         ]
-        run_verbose(ore_update_cmd)
+        runcmd_verbose(ore_update_cmd)
 
     build.meta['gcp'] = {
         'image': gcp_name,

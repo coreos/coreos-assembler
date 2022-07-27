@@ -23,7 +23,7 @@ sys.path.insert(0, COSA_PATH)
 from cosalib.meta import GenericBuildMeta as Meta
 from cosalib.cmdlib import (
     get_basearch,
-    run_verbose
+    runcmd_verbose
 )
 
 os.environ["PATH"] = f"{os.getcwd()}:{COSA_PATH}:{os.environ.get('PATH')}"
@@ -62,7 +62,7 @@ def release_stream(meta, args, ocp_ver):
     if args.authfile != "":
         tag_cmd.extend(["--authfile", args.authfile])
     tag_cmd.extend([f"docker://{args.from_url}"])
-    tags = json.loads(run_verbose(tag_cmd, capture_output=True).stdout)
+    tags = json.loads(runcmd_verbose(tag_cmd, capture_output=True).stdout)
 
     log.info(f"Looking for latest release tag for {ocp_ver}")
     ctags = []
@@ -132,5 +132,5 @@ if __name__ == '__main__':
 
     log.info(f"Command: {' '.join(cmd)}")
     if not args.dry_run:
-        run_verbose(cmd)
+        runcmd_verbose(cmd)
         log.info(f"Payload released to: {payload_dest}")
