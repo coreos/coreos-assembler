@@ -127,6 +127,6 @@ basevinstall_args = ['virt-install', f"--connect={args.connect}",
                      f'--name={domname}', '--os-type=linux', '--os-variant=rhel8-unknown',
                      f'--qemu-commandline={qemu_args}',
                      '--noautoconsole']
-cmdlib.run_verbose(basevinstall_args + vinstall_args)
+cmdlib.runcmd_verbose(basevinstall_args + vinstall_args)
 if args.console:
     os.execlp("virsh", "virsh", "console", domname)

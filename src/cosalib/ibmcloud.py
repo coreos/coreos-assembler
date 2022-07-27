@@ -8,7 +8,7 @@ import urllib
 import os.path
 import sys
 from cosalib.cmdlib import (
-    run_verbose
+    runcmd_verbose
 )
 from tenacity import (
     retry,
@@ -139,7 +139,7 @@ def ibmcloud_run_ore(build, args):
     if args.force:
         ore_args.extend(['--force'])
 
-    run_verbose(ore_args)
+    runcmd_verbose(ore_args)
     url_path = urllib.parse.quote((
         f"s3.{region}.cloud-object-storage.appdomain.cloud/"
         f"{args.bucket}/{ibmcloud_object_name}"

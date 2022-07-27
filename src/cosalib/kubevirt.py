@@ -3,7 +3,7 @@ import subprocess
 import logging as log
 
 from cosalib.cmdlib import (
-    run_verbose,
+    runcmd_verbose,
 )
 
 from cosalib.buildah import (
@@ -33,10 +33,12 @@ class KubeVirtImage(QemuVariantImage):
         buildah_base_argv = buildah_base_args()
         final_img = os.path.join(os.path.abspath(self.build_dir),
                                  self.image_name)
-        buildah_img = run_verbose_collect_stdout(buildah_base_argv + ["from", "scratch"])
-        run_verbose(buildah_base_argv + ["add", "--chmod", "0555", buildah_img, image_name, "/disk/coreos.img"])
-        digest = run_verbose_collect_stdout(buildah_base_argv + ["commit", buildah_img])
-        run_verbose(buildah_base_argv + ["push", "--format", "oci", digest, f"oci-archive:{final_img}"])
+        cmd = buildah_base_argv + ["from", "scratch"]
+        buildah_img = runcmd_verbose(cmd, capture_output=True).stdout.decode("utf-8").strip()
+        runcmd_verbose(buildah_base_argv + ["add", "--chmod", "0555", buildah_img, image_name, "/disk/coreos.img"])
+        cmd = buildah_base_argv + ["commit", buildah_img]
+        digest = runcmd_verbose(cmd, capture_output=True).stdout.decode("utf-8").strip()
+        runcmd_verbose(buildah_base_argv + ["push", "--format", "oci", digest, f"oci-archive:{final_img}"])
 
 
 def kubevirt_run_ore(build, args):
@@ -51,11 +53,11 @@ def kubevirt_run_ore(build, args):
         tags.extend(args.tag)
     full_name = os.path.join(args.repository, name)
 
-    digest = run_verbose(["skopeo", "inspect", f"oci-archive:{build.image_path}", "-f", "{{.Digest}}"],
-                         stdout=subprocess.PIPE).stdout.decode("utf-8").strip()
+    digest = runcmd_verbose(["skopeo", "inspect", f"oci-archive:{build.image_path}", "-f", "{{.Digest}}"],
+                            stdout=subprocess.PIPE).stdout.decode("utf-8").strip()
     for tag in tags:
         log.info(f"pushing {full_name}:{tag} with digest {digest}")
-        run_verbose(["skopeo", "copy", f"oci-archive:{build.image_path}", f"docker://{full_name}:{tag}"])
+        runcmd_verbose(["skopeo", "copy", f"oci-archive:{build.image_path}", f"docker://{full_name}:{tag}"])
 
     build.meta['kubevirt'] = {
         'image': f"{full_name}@{digest}",
@@ -92,7 +94,3 @@ def get_kubevirt_variant(variant, parser, kwargs={}):
         arch=parser.arch,
         compress=parser.compress,
         **kwargs)
-
-
-def run_verbose_collect_stdout(args):
-    return run_verbose(args, stdout=subprocess.PIPE).stdout.decode("utf-8").strip()

@@ -1,4 +1,4 @@
-from cosalib.utils import runcmd
+from cosalib.cmdlib import runcmd
 
 
 def create(repo, tag, imageTags):
@@ -9,11 +9,11 @@ def create(repo, tag, imageTags):
     @param tag str manifest tag
     '''
     cmd = ["podman", "manifest", "create", f"{repo}:{tag}"]
-    runcmd(cmd, capture_output=False)
+    runcmd(cmd)
     for imgtag in imageTags:
         cmd = ["podman", "manifest", "add",
                f"{repo}:{tag}", f"docker://{repo}:{imgtag}"]
-        runcmd(cmd, capture_output=False)
+        runcmd(cmd)
 
 
 def push(repo, tag, v2s2=None):
@@ -30,4 +30,4 @@ def push(repo, tag, v2s2=None):
         # to create a manifest with 2 different mediaType. It seems to be
         # a Quay issue.
         cmd.extend(["--remove-signatures", "-f", "v2s2"])
-    runcmd(cmd, capture_output=False)
+    runcmd(cmd)

@@ -5,7 +5,7 @@ import logging
 import sys
 import tenacity
 
-from cosalib.utils import runcmd
+from cosalib.cmdlib import runcmd
 from os import environ
 
 # Set up logging
@@ -23,7 +23,7 @@ def build_container_image(labels, gitURL, gitRef, repo, tag):
     for label in labels:
         cmd.extend([f"--label={label}"])
     # Long running command. Send output to stdout for logging
-    runcmd(cmd, capture_output=False)
+    runcmd(cmd)
 
 def push_container_image(repo, tag):
     '''
@@ -33,7 +33,7 @@ def push_container_image(repo, tag):
     '''
     cmd = ["podman", "--remote", "push", f"{repo}:{tag}"]
     # Long running command. Send output to stdout for logging
-    runcmd(cmd, capture_output=False)
+    runcmd(cmd)
     # Quay seems to take some time to publish images in some occasions.
     # After the push let's wait for it to show up in the registry
     # before moving on.
@@ -58,7 +58,7 @@ def is_tag_in_podman_storage(repo, tag):
     @param tag  str image tag
     '''
     cmd = ["podman", "--remote", "image", "exists", f"{repo}:{tag}"]
-    return runcmd(cmd, check=False).returncode == 0
+    return runcmd(cmd, check=False, capture_output=True).returncode == 0
 
 def is_tag_in_registry(repo, tag):
     '''
@@ -67,7 +67,8 @@ def is_tag_in_registry(repo, tag):
     @param tag  str image tag
     '''
     # Podman remote doesn't allow push using digestfile. That's why the tag check is done
-    tags = runcmd(["podman", "search", "--list-tags", repo]).stdout.strip().decode()
+    cmd = ["podman", "search", "--list-tags", repo]
+    tags = runcmd(cmd, capture_output=True).stdout.strip().decode()
     if (tag in str(tags)):
         return True
     return False
@@ -82,7 +83,7 @@ def main():
     # short commit hash
     if not args.tag:
         cmd = ["git", "ls-remote", args.git_url, args.git_ref]
-        commit = runcmd(cmd).stdout.strip().decode()[0:7]
+        commit = runcmd(cmd, capture_output=True).stdout.strip().decode()[0:7]
         args.tag = f"{args.arch}-{commit}"
     logging.info(f"Targetting a container image for {args.repo}:{args.tag}")
     # Sanity check the registry if asked to push to a registry
