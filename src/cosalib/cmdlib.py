@@ -50,12 +50,7 @@ def retry_callback(retry_state):
     print(f"Retrying after {retry_state.outcome.exception()}")
 
 
-def runcmd_verbose(cmd: list, **kwargs: int) -> subprocess.CompletedProcess:
-    logger.info(f"Running command: {cmd}")
-    return runcmd(cmd, kwargs)
-
-
-def runcmd(cmd: list, **kwargs: int) -> subprocess.CompletedProcess:
+def runcmd(cmd: list, quiet: bool = False, **kwargs: int) -> subprocess.CompletedProcess:
     '''
     Run the given command using subprocess.run and perform verification.
     @param cmd: list that represents the command to be executed
@@ -64,13 +59,14 @@ def runcmd(cmd: list, **kwargs: int) -> subprocess.CompletedProcess:
     try:
         # default to error on failed command
         pargs = {"check": True}
-        logging.debug(f"Running command: {cmd}")
         pargs.update(kwargs)
         # capture_output is only on python 3.7+. Provide convenience here
         # until 3.7 is a baseline:
         if pargs.pop('capture_output', False):
             pargs['stdout'] = subprocess.PIPE
             pargs['stderr'] = subprocess.PIPE
+        if not quiet:
+            logging.info(f"Running command: {cmd}")
         cp = subprocess.run(cmd, **pargs)
     except subprocess.CalledProcessError as e:
         logging.error("Command returned bad exitcode")
@@ -364,7 +360,7 @@ def get_timestamp(entry):
 
 def image_info(image):
     try:
-        out = json.loads(runcmd_verbose(
+        out = json.loads(runcmd(
             ['qemu-img', 'info', '--output=json', image],
             capture_output=True).stdout
         )

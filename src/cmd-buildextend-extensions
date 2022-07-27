@@ -88,7 +88,7 @@ def run_rpmostree(workdir, commit, treefile, extensions):
 
 
 def create_yumrepo(repodir):
-    cmdlib.runcmd_verbose(['createrepo_c', repodir])
+    cmdlib.runcmd(['createrepo_c', repodir])
     # we could also have rpm-ostree output the pkglist for us, but meh... we
     # need to run createrepo_c anyway and it's nice that we're using it as the
     # source of truth, since that's what rpm-ostree clients will also use
@@ -116,7 +116,7 @@ def create_tarball(buildmeta, srcdir, destdir):
     destdir = os.path.abspath(destdir)
     basearch = buildmeta['coreos-assembler.basearch']
     tarfile = f'{destdir}/{buildmeta["name"]}-{buildmeta["buildid"]}-extensions.{basearch}.tar'
-    cmdlib.runcmd_verbose(['tar', '-cf', tarfile, '.'], cwd=srcdir)
+    cmdlib.runcmd(['tar', '-cf', tarfile, '.'], cwd=srcdir)
     return tarfile
 
 

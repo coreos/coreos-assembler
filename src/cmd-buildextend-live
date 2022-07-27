@@ -18,7 +18,7 @@ import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from cosalib.builds import Builds
-from cosalib.cmdlib import runcmd_verbose, sha256sum_file
+from cosalib.cmdlib import runcmd, sha256sum_file
 from cosalib.cmdlib import import_ostree_commit, get_basearch, ensure_glob
 from cosalib.meta import GenericBuildMeta
 
@@ -137,18 +137,18 @@ def align_initrd_for_uncompressed_append(destf):
 def get_os_features():
     features = {}
 
-    f = runcmd_verbose(['/usr/bin/ostree', 'cat', '--repo', repo,
-                       buildmeta_commit, '/usr/libexec/coreos-installer-service'],
-                       capture_output=True).stdout.decode()
+    f = runcmd(['/usr/bin/ostree', 'cat', '--repo', repo,
+               buildmeta_commit, '/usr/libexec/coreos-installer-service'],
+               capture_output=True).stdout.decode()
     # eventually we can assume coreos-installer >= 0.12.0, delete this check,
     # and hardcode the feature flag
     if '--config-file' in f:
         features['installer-config'] = True
 
-    f = runcmd_verbose(['/usr/bin/ostree', 'cat', '--repo', repo,
-                       buildmeta_commit,
-                       '/usr/lib/dracut/modules.d/35coreos-network/coreos-copy-firstboot-network.sh'],
-                       capture_output=True).stdout.decode()
+    f = runcmd(['/usr/bin/ostree', 'cat', '--repo', repo,
+               buildmeta_commit,
+               '/usr/lib/dracut/modules.d/35coreos-network/coreos-copy-firstboot-network.sh'],
+               capture_output=True).stdout.decode()
     # eventually we can assume /etc/coreos-firstboot-network support and
     # hardcode the feature flag
     if 'etc_firstboot_network_dir' in f:
@@ -239,17 +239,17 @@ def generate_iso():
     # Find the directory under `/usr/lib/modules/<kver>` where the
     # kernel/initrd live. It will be the 2nd entity output by
     # `ostree ls <commit> /usr/lib/modules`
-    process = runcmd_verbose(['/usr/bin/ostree', 'ls', '--repo', repo,
-                             '--nul-filenames-only', f"{buildmeta_commit}",
-                             '/usr/lib/modules'], capture_output=True)
+    process = runcmd(['/usr/bin/ostree', 'ls', '--repo', repo,
+                     '--nul-filenames-only', f"{buildmeta_commit}",
+                     '/usr/lib/modules'], capture_output=True)
     moduledir = process.stdout.decode().split('\0')[1]
 
     # copy those files out of the ostree into the iso root dir
     initramfs_img = 'initramfs.img'
     for file in [kernel_img, initramfs_img]:
-        runcmd_verbose(['/usr/bin/ostree', 'checkout', '--force-copy', '--repo', repo,
-                       '--user-mode', '--subpath', os.path.join(moduledir, file),
-                       f"{buildmeta_commit}", tmpisoimagespxe])
+        runcmd(['/usr/bin/ostree', 'checkout', '--force-copy', '--repo', repo,
+                '--user-mode', '--subpath', os.path.join(moduledir, file),
+                f"{buildmeta_commit}", tmpisoimagespxe])
         # initramfs isn't world readable by default so let's open up perms
         os.chmod(os.path.join(tmpisoimagespxe, file), 0o644)
         if file == initramfs_img:
@@ -297,23 +297,23 @@ def generate_iso():
     # Add osmet files
     tmp_osmet = os.path.join(tmpinitrd_rootfs, img_metal_obj['path'] + '.osmet')
     print('Generating osmet file for 512b metal image')
-    runcmd_verbose(['/usr/lib/coreos-assembler/osmet-pack',
-                   img_metal, '512', tmp_osmet, img_metal_checksum,
-                   'fast' if args.fast else 'normal'])
+    runcmd(['/usr/lib/coreos-assembler/osmet-pack',
+           img_metal, '512', tmp_osmet, img_metal_checksum,
+           'fast' if args.fast else 'normal'])
     if img_metal4k_obj:
         tmp_osmet4k = os.path.join(tmpinitrd_rootfs, img_metal4k_obj['path'] + '.osmet')
         print('Generating osmet file for 4k metal image')
-        runcmd_verbose(['/usr/lib/coreos-assembler/osmet-pack',
-                       img_metal4k, '4096', tmp_osmet4k, img_metal4k_checksum,
-                       'fast' if args.fast else 'normal'])
+        runcmd(['/usr/lib/coreos-assembler/osmet-pack',
+               img_metal4k, '4096', tmp_osmet4k, img_metal4k_checksum,
+               'fast' if args.fast else 'normal'])
 
     # Generate root squashfs
     print(f'Compressing squashfs with {squashfs_compression}')
     # Name must be exactly "root.squashfs" because the 20live dracut module
     # makes assumptions about the length of the name in sysroot.mount
     tmp_squashfs = os.path.join(tmpinitrd_rootfs, 'root.squashfs')
-    runcmd_verbose(['/usr/lib/coreos-assembler/gf-mksquashfs',
-                   img_metal, tmp_squashfs, squashfs_compression])
+    runcmd(['/usr/lib/coreos-assembler/gf-mksquashfs',
+           img_metal, tmp_squashfs, squashfs_compression])
 
     # Generate rootfs image
     iso_rootfs = os.path.join(tmpisoimagespxe, rootfs_img)
@@ -340,8 +340,8 @@ def generate_iso():
     cp_reflink(iso_initramfs, pxe_initramfs)
 
     # Read and filter kernel arguments for substituting into ISO bootloader
-    result = runcmd_verbose(['/usr/lib/coreos-assembler/gf-get-kargs',
-                            img_metal], stdout=subprocess.PIPE, text=True)
+    result = runcmd(['/usr/lib/coreos-assembler/gf-get-kargs',
+                    img_metal], stdout=subprocess.PIPE, text=True)
     kargs_array = [karg for karg in result.stdout.split()
             if karg.split('=')[0] not in live_exclude_kargs]
     kargs_array.append(f"coreos.liveiso={volid}")
@@ -445,7 +445,7 @@ def generate_iso():
 
         # safely remove things we don't need in the final ISO tree
         for d in ['EFI', 'isolinux', 'zipl.prm']:
-            runcmd_verbose(['rm', '-rf', os.path.join(tmpisoroot, d)])
+            runcmd(['rm', '-rf', os.path.join(tmpisoroot, d)])
 
         # grub2-mkrescue is a wrapper around xorriso
         genisoargs = ['grub2-mkrescue', '-volid', volid]
@@ -472,11 +472,11 @@ def generate_iso():
         kernel_img = 'kernel.img'
 
         # combine kernel, initramfs and cmdline using the mk-s390image tool
-        runcmd_verbose(['/usr/bin/mk-s390image',
-                       kernel_dest,
-                       os.path.join(tmpisoimages, 'cdboot.img'),
-                       '-r', iso_initramfs,
-                       '-p', os.path.join(tmpisoimages, 'cdboot.prm')])
+        runcmd(['/usr/bin/mk-s390image',
+               kernel_dest,
+               os.path.join(tmpisoimages, 'cdboot.img'),
+               '-r', iso_initramfs,
+               '-p', os.path.join(tmpisoimages, 'cdboot.prm')])
         # generate .addrsize file for LPAR
         with open(os.path.join(tmpisoimages, 'initrd.addrsize'), 'wb') as addrsize:
             addrsize_data = struct.pack(">iiii", 0, int(INITRD_ADDRESS, 16), 0,
@@ -485,7 +485,7 @@ def generate_iso():
 
         # safely remove things we don't need in the final ISO tree
         for d in ['EFI', 'isolinux', 'zipl.prm']:
-            runcmd_verbose(['rm', '-rf', os.path.join(tmpisoroot, d)])
+            runcmd(['rm', '-rf', os.path.join(tmpisoroot, d)])
 
         genisoargs = ['/usr/bin/xorrisofs', '-verbose',
                       '-volid', volid,
@@ -514,10 +514,10 @@ def generate_iso():
                 return tarinfo
 
             tmpimageefidir = os.path.join(tmpdir, "efi")
-            runcmd_verbose(['/usr/bin/ostree', 'checkout', '--repo', repo,
-                           '--user-mode', '--subpath',
-                           "/usr/lib/bootupd/updates/EFI",
-                           buildmeta_commit, tmpimageefidir])
+            runcmd(['/usr/bin/ostree', 'checkout', '--repo', repo,
+                   '--user-mode', '--subpath',
+                   "/usr/lib/bootupd/updates/EFI",
+                   buildmeta_commit, tmpimageefidir])
 
             # Find name of vendor directory
             vendor_ids = [n for n in os.listdir(tmpimageefidir) if n != "BOOT"]
@@ -586,8 +586,8 @@ boot
             # so set EFI-SYSTEM for consistency with the metal image.
             # This should not be needed on Fedora or RHEL 9, but seems like
             # a good thing to do anyway.
-            runcmd_verbose(['virt-make-fs', '--type=vfat', '--label=EFI-SYSTEM',
-                           efitarfile.name, efibootfile])
+            runcmd(['virt-make-fs', '--type=vfat', '--label=EFI-SYSTEM',
+                   efitarfile.name, efibootfile])
 
         genisoargs += ['-eltorito-alt-boot',
                        '-efi-boot', 'images/efiboot.img',
@@ -634,12 +634,12 @@ boot
         for f in ensure_glob(os.path.join(tmpisoisolinux, '*.msg')):
             os.unlink(f)
 
-    runcmd_verbose(genisoargs_final)
+    runcmd(genisoargs_final)
 
     # Add MBR, and GPT with ESP, for x86_64 BIOS/UEFI boot when ISO is
     # copied to a USB stick
     if basearch == "x86_64":
-        runcmd_verbose(['/usr/bin/isohybrid', '--uefi', tmpisofile])
+        runcmd(['/usr/bin/isohybrid', '--uefi', tmpisofile])
 
     genisoargs_minimal = genisoargs + ['-o', f'{tmpisofile}.minimal', tmpisoroot]
     # The only difference with the miniso is that we drop these two files.
@@ -649,12 +649,12 @@ boot
     # coreos-installer takes care of removing it.
     os.unlink(iso_rootfs)
     os.unlink(miniso_data)
-    runcmd_verbose(genisoargs_minimal)
+    runcmd(genisoargs_minimal)
     if basearch == "x86_64":
-        runcmd_verbose(['/usr/bin/isohybrid', '--uefi', f'{tmpisofile}.minimal'])
+        runcmd(['/usr/bin/isohybrid', '--uefi', f'{tmpisofile}.minimal'])
     # this consumes the minimal image
-    runcmd_verbose(['coreos-installer', 'pack', 'minimal-iso',
-                   tmpisofile, f'{tmpisofile}.minimal', "--consume"])
+    runcmd(['coreos-installer', 'pack', 'minimal-iso',
+           tmpisofile, f'{tmpisofile}.minimal', "--consume"])
 
     buildmeta['images'].update({
         'live-iso': {
