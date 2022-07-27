@@ -429,3 +429,8 @@ def ensure_glob(pathname, **kwargs):
     if not ret:
         raise Exception(f'No matches for {pathname}')
     return ret
+
+
+def ncpu():
+    '''Return the number of usable CPUs we have for parallelism.'''
+    return int(subprocess.check_output(['kola', 'ncpu']))

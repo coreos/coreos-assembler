@@ -4,9 +4,7 @@
 # Compresses all images in a build.
 
 import os
-import re
 import sys
-import math
 import json
 import shutil
 import argparse
@@ -14,6 +12,7 @@ import argparse
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from cosalib.builds import Builds
 from cosalib.cmdlib import (
+    ncpu,
     rm_allow_noent,
     run_verbose,
     sha256sum_file,
@@ -73,21 +72,6 @@ def strip_ext(path):
     return path.rsplit(".", 1)[0]
 
 
-# XXX: should dedupe this with logic in cmdlib and put in the shared lib
-def xz_threads():
-    with open("/proc/1/cgroup") as f:
-        in_k8s = re.search(r'.*kubepods.*', f.read())
-    if in_k8s:
-        # see similar code in OpenJKD HotSpot:
-        # https://hg.openjdk.java.net/jdk/jdk/file/7b671e6b0d5b/src/hotspot/os/linux/osContainer_linux.cpp#l595
-        quota = get_cpu_param('cfs_quota_us')
-        period = get_cpu_param('cfs_period_us')
-        # are k8s limits enforced?
-        if quota != -1 and period > 0:
-            return math.ceil(quota / period)
-    return 0  # no limits, let xz choose what it wants
-
-
 def compress_one_builddir(builddir):
     print(f"Compressing: {builddir}")
     buildmeta_path = os.path.join(builddir, 'meta.json')
@@ -136,7 +120,7 @@ def compress_one_builddir(builddir):
             img['uncompressed-size'] = img['size']
             with open(tmpfile, 'wb') as f:
                 if args.compressor == 'xz':
-                    t = xz_threads()
+                    t = ncpu()
                     run_verbose(['xz', '-c9', f'-T{t}', filepath], stdout=f)
                 else:
                     run_verbose(['gzip', f'-{gzip_level}', '-c', filepath], stdout=f)
@@ -214,7 +198,7 @@ def uncompress_one_builddir(builddir):
             # during 'build'
             with open(tmpfile, 'wb') as f:
                 if file.endswith('xz'):
-                    t = xz_threads()
+                    t = ncpu()
                     run_verbose(['xz', '-dc', f'-T{t}', filepath], stdout=f)
                 elif file.endswith('gz'):
                     run_verbose(['gzip', '-dc', filepath], stdout=f)

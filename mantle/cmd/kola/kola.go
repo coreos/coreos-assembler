@@ -105,6 +105,14 @@ This can be useful for e.g. serving locally built OSTree repos to qemu.
 		SilenceUsage: true,
 	}
 
+	cmdNcpu = &cobra.Command{
+		Use:   "ncpu",
+		Short: "Report the number of available CPUs for parallelism",
+		RunE:  runNcpu,
+
+		SilenceUsage: true,
+	}
+
 	listJSON           bool
 	listPlatform       string
 	listDistro         string
@@ -143,6 +151,8 @@ func init() {
 	cmdRunUpgrade.Flags().BoolVar(&runRerunFlag, "rerun", false, "re-run failed tests once")
 
 	root.AddCommand(cmdRerun)
+
+	root.AddCommand(cmdNcpu)
 }
 
 func main() {
@@ -661,4 +671,13 @@ func runRunUpgrade(cmd *cobra.Command, args []string) error {
 	}
 
 	return runErr
+}
+
+func runNcpu(cmd *cobra.Command, args []string) error {
+	count, err := system.GetProcessors()
+	if err != nil {
+		return err
+	}
+	fmt.Println(count)
+	return nil
 }
