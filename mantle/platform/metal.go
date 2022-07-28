@@ -98,12 +98,28 @@ type InstalledMachine struct {
 	BootStartedErrorChannel chan error
 }
 
-func (inst *Install) PXE(kargs []string, liveIgnition, ignition conf.Conf, offline bool) (*InstalledMachine, error) {
-	if inst.CosaBuild.Meta.BuildArtifacts.Metal == nil {
-		return nil, fmt.Errorf("Build %s must have a `metal` artifact", inst.CosaBuild.Meta.OstreeVersion)
+// Check that artifact has been built and locally exists
+func (inst *Install) checkArtifactsExist(artifacts []string) error {
+	version := inst.CosaBuild.Meta.OstreeVersion
+	for _, name := range artifacts {
+		artifact, err := inst.CosaBuild.Meta.GetArtifact(name)
+		if err != nil {
+			return fmt.Errorf("Missing artifact %s for %s build: %s", name, version, err)
+		}
+		path := filepath.Join(inst.CosaBuild.Dir, artifact.Path)
+		if _, err := os.Stat(path); err != nil {
+			if os.IsNotExist(err) {
+				return fmt.Errorf("Missing local file for artifact %s for build %s", name, version)
+			}
+		}
 	}
-	if inst.CosaBuild.Meta.BuildArtifacts.LiveKernel == nil {
-		return nil, fmt.Errorf("build %s has no live installer kernel", inst.CosaBuild.Meta.Name)
+	return nil
+}
+
+func (inst *Install) PXE(kargs []string, liveIgnition, ignition conf.Conf, offline bool) (*InstalledMachine, error) {
+	artifacts := []string{"live-kernel", "live-rootfs"}
+	if err := inst.checkArtifactsExist(artifacts); err != nil {
+		return nil, err
 	}
 
 	inst.kargs = kargs
@@ -182,14 +198,14 @@ func setupMetalImage(builddir, metalimg, destdir string) (string, error) {
 }
 
 func (inst *Install) setup(kern *kernelSetup) (*installerRun, error) {
-	if kern.kernel == "" {
-		return nil, fmt.Errorf("Missing kernel artifact")
+	var artifacts []string
+	if inst.Native4k {
+		artifacts = append(artifacts, "metal4k")
+	} else {
+		artifacts = append(artifacts, "metal")
 	}
-	if kern.initramfs == "" {
-		return nil, fmt.Errorf("Missing initramfs artifact")
-	}
-	if kern.rootfs == "" {
-		return nil, fmt.Errorf("Missing rootfs artifact")
+	if err := inst.checkArtifactsExist(artifacts); err != nil {
+		return nil, err
 	}
 
 	builder := inst.Builder
@@ -531,13 +547,14 @@ type installerConfig struct {
 }
 
 func (inst *Install) InstallViaISOEmbed(kargs []string, liveIgnition, targetIgnition conf.Conf, outdir string, offline, minimal bool) (*InstalledMachine, error) {
-	if !inst.Native4k && inst.CosaBuild.Meta.BuildArtifacts.Metal == nil {
-		return nil, fmt.Errorf("Build %s must have a `metal` artifact", inst.CosaBuild.Meta.OstreeVersion)
-	} else if inst.Native4k && inst.CosaBuild.Meta.BuildArtifacts.Metal4KNative == nil {
-		return nil, fmt.Errorf("Build %s must have a `metal4k` artifact", inst.CosaBuild.Meta.OstreeVersion)
+	artifacts := []string{"live-iso"}
+	if inst.Native4k {
+		artifacts = append(artifacts, "metal4k")
+	} else {
+		artifacts = append(artifacts, "metal")
 	}
-	if inst.CosaBuild.Meta.BuildArtifacts.LiveIso == nil {
-		return nil, fmt.Errorf("Build %s must have a live ISO", inst.CosaBuild.Meta.Name)
+	if err := inst.checkArtifactsExist(artifacts); err != nil {
+		return nil, err
 	}
 	if minimal && offline { // ideally this'd be one enum parameter
 		panic("Can't run minimal install offline")

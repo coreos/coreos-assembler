@@ -178,7 +178,7 @@ func (build *Build) GetArtifact(artifact string) (*Artifact, error) {
 	if ok && r.Path != "" {
 		return r, nil
 	}
-	return nil, errors.New("artifact not defined")
+	return nil, errors.New("artifact " + artifact + " not defined")
 }
 
 // IsArtifact takes a path and returns the artifact type and a bool if
@@ -305,10 +305,10 @@ func FetchAndParseBuild(url string) (*Build, error) {
 		return nil, err
 	}
 	defer res.Body.Close()
-    if res.StatusCode != 200 {
-        return nil, fmt.Errorf(
-            "Received a %d error in http response for: %s", res.StatusCode, url)
-    }
+	if res.StatusCode != 200 {
+		return nil, fmt.Errorf(
+			"Received a %d error in http response for: %s", res.StatusCode, url)
+	}
 	return buildParser(res.Body)
 }
 
