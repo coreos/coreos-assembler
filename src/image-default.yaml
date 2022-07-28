@@ -9,7 +9,7 @@ rootfs-args: ""
 extra-kargs: []
 
 # Can also be oci-chunked
-ostree-format: oci
+ostree-format: oci-chunked-v1
 # True if we should use `ostree container image deploy`
 deploy-via-container: false
 
