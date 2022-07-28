@@ -2,6 +2,7 @@
 
 import argparse
 import logging
+import os
 import sys
 import tenacity
 
@@ -81,6 +82,9 @@ def is_tag_in_registry(repo, tag):
 def main():
     # Arguments
     args = parse_args()
+    # Set the REGISTRY_AUTH_FILE env var if user passed --authfile
+    if args.authfile:
+        os.environ["REGISTRY_AUTH_FILE"] = args.authfile
     # Check for requisite env vars
     if environ.get('CONTAINER_HOST') is None or environ.get('CONTAINER_SSHKEY') is None:
         sys.exit('You must have CONTAINER_HOST and CONTAINER_SSHKEY environment variables setup')
@@ -140,6 +144,9 @@ Examples:
     parser.add_argument(
         '--arch', required=True,
         help='Build Architecture')
+    parser.add_argument(
+        '--authfile', required=False,
+        help='A file to use for registry auth')
     parser.add_argument(
         '--label', default=[], action='append',
         required=False, help='Add image label(s)')
