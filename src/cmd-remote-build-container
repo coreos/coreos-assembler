@@ -23,7 +23,7 @@ def build_container_image(labels, gitDir, repo, tag):
     @param repo str registry repository
     @param tag  str image tag
     '''
-    cmd = ["podman", "build", gitDir, f"--tag={repo}:{tag}"]
+    cmd = ["podman", "build", "--no-cache", f"--tag={repo}:{tag}", gitDir]
     for label in labels:
         cmd.extend([f"--label={label}"])
     # Long running command. Send output to stdout for logging
