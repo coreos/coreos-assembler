@@ -4,6 +4,7 @@ import argparse
 import logging
 import os
 import sys
+import tempfile
 import tenacity
 
 from cosalib.cmdlib import runcmd
@@ -14,14 +15,15 @@ logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s %(levelname)s - %(message)s")
 
 
-def build_container_image(labels, gitURL, gitRef, repo, tag):
+def build_container_image(labels, gitDir, repo, tag):
     '''
     Build the image  using podman remote and push to the registry
+    @param labels list labels to add to image
+    @param gitDir the location of the directory to build from
     @param repo str registry repository
     @param tag  str image tag
-    @param time str expiration time for Quay images
     '''
-    cmd = ["podman", "build", f"{gitURL}#{gitRef}", f"--tag={repo}:{tag}"]
+    cmd = ["podman", "build", gitDir, f"--tag={repo}:{tag}"]
     for label in labels:
         cmd.extend([f"--label={label}"])
     # Long running command. Send output to stdout for logging
@@ -88,35 +90,49 @@ def main():
     # Check for requisite env vars
     if environ.get('CONTAINER_HOST') is None or environ.get('CONTAINER_SSHKEY') is None:
         sys.exit('You must have CONTAINER_HOST and CONTAINER_SSHKEY environment variables setup')
-    # If a tag wasn't passed then use the git
-    # short commit hash
-    if not args.tag:
-        cmd = ["git", "ls-remote", args.git_url, args.git_ref]
-        commit = runcmd(cmd, capture_output=True).stdout.strip().decode()[0:7]
-        args.tag = f"{args.arch}-{commit}"
-    logging.info(f"Targetting a container image for {args.repo}:{args.tag}")
-    # Sanity check the registry if asked to push to a registry
-    if args.push_to_registry and is_tag_in_registry(args.repo, args.tag):
-        logging.info(f"Container image at {args.repo}:{args.tag} exists.")
-        if args.force:
-            logging.info(f"--force was passed. Will overwrite container at {args.repo}:{args.tag}")
+
+    # Podman doesn't seem to support building from a specific commit:
+    # https://github.com/containers/buildah/issues/4148
+    # Create a tmpdir to use for the git repo to build from.
+    with tempfile.TemporaryDirectory() as gitdir:
+        # fetch the git repo contents for the build and determine commit/shortcommit
+        cmd = ["git", "-C", gitdir, "init", "."]
+        runcmd(cmd, quiet=True, capture_output=True)
+        cmd = ["git", "-C", gitdir, "fetch", "--depth=1", args.git_url, args.git_ref]
+        runcmd(cmd, quiet=True, capture_output=True)
+        cmd = ["git", "-C", gitdir, "checkout", "FETCH_HEAD"]
+        runcmd(cmd, quiet=True, capture_output=True)
+        cmd = ["git", "-C", gitdir, "rev-parse", "FETCH_HEAD"]
+        commit = runcmd(cmd, quiet=True, capture_output=True).stdout.strip().decode()
+        shortcommit = commit[0:7]
+        logging.info(f"Translated {args.git_url}#{args.git_ref} into {shortcommit}")
+        # If a tag wasn't passed then use the arch + shortcommit
+        if not args.tag:
+            args.tag = f"{args.arch}-{shortcommit}"
+        logging.info(f"Targetting a container image for {args.repo}:{args.tag}")
+        # Sanity check the registry if asked to push to a registry
+        if args.push_to_registry and is_tag_in_registry(args.repo, args.tag):
+            logging.info(f"Container image at {args.repo}:{args.tag} exists.")
+            if args.force:
+                logging.info(f"--force was passed. Will overwrite container at {args.repo}:{args.tag}")
+            else:
+                logging.info("No work to do. You can force with --force. Skipping build/push.")
+                return
+        # Check first if the build already exists in local storage on the builder
+        if is_tag_in_podman_storage(args.repo, args.tag):
+            if args.force:
+                logging.info(f"--force was passed. Will overwrite built container with tag {args.repo}:{args.tag}")
+                needbuild = True
+            else:
+                logging.info(f"Re-using existing built container with tag {args.repo}:{args.tag}")
+                needbuild = False
         else:
-            logging.info("No work to do. You can force with --force. Skipping build/push.")
-            return
-    # Check first if the build already exists in local storage on the builder
-    if is_tag_in_podman_storage(args.repo, args.tag):
-        if args.force:
-            logging.info(f"--force was passed. Will overwrite built container with tag {args.repo}:{args.tag}")
             needbuild = True
-        else:
-            logging.info(f"Re-using existing built container with tag {args.repo}:{args.tag}")
-            needbuild = False
-    else:
-        needbuild = True
-    # Build the container if needed.
-    if needbuild:
-        logging.info("Building container via podman")
-        build_container_image(args.label, args.git_url, args.git_ref, args.repo, args.tag)
+        # Build the container if needed.
+        if needbuild:
+            logging.info("Building container via podman")
+            build_container_image(args.label, gitdir, args.repo, args.tag)
+
     # Push to the registry if needed
     if args.push_to_registry:
         logging.info("Pushing to remote registry")
@@ -155,7 +171,7 @@ Examples:
         help='Force image overwrite')
     parser.add_argument(
         '--git-ref', required=True,
-        help='Git branch or tag')
+        help='Git branch or tag or commit')
     parser.add_argument(
         '--git-url', required=True,
         help='Git URL')
