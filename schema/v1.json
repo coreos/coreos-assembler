@@ -228,6 +228,7 @@
     "coreos-assembler.code-source",
     "coreos-assembler.config-dirty",
     "coreos-assembler.config-gitrev",
+    "coreos-assembler.config-variant",
     "coreos-assembler.container-config-git",
     "coreos-assembler.container-image-git",
     "coreos-assembler.delayed-meta-merge",
@@ -338,6 +339,12 @@
       "title": "Config GitRev",
       "default": "",
       "minLength": 1
+    },
+    "coreos-assembler.config-variant": {
+      "$id":"#/properties/coreos-assembler.config-variant",
+      "type":"string",
+      "title":"Config variant",
+      "default":""
     },
     "coreos-assembler.container-config-git": {
       "$id": "#/properties/coreos-assembler.container-config-git",
