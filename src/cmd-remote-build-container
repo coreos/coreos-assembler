@@ -151,7 +151,7 @@ must be defined
 Examples:
     $ cosa remote-build-container \
         --arch aarch64 \
-        --label quay.labels-after=4d \
+        --label quay.expires-after=4d \
         --git-ref main \
         --git-url https://github.com/coreos/coreos-assembler.git \
         --repo quay.io/coreos/coreos-assembler-staging \
