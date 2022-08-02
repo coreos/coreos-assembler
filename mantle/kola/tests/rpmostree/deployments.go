@@ -214,7 +214,9 @@ func rpmOstreeInstallUninstall(c cluster.TestCluster) {
 
 	c.Run("install", func(c cluster.TestCluster) {
 		// install package and reboot
-		c.RunCmdSync(m, "sudo rpm-ostree install "+ahtRpmPath)
+		// add workaround for scos
+		// https://bugzilla.redhat.com/show_bug.cgi?id=2113042
+		c.RunCmdSync(m, "sudo rpm-ostree install --cache-only "+ahtRpmPath)
 
 		installRebootErr := m.Reboot()
 		if installRebootErr != nil {
