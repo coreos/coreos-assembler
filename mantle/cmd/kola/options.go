@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/coreos/stream-metadata-go/stream"
@@ -35,6 +36,7 @@ import (
 var (
 	outputDir         string
 	kolaPlatform      string
+	kolaParallelArg   string
 	kolaArchitectures = []string{"amd64"}
 	kolaPlatforms     = []string{"aws", "azure", "do", "esx", "gce", "openstack", "packet", "qemu", "qemu-unpriv", "qemu-iso"}
 	kolaDistros       = []string{"fcos", "rhcos", "scos"}
@@ -50,7 +52,7 @@ func init() {
 	sv(&outputDir, "output-dir", "", "Temporary output directory for test data and logs")
 	root.PersistentFlags().StringVarP(&kolaPlatform, "platform", "p", "", "VM platform: "+strings.Join(kolaPlatforms, ", "))
 	root.PersistentFlags().StringVarP(&kola.Options.Distribution, "distro", "b", "", "Distribution: "+strings.Join(kolaDistros, ", "))
-	root.PersistentFlags().IntVarP(&kola.TestParallelism, "parallel", "j", 1, "number of tests to run in parallel")
+	root.PersistentFlags().StringVarP(&kolaParallelArg, "parallel", "j", "1", "number of tests to run in parallel, or \"auto\" to match CPU count")
 	sv(&kola.TAPFile, "tapfile", "", "file to write TAP results to")
 	root.PersistentFlags().BoolVarP(&kola.Options.NoTestExitError, "no-test-exit-error", "T", false, "Don't exit with non-zero if tests fail")
 	sv(&kola.Options.BaseName, "basename", "kola", "Cluster name prefix")
@@ -179,6 +181,21 @@ func syncOptionsImpl(useCosa bool) error {
 		kolaPlatform = "qemu-unpriv"
 	} else if kolaPlatform == "iso" {
 		kolaPlatform = "qemu-iso"
+	}
+
+	// test parallelism
+	if kolaParallelArg == "auto" {
+		ncpu, err := system.GetProcessors()
+		if err != nil {
+			return fmt.Errorf("detecting CPU count: %w", err)
+		}
+		kola.TestParallelism = int(ncpu)
+	} else {
+		parallel, err := strconv.ParseInt(kolaParallelArg, 10, 32)
+		if err != nil {
+			return fmt.Errorf("parsing --parallel argument: %w", err)
+		}
+		kola.TestParallelism = int(parallel)
 	}
 
 	// native 4k requires a UEFI bootloader
