@@ -63,6 +63,8 @@ def main():
     shutil.move(extensions_tarball, builddir)
     buildmeta.write(artifact_name='extensions')
 
+    shutil.rmtree(tmpworkdir)
+
 
 def parse_args():
     parser = argparse.ArgumentParser()
