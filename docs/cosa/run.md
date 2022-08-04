@@ -123,10 +123,10 @@ flows. (Many of these flows are covered by our `kola testiso` scenarios.)
 ### As primary disk
 
 To test multipath on the primary disk in a QEMU instance, use
-`--qemu-multipath`:
+`--qemu-multipath` and add the necessary kargs:
 
 ```
-$ cosa run --qemu-multipath
+$ cosa run --qemu-multipath --kargs 'rd.multipath=default root=/dev/disk/by-label/dm-mpath-root rw'
 ...
 [core@cosa-devsh ~]$ findmnt /sysroot
 TARGET   SOURCE              FSTYPE OPTIONS
