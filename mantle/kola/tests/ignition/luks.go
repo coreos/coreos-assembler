@@ -24,7 +24,7 @@ func init() {
 		Name:        `luks.tang`,
 		Flags:       []register.Flag{},
 		Distros:     []string{"rhcos"},
-		Tags:        []string{"luks", "tang", kola.NeedsInternetTag},
+		Tags:        []string{"luks", "tang", kola.NeedsInternetTag, "reprovision"},
 	})
 	register.RegisterTest(&register.Test{
 		Run:                  luksSSST1Test,
@@ -34,7 +34,7 @@ func init() {
 		Distros:              []string{"rhcos"},
 		Platforms:            []string{"qemu-unpriv"},
 		ExcludeArchitectures: []string{"s390x"}, // no TPM backend support for s390x
-		Tags:                 []string{"luks", "tpm", "tang", "sss", kola.NeedsInternetTag},
+		Tags:                 []string{"luks", "tpm", "tang", "sss", kola.NeedsInternetTag, "reprovision"},
 	})
 	register.RegisterTest(&register.Test{
 		Run:                  luksSSST2Test,
@@ -44,7 +44,7 @@ func init() {
 		Distros:              []string{"rhcos"},
 		Platforms:            []string{"qemu-unpriv"},
 		ExcludeArchitectures: []string{"s390x"}, // no TPM backend support for s390x
-		Tags:                 []string{"luks", "tpm", "tang", "sss", kola.NeedsInternetTag},
+		Tags:                 []string{"luks", "tpm", "tang", "sss", kola.NeedsInternetTag, "reprovision"},
 	})
 }
 
