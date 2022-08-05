@@ -241,7 +241,7 @@ func init() {
 	// cmdRemoteSessionCreate options
 	cmdRemoteSessionCreate.Flags().StringVarP(
 		&remoteSessionOpts.CreateImage, "image", "",
-		"quay.io/coreos-assembler/coreos-assembler:latest",
+		"quay.io/coreos-assembler/coreos-assembler:main",
 		"The COSA container image to use on the remote")
 	cmdRemoteSessionCreate.Flags().StringVarP(
 		&remoteSessionOpts.CreateExpiration, "expiration", "", "infinity",
