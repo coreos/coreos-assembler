@@ -377,6 +377,17 @@ func filterTests(tests map[string]*register.Test, patterns []string, pltfrm stri
 		checkPlatforms = append(checkPlatforms, "qemu")
 	}
 
+	// sort tags into include/exclude
+	positiveTags := []string{}
+	negativeTags := []string{}
+	for _, tag := range Tags {
+		if strings.HasPrefix(tag, "!") {
+			negativeTags = append(negativeTags, tag[1:])
+		} else {
+			positiveTags = append(positiveTags, tag)
+		}
+	}
+
 	noPattern := hasString("*", patterns)
 	for name, t := range tests {
 		if NoNet && testRequiresInternet(t) {
@@ -428,14 +439,25 @@ func filterTests(tests map[string]*register.Test, patterns []string, pltfrm stri
 		}
 
 		tagMatch := false
-		for _, tag := range Tags {
+		for _, tag := range positiveTags {
 			tagMatch = hasString(tag, t.Tags)
 			if tagMatch {
 				break
 			}
 		}
 
-		if (!noPattern && !match && !tagMatch) || (!tagMatch && noPattern && len(Tags) > 0) {
+		negativeTagMatch := false
+		for _, tag := range negativeTags {
+			negativeTagMatch = hasString(tag, t.Tags)
+			if negativeTagMatch {
+				break
+			}
+		}
+		if negativeTagMatch {
+			continue
+		}
+
+		if (!noPattern && !match && !tagMatch) || (!tagMatch && noPattern && len(positiveTags) > 0) {
 			continue
 		}
 
