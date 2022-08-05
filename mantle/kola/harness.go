@@ -407,6 +407,17 @@ func filterTests(tests map[string]*register.Test, patterns []string, pltfrm stri
 		checkPlatforms = append(checkPlatforms, "qemu")
 	}
 
+	// sort tags into include/exclude
+	positiveTags := []string{}
+	negativeTags := []string{}
+	for _, tag := range Tags {
+		if strings.HasPrefix(tag, "!") {
+			negativeTags = append(negativeTags, tag[1:])
+		} else {
+			positiveTags = append(positiveTags, tag)
+		}
+	}
+
 	// Higher-level functions default to '*' if the user didn't pass anything.
 	// Notice this. (This totally ignores the corner case where the user
 	// actually typed '*').
@@ -461,11 +472,22 @@ func filterTests(tests map[string]*register.Test, patterns []string, pltfrm stri
 		}
 
 		tagMatch := false
-		for _, tag := range Tags {
+		for _, tag := range positiveTags {
 			tagMatch = hasString(tag, t.Tags) || tag == t.RequiredTag
 			if tagMatch {
 				break
 			}
+		}
+
+		negativeTagMatch := false
+		for _, tag := range negativeTags {
+			negativeTagMatch = hasString(tag, t.Tags)
+			if negativeTagMatch {
+				break
+			}
+		}
+		if negativeTagMatch {
+			continue
 		}
 
 		if t.RequiredTag != "" && // if the test has a required tag...
@@ -484,7 +506,7 @@ func filterTests(tests map[string]*register.Test, patterns []string, pltfrm stri
 			// If the user didn't explicitly type a pattern, then normally we
 			// accept all tests, but if they *did* specify tags, then we only
 			// accept tests which match those tags.
-			if len(Tags) > 0 && !tagMatch {
+			if len(positiveTags) > 0 && !tagMatch {
 				continue
 			}
 		}
