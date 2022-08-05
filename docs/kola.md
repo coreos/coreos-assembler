@@ -55,6 +55,11 @@ and can also be used with glob patterns:
 Tests specified in `src/config/kola-denylist.yaml` will also be skipped
 regardless of whether the switch `--denylist-test` was provided.
 
+It's also possible to skip tests based on tags by prefixing
+the tag by `!`:
+
+`kola run --tag '!reprovision'`
+
 Example format of the file:
 
 ```yaml
