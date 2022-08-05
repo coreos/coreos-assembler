@@ -65,7 +65,7 @@ func init() {
 		// skipping this test on UEFI until https://github.com/coreos/coreos-assembler/issues/2039
 		// gets resolved.
 		ExcludeFirmwares: []string{"uefi"},
-		Tags:             []string{"boot-mirror", "raid1"},
+		Tags:             []string{"boot-mirror", "raid1", "reprovision"},
 		FailFast:         true,
 		Timeout:          15 * time.Minute,
 	})
@@ -80,7 +80,7 @@ func init() {
 		// skipping this test on UEFI until https://github.com/coreos/coreos-assembler/issues/2039
 		// gets resolved.
 		ExcludeFirmwares: []string{"uefi"},
-		Tags:             []string{"boot-mirror", "luks", "raid1", "tpm2", kola.NeedsInternetTag},
+		Tags:             []string{"boot-mirror", "luks", "raid1", "tpm2", kola.NeedsInternetTag, "reprovision"},
 		FailFast:         true,
 		Timeout:          15 * time.Minute,
 	})
