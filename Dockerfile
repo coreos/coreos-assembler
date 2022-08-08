@@ -29,6 +29,9 @@ RUN rm -rf /root/containerbuild
 # https://docs.openshift.com/container-platform/3.10/creating_images/guidelines.html
 RUN chmod g=u /etc/passwd
 
+# also allow adding certificates
+RUN chmod -R g=u /etc/pki/ca-trust
+
 # run as `builder` user
 USER builder
 ENTRYPOINT ["/usr/bin/dumb-init", "/usr/bin/coreos-assembler"]
