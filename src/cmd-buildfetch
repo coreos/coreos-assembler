@@ -128,8 +128,11 @@ def main():
 
         buildmeta = load_json(f'builds/{builddir}/meta.json')
 
-        if args.artifact == ['all']:
-            artifacts = buildmeta['images']
+        # dedupe any possible duplicates in the list
+        args.artifact = set(args.artifact)
+
+        if 'all' in args.artifact:
+            artifacts = buildmeta['images'].keys()
         else:
             artifacts = args.artifact
 
