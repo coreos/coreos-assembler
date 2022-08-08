@@ -1,0 +1,21 @@
+#!/bin/bash
+set -euo pipefail
+
+# This runs a subset of what `update-ca-trust` does. Unlike the latter, it runs
+# fine unprivileged as long as it has write access to /etc/pki/ca-trust/.
+
+root_ca_dir=$1; shift
+
+cp -t /etc/pki/ca-trust/source/anchors/ "${root_ca_dir}"/*.crt
+
+# Compare to:
+# https://src.fedoraproject.org/rpms/ca-certificates/blob/3e2443900394/f/update-ca-trust
+
+DEST=/etc/pki/ca-trust/extracted
+
+# Prevent p11-kit from reading user configuration files.
+export P11_KIT_NO_USER_CONFIG=1
+
+# OpenSSL PEM bundle that includes trust flags
+/usr/bin/p11-kit extract --format=openssl-bundle --filter=certificates --overwrite --comment $DEST/openssl/ca-bundle.trust.crt
+/usr/bin/p11-kit extract --format=pem-bundle --filter=ca-anchors --overwrite --comment --purpose server-auth $DEST/pem/tls-ca-bundle.pem
