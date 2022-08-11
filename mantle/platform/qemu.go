@@ -50,6 +50,8 @@ import (
 	"github.com/coreos/mantle/system"
 	"github.com/coreos/mantle/system/exec"
 	"github.com/pkg/errors"
+
+	"golang.org/x/sys/unix"
 )
 
 var (
@@ -658,10 +660,20 @@ func newGuestfish(diskImagePath string, diskSectorSize int) (*coreosGuestfish, e
 	guestfishArgs = append(guestfishArgs, "-a", diskImagePath)
 	cmd := exec.Command("guestfish", guestfishArgs...)
 	cmd.Env = append(os.Environ(), "LIBGUESTFS_BACKEND=direct")
+
+	// Hack to run with a wrapper on older P8 hardware running RHEL7
 	switch system.RpmArch() {
 	case "ppc64le":
-		cmd.Env = append(cmd.Env, "LIBGUESTFS_HV=/usr/lib/coreos-assembler/libguestfs-ppc64le-wrapper.sh")
+		u := unix.Utsname{}
+		if err := unix.Uname(&u); err != nil {
+			return nil, errors.Wrapf(err, "detecting kernel information")
+		}
+		if strings.Contains(fmt.Sprintf("%s", u.Release), "el7") {
+			plog.Infof("Detected el7. Running using libguestfs-ppc64le-wrapper.sh")
+			cmd.Env = append(cmd.Env, "LIBGUESTFS_HV=/usr/lib/coreos-assembler/libguestfs-ppc64le-wrapper.sh")
+		}
 	}
+
 	// make sure it inherits stderr so we see any error message
 	cmd.Stderr = os.Stderr
 	stdout, err := cmd.StdoutPipe()
