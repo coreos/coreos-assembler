@@ -4,10 +4,6 @@ set -euo pipefail
 # This runs a subset of what `update-ca-trust` does. Unlike the latter, it runs
 # fine unprivileged as long as it has write access to /etc/pki/ca-trust/.
 
-root_ca_dir=$1; shift
-
-cp -t /etc/pki/ca-trust/source/anchors/ "${root_ca_dir}"/*.crt
-
 # Compare to:
 # https://src.fedoraproject.org/rpms/ca-certificates/blob/3e2443900394/f/update-ca-trust
 
