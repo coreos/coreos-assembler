@@ -11,8 +11,12 @@ export LIBGUESTFS_BACKEND=direct
 
 arch=$(uname -m)
 
+
+# Hack to run with a wrapper on older P8 hardware running RHEL7
 if [ "$arch" = "ppc64le" ] ; then
-    export LIBGUESTFS_HV="/usr/lib/coreos-assembler/libguestfs-ppc64le-wrapper.sh"
+    if [[ "$(uname -r)" =~ "el7" ]]; then
+        export LIBGUESTFS_HV="/usr/lib/coreos-assembler/libguestfs-ppc64le-wrapper.sh"
+    fi
 fi
 
 # http://libguestfs.org/guestfish.1.html#using-remote-control-robustly-from-shell-scripts
