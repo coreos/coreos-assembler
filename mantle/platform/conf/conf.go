@@ -842,9 +842,9 @@ func (c *Conf) AddSystemdUnitDropin(service, name, contents string) {
 	}
 }
 
-func (c *Conf) addAuthorizedKeysV3(username string, keys []string) {
+func (c *Conf) addAuthorizedKeysV3(username string, keys map[string]struct{}) {
 	var keyObjs []v3types.SSHAuthorizedKey
-	for _, key := range keys {
+	for key := range keys {
 		keyObjs = append(keyObjs, v3types.SSHAuthorizedKey(key))
 	}
 	newConfig := v3types.Config{
@@ -863,9 +863,9 @@ func (c *Conf) addAuthorizedKeysV3(username string, keys []string) {
 	c.MergeV3(newConfig)
 }
 
-func (c *Conf) addAuthorizedKeysV31(username string, keys []string) {
+func (c *Conf) addAuthorizedKeysV31(username string, keys map[string]struct{}) {
 	var keyObjs []v31types.SSHAuthorizedKey
-	for _, key := range keys {
+	for key := range keys {
 		keyObjs = append(keyObjs, v31types.SSHAuthorizedKey(key))
 	}
 	newConfig := v31types.Config{
@@ -884,9 +884,9 @@ func (c *Conf) addAuthorizedKeysV31(username string, keys []string) {
 	c.MergeV31(newConfig)
 }
 
-func (c *Conf) addAuthorizedKeysV32(username string, keys []string) {
+func (c *Conf) addAuthorizedKeysV32(username string, keys map[string]struct{}) {
 	var keyObjs []v32types.SSHAuthorizedKey
-	for _, key := range keys {
+	for key := range keys {
 		keyObjs = append(keyObjs, v32types.SSHAuthorizedKey(key))
 	}
 	newConfig := v32types.Config{
@@ -905,9 +905,9 @@ func (c *Conf) addAuthorizedKeysV32(username string, keys []string) {
 	c.MergeV32(newConfig)
 }
 
-func (c *Conf) addAuthorizedKeysV33(username string, keys []string) {
+func (c *Conf) addAuthorizedKeysV33(username string, keys map[string]struct{}) {
 	var keyObjs []v33types.SSHAuthorizedKey
-	for _, key := range keys {
+	for key := range keys {
 		keyObjs = append(keyObjs, v33types.SSHAuthorizedKey(key))
 	}
 	newConfig := v33types.Config{
@@ -926,9 +926,9 @@ func (c *Conf) addAuthorizedKeysV33(username string, keys []string) {
 	c.MergeV33(newConfig)
 }
 
-func (c *Conf) addAuthorizedKeysV34exp(username string, keys []string) {
+func (c *Conf) addAuthorizedKeysV34exp(username string, keys map[string]struct{}) {
 	var keyObjs []v34exptypes.SSHAuthorizedKey
-	for _, key := range keys {
+	for key := range keys {
 		keyObjs = append(keyObjs, v34exptypes.SSHAuthorizedKey(key))
 	}
 	newConfig := v34exptypes.Config{
@@ -950,16 +950,21 @@ func (c *Conf) addAuthorizedKeysV34exp(username string, keys []string) {
 // AddAuthorizedKeys adds an Ignition config to add the given keys to the SSH
 // authorized_keys file for the given user.
 func (c *Conf) AddAuthorizedKeys(user string, keys []string) {
+	// make it into a set to dedupe any keys
+	keysSet := map[string]struct{}{}
+	for _, key := range keys {
+		keysSet[key] = struct{}{}
+	}
 	if c.ignitionV3 != nil {
-		c.addAuthorizedKeysV3(user, keys)
+		c.addAuthorizedKeysV3(user, keysSet)
 	} else if c.ignitionV31 != nil {
-		c.addAuthorizedKeysV31(user, keys)
+		c.addAuthorizedKeysV31(user, keysSet)
 	} else if c.ignitionV32 != nil {
-		c.addAuthorizedKeysV32(user, keys)
+		c.addAuthorizedKeysV32(user, keysSet)
 	} else if c.ignitionV33 != nil {
-		c.addAuthorizedKeysV33(user, keys)
+		c.addAuthorizedKeysV33(user, keysSet)
 	} else if c.ignitionV34exp != nil {
-		c.addAuthorizedKeysV34exp(user, keys)
+		c.addAuthorizedKeysV34exp(user, keysSet)
 	}
 }
 
