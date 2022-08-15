@@ -660,7 +660,7 @@ func newGuestfish(diskImagePath string, diskSectorSize int) (*coreosGuestfish, e
 	cmd.Env = append(os.Environ(), "LIBGUESTFS_BACKEND=direct")
 	switch system.RpmArch() {
 	case "ppc64le":
-		cmd.Env = append(os.Environ(), "LIBGUESTFS_HV=/usr/lib/coreos-assembler/libguestfs-ppc64le-wrapper.sh")
+		cmd.Env = append(cmd.Env, "LIBGUESTFS_HV=/usr/lib/coreos-assembler/libguestfs-ppc64le-wrapper.sh")
 	}
 	// make sure it inherits stderr so we see any error message
 	cmd.Stderr = os.Stderr
