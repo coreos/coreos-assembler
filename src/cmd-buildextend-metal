@@ -263,7 +263,7 @@ fi
 runvm "${qemu_args[@]}" -- \
         /usr/lib/coreos-assembler/create_disk.sh \
             --config "$(pwd)"/image-for-disk.json \
-            --kargs "\"${kargs}\"" \
+            --kargs "${kargs}" \
             --platform "${ignition_platform_id}" \
             ${platforms_json:+--platforms-json "${platforms_json}"} \
             "${disk_args[@]}"
