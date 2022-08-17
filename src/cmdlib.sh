@@ -722,7 +722,10 @@ EOF
     # we hardcode a umask of 0022 here to make sure that composes are run
     # with a consistent value, regardless of the environment
     echo "umask 0022" > "${tmp_builddir}"/cmd.sh
-    echo "$@" >> "${tmp_builddir}"/cmd.sh
+    for arg in "$@"; do
+        # escape it appropriately so that spaces in args survive
+        printf '%q ' "$arg" >> "${tmp_builddir}"/cmd.sh
+    done
 
     touch "${runvm_console}"
 
