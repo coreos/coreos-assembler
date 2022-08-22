@@ -214,22 +214,19 @@ case "$arch" in
         -n ${ROOTPN}:0:"${rootfs_size}" -c ${ROOTPN}:root -t ${ROOTPN}:0FC63DAF-8483-4772-8E79-3D69D8477DE4
         ;;
     s390x)
+        sgdisk_args=()
         if [[ ${secure_execution} -eq 1 ]]; then
-            sgdisk -Z "$disk" \
-                -U "${uninitialized_gpt_uuid}" \
-                -n ${SDPART}:0:+200M -c ${SDPART}:se -t ${SDPART}:0FC63DAF-8483-4772-8E79-3D69D8477DE4 \
-                -n ${BOOTPN}:0:+384M -c ${BOOTPN}:boot \
-                -n ${ROOTPN}:0:"${rootfs_size}" -c ${ROOTPN}:root -t ${ROOTPN}:0FC63DAF-8483-4772-8E79-3D69D8477DE4
-        else
-            # NB: in the bare metal case when targeting ECKD DASD disks, this
-            # partition table is not what actually gets written to disk in the end:
-            # coreos-installer has code which transforms it into a DASD-compatible
-            # partition table and copies each partition individually bitwise.
-            sgdisk -Z "$disk" \
-                -U "${uninitialized_gpt_uuid}" \
-                -n ${BOOTPN}:0:+384M -c ${BOOTPN}:boot \
-                -n ${ROOTPN}:0:"${rootfs_size}" -c ${ROOTPN}:root -t ${ROOTPN}:0FC63DAF-8483-4772-8E79-3D69D8477DE4
+            # shellcheck disable=SC2206
+            sgdisk_args+=(-n ${SDPART}:0:+200M -c ${SDPART}:se -t ${SDPART}:0FC63DAF-8483-4772-8E79-3D69D8477DE4)
         fi
+        # shellcheck disable=SC2206
+        sgdisk_args+=(-n ${BOOTPN}:0:+384M -c ${BOOTPN}:boot \
+                      -n ${ROOTPN}:0:"${rootfs_size}" -c ${ROOTPN}:root -t ${ROOTPN}:0FC63DAF-8483-4772-8E79-3D69D8477DE4)
+        # NB: in the bare metal case when targeting ECKD DASD disks, this
+        # partition table is not what actually gets written to disk in the end:
+        # coreos-installer has code which transforms it into a DASD-compatible
+        # partition table and copies each partition individually bitwise.
+        sgdisk -Z "$disk" -U "${uninitialized_gpt_uuid}" "${sgdisk_args[@]}"
         ;;
     ppc64le)
         PREPPN=1
