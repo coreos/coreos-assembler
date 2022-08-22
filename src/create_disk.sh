@@ -202,7 +202,6 @@ case "$arch" in
         -n ${EFIPN}:0:+127M -c ${EFIPN}:EFI-SYSTEM -t ${EFIPN}:C12A7328-F81F-11D2-BA4B-00A0C93EC93B \
         -n ${BOOTPN}:0:+384M -c ${BOOTPN}:boot \
         -n ${ROOTPN}:0:"${rootfs_size}" -c ${ROOTPN}:root -t ${ROOTPN}:0FC63DAF-8483-4772-8E79-3D69D8477DE4
-        sgdisk -p "$disk"
         ;;
     aarch64)
         RESERVEDPN=1
@@ -213,7 +212,6 @@ case "$arch" in
         -n ${EFIPN}:0:+127M -c ${EFIPN}:EFI-SYSTEM -t ${EFIPN}:C12A7328-F81F-11D2-BA4B-00A0C93EC93B \
         -n ${BOOTPN}:0:+384M -c ${BOOTPN}:boot \
         -n ${ROOTPN}:0:"${rootfs_size}" -c ${ROOTPN}:root -t ${ROOTPN}:0FC63DAF-8483-4772-8E79-3D69D8477DE4
-        sgdisk -p "$disk"
         ;;
     s390x)
         if [[ ${secure_execution} -eq 1 ]]; then
@@ -232,7 +230,6 @@ case "$arch" in
                 -n ${BOOTPN}:0:+384M -c ${BOOTPN}:boot \
                 -n ${ROOTPN}:0:"${rootfs_size}" -c ${ROOTPN}:root -t ${ROOTPN}:0FC63DAF-8483-4772-8E79-3D69D8477DE4
         fi
-        sgdisk -p "$disk"
         ;;
     ppc64le)
         PREPPN=1
@@ -244,10 +241,10 @@ case "$arch" in
         -n ${RESERVEDPN}:0:+1M -c ${RESERVEDPN}:reserved -t ${RESERVEDPN}:8DA63339-0007-60C0-C436-083AC8230908 \
         -n ${BOOTPN}:0:+384M -c ${BOOTPN}:boot \
         -n ${ROOTPN}:0:"${rootfs_size}" -c ${ROOTPN}:root -t ${ROOTPN}:0FC63DAF-8483-4772-8E79-3D69D8477DE4
-        sgdisk -p "$disk"
         ;;
 esac
 
+sgdisk -p "$disk"
 udevtrig
 
 zipl_dev="${disk}${SDPART}"
