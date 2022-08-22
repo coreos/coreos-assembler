@@ -561,6 +561,7 @@ fstrim -a -v
 for fs in $rootfs/boot $rootfs; do
     mount -o remount,ro $fs
     xfs_freeze -f $fs
+    xfs_freeze -u $fs
 done
 umount -R $rootfs
 
