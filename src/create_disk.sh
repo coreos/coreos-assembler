@@ -185,9 +185,11 @@ set -x
 # x86_64/aarch64/ppc64le. We decided not to try to achieve partition parity on s390x
 # because a bare metal install onto an s390x DASD translates the GPT to DASD partitions
 # and we only get three of those. https://github.com/coreos/fedora-coreos-tracker/issues/855
-SDPART=1
 BOOTPN=3
 ROOTPN=4
+if [[ ${secure_execution} -eq 1 ]]; then
+    SDPART=1
+fi
 # Make the size relative
 if [ "${rootfs_size}" != "0" ]; then
     rootfs_size="+${rootfs_size}"
@@ -244,7 +246,6 @@ esac
 sgdisk -p "$disk"
 udevtrig
 
-zipl_dev="${disk}${SDPART}"
 boot_dev="${disk}${BOOTPN}"
 root_dev="${disk}${ROOTPN}"
 
@@ -270,7 +271,7 @@ esac
 if [[ ${secure_execution} -eq 1 ]]; then
     # Unencrypted partition for sd-boot
     # shellcheck disable=SC2086
-    mkfs.ext4 ${bootargs} "${zipl_dev}" -L se -U random
+    mkfs.ext4 ${bootargs} "${disk}${SDPART}" -L se -U random
     # /boot must be encrypted
     create_luks_partition boot "${boot_dev}"
     # / must be encrypted
