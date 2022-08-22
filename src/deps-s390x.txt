@@ -3,3 +3,6 @@ lorax xorriso
 
 # Deps needed by supermin
 s390utils-base
+
+# for Secure Execution
+veritysetup

@@ -40,41 +40,6 @@ run as part of 'coreos-assembler build'.
 EOC
 }
 
-propagate_luks_config() {
-    local key="$1"
-    local lbl="crypt_${1}fs"
-    # Moving key file to final destination
-    [ ! -d "$deploy_root/etc/luks" ] && mkdir -m 700 "$deploy_root/etc/luks"
-    mv "/tmp/${key}-luks-key" "$deploy_root/etc/luks/$key"
-    chmod 0400 "$deploy_root/etc/luks/$key"
-    local uuid
-    uuid=$(cryptsetup luksUUID "/dev/disk/by-label/$lbl")
-    if [[ ! -e $deploy_root/etc/crypttab ]]; then
-        touch "$deploy_root/etc/crypttab"
-        chmod 0600 "$deploy_root/etc/crypttab"
-    fi
-    echo "$lbl UUID=${uuid} /etc/luks/$key luks" >> "$deploy_root/etc/crypttab"
-}
-
-create_luks_partition() {
-    local key="/tmp/${1}-luks-key"
-    local lbl="crypt_${1}fs"
-    local dev="$2"
-    # Generating random key
-    dd if=/dev/urandom of="$key" bs=1024 count=4
-    chmod 0400 "$key"
-    cryptsetup luksFormat -q \
-                        --type luks2 --integrity hmac-sha256 \
-                        --label="$lbl" \
-                        --key-file="$key" \
-                        "$dev"
-
-    cryptsetup luksOpen "$dev" \
-                        "$lbl" \
-                        --key-file="$key"
-
-}
-
 config=
 disk=
 platform=metal
@@ -189,6 +154,8 @@ BOOTPN=3
 ROOTPN=4
 if [[ ${secure_execution} -eq 1 ]]; then
     SDPART=1
+    BOOTVERITYHASHPN=5
+    ROOTVERITYHASHPN=6
 fi
 # Make the size relative
 if [ "${rootfs_size}" != "0" ]; then
@@ -224,6 +191,11 @@ case "$arch" in
         # shellcheck disable=SC2206
         sgdisk_args+=(-n ${BOOTPN}:0:+384M -c ${BOOTPN}:boot \
                       -n ${ROOTPN}:0:"${rootfs_size}" -c ${ROOTPN}:root -t ${ROOTPN}:0FC63DAF-8483-4772-8E79-3D69D8477DE4)
+        if [[ ${secure_execution} -eq 1 ]]; then
+            # shellcheck disable=SC2206
+            sgdisk_args+=(-n ${BOOTVERITYHASHPN}:0:+128M -c ${BOOTVERITYHASHPN}:boothash \
+                          -n ${ROOTVERITYHASHPN}:0:+256M -c ${ROOTVERITYHASHPN}:roothash)
+        fi
         # NB: in the bare metal case when targeting ECKD DASD disks, this
         # partition table is not what actually gets written to disk in the end:
         # coreos-installer has code which transforms it into a DASD-compatible
@@ -272,13 +244,6 @@ if [[ ${secure_execution} -eq 1 ]]; then
     # Unencrypted partition for sd-boot
     # shellcheck disable=SC2086
     mkfs.ext4 ${bootargs} "${disk}${SDPART}" -L se -U random
-    # /boot must be encrypted
-    create_luks_partition boot "${boot_dev}"
-    # / must be encrypted
-    create_luks_partition root "${root_dev}"
-    # reset to devmapper devices
-    boot_dev="/dev/mapper/crypt_bootfs"
-    root_dev="/dev/mapper/crypt_rootfs"
 fi
 
 # shellcheck disable=SC2086
@@ -521,20 +486,13 @@ ppc64le)
     ;;
 s390x)
     bootloader_backend=zipl
-    rdcore_args=("--boot-mount=$rootfs/boot" "--kargs=ignition.firstboot")
-    if [[ ${secure_execution} -eq 1 ]]; then
-        rdcore_args+=("--secex-mode=enforce" "--hostkey=/dev/disk/by-id/virtio-hostkey")
-        propagate_luks_config boot
-        propagate_luks_config root
-    else
+    rdcore_zipl_args=("--boot-mount=$rootfs/boot" "--append-karg=ignition.firstboot")
+    # in the secex case, we run zipl at the end; in the non-secex case, we need
+    # to run it now because zipl wants rw access to the bootfs
+    if [[ ${secure_execution} -ne 1 ]]; then
         # in case builder itself runs with SecureExecution
-        rdcore_args+=("--secex-mode=disable")
-    fi
-    # shellcheck disable=SC2068
-    chroot_run /usr/lib/dracut/modules.d/50rdcore/rdcore zipl ${rdcore_args[@]}
-    # keys no longer needed after rdcore zipled 'sdboot' image
-    if [[ ${secure_execution} -eq 1 ]]; then
-        rm "${deploy_root}/etc/luks/root" "${deploy_root}/etc/luks/boot" "${deploy_root}/etc/crypttab"
+        rdcore_zipl_args+=("--secex-mode=disable")
+        chroot_run /usr/lib/dracut/modules.d/50rdcore/rdcore zipl "${rdcore_zipl_args[@]}"
     fi
     ;;
 esac
@@ -566,6 +524,40 @@ for fs in $rootfs/boot $rootfs; do
     xfs_freeze -f $fs
     xfs_freeze -u $fs
 done
+
 umount -R $rootfs
+
+create_dmverity() {
+    local partlabel=$1; shift
+    local mountpoint=$1; shift
+    local datapart="/dev/disk/by-partlabel/${partlabel}"
+    local hashpart="/dev/disk/by-partlabel/${partlabel}hash"
+    # We have to use 512 here to match the filesystem sector size. It's less
+    # efficient, but meh, it's for first boot only. Alternatively we could
+    # change the filesystem sector size higher up.
+    veritysetup format "${datapart}" "${hashpart}" \
+        --root-hash-file "/tmp/${partlabel}-roothash" \
+        --data-block-size 512
+    veritysetup open "${datapart}" "${partlabel}" "${hashpart}" \
+        --root-hash-file "/tmp/${partlabel}-roothash"
+    mount -o ro "/dev/mapper/${partlabel}" "${mountpoint}"
+}
+
+if [[ ${secure_execution} -eq 1 ]]; then
+    # set up dm-verity for the rootfs and bootfs
+    create_dmverity root $rootfs
+    create_dmverity boot $rootfs/boot
+
+    # run zipl with root hashes as kargs
+    rdcore_zipl_args+=("--secex-mode=enforce" "--hostkey=/dev/disk/by-id/virtio-hostkey")
+    rdcore_zipl_args+=("--append-karg=rootfs.roothash=$(cat /tmp/root-roothash)")
+    rdcore_zipl_args+=("--append-karg=bootfs.roothash=$(cat /tmp/boot-roothash)")
+    chroot_run /usr/lib/dracut/modules.d/50rdcore/rdcore zipl "${rdcore_zipl_args[@]}"
+
+    # unmount and close everything
+    umount -R $rootfs
+    veritysetup close boot
+    veritysetup close root
+fi
 
 rmdir $rootfs
