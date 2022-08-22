@@ -511,7 +511,7 @@ s390x)
     bootloader_backend=zipl
     rdcore_args=("--boot-mount=$rootfs/boot" "--kargs=ignition.firstboot")
     if [[ ${secure_execution} -eq 1 ]]; then
-        rdcore_args+=("--secex-mode=enforce" "--rootfs=$deploy_root" "--hostkey=/dev/disk/by-id/virtio-hostkey")
+        rdcore_args+=("--secex-mode=enforce" "--hostkey=/dev/disk/by-id/virtio-hostkey")
         propagate_luks_config boot
         propagate_luks_config root
     else
