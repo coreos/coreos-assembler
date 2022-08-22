@@ -7,6 +7,7 @@ dn=$(dirname "$0")
 
 # IBM SecureExecution
 secure_execution=
+image_suffix=
 
 # This script is used for creating both the bare metal and the canonical VM
 # image (qemu). `buildextend-qemu` is a symlink to `buildextend-metal`.
@@ -18,6 +19,7 @@ case "$(basename "$0")" in
     "cmd-buildextend-secex")
         secure_execution=1
         image_type=qemu
+        image_suffix=-secex
         ;;
     *) fatal "called as unexpected name $0";;
 esac
@@ -88,11 +90,9 @@ if [[ "$basearch" != "s390x" && $image_type == dasd ]]; then
 fi
 disk_args=()
 # SecureExecution extra stuff
-secex_image_suffix=
 secex_hostkey_drive=()
 if [[ $secure_execution -eq "1" ]]; then
     hostkey=$(realpath "$hostkey")
-    secex_image_suffix="-secex"
     disk_args+=("--with-secure-execution")
     secex_hostkey_drive=("-drive" "if=none,id=hostkey,format=raw,file=$hostkey,readonly=on" \
                          "-device" "virtio-blk,serial=hostkey,drive=hostkey")
@@ -156,7 +156,7 @@ if [[ $image_type == qemu ]]; then
     image_format=qcow2
 fi
 
-img=${name}-${build}-${image_type}${secex_image_suffix}.${basearch}.${image_format}
+img=${name}-${build}-${image_type}${image_suffix}.${basearch}.${image_format}
 path=${PWD}/${img}
 
 ignition_platform_id="${image_type}"
@@ -259,7 +259,7 @@ sha256=$(sha256sum_str < "${img}")
 cosa meta --workdir "${workdir}" --build "${build}" --dump | python3 -c "
 import sys, json
 j = json.load(sys.stdin)
-j['images']['${image_type}${secex_image_suffix}'] = {
+j['images']['${image_type}${image_suffix}'] = {
     'path': '${img}',
     'sha256': '${sha256}',
     'size': $(stat -c '%s' "${img}")
