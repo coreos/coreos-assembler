@@ -445,7 +445,7 @@ install_uefi() {
     local vendor_id="${grubefi##*/}"
     local vendordir="${target_efi}/EFI/${vendor_id}"
     mkdir -p "${vendordir}"
-	cat > "${vendordir}/grub.cfg" << 'EOF'
+    cat > "${vendordir}/grub.cfg" << 'EOF'
 if [ -e (md/md-boot) ]; then
   # The search command might pick a RAID component rather than the RAID,
   # since the /boot RAID currently uses superblock 1.0.  See the comment in
