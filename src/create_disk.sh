@@ -482,6 +482,18 @@ install_grub_cfg() {
     fi
 }
 
+# For some commands, we need to make sure to use the binary and userspace of the
+# target system. XXX: Switch to bwrap.
+chroot_run() {
+    for mnt in dev proc sys run var tmp; do
+        mount --rbind "/$mnt" "${deploy_root}/$mnt"
+    done
+    chroot "${deploy_root}" "$@"
+    for mnt in dev proc sys run var tmp; do
+        umount --recursive "${deploy_root}/$mnt"
+    done
+}
+
 # Other arch-specific bootloader changes
 # shellcheck disable=SC2031
 case "$arch" in
@@ -518,12 +530,8 @@ s390x)
         # in case builder itself runs with SecureExecution
         rdcore_args+=("--secex-mode=disable")
     fi
-    # chroot, cause userspace may be not same as the supermin environment
-    for mnt in dev proc sys run var tmp; do
-        mount --rbind "/$mnt" "${deploy_root}/$mnt"
-    done
     # shellcheck disable=SC2068
-    chroot "${deploy_root}" /usr/lib/dracut/modules.d/50rdcore/rdcore zipl ${rdcore_args[@]}
+    chroot_run /usr/lib/dracut/modules.d/50rdcore/rdcore zipl ${rdcore_args[@]}
     # keys no longer needed after rdcore zipled 'sdboot' image
     if [[ ${secure_execution} -eq 1 ]]; then
         rm "${deploy_root}/etc/luks/root" "${deploy_root}/etc/luks/boot" "${deploy_root}/etc/crypttab"
