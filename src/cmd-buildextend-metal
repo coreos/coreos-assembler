@@ -35,7 +35,8 @@ EOF
 hostkey=src/config/secex-hostkey
 rc=0
 build=
-options=$(getopt --options h --longoptions help,build:,hostkey: -- "$@") || rc=$?
+force=
+options=$(getopt --options h --longoptions help,force,build:,hostkey: -- "$@") || rc=$?
 [ $rc -eq 0 ] || {
     print_help
     exit 1
@@ -46,6 +47,9 @@ while true; do
         -h | --help)
             print_help
             exit 0
+            ;;
+        --force)
+            force=1
             ;;
         --build)
             build=$2
@@ -120,11 +124,13 @@ touch "${build_semaphore}"
 trap 'rm -rf ${build_semaphore}' EXIT
 
 # check if the image already exists in the meta.json
-meta_img=$(meta_key "images.${image_type}${secex_image_suffix}.path")
-if [ "${meta_img}" != "None" ]; then
-    echo "${image_type}${secex_image_suffix} image already exists:"
-    echo "$meta_img"
-    exit 0
+if [ -z "${force}" ]; then
+    meta_img=$(meta_key "images.${image_type}${image_suffix}.path")
+    if [ "${meta_img}" != "None" ]; then
+        echo "${image_type}${image_suffix} image already exists:"
+        echo "$meta_img"
+        exit 0
+    fi
 fi
 
 # reread these values from the build itself rather than rely on the ones loaded
