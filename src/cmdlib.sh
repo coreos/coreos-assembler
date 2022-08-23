@@ -322,7 +322,7 @@ prepare_compose_overlays() {
         exit 1
     fi
 
-    if [ -d "${overridesdir}" ] || [ -d "${ovld}" ]; then
+    if [ -d "${overridesdir}" ] || [ -d "${ovld}" ] || [ -d "${workdir}/src/yumrepos" ]; then
         mkdir -p "${tmp_overridesdir}"
         cat > "${override_manifest}" <<EOF
 include: ${manifest}
@@ -330,7 +330,14 @@ EOF
         # Because right now rpm-ostree doesn't look for .repo files in
         # each included dir.
         # https://github.com/projectatomic/rpm-ostree/issues/1628
-        cp "${workdir}"/src/config/*.repo "${tmp_overridesdir}"/
+        find "${configdir}" -name '*.repo' -exec cp -t "${tmp_overridesdir}" {} +
+        if [ -d "${workdir}/src/yumrepos" ]; then
+            find "${workdir}/src/yumrepos" -name '*.repo' -exec cp -t "${tmp_overridesdir}" {} +
+        fi
+        if ! ls "${tmp_overridesdir}"/*.repo; then
+            echo "ERROR: no yum repo files were found"
+            exit 1
+        fi
         manifest=${override_manifest}
     fi
 
