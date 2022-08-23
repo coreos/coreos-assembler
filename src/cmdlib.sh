@@ -787,10 +787,10 @@ openshift_git_hack() {
 prepare_git_artifacts() {
     # prepare_git_artifacts prepares two artifacts from a GIT repo:
     #   1. JSON describing the GIT tree.
-    #   2. A tarball of the source.
+    #   2. Optionally, a tarball of the source.
     local gitd="${1:?first argument must be the git directory}"; shift;
     local json="${1:?second argument must be the json file name to emit}"; shift;
-    local tarball="${1:?third argument me be the tarball name}"; shift;
+    local tarball="${1:-}"
 
     openshift_git_hack "${gitd}"
 
@@ -804,9 +804,6 @@ prepare_git_artifacts() {
     if ! ${gc} diff --quiet --exit-code; then
         is_dirty="true"
     fi
-
-    tar -C "${gitd}" -czf "${tarball}" --exclude-vcs .
-    chmod 0444 "${tarball}"
 
     local rev
     local branch
@@ -832,10 +829,6 @@ prepare_git_artifacts() {
 
     info "Directory ${gitd}, is from branch ${branch}, commit ${rev}"
 
-    local checksum name size
-    checksum=$(sha256sum "${tarball}" | awk '{print$1}')
-    name=$(basename "${tarball}")
-    size=$(find "${tarball}" -printf %s)
     # shellcheck disable=SC2046 disable=SC2086
     cat > "${json}" <<EOC
 {
@@ -845,7 +838,22 @@ prepare_git_artifacts() {
         "origin": "${head_url}",
         "branch": "${branch}",
         "dirty": "${is_dirty}"
-    },
+    }
+}
+EOC
+
+    if [ -n "$tarball" ]; then
+        tar -C "${gitd}" -czf "${tarball}" --exclude-vcs .
+        chmod 0444 "${tarball}"
+
+        local checksum name size
+        checksum=$(sha256sum "${tarball}" | awk '{print$1}')
+        name=$(basename "${tarball}")
+        size=$(find "${tarball}" -printf %s)
+
+        # Add file entry to json
+        jq -s add "${json}" - > "${json}.new" <<EOC
+{
     "file": {
         "checksum": "${checksum}",
         "checksum_type": "sha256",
@@ -855,6 +863,9 @@ prepare_git_artifacts() {
     }
 }
 EOC
+        mv "${json}.new" "${json}"
+    fi
+
     chmod 0444 "${json}"
 }
 
