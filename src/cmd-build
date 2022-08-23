@@ -235,6 +235,9 @@ cat > "${commitmeta_input_json}" <<EOF
 }
 EOF
 
+if [ -d "${workdir}/src/yumrepos" ]; then
+    prepare_git_artifacts "${workdir}/src/yumrepos" "${PWD}/coreos-assembler-yumrepos-git.json"
+fi
 prepare_git_artifacts "${configdir_gitrepo}" "${PWD}/coreos-assembler-config-git.json" "${PWD}/coreos-assembler-config.tar.gz"
 
 extra_compose_args=()
@@ -441,6 +444,14 @@ cat > tmp/images.json <<EOF
 }
 EOF
 
+if [ -f "${PWD}/coreos-assembler-yumrepos-git.json" ]; then
+    cat > tmp/yumrepos-git.json <<EOF
+{ "coreos-assembler.yumrepos-git": $(jq -M '.git' "${PWD}/coreos-assembler-yumrepos-git.json") }
+EOF
+else
+    echo '{}' > tmp/yumrepos-git.json
+fi
+
 overridesjson=tmp/overrides.json
 if [ -f "${overrides_active_stamp}" ]; then
     echo '{ "coreos-assembler.overrides-active": true }' > "${overridesjson}"
@@ -460,7 +471,7 @@ fi
 
 # Merge all the JSON; note that we want ${composejson} first
 # since we may be overriding data from a previous build.
-cat "${composejson}" "${overridesjson}" tmp/meta.json tmp/buildmeta.json tmp/diff.json tmp/parent-diff.json tmp/images.json tmp/cosa-image.json "${commitmeta_input_json}" | jq -s add > meta.json
+cat "${composejson}" "${overridesjson}" tmp/meta.json tmp/buildmeta.json tmp/diff.json tmp/parent-diff.json tmp/images.json tmp/cosa-image.json tmp/yumrepos-git.json "${commitmeta_input_json}" | jq -s add > meta.json
 
 # Move lockfile into build dir
 mv "${lockfile_out}" .
