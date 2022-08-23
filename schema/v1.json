@@ -341,7 +341,7 @@
     "coreos-assembler.container-config-git": {
       "$id": "#/properties/coreos-assembler.container-config-git",
       "type": "object",
-      "title": "Container Config GIT",
+      "title": "Container Config Git",
       "$ref": "#/definitions/git"
     },
     "coreos-assembler.container-image-git": {
