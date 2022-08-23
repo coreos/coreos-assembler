@@ -314,12 +314,18 @@ type DenyListObj struct {
 	Arches     []string `yaml:"arches"`
 	Platforms  []string `yaml:"platforms"`
 	SnoozeDate string   `yaml:"snooze"`
+	OsVersion  []string `yaml:"osversion"`
 }
 
 type ManifestData struct {
 	Variables struct {
-		Stream string `yaml:"stream"`
+		Stream    string `yaml:"stream"`
+		OsVersion string `yaml:"osversion"`
 	} `yaml:"variables"`
+}
+
+type InitConfigData struct {
+	ConfigVariant string `json:"coreos-assembler.config-variant"`
 }
 
 func parseDenyListYaml(pltfrm string) error {
@@ -342,25 +348,44 @@ func parseDenyListYaml(pltfrm string) error {
 
 	plog.Debug("Parsed kola-denylist.yaml")
 
-	// Get stream and arch
-	pathToManifest := filepath.Join(Options.CosaWorkdir, "src/config/manifest.yaml")
-	manifestFile, err := ioutil.ReadFile(pathToManifest)
+	// Look for the right manifest, taking into account the variant
+	var manifest ManifestData
+	var pathToManifest string
+	pathToInitConfig := filepath.Join(Options.CosaWorkdir, "src/config.json")
+	initConfigFile, err := ioutil.ReadFile(pathToInitConfig)
 	if os.IsNotExist(err) {
-		return nil
+		// No variant config found. Let's read the default manifest
+		pathToManifest = filepath.Join(Options.CosaWorkdir, "src/config/manifest.yaml")
 	} else if err != nil {
+		// Unexpected error
+		return err
+	} else {
+		// Figure out the variant and read the corresponding manifests
+		var initConfig InitConfigData
+		err = json.Unmarshal(initConfigFile, &initConfig)
+		if err != nil {
+			return err
+		}
+		pathToManifest = filepath.Join(Options.CosaWorkdir, fmt.Sprintf("src/config/manifest-%s.yaml", initConfig.ConfigVariant))
+	}
+	manifestFile, err := ioutil.ReadFile(pathToManifest)
+	if err != nil {
 		return err
 	}
-
-	var manifest ManifestData
 	err = yaml.Unmarshal(manifestFile, &manifest)
 	if err != nil {
 		return err
 	}
 
+	// Get the stream and osversion variables from the manifest
 	stream := manifest.Variables.Stream
+	osversion := manifest.Variables.OsVersion
+
+	// Get the current arch & current time
 	arch := Options.CosaBuildArch
-	plog.Debugf("Arch: %v detected.", arch)
 	today := time.Now()
+
+	plog.Debugf("Denylist: Skipping tests for stream: '%s', osversion: '%s', arch: '%s'\n", stream, osversion, arch)
 
 	// Accumulate patterns filtering by set policies
 	plog.Debug("Processing denial patterns from yaml...")
@@ -374,6 +399,10 @@ func parseDenyListYaml(pltfrm string) error {
 		}
 
 		if len(stream) > 0 && len(obj.Streams) > 0 && !hasString(stream, obj.Streams) {
+			continue
+		}
+
+		if len(osversion) > 0 && len(obj.OsVersion) > 0 && !hasString(osversion, obj.OsVersion) {
 			continue
 		}
 
