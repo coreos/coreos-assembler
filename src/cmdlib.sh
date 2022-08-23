@@ -816,8 +816,8 @@ prepare_git_artifacts() {
     #   1. JSON describing the GIT tree.
     #   2. A tarball of the source.
     local gitd="${1:?first argument must be the git directory}"; shift;
-    local tarball="${1:?second argument me be the tarball name}"; shift;
-    local json="${1:?third argument must be the json file name to emit}"; shift;
+    local json="${1:?second argument must be the json file name to emit}"; shift;
+    local tarball="${1:?third argument me be the tarball name}"; shift;
 
     openshift_git_hack "${gitd}"
 
