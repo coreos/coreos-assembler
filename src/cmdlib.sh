@@ -372,7 +372,7 @@ prepare_compose_overlays() {
         exit 1
     fi
 
-    if [ -d "${overridesdir}" ] || [ -d "${ovld}" ]; then
+    if [ -d "${overridesdir}" ] || [ -d "${ovld}" ] || [ -d "${workdir}/src/yumrepos" ]; then
         mkdir -p "${tmp_overridesdir}"
         cat > "${override_manifest}" <<EOF
 include: ${manifest}
@@ -380,7 +380,14 @@ EOF
         # Because right now rpm-ostree doesn't look for .repo files in
         # each included dir.
         # https://github.com/projectatomic/rpm-ostree/issues/1628
-        cp "${workdir}"/src/config/*.repo "${tmp_overridesdir}"/
+        find "${configdir}" -name '*.repo' -exec cp -t "${tmp_overridesdir}" {} +
+        if [ -d "${workdir}/src/yumrepos" ]; then
+            find "${workdir}/src/yumrepos" -name '*.repo' -exec cp -t "${tmp_overridesdir}" {} +
+        fi
+        if ! ls "${tmp_overridesdir}"/*.repo; then
+            echo "ERROR: no yum repo files were found"
+            exit 1
+        fi
         manifest=${override_manifest}
     fi
 
@@ -436,12 +443,20 @@ EOF
     else
         rm -vf "${local_overrides_lockfile}"
     fi
+
+    contentset_path=""
     if [ -e "${configdir}/content_sets.yaml" ]; then
+        contentset_path="${configdir}/content_sets.yaml"
+    elif [ -e "${workdir}/src/yumrepos/content_sets.yaml" ]; then
+        contentset_path="${workdir}/src/yumrepos/content_sets.yaml"
+    fi
+
+    if [ -n "${contentset_path}" ]; then
         mkdir -p "${tmp_overridesdir}"/contentsetrootfs/usr/share/buildinfo/
         # create_content_manifest takes in the base repos and maps them to their pulp repository IDs
         # available in content_sets.yaml. The mapped repos are then available in content_manifest.json
         # Feature: https://issues.redhat.com/browse/GRPA-3731
-        create_content_manifest "$configdir"/content_sets.yaml "${tmp_overridesdir}/contentsetrootfs/usr/share/buildinfo/content_manifest.json"
+        create_content_manifest "${contentset_path}" "${tmp_overridesdir}/contentsetrootfs/usr/share/buildinfo/content_manifest.json"
         # adjust permissions to appease the ext.config.shared.files.file-directory-permissions test
         chmod 0644 "${tmp_overridesdir}/contentsetrootfs/usr/share/buildinfo/content_manifest.json"
 
