@@ -235,7 +235,7 @@ cat > "${commitmeta_input_json}" <<EOF
 }
 EOF
 
-prepare_git_artifacts "${configdir_gitrepo}" "${PWD}/coreos-assembler-config.tar.gz" "${PWD}/coreos-assembler-config-git.json"
+prepare_git_artifacts "${configdir_gitrepo}" "${PWD}/coreos-assembler-config-git.json" "${PWD}/coreos-assembler-config.tar.gz"
 
 extra_compose_args=()
 
