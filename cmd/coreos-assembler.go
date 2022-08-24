@@ -13,7 +13,7 @@ import (
 
 // commands we'd expect to use in the local dev path
 var buildCommands = []string{"init", "fetch", "build", "run", "prune", "clean", "list"}
-var advancedBuildCommands = []string{"buildfetch", "buildupload", "oc-adm-release", "push-container", "upload-oscontainer"}
+var advancedBuildCommands = []string{"buildfetch", "buildupload", "oc-adm-release", "push-container", "upload-oscontainer", "buildextend-extensions"}
 var buildextendCommands = []string{"aliyun", "aws", "azure", "digitalocean", "exoscale", "gcp", "ibmcloud", "kubevirt", "live", "metal", "metal4k", "nutanix", "openstack", "qemu", "secex", "virtualbox", "vmware", "vultr"}
 var utilityCommands = []string{"aws-replicate", "build-extensions-container", "compress", "generate-hashlist", "koji-upload", "kola", "push-container-manifest", "remote-build-container", "remote-prune", "remote-session", "sign", "tag"}
 var otherCommands = []string{"shell", "meta"}
@@ -38,8 +38,12 @@ func wrapCommandErr(err error) error {
 
 func printCommands(title string, cmds []string) {
 	fmt.Printf("%s:\n", title)
+	var prefix string
+	if title == "Platform builds" {
+		prefix = "buildextend-"
+	}
 	for _, cmd := range cmds {
-		fmt.Printf("  %s\n", cmd)
+		fmt.Printf("  %s%s\n", prefix, cmd)
 	}
 }
 
