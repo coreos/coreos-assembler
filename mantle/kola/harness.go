@@ -424,7 +424,9 @@ func parseDenyListYaml(pltfrm string) error {
 			fmt.Printf("⚠️  Skipping kola test pattern \"%s\":\n", obj.Pattern)
 		}
 
-		fmt.Printf("  👉 %s\n", obj.Tracker)
+		if obj.Tracker != "" {
+			fmt.Printf("  👉 %s\n", obj.Tracker)
+		}
 		DenylistedTests = append(DenylistedTests, obj.Pattern)
 	}
 
