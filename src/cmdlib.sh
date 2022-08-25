@@ -676,14 +676,14 @@ EOF
 
     # support local dev cases where src/config is a symlink.  Note if you change or extend to this set,
     # you also need to update supermin-init-prelude.sh to mount it inside the VM.
-    if [ -L "${workdir}/src/config" ]; then
-        # qemu follows symlinks
-        base_qemu_args+=("-virtfs" 'local,id=source,path='"${workdir}"'/src/config,security_model=none,mount_tag=source')
-    fi
-    # Current RHCOS pipeline makes builds/ a PVC
-    if [ -L "${workdir}/builds" ]; then
-        base_qemu_args+=("-virtfs" 'local,id=builds,path='"${workdir}"'/builds,security_model=none,mount_tag=builds')
-    fi
+    for maybe_symlink in "${workdir}"/{src/config,builds}; do
+        if [ -L "${maybe_symlink}" ]; then
+            # qemu follows symlinks
+            local bn
+            bn=$(basename "${maybe_symlink}")
+            base_qemu_args+=("-virtfs" "local,id=${bn},path=${maybe_symlink},security_model=none,mount_tag=${bn}")
+        fi
+    done
 
     if [ -z "${RUNVM_SHELL:-}" ]; then
         if ! "${kola_args[@]}" -- "${base_qemu_args[@]}" \
