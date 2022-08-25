@@ -5,6 +5,7 @@
 
 mount -t proc /proc /proc
 mount -t sysfs /sys /sys
+mount -t cgroup2 cgroup2 -o rw,nosuid,nodev,noexec,relatime,seclabel,nsdelegate,memory_recursiveprot /sys/fs/cgroup
 mount -t devtmpfs devtmpfs /dev
 
 # need /dev/shm for podman
