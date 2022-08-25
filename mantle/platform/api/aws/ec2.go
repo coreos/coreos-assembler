@@ -108,77 +108,97 @@ func (a *API) CreateInstances(name, keyname, userdata string, count uint64, minD
 		return nil, fmt.Errorf("error resolving vpc: %v", err)
 	}
 
-	zone, err := a.GetZoneForInstanceType(a.opts.InstanceType)
+	zones, err := a.GetZonesForInstanceType(a.opts.InstanceType)
 	if err != nil {
-		return nil, fmt.Errorf("error finding zone for instance type %v", a.opts.InstanceType)
-	}
-
-	subnetId, err := a.getSubnetID(vpcId, zone)
-	if err != nil {
-		return nil, fmt.Errorf("error resolving subnet: %v", err)
-	}
-
-	key := &keyname
-	if keyname == "" {
-		key = nil
-	}
-
-	var rootBlockDev []*ec2.BlockDeviceMapping
-	if minDiskSize > 0 {
-		rootBlockDev = append(rootBlockDev, &ec2.BlockDeviceMapping{
-			DeviceName: aws.String("/dev/xvda"),
-			Ebs: &ec2.EbsBlockDevice{
-				VolumeSize: &minDiskSize,
-			},
-		})
-	}
-	inst := ec2.RunInstancesInput{
-		ImageId:             &a.opts.AMI,
-		MinCount:            &cnt,
-		MaxCount:            &cnt,
-		KeyName:             key,
-		InstanceType:        &a.opts.InstanceType,
-		SecurityGroupIds:    []*string{&sgId},
-		SubnetId:            &subnetId,
-		UserData:            ud,
-		BlockDeviceMappings: rootBlockDev,
-		TagSpecifications: []*ec2.TagSpecification{
-			&ec2.TagSpecification{
-				ResourceType: aws.String(ec2.ResourceTypeInstance),
-				Tags: []*ec2.Tag{
-					&ec2.Tag{
-						Key:   aws.String("Name"),
-						Value: aws.String(name),
-					},
-					&ec2.Tag{
-						Key:   aws.String("CreatedBy"),
-						Value: aws.String("mantle"),
-					},
-				},
-			},
-		},
-	}
-	if useInstanceProfile {
-		inst.IamInstanceProfile = &ec2.IamInstanceProfileSpecification{
-			Name: &a.opts.IAMInstanceProfile,
-		}
+		// Find all available zones that offer the given instance type
+		return nil, fmt.Errorf("error finding zones for instance type %v", a.opts.InstanceType)
 	}
 
 	var reservations *ec2.Reservation
-	err = util.RetryConditional(5, 5*time.Second, func(err error) bool {
-		// due to AWS' eventual consistency despite ensuring that the IAM Instance
-		// Profile has been created it may not be available to ec2 yet.
-		if awsErr, ok := err.(awserr.Error); ok && (awsErr.Code() == "InvalidParameterValue" && strings.Contains(awsErr.Message(), "iamInstanceProfile.name")) {
-			return true
+
+	// Iterate over other possible zones if capacity for an instance
+	// type is exhausted
+	for zoneKey, zone := range zones {
+		subnetId, err := a.getSubnetID(vpcId, zone)
+		if err != nil {
+			return nil, fmt.Errorf("error resolving subnet: %v", err)
 		}
-		return false
-	}, func() error {
-		var ierr error
-		reservations, ierr = a.ec2.RunInstances(&inst)
-		return ierr
-	})
-	if err != nil {
-		return nil, fmt.Errorf("error running instances: %v", err)
+
+		key := &keyname
+		if keyname == "" {
+			key = nil
+		}
+
+		var rootBlockDev []*ec2.BlockDeviceMapping
+		if minDiskSize > 0 {
+			rootBlockDev = append(rootBlockDev, &ec2.BlockDeviceMapping{
+				DeviceName: aws.String("/dev/xvda"),
+				Ebs: &ec2.EbsBlockDevice{
+					VolumeSize: &minDiskSize,
+				},
+			})
+		}
+		inst := ec2.RunInstancesInput{
+			ImageId:             &a.opts.AMI,
+			MinCount:            &cnt,
+			MaxCount:            &cnt,
+			KeyName:             key,
+			InstanceType:        &a.opts.InstanceType,
+			SecurityGroupIds:    []*string{&sgId},
+			SubnetId:            &subnetId,
+			UserData:            ud,
+			BlockDeviceMappings: rootBlockDev,
+			TagSpecifications: []*ec2.TagSpecification{
+				&ec2.TagSpecification{
+					ResourceType: aws.String(ec2.ResourceTypeInstance),
+					Tags: []*ec2.Tag{
+						&ec2.Tag{
+							Key:   aws.String("Name"),
+							Value: aws.String(name),
+						},
+						&ec2.Tag{
+							Key:   aws.String("CreatedBy"),
+							Value: aws.String("mantle"),
+						},
+					},
+				},
+			},
+		}
+		if useInstanceProfile {
+			inst.IamInstanceProfile = &ec2.IamInstanceProfileSpecification{
+				Name: &a.opts.IAMInstanceProfile,
+			}
+		}
+
+		err = util.RetryConditional(5, 5*time.Second, func(err error) bool {
+			// due to AWS' eventual consistency despite ensuring that the IAM Instance
+			// Profile has been created it may not be available to ec2 yet.
+			if awsErr, ok := err.(awserr.Error); ok && (awsErr.Code() == "InvalidParameterValue" && strings.Contains(awsErr.Message(), "iamInstanceProfile.name")) {
+				return true
+			}
+			return false
+		}, func() error {
+			var ierr error
+			reservations, ierr = a.ec2.RunInstances(&inst)
+			return ierr
+		})
+		if err == nil {
+			// Successfully started our instance in the requested zone. Break out of the loop
+			break
+		}
+		if err != nil {
+			// Handle InsufficientInstanceCapacity error specifically
+			if awsErr, ok := err.(awserr.Error); ok && awsErr.Code() == "InsufficientInstanceCapacity" {
+				// If we iterate over all possible zones and none of them have sufficient instance(s)
+				// available we will return the InsufficientInstanceCapacity error
+				if zoneKey == len(zones)-1 {
+					return nil, fmt.Errorf("all available zones tried: %v", err)
+				}
+				plog.Warningf("Insufficient instances available in zone %v. Trying the next zone\n", zone)
+				continue
+			}
+			return nil, fmt.Errorf("error running instances: %v", err)
+		}
 	}
 
 	ids := make([]string, len(reservations.Instances))
@@ -329,10 +349,10 @@ func (a *API) GetConsoleOutput(instanceID string) (string, error) {
 	return string(decoded), nil
 }
 
-// GetZoneForInstanceType returns an availability zone that offers the
-// given instance type. This is useful because not all availabitliy zones
+// GetZonesForInstanceType returns all available zones that offer the
+// given instance type. This is useful because not all availability zones
 // offer all instances types.
-func (a *API) GetZoneForInstanceType(instanceType string) (string, error) {
+func (a *API) GetZonesForInstanceType(instanceType string) ([]string, error) {
 
 	input := ec2.DescribeInstanceTypeOfferingsInput{
 		LocationType: aws.String(ec2.LocationTypeAvailabilityZone),
@@ -345,10 +365,15 @@ func (a *API) GetZoneForInstanceType(instanceType string) (string, error) {
 	}
 	output, err := a.ec2.DescribeInstanceTypeOfferings(&input)
 	if err != nil {
-		return "", fmt.Errorf("error describing instance offerings: %v", err)
+		return nil, fmt.Errorf("error describing instance offerings: %v", err)
 	}
 	if len(output.InstanceTypeOfferings) == 0 {
-		return "", fmt.Errorf("no availability zones found for this instance type %v:", instanceType)
+		return nil, fmt.Errorf("no availability zones found for this instance type %v:", instanceType)
 	}
-	return *output.InstanceTypeOfferings[0].Location, nil
+
+	var zones []string
+	for _, v := range output.InstanceTypeOfferings {
+		zones = append(zones, *v.Location)
+	}
+	return zones, nil
 }
