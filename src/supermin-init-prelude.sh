@@ -39,7 +39,7 @@ mkdir -p "${workdir:?}"
 mount -t 9p -o rw,trans=virtio,version=9p2000.L,msize=10485760 workdir "${workdir}"
 
 # This loop pairs with virtfs setups for qemu in cmdlib.sh.  Keep them in sync.
-for maybe_symlink in "${workdir}"/{src/config,builds}; do
+for maybe_symlink in "${workdir}"/{src/config,src/yumrepos,builds}; do
     if [ -L "${maybe_symlink}" ]; then
         bn=$(basename "${maybe_symlink}")
         mkdir -p "$(readlink "${maybe_symlink}")"
