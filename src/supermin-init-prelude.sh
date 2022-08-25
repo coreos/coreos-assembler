@@ -37,15 +37,16 @@ umask 002
 # https://github.com/coreos/coreos-assembler/issues/2171
 mkdir -p "${workdir:?}"
 mount -t 9p -o rw,trans=virtio,version=9p2000.L,msize=10485760 workdir "${workdir}"
-# These two invocations pair with virtfs setups for qemu in cmdlib.sh.  Keep them in sync.
-if [ -L "${workdir}"/src/config ]; then
-    mkdir -p "$(readlink "${workdir}"/src/config)"
-    mount -t 9p -o rw,trans=virtio,version=9p2000.L,msize=10485760 source "${workdir}"/src/config
-fi
-if [ -L "${workdir}"/builds ]; then
-    mkdir -p "$(readlink "${workdir}"/builds)"
-    mount -t 9p -o rw,trans=virtio,version=9p2000.L,msize=10485760 builds "${workdir}"/builds
-fi
+
+# This loop pairs with virtfs setups for qemu in cmdlib.sh.  Keep them in sync.
+for maybe_symlink in "${workdir}"/{src/config,builds}; do
+    if [ -L "${maybe_symlink}" ]; then
+        bn=$(basename "${maybe_symlink}")
+        mkdir -p "$(readlink "${maybe_symlink}")"
+        mount -t 9p -o rw,trans=virtio,version=9p2000.L,msize=10485760 "${bn}" "${maybe_symlink}"
+    fi
+done
+
 mkdir -p "${workdir}"/cache
 cachedev=$(blkid -lt LABEL=cosa-cache -o device || true)
 if [ -n "${cachedev}" ]; then
