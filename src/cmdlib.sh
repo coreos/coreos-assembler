@@ -676,7 +676,7 @@ EOF
 
     # support local dev cases where src/config is a symlink.  Note if you change or extend to this set,
     # you also need to update supermin-init-prelude.sh to mount it inside the VM.
-    for maybe_symlink in "${workdir}"/{src/config,builds}; do
+    for maybe_symlink in "${workdir}"/{src/config,src/yumrepos,builds}; do
         if [ -L "${maybe_symlink}" ]; then
             # qemu follows symlinks
             local bn

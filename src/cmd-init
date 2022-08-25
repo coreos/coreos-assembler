@@ -30,7 +30,7 @@ Usage: coreos-assembler init --help
   Use --yumrepos for builds that need .repo files and a content_sets.yaml which
   are not in GITCONFIG. For example: files need to be hidden behind a firewall
   in GITREPO. Using this option will clone GITREPO alongside GITCONFIG, thus you
-  may need to configure certificates.
+  may need to configure certificates. Local paths are also supported.
 
   Use `--transient` for builds that will throw away all cached data on success/failure,
   and should hence not invoke `fsync()` for example.
@@ -163,10 +163,11 @@ if test "${TRANSIENT}" = 1; then
     touch tmp/cosa-transient
 fi
 
-if [ -n "${YUMREPOS}" ]; then
-    mkdir -p src/yumrepos
-    git clone --depth=1 "${YUMREPOS}" src/yumrepos
-fi
+case "${YUMREPOS}" in
+    "");;
+    /*) ln -s "${YUMREPOS}" src/yumrepos;;
+    *) git clone --depth=1 "${YUMREPOS}" src/yumrepos;;
+esac
 
 set +x
 echo "Initialized $PWD as coreos-assembler working directory."
