@@ -134,7 +134,7 @@ fi
 if ! ostree --repo="${tmprepo}" commit -b "${fastref}" --base="${previous_commit}" --tree=dir="${rootfsoverrides}" \
     --owner-uid 0 --owner-gid 0 --selinux-policy-from-base --link-checkout-speedup --no-bindings --no-xattrs \
     --add-metadata-string=version="${version}" --parent="${previous_commit}" --keep-metadata='coreos-assembler.basearch' \
-    --keep-metadata='fedora-coreos.stream' --fsync=0 "${commit_args[@]}"; then
+    --keep-metadata='fedora-coreos.stream' --keep-metadata='ostree.bootable' --fsync=0 "${commit_args[@]}"; then
     restore_etc
     exit 1
 fi
