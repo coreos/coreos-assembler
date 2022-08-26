@@ -524,6 +524,14 @@ def generate_iso():
             if len(vendor_ids) != 1:
                 raise Exception(f"did not find exactly one EFI vendor ID: {vendor_ids}")
 
+            # Always replace live/EFI/{vendor} to actual live/EFI/{vendor_id[0]}
+            # https://github.com/openshift/os/issues/954
+            grubfilepath = ensure_glob(os.path.join(tmpdir, 'live/EFI/*/grub.cfg'))
+            if len(grubfilepath) != 1:
+                raise Exception(f'Found != 1 grub.cfg files: {grubfilepath}')
+            srcpath = os.path.dirname(grubfilepath[0])
+            os.renames(srcpath, os.path.join(os.path.dirname(srcpath), vendor_ids[0]))
+
             # Delete fallback and its CSV file.  Its purpose is to create
             # EFI boot variables, which we don't want when booting from
             # removable media.
