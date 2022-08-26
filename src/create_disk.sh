@@ -486,7 +486,9 @@ ppc64le)
     ;;
 s390x)
     bootloader_backend=zipl
-    rdcore_zipl_args=("--boot-mount=$rootfs/boot" "--append-karg=ignition.firstboot")
+    # XXX: switch to using --append-karg once we have new enough rdcore
+    # https://github.com/coreos/coreos-installer/pull/950
+    rdcore_zipl_args=("--boot-mount=$rootfs/boot" "--kargs=ignition.firstboot")
     # in the secex case, we run zipl at the end; in the non-secex case, we need
     # to run it now because zipl wants rw access to the bootfs
     if [[ ${secure_execution} -ne 1 ]]; then
