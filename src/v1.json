@@ -217,6 +217,7 @@
     "koji",
     "oscontainer",
     "extensions",
+    "extensions-container",
     "parent-pkgdiff",
     "pkgdiff",
     "parent-advisories-diff",
@@ -867,6 +868,21 @@
       "properties": {
         "image": {
           "$id": "#/properties/base-oscontainer/image",
+          "type": "string",
+          "title": "Image"
+        }
+      }
+    },
+    "extensions-container": {
+      "$id": "#/properties/extensions-container",
+      "type": "object",
+      "title": "Extensions container",
+      "required": [
+        "image"
+      ],
+      "properties": {
+        "image": {
+          "$id": "#/properties/extensions-container/image",
           "type": "string",
           "title": "Image"
         }
