@@ -441,7 +441,7 @@ fi
 cat > tmp/buildmeta.json <<EOF
 {
  "name": "${name}",
- "summary": "${summary//\"/\\\"}",
+ "summary": "This field is unused",
  "coreos-assembler.build-timestamp": "${build_timestamp}",
  "coreos-assembler.image-config-checksum": "${image_config_checksum}",
  "coreos-assembler.image-input-checksum": "${image_input_checksum}",

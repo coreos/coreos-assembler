@@ -197,8 +197,7 @@
     "ostree-content-checksum",
     "ostree-timestamp",
     "ostree-version",
-    "rpm-ostree-inputhash",
-    "summary"
+    "rpm-ostree-inputhash"
   ],
   "optional": [
     "aliyun",
@@ -223,6 +222,7 @@
     "parent-advisories-diff",
     "advisories-diff",
     "release-payload",
+    "summary",
     "s3",
     "coreos-assembler.basearch",
     "coreos-assembler.build-timestamp",
@@ -342,10 +342,10 @@
       "minLength": 1
     },
     "coreos-assembler.config-variant": {
-      "$id":"#/properties/coreos-assembler.config-variant",
-      "type":"string",
-      "title":"Config variant",
-      "default":""
+      "$id": "#/properties/coreos-assembler.config-variant",
+      "type": "string",
+      "title": "Config variant",
+      "default": ""
     },
     "coreos-assembler.container-config-git": {
       "$id": "#/properties/coreos-assembler.container-config-git",
