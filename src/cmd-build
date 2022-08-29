@@ -412,10 +412,10 @@ else
         oci) ;;
         # Note rpm-ostree always copies the rpmostree.inputhash key
         oci-chunked)
-            cmd=(rpm-ostree container-encapsulate --max-layers="$MAX_OSTREECONTAINER_LAYERS" --format-version=0)
+            cmd=(rpm-ostree compose container-encapsulate --max-layers="$MAX_OSTREECONTAINER_LAYERS" --format-version=0)
         ;;
         oci-chunked-v1)
-            cmd=(rpm-ostree container-encapsulate --max-layers="$MAX_OSTREECONTAINER_LAYERS" --format-version=1)
+            cmd=(rpm-ostree compose container-encapsulate --max-layers="$MAX_OSTREECONTAINER_LAYERS" --format-version=1)
         ;;
         *) fatal "Unknown ostree-format: ${ostree_format}"
     esac
