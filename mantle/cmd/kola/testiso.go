@@ -202,6 +202,10 @@ var nmConnectionFile = "coreos-dhcp.nmconnection"
 var nmConnection = fmt.Sprintf(`[connection]
 id=%s
 type=ethernet
+# add wait-device-timeout here so we make sure NetworkManager-wait-online.service will
+# wait for a device to be present before exiting. See
+# https://github.com/coreos/fedora-coreos-tracker/issues/1275#issuecomment-1231605438
+wait-device-timeout=20000
 
 [ipv4]
 method=auto
