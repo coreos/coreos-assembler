@@ -142,6 +142,19 @@ ExecStart=/bin/sh -c '/usr/bin/echo %s >/dev/virtio-ports/testisocompletion && s
 RequiredBy=multi-user.target
 `, signalCompleteString)
 
+var signalEmergencyString = "coreos-installer-test-entered-emergency-target"
+var signalFailureUnit = fmt.Sprintf(`[Unit]
+Description=TestISO Signal Failure
+Requires=dev-virtio\\x2dports-testisocompletion.device
+DefaultDependencies=false
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/sh -c '/usr/bin/echo %s >/dev/virtio-ports/testisocompletion && systemctl poweroff'
+[Install]
+RequiredBy=emergency.target
+`, signalEmergencyString)
+
 var checkNoIgnition = `[Unit]
 Description=TestISO Verify No Ignition Config
 OnFailure=emergency.target
@@ -615,6 +628,7 @@ func testPXE(ctx context.Context, inst platform.Install, outdir string, offline 
 
 	liveConfig := *virtioJournalConfig
 	liveConfig.AddSystemdUnit("live-signal-ok.service", liveSignalOKUnit, conf.Enable)
+	liveConfig.AddSystemdUnit("coreos-test-entered-emergency-target.service", signalFailureUnit, conf.Enable)
 
 	if offline {
 		contents := fmt.Sprintf(downloadCheck, kola.CosaBuild.Meta.BuildID, kola.CosaBuild.Meta.OstreeCommit)
@@ -623,6 +637,7 @@ func testPXE(ctx context.Context, inst platform.Install, outdir string, offline 
 
 	targetConfig := *virtioJournalConfig
 	targetConfig.AddSystemdUnit("coreos-test-installer.service", signalCompletionUnit, conf.Enable)
+	targetConfig.AddSystemdUnit("coreos-test-entered-emergency-target.service", signalFailureUnit, conf.Enable)
 	targetConfig.AddSystemdUnit("coreos-test-installer-no-ignition.service", checkNoIgnition, conf.Enable)
 
 	mach, err := inst.PXE(pxeKernelArgs, liveConfig, targetConfig, offline)
@@ -667,9 +682,11 @@ func testLiveIso(ctx context.Context, inst platform.Install, outdir string, offl
 	liveConfig := *virtioJournalConfig
 	liveConfig.AddSystemdUnit("live-signal-ok.service", liveSignalOKUnit, conf.Enable)
 	liveConfig.AddSystemdUnit("verify-no-efi-boot-entry.service", verifyNoEFIBootEntry, conf.Enable)
+	liveConfig.AddSystemdUnit("coreos-test-entered-emergency-target.service", signalFailureUnit, conf.Enable)
 
 	targetConfig := *virtioJournalConfig
 	targetConfig.AddSystemdUnit("coreos-test-installer.service", signalCompletionUnit, conf.Enable)
+	targetConfig.AddSystemdUnit("coreos-test-entered-emergency-target.service", signalFailureUnit, conf.Enable)
 	targetConfig.AddSystemdUnit("coreos-test-installer-no-ignition.service", checkNoIgnition, conf.Enable)
 	if inst.MultiPathDisk {
 		targetConfig.AddSystemdUnit("coreos-test-installer-multipathed.service", multipathedRoot, conf.Enable)
