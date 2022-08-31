@@ -59,6 +59,7 @@ func init() {
 	ss("debug-systemd-unit", []string{}, "full-unit-name.service to enable SYSTEMD_LOG_LEVEL=debug on. Can be specified multiple times.")
 	ssv(&kola.DenylistedTests, "denylist-test", []string{}, "Test pattern to add to denylist. Can be specified multiple times.")
 	bv(&kola.NoNet, "no-net", false, "Don't run tests that require an Internet connection")
+	bv(&kola.ForceRunPlatformIndependent, "run-platform-independent", false, "Run tests that claim platform independence")
 	ssv(&kola.Tags, "tag", []string{}, "Test tag to run. Can be specified multiple times.")
 	bv(&kola.Options.SSHOnTestFailure, "ssh-on-test-failure", false, "SSH into a machine when tests fail")
 	sv(&kola.Options.Stream, "stream", "", "CoreOS stream ID (e.g. for Fedora CoreOS: stable, testing, next)")

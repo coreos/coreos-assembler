@@ -74,6 +74,13 @@ const InstalledTestDefaultTest = "test.sh"
 // Specifying this in the tags list is required to denote a need for Internet access
 const NeedsInternetTag = "needs-internet"
 
+// PlatformIndependentTag is currently equivalent to platform: qemu, but that may change in the future.
+// For more, see the doc in external-tests.md.
+const PlatformIndependentTag = "platform-independent"
+
+// defaultPlatformIndependentPlatform is the platform where we run tests that claim platform independence
+const defaultPlatformIndependentPlatform = "qemu"
+
 // Don't e.g. check console for kernel errors, SELinux AVCs, etc.
 const SkipBaseChecksTag = "skip-base-checks"
 
@@ -99,6 +106,8 @@ var (
 	TestParallelism int    //glue var to set test parallelism from main
 	TAPFile         string // if not "", write TAP results here
 	NoNet           bool   // Disable tests requiring Internet
+	// ForceRunPlatformIndependent will cause tests that claim platform-independence to run
+	ForceRunPlatformIndependent bool
 
 	DenylistedTests []string // tests which are on the denylist
 	Tags            []string // tags to be ran
@@ -557,6 +566,18 @@ func filterTests(tests map[string]*register.Test, patterns []string, pltfrm stri
 				}
 			}
 			return allowed, excluded
+		}
+
+		// For now, we hardcode platform independent tests to run only on one platform.
+		// But in the future, we should optimize this so that an overall
+		// test planner/scheduler knows to run the test at most once or twice.
+		// Platform independent tests could also run on AWS sometimes for example.
+		if !ForceRunPlatformIndependent {
+			for _, tag := range t.Tags {
+				if tag == PlatformIndependentTag {
+					t.Platforms = []string{defaultPlatformIndependentPlatform}
+				}
+			}
 		}
 
 		isExcluded := false
