@@ -161,6 +161,11 @@ fi
 if [ "${rootfs_size}" != "0" ]; then
     rootfs_size="+${rootfs_size}"
 fi
+
+# we use pure BLS on most architectures; this may
+# be overridden below
+bootloader_backend=none
+
 # shellcheck disable=SC2031
 case "$arch" in
     x86_64)
@@ -183,6 +188,7 @@ case "$arch" in
         -n ${ROOTPN}:0:"${rootfs_size}" -c ${ROOTPN}:root -t ${ROOTPN}:0FC63DAF-8483-4772-8E79-3D69D8477DE4
         ;;
     s390x)
+        bootloader_backend=zipl
         sgdisk_args=()
         if [[ ${secure_execution} -eq 1 ]]; then
             # shellcheck disable=SC2206
@@ -311,6 +317,10 @@ fi
 # Now that we have the basic disk layout, initialize the basic
 # OSTree layout, load in the ostree commit and deploy it.
 ostree admin init-fs --modern $rootfs
+ostree config --repo $rootfs/ostree/repo set sysroot.bootloader "${bootloader_backend}"
+# Opt-in to https://github.com/ostreedev/ostree/pull/1767 AKA
+# https://github.com/ostreedev/ostree/issues/1265
+ostree config --repo $rootfs/ostree/repo set sysroot.readonly true
 # Initialize the "stateroot"
 ostree admin os-init "$os_name" --sysroot $rootfs
 
@@ -387,10 +397,6 @@ cat > $rootfs/.coreos-aleph-version.json << EOF
 	"imgid": "${imgid}"
 }
 EOF
-
-# we use pure BLS on most architectures; this may
-# be overridden below
-bootloader_backend=none
 
 install_uefi() {
     # https://github.com/coreos/fedora-coreos-tracker/issues/510
@@ -485,7 +491,6 @@ ppc64le)
     install_grub_cfg
     ;;
 s390x)
-    bootloader_backend=zipl
     # XXX: switch to using --append-karg once we have new enough rdcore
     # https://github.com/coreos/coreos-installer/pull/950
     rdcore_zipl_args=("--boot-mount=$rootfs/boot" "--kargs=ignition.firstboot")
@@ -499,10 +504,6 @@ s390x)
     ;;
 esac
 
-ostree config --repo $rootfs/ostree/repo set sysroot.bootloader "${bootloader_backend}"
-# Opt-in to https://github.com/ostreedev/ostree/pull/1767 AKA
-# https://github.com/ostreedev/ostree/issues/1265
-ostree config --repo $rootfs/ostree/repo set sysroot.readonly true
 # enable support for GRUB password
 if [ "${bootloader_backend}" = "none" ]; then
     ostree config --repo $rootfs/ostree/repo set sysroot.bls-append-except-default 'grub_users=""'
