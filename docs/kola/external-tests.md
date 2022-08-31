@@ -221,6 +221,7 @@ with `kola run --tag`, but some tags have semantic meaning.
 Tags with semantic meaning:
 
  - `needs-internet`: Taken from the Autopkgtest (linked above).  Currently only the `qemu` platform enforces this restriction.
+ - `platform-independent`: This test should pass or fail on all platforms (clouds and hardware architectures); it may be run less often.
  - `skip-base-checks`: Skip built-in checks for e.g. kernel warnings on the console or systemd unit failures.
 
 If a test has a `requiredTag`, it is run only if the required tag is specified.
