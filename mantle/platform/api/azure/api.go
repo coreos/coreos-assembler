@@ -158,12 +158,25 @@ func (a *API) GC(gracePeriod time.Duration) error {
 
 	for _, l := range *listGroups.Value {
 		if strings.HasPrefix(*l.Name, "kola-cluster") {
-			createdAt := *(*l.Tags)["createdAt"]
-			timeCreated, err := time.Parse(time.RFC3339, createdAt)
-			if err != nil {
-				return fmt.Errorf("error parsing time: %v", err)
+			terminate := false
+			if l.Tags == nil || (*l.Tags)["createdAt"] == nil {
+				// If the group name starts with kola-cluster and has
+				// no tags OR no createdAt then it failed to properly
+				// get created and we should clean it up.
+				// https://github.com/coreos/coreos-assembler/issues/3057
+				terminate = true
+			} else {
+				createdAt := *(*l.Tags)["createdAt"]
+				timeCreated, err := time.Parse(time.RFC3339, createdAt)
+				if err != nil {
+					return fmt.Errorf("error parsing time: %v", err)
+				}
+				if !timeCreated.After(durationAgo) {
+					// If the group is older than specified time then gc
+					terminate = true
+				}
 			}
-			if !timeCreated.After(durationAgo) {
+			if terminate {
 				if err = a.TerminateResourceGroup(*l.Name); err != nil {
 					return err
 				}
