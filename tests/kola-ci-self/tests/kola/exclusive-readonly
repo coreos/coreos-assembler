@@ -1,0 +1,9 @@
+#!/bin/bash
+# This verifies that isolation=dynamicuser maps to systemd DynamicUser=yes and
+# (unlike the default kola model) runs as non-root.
+# kola: { "isolation": "dynamicuser" }
+set -xeuo pipefail
+
+id=$(id -u)
+test "$id" '!=' 0
+echo "ok dynamicuser"

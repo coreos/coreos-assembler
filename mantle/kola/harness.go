@@ -826,6 +826,7 @@ type externalTestMeta struct {
 	AppendKernelArgs          string   `json:"appendKernelArgs,omitempty"`
 	AppendFirstbootKernelArgs string   `json:"appendFirstbootKernelArgs,omitempty"`
 	Exclusive                 bool     `json:"exclusive"`
+	Isolation                 string   `json:"isolation"`
 	TimeoutMin                int      `json:"timeoutMin"`
 	Conflicts                 []string `json:"conflicts"`
 	AllowConfigWarnings       bool     `json:"allowConfigWarnings"`
@@ -943,6 +944,24 @@ func registerExternalTest(testname, executable, dependencydir string, userdata *
 		targetMeta = &metaCopy
 	}
 
+	switch targetMeta.Isolation {
+	case "readonly":
+	case "dynamicuser":
+		// These tests cannot provide their own Ignition
+		if userdata != nil {
+			return fmt.Errorf("test %v specifies isolation=%v but includes an Ignition config", testname, targetMeta.Isolation)
+		}
+		targetMeta.Exclusive = false
+	case "":
+		break
+	default:
+		return fmt.Errorf("test %v specifies unknown isolation=%v", testname, targetMeta.Isolation)
+	}
+
+	if userdata == nil {
+		userdata = conf.EmptyIgnition()
+	}
+
 	warningsAction := conf.FailWarnings
 	if targetMeta.AllowConfigWarnings {
 		warningsAction = conf.IgnoreWarnings
@@ -980,6 +999,16 @@ Environment=KOLA_TEST_EXE=%s
 Environment=%s=%s
 ExecStart=%s
 `, unitName, testname, base, kolaExtBinDataEnv, destDataDir, remotepath)
+	switch targetMeta.Isolation {
+	case "readonly":
+		unit += "ProtectSystem=strict\nPrivateTmp=yes\n"
+	case "dynamicuser":
+		unit += "DynamicUser=yes\n"
+	case "":
+		break
+	default:
+		return fmt.Errorf("test %v specifies unknown isolation=%v", testname, targetMeta.Isolation)
+	}
 	if targetMeta.InjectContainer {
 		if CosaBuild == nil {
 			return fmt.Errorf("test %v uses injectContainer, but no cosa build found", testname)
@@ -1091,7 +1120,7 @@ func registerTestDir(dir, testprefix string, children []os.FileInfo) error {
 	var dependencydir string
 	var meta externalTestMeta
 	var err error
-	userdata := conf.EmptyIgnition()
+	var userdata *conf.UserData
 	executables := []string{}
 	for _, c := range children {
 		fpath := filepath.Join(dir, c.Name())

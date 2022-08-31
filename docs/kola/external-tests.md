@@ -264,6 +264,13 @@ is simple and is not expected to conflict with other tests, it should be marked
 `exclusive: false`. When the `exclusive` key is not provided, tests are marked
 `exclusive: true` by default.
 
+The `isolation` key can take two values: `readonly` and `dynamicuser`.  These
+are thin wrappers for the equivalent systemd options; `readonly` equals `ProtectSystem=strict`,
+and `dynamicuser` means `DynamicUser=yes`.  Setting either of these options
+also implies `exclusive: false`.  Use these for tests that are mostly about
+read-only system inspection.  If specified, the test *cannot* provide
+an Ignition (or butane) config either.
+
 The `conflicts` key takes a list of test names that conflict with this test.
 This key can only be specified if `exclusive` is marked `false` since
 `exclusive: true` tests are run exclusively in their own VM.  At runtime,
