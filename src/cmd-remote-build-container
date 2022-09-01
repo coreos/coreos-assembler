@@ -91,9 +91,13 @@ def main():
     if environ.get('CONTAINER_HOST') is None or environ.get('CONTAINER_SSHKEY') is None:
         sys.exit('You must have CONTAINER_HOST and CONTAINER_SSHKEY environment variables setup')
 
-    # Podman doesn't seem to support building from a specific commit:
-    # https://github.com/containers/buildah/issues/4148
-    # Create a tmpdir to use for the git repo to build from.
+    # Podman supports building from a specific commit
+    # (https://github.com/containers/buildah/issues/4148), but the way
+    # we've set this up we don't know if the argument the user is
+    # passing to --git-ref is a commit or a ref. If we knew it was a
+    # ref then we could use `git ls-remote` to remotely determine
+    # the commit we wanted to build, but we don't. Just fetch the code
+    # into a tmpdir for now and use that as the git repo to build from.
     with tempfile.TemporaryDirectory() as gitdir:
         # fetch the git repo contents for the build and determine commit/shortcommit
         cmd = ["git", "-C", gitdir, "init", "."]
