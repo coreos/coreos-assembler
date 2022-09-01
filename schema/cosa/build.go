@@ -51,6 +51,11 @@ const (
 	CosaMetaJSON = "meta.json"
 )
 
+type objectInfo struct {
+	info os.FileInfo
+	name string
+}
+
 // SetArch overrides the build arch
 func SetArch(a string) {
 	forceArch = a
@@ -67,6 +72,25 @@ func BuilderArch() string {
 		arch = "x86_64"
 	}
 	return arch
+}
+
+// defaultWalkFunc walks over a directory and returns a channel of os.FileInfo
+func walkFn(p string) <-chan *objectInfo {
+	ret := make(chan *objectInfo)
+	go func() {
+		defer close(ret) //nolint
+		_ = filepath.Walk(p, func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return nil
+			}
+			ret <- &objectInfo{
+				name: filepath.Join(p, info.Name()),
+				info: info,
+			}
+			return nil
+		})
+	}()
+	return ret
 }
 
 // ReadBuild returns a build upon finding a meta.json. Returns a Build, the path string
@@ -93,7 +117,7 @@ func ReadBuild(dir, buildID, arch string) (*Build, string, error) {
 	}
 
 	p := filepath.Join(dir, buildID, arch)
-	f, err := Open(filepath.Join(p, CosaMetaJSON))
+	f, err := os.Open(filepath.Join(p, CosaMetaJSON))
 	if err != nil {
 		return nil, "", fmt.Errorf("failed to open %s to read meta.json: %w", p, err)
 	}
@@ -113,14 +137,14 @@ func ReadBuild(dir, buildID, arch string) (*Build, string, error) {
 			if !ok {
 				break
 			}
-			if fi == nil || fi.IsDir() || fi.Name() == CosaMetaJSON {
+			if fi == nil || fi.info.IsDir() || fi.info.Name() == CosaMetaJSON {
 				continue
 			}
-			if !IsMetaJSON(fi.Name()) {
+			if !IsMetaJSON(fi.info.Name()) {
 				continue
 			}
-			log.WithField("extra meta.json", fi.Name()).Info("found meta")
-			f, err := Open(filepath.Join(p, fi.Name()))
+			log.WithField("extra meta.json", fi.name).Info("found meta")
+			f, err := os.Open(filepath.Join(p, fi.info.Name()))
 			if err != nil {
 				return b, p, err
 			}
@@ -146,7 +170,7 @@ func buildParser(r io.Reader) (*Build, error) {
 
 // ParseBuild parses the meta.json and reutrns a build
 func ParseBuild(path string) (*Build, error) {
-	f, err := Open(path)
+	f, err := os.Open(path)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to open %s", path)
 	}
