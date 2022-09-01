@@ -117,7 +117,7 @@ func NewCosaSh() (*CosaSh, error) {
 	}()
 
 	// Initialize the internal library
-	err = r.process(fmt.Sprintf("%s\n. /usr/lib/coreos-assembler/cmdlib.sh\n", bashexec.StrictMode))
+	err = r.Process(fmt.Sprintf("%s\n. /usr/lib/coreos-assembler/cmdlib.sh\n", bashexec.StrictMode))
 	if err != nil {
 		return nil, fmt.Errorf("failed to init cosash: %w", err)
 	}
@@ -126,7 +126,7 @@ func NewCosaSh() (*CosaSh, error) {
 }
 
 // write sends content to the shell's stdin, synchronously wait for the reply
-func (r *CosaSh) processWithReply(buf string) (string, error) {
+func (r *CosaSh) ProcessWithReply(buf string) (string, error) {
 	// Inject code which writes the serial reply prefix
 	cmd := fmt.Sprintf("echo -n \"%d \" >&3\n", r.ackserial)
 	if _, err := io.WriteString(r.input, cmd); err != nil {
@@ -146,9 +146,9 @@ func (r *CosaSh) processWithReply(buf string) (string, error) {
 	}
 }
 
-func (sh *CosaSh) process(buf string) error {
+func (sh *CosaSh) Process(buf string) error {
 	buf = fmt.Sprintf("%s\necho OK >&3\n", buf)
-	r, err := sh.processWithReply(buf)
+	r, err := sh.ProcessWithReply(buf)
 	if err != nil {
 		return err
 	}
@@ -160,14 +160,14 @@ func (sh *CosaSh) process(buf string) error {
 
 // PrepareBuild prepares for a build, returning the newly allocated build directory
 func (sh *CosaSh) PrepareBuild() (string, error) {
-	return sh.processWithReply(`prepare_build
+	return sh.ProcessWithReply(`prepare_build
 pwd >&3
 `)
 }
 
 // HasPrivileges checks if we can use sudo
 func (sh *CosaSh) HasPrivileges() (bool, error) {
-	r, err := sh.processWithReply(`
+	r, err := sh.ProcessWithReply(`
 if has_privileges; then
   echo true >&3
 else

@@ -29,3 +29,6 @@ gdisk xfsprogs e2fsprogs dosfstools btrfs-progs
 ca-certificates
 
 tar
+
+# needed for extensions container build
+podman

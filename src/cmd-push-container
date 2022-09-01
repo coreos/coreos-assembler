@@ -23,6 +23,7 @@ parser.add_argument("--authfile", help="Authentication file",
 parser.add_argument("--format", help="Image format for destination", choices=['oci', 'v2s2'], action='store')
 parser.add_argument("--tag-suffix", metavar='SUFFIX', help="Append SUFFIX to container tag")
 parser.add_argument("name", metavar='NAME[:TAG]', help="destination image reference")
+parser.add_argument("--image", default='ostree', help="Container image to push", choices=['ostree', 'extensions-container'])
 
 args = parser.parse_args()
 
@@ -37,7 +38,7 @@ latest_build_path = f"builds/{latest_build}/{arch}"
 metapath = f"{latest_build_path}/meta.json"
 with open(metapath) as f:
     meta = json.load(f)
-ociarchive = os.path.join(latest_build_path, meta['images']['ostree']['path'])
+ociarchive = os.path.join(latest_build_path, meta['images'][args.image]['path'])
 
 skopeoargs = ['skopeo', 'copy']
 if args.authfile is None:
@@ -64,7 +65,10 @@ with tempfile.NamedTemporaryFile(dir='tmp', prefix='push-container-digestfile') 
     df.seek(0)
     digest = df.read().decode('utf-8').strip()
     # Inject the oscontainer with SHA256 into the build metadata
-    meta['base-oscontainer'] = {'image': f"{container_name}@{digest}"}
+    container = 'base-oscontainer'
+    if args.image != 'ostree':
+        container = args.image
+    meta[container] = {'image': f"{container_name}@{digest}"}
     metapath_new = f"{metapath}.new"
     with open(metapath_new, 'w') as f:
         json.dump(meta, f, sort_keys=True)

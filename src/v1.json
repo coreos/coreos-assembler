@@ -439,6 +439,7 @@
         "dasd",
         "digitalocean",
         "exoscale",
+        "extensions-container",
         "gcp",
         "kubevirt",
         "ibmcloud",
@@ -477,6 +478,12 @@
           "$id": "#/properties/images/properties/exoscale",
           "type": "object",
           "title": "exoscale",
+          "$ref": "#/definitions/artifact"
+        },
+        "extensions-container": {
+          "$id": "#/properties/images/properties/extensions-container",
+          "type": "object",
+          "title": "extensions-container",
           "$ref": "#/definitions/artifact"
         },
         "qemu": {
