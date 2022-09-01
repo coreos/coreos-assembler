@@ -15,15 +15,15 @@ logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s %(levelname)s - %(message)s")
 
 
-def build_container_image(labels, gitDir, repo, tag):
+def build_container_image(labels, buildDir, repo, tag):
     '''
     Build the image  using podman remote and push to the registry
     @param labels list labels to add to image
-    @param gitDir the location of the directory to build from
+    @param buildDir str the location of the directory to build from
     @param repo str registry repository
     @param tag  str image tag
     '''
-    cmd = ["podman", "build", "--no-cache", f"--tag={repo}:{tag}", gitDir]
+    cmd = ["podman", "build", "--no-cache", f"--tag={repo}:{tag}", buildDir]
     for label in labels:
         cmd.extend([f"--label={label}"])
     # Long running command. Send output to stdout for logging
@@ -135,7 +135,8 @@ def main():
         # Build the container if needed.
         if needbuild:
             logging.info("Building container via podman")
-            build_container_image(args.label, gitdir, args.repo, args.tag)
+            builddir = os.path.join(gitdir, args.git_sub_dir)
+            build_container_image(args.label, builddir, args.repo, args.tag)
 
     # Push to the registry if needed
     if args.push_to_registry:
@@ -179,6 +180,9 @@ Examples:
     parser.add_argument(
         '--git-url', required=True,
         help='Git URL')
+    parser.add_argument(
+        '--git-sub-dir', default='', required=False,
+        help='Git sub directory to use for container build')
     parser.add_argument(
         '--push-to-registry', required=False, action='store_true',
         help='Push image to registry. You must be logged in before pushing images')
