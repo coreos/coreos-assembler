@@ -281,6 +281,22 @@ test code here
 
 This metadata stanza must start with `# kola: ` and have a single line of JSON.
 
+Even more recently, you can write the test metadata as YAML inline; this is signified
+by using `## kola: `.  The lines after it starting with `## ` will be parsed as metadata YAML.
+For example:
+
+```
+#!/bin/bash
+set -xeuo pipefail
+## kola:
+##   architectures: x86_64
+##   platforms: "aws gcp"  # azure support is pending
+##   tags: needs-internet
+test code here
+```
+
+A notable advantage of YAML here is support for inline comments.
+
 ## Quick Start
 
 1. In your project's upstream repository, create the `tests/kola` directory, if

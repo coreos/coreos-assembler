@@ -64,7 +64,12 @@ import (
 // tests at /usr/lib/coreos-assembler/tests/kola/ostree/...
 // and this will be automatically picked up.
 const InstalledTestsDir = "/usr/lib/coreos-assembler/tests/kola"
+
+// InstalledTestMetaPrefix is the prefix for JSON-formatted metadata
 const InstalledTestMetaPrefix = "# kola:"
+
+// InstalledTestMetaPrefixYaml is the prefix for YAML-formatted metadata
+const InstalledTestMetaPrefixYaml = "## kola:"
 
 // InstalledTestDefaultTest is a special name; see the README-kola-ext.md
 // for more information.
@@ -844,6 +849,8 @@ func metadataFromTestBinary(executable string) (*externalTestMeta, error) {
 	defer f.Close()
 	r := bufio.NewReader(io.LimitReader(f, 8192))
 	meta := &externalTestMeta{Exclusive: true}
+	inmeta := false    // true if we saw a ## kola: prefix after which we expect YAML
+	metadatayaml := "" // accumulated YAML metadata
 	for {
 		line, err := r.ReadString('\n')
 		if err == io.EOF {
@@ -851,17 +858,38 @@ func metadataFromTestBinary(executable string) (*externalTestMeta, error) {
 		} else if err != nil {
 			return nil, err
 		}
-		if !strings.HasPrefix(line, InstalledTestMetaPrefix) {
-			continue
+
+		// Handle the older JSON metadata
+		if strings.HasPrefix(line, InstalledTestMetaPrefix) {
+			if inmeta {
+				return nil, fmt.Errorf("found both yaml and json test prefixes (%v %v)", InstalledTestMetaPrefixYaml, InstalledTestMetaPrefix)
+			}
+			buf := strings.TrimSpace(line[len(InstalledTestMetaPrefix):])
+			dec := json.NewDecoder(strings.NewReader(buf))
+			dec.DisallowUnknownFields()
+			meta = &externalTestMeta{Exclusive: true}
+			if err := dec.Decode(meta); err != nil {
+				return nil, errors.Wrapf(err, "parsing %s", line)
+			}
+			break // We're done processing
 		}
-		buf := strings.TrimSpace(line[len(InstalledTestMetaPrefix):])
-		dec := json.NewDecoder(strings.NewReader(buf))
-		dec.DisallowUnknownFields()
-		meta = &externalTestMeta{Exclusive: true}
-		if err := dec.Decode(meta); err != nil {
-			return nil, errors.Wrapf(err, "parsing %s", line)
+
+		// Look for the new YAML metadata
+		if strings.HasPrefix(line, InstalledTestMetaPrefixYaml) {
+			if inmeta {
+				return nil, fmt.Errorf("found multiple %s", InstalledTestMetaPrefixYaml)
+			}
+			inmeta = true
+		} else if inmeta {
+			if !strings.HasPrefix(line, "## ") {
+				if err := yaml.UnmarshalStrict([]byte(metadatayaml), &meta); err != nil {
+					return nil, err
+				}
+				break
+			} else {
+				metadatayaml += fmt.Sprintf("%s\n", line[3:])
+			}
 		}
-		break
 	}
 	return meta, nil
 }
