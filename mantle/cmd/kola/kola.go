@@ -392,7 +392,8 @@ func runList(cmd *cobra.Command, args []string) error {
 			test.Architectures,
 			test.ExcludeArchitectures,
 			test.Distros,
-			test.ExcludeDistros}
+			test.ExcludeDistros,
+			test.Tags}
 		item.updateValues()
 		testlist = append(testlist, item)
 	}
@@ -404,7 +405,7 @@ func runList(cmd *cobra.Command, args []string) error {
 	if !listJSON {
 		var w = tabwriter.NewWriter(os.Stdout, 0, 8, 0, '\t', 0)
 
-		fmt.Fprintln(w, "Test Name\tPlatforms\tArchitectures\tDistributions")
+		fmt.Fprintln(w, "Test Name\tPlatforms\tArchitectures\tDistributions\tTags")
 		fmt.Fprintln(w, "\t")
 		for _, item := range testlist {
 			platformFound := (listPlatform == "all")
@@ -451,6 +452,7 @@ type item struct {
 	ExcludeArchitectures []string `json:"-"`
 	Distros              []string
 	ExcludeDistros       []string `json:"-"`
+	Tags                 []string
 }
 
 func (i *item) updateValues() {
@@ -490,7 +492,7 @@ func (i *item) updateValues() {
 }
 
 func (i item) String() string {
-	return fmt.Sprintf("%v\t%v\t%v\t%v", i.Name, i.Platforms, i.Architectures, i.Distros)
+	return fmt.Sprintf("%v\t%v\t%v\t%v\t%v", i.Name, i.Platforms, i.Architectures, i.Distros, i.Tags)
 }
 
 func runHTTPServer(cmd *cobra.Command, args []string) error {
