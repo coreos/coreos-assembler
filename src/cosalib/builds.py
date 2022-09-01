@@ -136,7 +136,7 @@ class Builds:  # pragma: nocover
                 with open(metapath) as f:
                     previous_buildmeta = json.load(f)
                 previous_commit = previous_buildmeta['ostree-commit']
-                previous_image_genver = int(previous_buildmeta[genver_key])
+                previous_image_genver = int(previous_buildmeta.get(genver_key, 0))
                 if previous_commit == ostree_commit:
                     image_genver = previous_image_genver + 1
                     buildid = f"{version}-{image_genver}"

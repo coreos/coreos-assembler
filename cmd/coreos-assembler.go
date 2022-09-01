@@ -15,7 +15,7 @@ import (
 var buildCommands = []string{"init", "fetch", "build", "run", "prune", "clean", "list"}
 var advancedBuildCommands = []string{"buildfetch", "buildupload", "oc-adm-release", "push-container", "upload-oscontainer"}
 var buildextendCommands = []string{"aliyun", "aws", "azure", "digitalocean", "exoscale", "gcp", "ibmcloud", "kubevirt", "live", "metal", "metal4k", "nutanix", "openstack", "qemu", "secex", "virtualbox", "vmware", "vultr"}
-var utilityCommands = []string{"aws-replicate", "compress", "generate-hashlist", "koji-upload", "kola", "push-container-manifest", "remote-build-container", "remote-prune", "remote-session", "sign", "tag"}
+var utilityCommands = []string{"aws-replicate", "build-extensions-container", "compress", "generate-hashlist", "koji-upload", "kola", "push-container-manifest", "remote-build-container", "remote-prune", "remote-session", "sign", "tag"}
 var otherCommands = []string{"shell", "meta"}
 
 func init() {
@@ -86,6 +86,8 @@ func run(argv []string) error {
 		return runClean(argv)
 	case "remote-session":
 		return runRemoteSession(argv)
+	case "build-extensions-container":
+		return buildExtensionContainer()
 	}
 
 	target := fmt.Sprintf("/usr/lib/coreos-assembler/cmd-%s", cmd)
