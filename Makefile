@@ -87,21 +87,18 @@ schema:
 
 # To update the coreos-assembler schema:
 # Edit src/v1.json
-# $ cp src/v1.json schema/
 # $ make schema
 # $ (cd mantle && go mod vendor)
 .PHONY: schema-check
 schema-check: DIGEST = $(shell sha256sum src/v1.json | awk '{print $$1}')
 schema-check:
-	# Are the JSON Schema copies synced with each other?
-	diff -u src/v1.json schema/v1.json
 	# Is the generated Go code synced with the schema?
-	grep -q "$(DIGEST)" schema/cosa/cosa_v1.go
-	grep -q "$(DIGEST)" schema/cosa/schema_doc.go
+	grep -q "$(DIGEST)" pkg/builds/cosa_v1.go
+	grep -q "$(DIGEST)" pkg/builds/schema_doc.go
 	# Are the vendored copies of the generated code synced with the
 	# canonical ones?
-	diff -u mantle/vendor/github.com/coreos/coreos-assembler-schema/cosa/cosa_v1.go schema/cosa/cosa_v1.go
-	diff -u mantle/vendor/github.com/coreos/coreos-assembler-schema/cosa/schema_doc.go schema/cosa/schema_doc.go
+	diff -u mantle/vendor/github.com/coreos/coreos-assembler/pkg/builds/cosa_v1.go pkg/builds/cosa_v1.go
+	diff -u mantle/vendor/github.com/coreos/coreos-assembler/pkg/builds/schema_doc.go pkg/builds/schema_doc.go
 
 install:
 	install -d $(DESTDIR)$(PREFIX)/lib/coreos-assembler

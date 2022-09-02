@@ -24,7 +24,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/coreos/coreos-assembler-schema/cosa"
+	cosa "github.com/coreos/coreos-assembler/pkg/builds"
 	"github.com/coreos/mantle/kola"
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"

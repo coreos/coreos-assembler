@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os/exec"
 
-	"github.com/coreos/coreos-assembler-schema/cosa"
 	"github.com/coreos/coreos-assembler/internal/pkg/cosash"
+	cosa "github.com/coreos/coreos-assembler/pkg/builds"
 
 	"crypto/sha256"
 	"encoding/json"

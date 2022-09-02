@@ -36,9 +36,3 @@ jobs:
           version: v1.46.2
           working-directory: mantle
           args: --timeout=5m
-      - name: golangci-lint
-        uses: golangci/golangci-lint-action@v3
-        with:
-          version: v1.46.2
-          working-directory: schema
-          args: --timeout=5m
