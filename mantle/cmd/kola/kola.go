@@ -31,7 +31,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"github.com/coreos/coreos-assembler-schema/cosa"
+	cosa "github.com/coreos/coreos-assembler/pkg/builds"
 	"github.com/coreos/mantle/cli"
 	"github.com/coreos/mantle/fcos"
 	"github.com/coreos/mantle/harness/reporters"

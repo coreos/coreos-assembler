@@ -12,7 +12,7 @@ require (
 	github.com/aliyun/aliyun-oss-go-sdk v2.0.3+incompatible
 	github.com/aws/aws-sdk-go v1.34.28
 	github.com/coreos/butane v0.15.0
-	github.com/coreos/coreos-assembler-schema v0.0.0-00010101000000-000000000000
+	github.com/coreos/coreos-assembler v0.14.0
 	github.com/coreos/go-semver v0.3.0
 	github.com/coreos/go-systemd v0.0.0-20190321100706-95778dfbb74e
 	github.com/coreos/go-systemd/v22 v22.0.0
@@ -85,6 +85,6 @@ require (
 )
 
 replace (
-	github.com/coreos/coreos-assembler-schema => ../schema
+	github.com/coreos/coreos-assembler => ../
 	google.golang.org/cloud => cloud.google.com/go v0.0.0-20190220171618-cbb15e60dc6d
 )

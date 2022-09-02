@@ -22,7 +22,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/coreos/coreos-assembler-schema/cosa"
+	cosa "github.com/coreos/coreos-assembler/pkg/builds"
 )
 
 const (

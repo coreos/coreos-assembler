@@ -14,7 +14,7 @@ out="${tdir}/cosa_${schema_version}.go"
 "schematyper" \
     "${schema_version}.json" \
     -o "${out}" \
-    --package="cosa" \
+    --package="builds" \
     --root-type=Build \
     --ptr-for-omit
 

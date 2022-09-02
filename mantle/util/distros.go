@@ -19,7 +19,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/coreos/coreos-assembler-schema/cosa"
+	"github.com/coreos/coreos-assembler/pkg/builds"
 )
 
 // TargetDistroFromName returns the distribution given
@@ -34,7 +34,7 @@ func TargetDistroFromName(artifact string) string {
 }
 
 // TargetDistro returns the distribution of a cosa build
-func TargetDistro(build *cosa.Build) (string, error) {
+func TargetDistro(build *builds.Build) (string, error) {
 	switch build.Name {
 	case "rhcos":
 		return "rhcos", nil
