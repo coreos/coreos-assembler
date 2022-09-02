@@ -1111,6 +1111,13 @@ func baseQemuArgs() []string {
 	}
 	if kvm {
 		ret = append(ret, "-cpu", "host")
+	} else {
+		if system.RpmArch() == "x86_64" {
+			// the default qemu64 CPU model does not support x86_64_v2
+			// causing crashes on EL9+ kernels
+			// see https://bugzilla.redhat.com/show_bug.cgi?id=2060839
+			ret = append(ret, "-cpu", "Nehalem")
+		}
 	}
 	return ret
 }
