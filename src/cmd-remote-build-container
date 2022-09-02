@@ -15,15 +15,16 @@ logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s %(levelname)s - %(message)s")
 
 
-def build_container_image(labels, buildDir, repo, tag):
+def build_container_image(labels, buildDir, cacheTTL, repo, tag):
     '''
     Build the image  using podman remote and push to the registry
     @param labels list labels to add to image
     @param buildDir str the location of the directory to build from
+    @param cacheTTL str value to pass to `podman build --cache-ttl=`
     @param repo str registry repository
     @param tag  str image tag
     '''
-    cmd = ["podman", "build", "--no-cache", f"--tag={repo}:{tag}", buildDir]
+    cmd = ["podman", "build", f"--cache-ttl={cacheTTL}", f"--tag={repo}:{tag}", buildDir]
     for label in labels:
         cmd.extend([f"--label={label}"])
     # Long running command. Send output to stdout for logging
@@ -136,7 +137,8 @@ def main():
         if needbuild:
             logging.info("Building container via podman")
             builddir = os.path.join(gitdir, args.git_sub_dir)
-            build_container_image(args.label, builddir, args.repo, args.tag)
+            build_container_image(args.label, builddir,
+                                  args.cache_ttl, args.repo, args.tag)
 
     # Push to the registry if needed
     if args.push_to_registry:
@@ -168,6 +170,10 @@ Examples:
     parser.add_argument(
         '--authfile', required=False,
         help='A file to use for registry auth')
+    parser.add_argument(
+        '--cache-ttl', default="0.1s", required=False,
+        help="""Pass along --cache-ttl=<value> to `podman build`.
+                Defaults to 0.1s, which is effectively `--no-cache`""")
     parser.add_argument(
         '--label', default=[], action='append',
         required=False, help='Add image label(s)')
