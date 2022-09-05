@@ -88,13 +88,25 @@ def prepare_tmpworkdir():
     if os.path.exists(tmpworkdir):
         shutil.rmtree(tmpworkdir)
     os.mkdir(tmpworkdir)
+    configdir = 'src/config'
+    for f in os.listdir(configdir):
+        if os.path.isfile(f"{configdir}/{f}") and f.endswith('.repo'):
+            shutil.copyfile(f"{configdir}/{f}", f"{tmpworkdir}/{f}")
+    yumreposdir = 'src/yumrepos'
+    if os.path.exists(yumreposdir):
+        for f in os.listdir(yumreposdir):
+            if os.path.isfile(f"{yumreposdir}/{f}") and f.endswith('.repo'):
+                shutil.copyfile(f"{yumreposdir}/{f}", f"{tmpworkdir}/{f}")
     return tmpworkdir
 
 
 def run_rpmostree(workdir, commit, treefile, extensions):
     cmdlib.cmdlib_sh(f'''
+        cat > "{workdir}/manifest-override.yaml" <<EOF
+include: ../../{treefile}
+EOF
         changed_stamp={workdir}/changed
-        runcompose_extensions {workdir}/output {treefile} {extensions} \
+        runcompose_extensions {workdir}/output {workdir}/manifest-override.yaml {extensions} \
             --base-rev {commit}''')
     return os.path.exists(f'{workdir}/changed')
 
