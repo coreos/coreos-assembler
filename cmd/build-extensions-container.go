@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"os/exec"
+
 	"github.com/coreos/coreos-assembler-schema/cosa"
 	"github.com/coreos/coreos-assembler/internal/pkg/cosash"
 
@@ -40,8 +42,7 @@ func buildExtensionContainer() error {
 		return err
 	}
 	targetPath := filepath.Join(buildPath, targetname)
-	err = os.Rename(filepath.Join(tmpdir, targetname), targetPath)
-	if err != nil {
+	if err := exec.Command("/usr/lib/coreos-assembler/finalize-artifact", filepath.Join(tmpdir, targetname), targetPath).Run(); err != nil {
 		return err
 	}
 	// Gather metadata of the OCI archive (sha256, size)
