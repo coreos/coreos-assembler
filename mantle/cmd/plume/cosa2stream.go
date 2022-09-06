@@ -34,7 +34,7 @@ import (
 
 const (
 	// This will hopefully migrate to mirror.openshift.com, see https://github.com/openshift/os/issues/477
-	rhcosCosaEndpoint = "https://releases-art-rhcos.svc.ci.openshift.org/art/storage/releases"
+	rhcosCosaEndpoint = "https://rhcos.mirror.openshift.com/art/storage/releases"
 )
 
 var (

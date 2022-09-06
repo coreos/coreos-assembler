@@ -566,7 +566,7 @@ func syncFindParentImageOptions() error {
 			tag += "-" + system.RpmArch()
 			release = "46.82.202011260639-0"
 		}
-		parentBaseURL = fmt.Sprintf("https://releases-art-rhcos.svc.ci.openshift.org/art/storage/releases/%s/%s/%s/", tag, release, system.RpmArch())
+		parentBaseURL = fmt.Sprintf("https://rhcos.mirror.openshift.com/art/storage/releases/%s/%s/%s/", tag, release, system.RpmArch())
 		// sigh...someday we'll get the stuff signed by ART or maybe https://github.com/openshift/enhancements/pull/201 will just happen
 		skipSignature = true
 	default:
