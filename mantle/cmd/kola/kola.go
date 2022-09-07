@@ -629,17 +629,29 @@ func getParentFcosBuildBase(stream string) (string, error) {
 	if kola.CosaBuild.Meta.FedoraCoreOsParentVersion != "" {
 		parentVersion = kola.CosaBuild.Meta.FedoraCoreOsParentVersion
 	} else {
-		// ok, we're probably operating on a local dev build since the pipeline
-		// always injects the parent; just instead fetch the release index
-		// for that stream and get the last build id from there
+		// ok, we're probably operating on a local dev build or in the
+		// bump-lockfile job since the pipeline always injects the
+		// parent; just instead fetch the release index for that stream
+		// and get the last build id from there
 		index, err := fcos.FetchAndParseCanonicalReleaseIndex(stream)
 		if err != nil {
 			return "", err
 		}
-
-		n := len(index.Releases)
-		if n == 0 {
-			// hmmm, no builds; likely a new stream. let's just fallback on testing-devel.
+		// as we build for multi-architectures now,
+		// inorder to allow failures to be non-fatal and
+		// enable them to promote to non-prod streams
+		// when any specific previous release is unavailable for that arch.
+		// in that case, releases are searched in reverse order
+		// and the most recent release which has the secondary arch is considered.
+		for _, release := range index.Releases {
+			for _, commit := range release.Commits {
+				if commit.Architecture == (kola.Options.CosaBuildArch) {
+					parentVersion = release.Version
+					break
+				}
+			}
+		}
+		if parentVersion == "" {
 			msg := fmt.Sprintf("no parent version in build metadata, and no build on stream %s", stream)
 			if stream == "testing-devel" {
 				return "", errors.New(msg)
@@ -647,8 +659,6 @@ func getParentFcosBuildBase(stream string) (string, error) {
 			plog.Infof("%s; falling back to testing-devel", msg)
 			return getParentFcosBuildBase("testing-devel")
 		}
-
-		parentVersion = index.Releases[n-1].Version
 	}
 
 	return fcos.GetCosaBuildURL(stream, parentVersion, kola.Options.CosaBuildArch), nil
