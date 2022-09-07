@@ -157,7 +157,7 @@ func (a *API) CreateInstance(name, userdata, sshkey, resourceGroup, storageAccou
 	vmParams := a.getVMParameters(name, userdata, sshkey, fmt.Sprintf("https://%s.blob.core.windows.net/", storageAccount), ip, nic)
 
 	cancel := make(chan struct{})
-	time.AfterFunc(5*time.Minute, func() {
+	time.AfterFunc(8*time.Minute, func() {
 		close(cancel)
 	})
 	_, err = a.compClient.CreateOrUpdate(resourceGroup, name, vmParams, cancel)
