@@ -17,7 +17,6 @@ package main
 import (
 	"encoding/base64"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"regexp"
 	"strings"
@@ -151,7 +150,7 @@ func runSwitchKernel(cmd *cobra.Command, args []string) error {
 func dropRpmFilesAll(m platform.Machine, localPath string) error {
 	fmt.Println("Dropping RT Kernel RPMs...")
 	re := regexp.MustCompile(`^kernel-rt-.*\.rpm$`)
-	files, err := ioutil.ReadDir(localPath)
+	files, err := os.ReadDir(localPath)
 	if err != nil {
 		return err
 	}
