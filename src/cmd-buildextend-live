@@ -15,6 +15,7 @@ import sys
 import tarfile
 import tempfile
 import time
+import yaml
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from cosalib.builds import Builds
@@ -141,6 +142,21 @@ def get_os_features():
         # coreos/fedora-coreos-config@3edd2f28
         'live-initrd-network': True,
     }
+
+    # coreos-installer >= 0.16.0
+    try:
+        f = runcmd(['/usr/bin/ostree', 'cat', '--repo', repo, buildmeta_commit,
+                    '/usr/share/coreos-installer/example-config.yaml'],
+                   capture_output=True).stdout.decode()
+        features['installer-config-directives'] = {
+            k: True for k in yaml.safe_load(f)
+        }
+    except subprocess.CalledProcessError as e:
+        if e.returncode == 1:
+            print('coreos-installer example-config.yaml not found.  Not setting feature.')
+        else:
+            raise
+
     return features
 
 
