@@ -135,25 +135,12 @@ def align_initrd_for_uncompressed_append(destf):
 # Return OS features table for features.json, which is read by
 # coreos-installer {iso|pxe} customize
 def get_os_features():
-    features = {}
-
-    f = runcmd(['/usr/bin/ostree', 'cat', '--repo', repo,
-               buildmeta_commit, '/usr/libexec/coreos-installer-service'],
-               capture_output=True).stdout.decode()
-    # eventually we can assume coreos-installer >= 0.12.0, delete this check,
-    # and hardcode the feature flag
-    if '--config-file' in f:
-        features['installer-config'] = True
-
-    f = runcmd(['/usr/bin/ostree', 'cat', '--repo', repo,
-               buildmeta_commit,
-               '/usr/lib/dracut/modules.d/35coreos-network/coreos-copy-firstboot-network.sh'],
-               capture_output=True).stdout.decode()
-    # eventually we can assume /etc/coreos-firstboot-network support and
-    # hardcode the feature flag
-    if 'etc_firstboot_network_dir' in f:
-        features['live-initrd-network'] = True
-
+    features = {
+        # coreos-installer >= 0.12.0
+        'installer-config': True,
+        # coreos/fedora-coreos-config@3edd2f28
+        'live-initrd-network': True,
+    }
     return features
 
 
