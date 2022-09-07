@@ -316,7 +316,8 @@ var (
 
           # Run a dnsmasq service on the network_namespace, to set the host-side veth ends a ip via their MAC addresses
           echo -e "dhcp-range=192.168.0.50,192.168.0.60,255.255.255.0,12h\ndhcp-host=${primary_mac},${primary_ip}\ndhcp-host=${secondary_mac},${secondary_ip}" > /etc/dnsmasq.d/dhcp
-          ip netns exec ${network_namespace} dnsmasq &
+          # Disable interface=lo as new dnsmasq version has it by default
+          ip netns exec ${network_namespace} dnsmasq --except-interface=lo --bind-interfaces -u dnsmasq -g dnsmasq --conf-dir=/etc/dnsmasq.d,.rpmnew,.rpmsave,.rpmorig --conf-file=/dev/null &
 
           # Tell NM to manage the "veth-host" interface and bring it up (will attempt DHCP).
           # Do this after we start dnsmasq so we don't have to deal with DHCP timeouts.
