@@ -58,6 +58,19 @@ def push_container_image(repo, tag):
         raise Exception(f"Image pushed but not viewable in registry: tag: {tag}")
 
 
+def pull_oci_archive_from_remote(repo, tag, file):
+    '''
+    Retrieve the oci archive of the image and write it to a file
+    @param repo str registry repository (used to deduce image name)
+    @param tag  str image tag (used to deduce image name)
+    @param file str The name of the file to write the image to
+    '''
+    cmd = ["podman", "image", "save",
+           "--format=oci-archive", f"--output={file}", f"{repo}:{tag}"]
+    # Long running command. Send output to stdout for logging
+    runcmd(cmd)
+
+
 def is_tag_in_podman_storage(repo, tag):
     '''
     Search for a tag in the local podman storage
@@ -140,10 +153,13 @@ def main():
             build_container_image(args.label, builddir,
                                   args.cache_ttl, args.repo, args.tag)
 
-    # Push to the registry if needed
+    # Push to the registry if needed, else save the image to a file
     if args.push_to_registry:
         logging.info("Pushing to remote registry")
         push_container_image(args.repo, args.tag)
+    else:
+        logging.info("Archiving build container image from remote")
+        pull_oci_archive_from_remote(args.repo, args.tag, args.write_to_file)
 
 
 def parse_args():
@@ -190,14 +206,18 @@ Examples:
         '--git-sub-dir', default='', required=False,
         help='Git sub directory to use for container build')
     parser.add_argument(
-        '--push-to-registry', required=False, action='store_true',
-        help='Push image to registry. You must be logged in before pushing images')
-    parser.add_argument(
-        '--repo', required=True,
+        '--repo', default='localhost', required=False,
         help='Registry repository')
     parser.add_argument(
         '--tag', required=False,
         help='Force image tag. The default is arch-commit')
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument(
+        '--push-to-registry', required=False, action='store_true',
+        help='Push image to registry. You must be logged in before pushing images')
+    group.add_argument(
+        '--write-to-file', required=False,
+        help='Write container oci archive to named file')
 
     return parser.parse_args()
 
