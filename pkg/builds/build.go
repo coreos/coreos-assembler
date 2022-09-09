@@ -24,12 +24,12 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
-	"runtime"
 	"sort"
 	"strings"
 
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
+	coreosarch "github.com/coreos/stream-metadata-go/arch"
 )
 
 var (
@@ -67,11 +67,7 @@ func BuilderArch() string {
 	if forceArch != "" {
 		return forceArch
 	}
-	arch := runtime.GOARCH
-	if arch == "amd64" {
-		arch = "x86_64"
-	}
-	return arch
+	return coreosarch.CurrentRpmArch()
 }
 
 // defaultWalkFunc walks over a directory and returns a channel of os.FileInfo
