@@ -40,6 +40,7 @@ import (
 	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/mantle/system"
 	"github.com/coreos/mantle/util"
+	coreosarch "github.com/coreos/stream-metadata-go/arch"
 
 	// register OS test suite
 	_ "github.com/coreos/mantle/kola/registry"
@@ -558,15 +559,15 @@ func syncFindParentImageOptions() error {
 		// Hardcoded for now based on https://github.com/openshift/installer/blob/release-4.6/data/data/rhcos.json
 		tag := "rhcos-4.6"
 		release := "46.82.202011260640-0"
-		switch system.RpmArch() {
+		switch coreosarch.CurrentRpmArch() {
 		case "s390x":
-			tag += "-" + system.RpmArch()
+			tag += "-" + coreosarch.CurrentRpmArch()
 			release = "46.82.202011261339-0"
 		case "ppc64le":
-			tag += "-" + system.RpmArch()
+			tag += "-" + coreosarch.CurrentRpmArch()
 			release = "46.82.202011260639-0"
 		}
-		parentBaseURL = fmt.Sprintf("https://rhcos.mirror.openshift.com/art/storage/releases/%s/%s/%s/", tag, release, system.RpmArch())
+		parentBaseURL = fmt.Sprintf("https://rhcos.mirror.openshift.com/art/storage/releases/%s/%s/%s/", tag, release, coreosarch.CurrentRpmArch())
 		// sigh...someday we'll get the stuff signed by ART or maybe https://github.com/openshift/enhancements/pull/201 will just happen
 		skipSignature = true
 	default:

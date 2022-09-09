@@ -149,14 +149,14 @@ func (a *API) CreateInstances(name, keyname, userdata string, count uint64, minD
 			UserData:            ud,
 			BlockDeviceMappings: rootBlockDev,
 			TagSpecifications: []*ec2.TagSpecification{
-				&ec2.TagSpecification{
+				{
 					ResourceType: aws.String(ec2.ResourceTypeInstance),
 					Tags: []*ec2.Tag{
-						&ec2.Tag{
+						{
 							Key:   aws.String("Name"),
 							Value: aws.String(name),
 						},
-						&ec2.Tag{
+						{
 							Key:   aws.String("CreatedBy"),
 							Value: aws.String("mantle"),
 						},
@@ -252,7 +252,7 @@ func (a *API) gcEC2(gracePeriod time.Duration) error {
 
 	instances, err := a.ec2.DescribeInstances(&ec2.DescribeInstancesInput{
 		Filters: []*ec2.Filter{
-			&ec2.Filter{
+			{
 				Name:   aws.String("tag:CreatedBy"),
 				Values: aws.StringSlice([]string{"mantle"}),
 			},
@@ -357,7 +357,7 @@ func (a *API) GetZonesForInstanceType(instanceType string) ([]string, error) {
 	input := ec2.DescribeInstanceTypeOfferingsInput{
 		LocationType: aws.String(ec2.LocationTypeAvailabilityZone),
 		Filters: []*ec2.Filter{
-			&ec2.Filter{
+			{
 				Name:   aws.String("instance-type"),
 				Values: []*string{aws.String(instanceType)},
 			},

@@ -984,7 +984,7 @@ func (c *Conf) addConfigSourceV3(source string) {
 			Version: "3.0.0",
 			Config: v3types.IgnitionConfig{
 				Merge: []v3types.ConfigReference{
-					v3types.ConfigReference{
+					{
 						Source: &source,
 					},
 				},

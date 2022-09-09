@@ -18,6 +18,8 @@ import (
 	"strings"
 	"time"
 
+	coreosarch "github.com/coreos/stream-metadata-go/arch"
+
 	"github.com/coreos/mantle/kola"
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
@@ -25,7 +27,6 @@ import (
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/platform/conf"
 	"github.com/coreos/mantle/platform/machine/unprivqemu"
-	"github.com/coreos/mantle/system"
 	ut "github.com/coreos/mantle/util"
 )
 
@@ -99,7 +100,7 @@ func runBootMirrorTest(c cluster.TestCluster) {
 	}
 	// FIXME: for QEMU tests kola currently assumes the host CPU architecture
 	// matches the one under test
-	userdata := bootmirror.Subst("LAYOUT", system.RpmArch())
+	userdata := bootmirror.Subst("LAYOUT", coreosarch.CurrentRpmArch())
 	m, err = c.Cluster.(*unprivqemu.Cluster).NewMachineWithQemuOptions(userdata, options)
 	if err != nil {
 		c.Fatal(err)
@@ -146,7 +147,7 @@ func runBootMirrorLUKSTest(c cluster.TestCluster) {
 	}
 	// FIXME: for QEMU tests kola currently assumes the host CPU architecture
 	// matches the one under test
-	userdata := bootmirrorluks.Subst("LAYOUT", system.RpmArch())
+	userdata := bootmirrorluks.Subst("LAYOUT", coreosarch.CurrentRpmArch())
 	m, err = c.Cluster.(*unprivqemu.Cluster).NewMachineWithQemuOptions(userdata, options)
 	if err != nil {
 		c.Fatal(err)
@@ -180,7 +181,7 @@ func runBootMirrorLUKSTest(c cluster.TestCluster) {
 func luksTPMTest(c cluster.TestCluster, m platform.Machine, tpm2 bool) {
 	rootPart := "/dev/md/md-root"
 	// hacky,  but needed for s390x because of gpt issue with naming on big endian systems: https://bugzilla.redhat.com/show_bug.cgi?id=1899990
-	if system.RpmArch() == "s390x" {
+	if coreosarch.CurrentRpmArch() == "s390x" {
 		rootPart = "/dev/disk/by-id/virtio-primary-disk-part4"
 	}
 	var tangd util.TangServer
@@ -197,7 +198,7 @@ func bootMirrorSanityTest(c cluster.TestCluster, m platform.Machine, devices []s
 		// Check that we took ownership of the rootfs
 		c.RunCmdSync(m, "sudo test -f /boot/.root_uuid")
 		// Check for bootuuid dropins where available
-		switch system.RpmArch() {
+		switch coreosarch.CurrentRpmArch() {
 		case "s390x":
 		case "x86_64", "aarch64":
 			for _, dev := range devices {

@@ -57,6 +57,7 @@ import (
 	"github.com/coreos/mantle/platform/machine/unprivqemu"
 	"github.com/coreos/mantle/system"
 	"github.com/coreos/mantle/util"
+	coreosarch "github.com/coreos/stream-metadata-go/arch"
 )
 
 // InstalledTestsDir is a directory where "installed" external
@@ -595,7 +596,7 @@ func filterTests(tests map[string]*register.Test, patterns []string, pltfrm stri
 				isExcluded = true
 				break
 			}
-			allowedArchitecture, _ := isAllowed(system.RpmArch(), t.Architectures, t.ExcludeArchitectures)
+			allowedArchitecture, _ := isAllowed(coreosarch.CurrentRpmArch(), t.Architectures, t.ExcludeArchitectures)
 			allowed = allowed || (allowedPlatform && allowedArchitecture)
 		}
 		if isExcluded || !allowed {
@@ -618,7 +619,7 @@ func filterTests(tests map[string]*register.Test, patterns []string, pltfrm stri
 				delete(t.NativeFuncs, k)
 				continue
 			}
-			_, excluded = isAllowed(system.RpmArch(), nil, NativeFuncWrap.Exclusions)
+			_, excluded = isAllowed(coreosarch.CurrentRpmArch(), nil, NativeFuncWrap.Exclusions)
 			if excluded {
 				delete(t.NativeFuncs, k)
 			}
@@ -1042,7 +1043,7 @@ ExecStart=%s
 
 	// Architectures using 64k pages use slightly more memory, ask for more than requested
 	// to make sure that we don't run out of it. Currently ppc64le and aarch64 use 64k pages.
-	switch system.RpmArch() {
+	switch coreosarch.CurrentRpmArch() {
 	case "ppc64le", "aarch64":
 		if targetMeta.MinMemory <= 4096 {
 			targetMeta.MinMemory = targetMeta.MinMemory * 2

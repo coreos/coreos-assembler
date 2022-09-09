@@ -25,11 +25,11 @@ import (
 	"path/filepath"
 	"strings"
 
+	coreosarch "github.com/coreos/stream-metadata-go/arch"
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
 
 	"github.com/coreos/mantle/platform/conf"
-	"github.com/coreos/mantle/system"
 	"github.com/coreos/mantle/system/exec"
 	"github.com/coreos/mantle/util"
 )
@@ -267,7 +267,7 @@ func (inst *Install) setup(kern *kernelSetup) (*installerRun, error) {
 
 	pxe := pxeSetup{}
 	pxe.tftpipaddr = "192.168.76.2"
-	switch system.RpmArch() {
+	switch coreosarch.CurrentRpmArch() {
 	case "x86_64":
 		pxe.networkdevice = "e1000"
 		if builder.Firmware == "uefi" {
@@ -297,7 +297,7 @@ func (inst *Install) setup(kern *kernelSetup) (*installerRun, error) {
 		pxe.tftpipaddr = "10.0.2.2"
 		pxe.bootindex = "1"
 	default:
-		return nil, fmt.Errorf("Unsupported arch %s" + system.RpmArch())
+		return nil, fmt.Errorf("Unsupported arch %s" + coreosarch.CurrentRpmArch())
 	}
 
 	mux := http.NewServeMux()
@@ -333,7 +333,7 @@ func (inst *Install) setup(kern *kernelSetup) (*installerRun, error) {
 }
 
 func renderBaseKargs() []string {
-	return append(baseKargs, fmt.Sprintf("console=%s", consoleKernelArgument[system.RpmArch()]))
+	return append(baseKargs, fmt.Sprintf("console=%s", consoleKernelArgument[coreosarch.CurrentRpmArch()]))
 }
 
 func renderInstallKargs(t *installerRun, offline bool) []string {
@@ -378,7 +378,7 @@ func (t *installerRun) completePxeSetup(kargs []string) error {
 			KERNEL %s
 			APPEND initrd=%s %s
 		`, t.kern.kernel, t.kern.initramfs, kargsStr))
-		if system.RpmArch() == "s390x" {
+		if coreosarch.CurrentRpmArch() == "s390x" {
 			pxeconfig = []byte(kargsStr)
 		}
 		if err := ioutil.WriteFile(filepath.Join(pxeconfigdir, "default"), pxeconfig, 0777); err != nil {

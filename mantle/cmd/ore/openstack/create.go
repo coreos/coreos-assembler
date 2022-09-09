@@ -18,8 +18,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/coreos/mantle/system"
 	"github.com/spf13/cobra"
+
+	coreosarch "github.com/coreos/stream-metadata-go/arch"
 )
 
 var (
@@ -44,7 +45,7 @@ After a successful run, the final line of output will be the ID of the image.
 
 func init() {
 	OpenStack.AddCommand(cmdCreate)
-	cmdCreate.Flags().StringVar(&arch, "arch", system.RpmArch(), "The architecture of the image")
+	cmdCreate.Flags().StringVar(&arch, "arch", coreosarch.CurrentRpmArch(), "The architecture of the image")
 	cmdCreate.Flags().StringVar(&path, "file", "", "path to OpenStack image")
 	cmdCreate.Flags().StringVar(&name, "name", "", "image name")
 	cmdCreate.Flags().StringVar(&visibility, "visibility", "private", "Image visibility within OpenStack")

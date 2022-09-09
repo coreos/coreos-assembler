@@ -45,6 +45,7 @@ import (
 
 	"github.com/coreos/mantle/platform/conf"
 	"github.com/coreos/mantle/util"
+	coreosarch "github.com/coreos/stream-metadata-go/arch"
 	"github.com/digitalocean/go-qemu/qmp"
 
 	"github.com/coreos/mantle/system"
@@ -289,7 +290,7 @@ func (inst *QemuInstance) Destroy() {
 // is used to boot from the network device (boot once is not supported). For s390x, the boot ordering was not a problem as it
 // would always read from disk first. For aarch64, the bootindex needs to be switched to boot from disk before a reboot
 func (inst *QemuInstance) SwitchBootOrder() (err2 error) {
-	if system.RpmArch() != "s390x" && system.RpmArch() != "aarch64" {
+	if coreosarch.CurrentRpmArch() != "s390x" && coreosarch.CurrentRpmArch() != "aarch64" {
 		//Not applicable for other arches
 		return nil
 	}
@@ -522,13 +523,13 @@ func (builder *QemuBuilder) AddFd(fd *os.File) string {
 // virtio returns a virtio device argument for qemu, which is architecture dependent
 func virtio(device, args string) string {
 	var suffix string
-	switch system.RpmArch() {
+	switch coreosarch.CurrentRpmArch() {
 	case "x86_64", "ppc64le", "aarch64":
 		suffix = "pci"
 	case "s390x":
 		suffix = "ccw"
 	default:
-		panic(fmt.Sprintf("RpmArch %s unhandled in virtio()", system.RpmArch()))
+		panic(fmt.Sprintf("RpmArch %s unhandled in virtio()", coreosarch.CurrentRpmArch()))
 	}
 	return fmt.Sprintf("virtio-%s-%s,%s", device, suffix, args)
 }
@@ -604,7 +605,7 @@ func (builder *QemuBuilder) Mount9p(source, destHint string, readonly bool) {
 // supportsFwCfg if the target system supports injecting
 // Ignition via the qemu -fw_cfg option.
 func (builder *QemuBuilder) supportsFwCfg() bool {
-	switch system.RpmArch() {
+	switch coreosarch.CurrentRpmArch() {
 	case "s390x", "ppc64le":
 		return false
 	}
@@ -613,7 +614,7 @@ func (builder *QemuBuilder) supportsFwCfg() bool {
 
 // supportsSwtpm if the target system supports a virtual TPM device
 func (builder *QemuBuilder) supportsSwtpm() bool {
-	switch system.RpmArch() {
+	switch coreosarch.CurrentRpmArch() {
 	case "s390x":
 		// s390x does not support a backend for TPM
 		return false
@@ -662,7 +663,7 @@ func newGuestfish(diskImagePath string, diskSectorSize int) (*coreosGuestfish, e
 	cmd.Env = append(os.Environ(), "LIBGUESTFS_BACKEND=direct")
 
 	// Hack to run with a wrapper on older P8 hardware running RHEL7
-	switch system.RpmArch() {
+	switch coreosarch.CurrentRpmArch() {
 	case "ppc64le":
 		u := unix.Utsname{}
 		if err := unix.Uname(&u); err != nil {
@@ -946,13 +947,13 @@ func (builder *QemuBuilder) addDiskImpl(disk *Disk, primary bool) error {
 		wwn := rand.Uint64()
 
 		var bus string
-		switch system.RpmArch() {
+		switch coreosarch.CurrentRpmArch() {
 		case "x86_64", "ppc64le", "aarch64":
 			bus = "pci"
 		case "s390x":
 			bus = "ccw"
 		default:
-			panic(fmt.Sprintf("Mantle doesn't know which bus type to use on %s", system.RpmArch()))
+			panic(fmt.Sprintf("Mantle doesn't know which bus type to use on %s", coreosarch.CurrentRpmArch()))
 		}
 
 		for i := 0; i < 2; i++ {
@@ -1061,7 +1062,7 @@ func (builder *QemuBuilder) finalize() {
 
 		// Then later, other non-x86_64 seemed to just copy that.
 		memory := 1024
-		switch system.RpmArch() {
+		switch coreosarch.CurrentRpmArch() {
 		case "aarch64", "s390x", "ppc64le":
 			memory = 2048
 		}
@@ -1085,7 +1086,7 @@ func baseQemuArgs() []string {
 		kvm = false
 	}
 	var ret []string
-	switch system.RpmArch() {
+	switch coreosarch.CurrentRpmArch() {
 	case "x86_64":
 		ret = []string{
 			"qemu-system-x86_64",
@@ -1107,12 +1108,12 @@ func baseQemuArgs() []string {
 			"-machine", "pseries,kvm-type=HV,vsmt=8,cap-fwnmi=off," + accel,
 		}
 	default:
-		panic(fmt.Sprintf("RpmArch %s combo not supported for qemu ", system.RpmArch()))
+		panic(fmt.Sprintf("RpmArch %s combo not supported for qemu ", coreosarch.CurrentRpmArch()))
 	}
 	if kvm {
 		ret = append(ret, "-cpu", "host")
 	} else {
-		if system.RpmArch() == "x86_64" {
+		if coreosarch.CurrentRpmArch() == "x86_64" {
 			// the default qemu64 CPU model does not support x86_64_v2
 			// causing crashes on EL9+ kernels
 			// see https://bugzilla.redhat.com/show_bug.cgi?id=2060839
@@ -1123,7 +1124,7 @@ func baseQemuArgs() []string {
 }
 
 func (builder *QemuBuilder) setupUefi(secureBoot bool) error {
-	switch system.RpmArch() {
+	switch coreosarch.CurrentRpmArch() {
 	case "x86_64":
 		varsVariant := ""
 		if secureBoot {
@@ -1152,7 +1153,7 @@ func (builder *QemuBuilder) setupUefi(secureBoot bool) error {
 		builder.Append("-machine", "q35")
 	case "aarch64":
 		if secureBoot {
-			return fmt.Errorf("architecture %s doesn't have support for secure boot in kola", system.RpmArch())
+			return fmt.Errorf("architecture %s doesn't have support for secure boot in kola", coreosarch.CurrentRpmArch())
 		}
 		vars, err := ioutil.TempFile("", "mantle-qemu")
 		if err != nil {
@@ -1173,7 +1174,7 @@ func (builder *QemuBuilder) setupUefi(secureBoot bool) error {
 		builder.Append("-drive", "file=/usr/share/edk2/aarch64/QEMU_EFI-silent-pflash.raw,if=pflash,format=raw,unit=0,readonly=on,auto-read-only=off")
 		builder.Append("-drive", fmt.Sprintf("file=%s,if=pflash,format=raw,unit=1,readonly=off,auto-read-only=off", fdset))
 	default:
-		panic(fmt.Sprintf("Architecture %s doesn't have support for UEFI in qemu.", system.RpmArch()))
+		panic(fmt.Sprintf("Architecture %s doesn't have support for UEFI in qemu.", coreosarch.CurrentRpmArch()))
 	}
 
 	return nil
@@ -1227,7 +1228,7 @@ func (builder *QemuBuilder) setupIso() error {
 	if kargsSupported, err := coreosInstallerSupportsISOKargs(); err != nil {
 		return err
 	} else if kargsSupported {
-		allargs := fmt.Sprintf("console=%s %s", consoleKernelArgument[system.RpmArch()], builder.AppendKernelArgs)
+		allargs := fmt.Sprintf("console=%s %s", consoleKernelArgument[coreosarch.CurrentRpmArch()], builder.AppendKernelArgs)
 		instCmdKargs := exec.Command("coreos-installer", "iso", "kargs", "modify", "--append", allargs, isoEmbeddedPath)
 		var stderrb bytes.Buffer
 		instCmdKargs.Stderr = &stderrb
@@ -1269,7 +1270,7 @@ func (builder *QemuBuilder) setupIso() error {
 	// will fall back to the ISO boot. On reboot when the system is installed, the
 	// primary disk is selected. This allows us to have "boot once" functionality on
 	// both UEFI and BIOS (`-boot once=d` OTOH doesn't work with OVMF).
-	switch system.RpmArch() {
+	switch coreosarch.CurrentRpmArch() {
 	case "s390x", "ppc64le", "aarch64":
 		if builder.isoAsDisk {
 			// we could do it, but boot would fail
@@ -1512,7 +1513,7 @@ func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 		}
 		argv = append(argv, "-chardev", fmt.Sprintf("socket,id=chrtpm,path=%s", swtpmSock), "-tpmdev", "emulator,id=tpm0,chardev=chrtpm")
 		// There are different device backends on each architecture
-		switch system.RpmArch() {
+		switch coreosarch.CurrentRpmArch() {
 		case "x86_64":
 			argv = append(argv, "-device", "tpm-tis,tpmdev=tpm0")
 		case "aarch64":

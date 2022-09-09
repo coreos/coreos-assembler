@@ -37,7 +37,7 @@ func (a *API) vmname() string {
 func (a *API) mkinstance(userdata, name string, keys []*agent.Key, useServiceAcct bool) *compute.Instance {
 	mantle := "mantle"
 	metadataItems := []*compute.MetadataItems{
-		&compute.MetadataItems{
+		{
 			// this should be done with a label instead, but
 			// our old vendored Go binding doesn't support those
 			Key:   "created-by",
@@ -84,9 +84,9 @@ func (a *API) mkinstance(userdata, name string, keys []*agent.Key, useServiceAcc
 			},
 		},
 		NetworkInterfaces: []*compute.NetworkInterface{
-			&compute.NetworkInterface{
+			{
 				AccessConfigs: []*compute.AccessConfig{
-					&compute.AccessConfig{
+					{
 						Type: "ONE_TO_ONE_NAT",
 						Name: "External NAT",
 					},
@@ -98,7 +98,7 @@ func (a *API) mkinstance(userdata, name string, keys []*agent.Key, useServiceAcc
 	if useServiceAcct {
 		// allow the instance to perform authenticated GCS fetches
 		instance.ServiceAccounts = []*compute.ServiceAccount{
-			&compute.ServiceAccount{
+			{
 				Email:  a.options.ServiceAcct,
 				Scopes: []string{"https://www.googleapis.com/auth/devstorage.read_only"},
 			},
