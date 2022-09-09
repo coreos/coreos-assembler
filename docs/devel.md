@@ -12,18 +12,18 @@ guides if you are looking for how to use the CoreOS Assembler.
 1. TOC
 {:toc}
 
-## Hacking on CoreOS Assembler Scripts
+## Hacking on CoreOS Assembler 
 
-If you find yourself wanting to hack on CoreOS Assembler itself then you can
-easily mount the scripts into the container and prevent rebuilding the
-container to test every change. This can be done using the
-`COREOS_ASSEMBLER_GIT` env var.
+You could rerun `podman build -t localhost/cosa` every time you make
+a change, but it'd be very expensive to do so. 
 
-```
-$ export COREOS_ASSEMBLER_GIT=/path/to/github.com/coreos/coreos-assembler/
-$ cosa init https://github.com/coreos/fedora-coreos-config.git
-$ cosa fetch && cosa build
-```
+Instead, you can use [hack/Dockerfile].  There are instructions in that
+file.  This avoids redownloading and reinstalling all of the
+dependency RPMs.
+
+For even faster workflow, you can just bind mount in binaries from
+your host or from another container by adding additional bind mounts,
+and then copy files into your coreos-assembler container more manually.
 
 ## Installing cosa inside an existing container
 

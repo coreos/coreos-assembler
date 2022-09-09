@@ -31,7 +31,7 @@ else ifeq ($(GOARCH),aarch64)
 endif
 
 bin/coreos-assembler:
-	cd cmd && go build -mod vendor -o ../$@
+	cd cmd && go build $(GOFLAGS) -mod vendor -o ../$@
 .PHONY: bin/coreos-assembler
 
 .%.shellchecked: %

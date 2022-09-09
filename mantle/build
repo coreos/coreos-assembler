@@ -26,7 +26,7 @@ ldflags="-X ${REPO_PATH}/version.Version=${version}"
 host_build() {
     local cmd=$1; shift
     echo "Building $cmd"
-    go build \
+    go build ${GOFLAGS:-} \
         -ldflags "${ldflags}" \
         -mod vendor \
         -o "bin/$cmd" \
@@ -41,7 +41,7 @@ cross_static_build() {
         mkdir -p "bin/$a"
         echo "Building $a/$cmd (static)"
         CGO_ENABLED=0 GOARCH=${BASEARCH_TO_GOARCH[$a]} \
-        go build \
+        go build ${GOFLAGS:-} \
             -ldflags "${ldflags} -extldflags=-static" \
             -mod vendor \
             -o "bin/$a/$cmd" \

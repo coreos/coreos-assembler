@@ -101,7 +101,6 @@ cosa() {
               -v ${PWD}:/srv/ --device /dev/kvm --device /dev/fuse                                  \
               --tmpfs /tmp -v /var/tmp:/var/tmp --name cosa                                         \
               ${COREOS_ASSEMBLER_CONFIG_GIT:+-v $COREOS_ASSEMBLER_CONFIG_GIT:/srv/src/config/:ro}   \
-              ${COREOS_ASSEMBLER_GIT:+-v $COREOS_ASSEMBLER_GIT/src/:/usr/lib/coreos-assembler/:ro}  \
               ${COREOS_ASSEMBLER_CONTAINER_RUNTIME_ARGS}                                            \
               ${COREOS_ASSEMBLER_CONTAINER:-$COREOS_ASSEMBLER_CONTAINER_LATEST} "$@"
    rc=$?; set +x; return $rc
@@ -127,9 +126,6 @@ The environment variables are special purpose:
 
 - `COREOS_ASSEMBLER_CONFIG_GIT`: Allows you to specifiy a local directory that
   contains the configs for the ostree you are trying to compose.
-- `COREOS_ASSEMBLER_GIT`: Allows you to specify a local directory that contains
-  the CoreOS Assembler scripts. This allows for quick hacking on the assembler
-  itself.
 - `COREOS_ASSEMBLER_CONTAINER_RUNTIME_ARGS`: Allows for adding arbitrary mounts
   or args to the container runtime.
 - `COREOS_ASSEMBLER_CONTAINER`: Allows for overriding the default assembler
