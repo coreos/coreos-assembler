@@ -2,7 +2,10 @@ module github.com/coreos/coreos-assembler
 
 go 1.17
 
-require github.com/spf13/cobra v1.5.0
+require (
+	github.com/coreos/stream-metadata-go v0.4.0
+	github.com/spf13/cobra v1.5.0
+)
 
 require (
 	github.com/pkg/errors v0.9.1
