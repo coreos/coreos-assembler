@@ -25,6 +25,8 @@ import (
 	"time"
 
 	cosa "github.com/coreos/coreos-assembler/pkg/builds"
+	coreosarch "github.com/coreos/stream-metadata-go/arch"
+
 	"github.com/coreos/mantle/kola"
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
@@ -32,7 +34,6 @@ import (
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/platform/conf"
 	"github.com/coreos/mantle/platform/machine/unprivqemu"
-	"github.com/coreos/mantle/system"
 	installer "github.com/coreos/mantle/util"
 )
 
@@ -374,7 +375,7 @@ func downloadLatestReleasedRHCOS(target string) (string, error) {
 	latestBaseUrl := fmt.Sprintf("https://rhcos-redirector.apps.art.xq1c.p1.openshiftapps.com/art/storage/releases/rhcos-%s/%s/%s",
 		ocpVersionF,
 		rhcosVersion,
-		system.RpmArch())
+		coreosarch.CurrentRpmArch())
 	latestRhcosBuildMetaUrl := fmt.Sprintf("%s/meta.json", latestBaseUrl)
 	if err := getJson(latestRhcosBuildMetaUrl, &latestOcpRhcosBuild); err != nil {
 		return "", err

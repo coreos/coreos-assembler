@@ -305,7 +305,7 @@ func (a *API) CreateServer(name, sshKeyID, userdata string) (*Server, error) {
 	// Previously we were timing out because it was taking 10+ minutes for
 	// instances to come up in VexxHost. This helps with that.
 	bootVolume := []bootfromvolume.BlockDevice{
-		bootfromvolume.BlockDevice{
+		{
 			UUID:                a.opts.Image,
 			VolumeSize:          10,
 			DeleteOnTermination: true,

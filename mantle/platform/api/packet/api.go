@@ -326,7 +326,7 @@ RequiredBy=multi-user.target
 		},
 		Storage: ignition.Storage{
 			Files: []ignition.File{
-				ignition.File{
+				{
 					Node: ignition.Node{
 						Path: "/var/userdata",
 					},
@@ -341,22 +341,22 @@ RequiredBy=multi-user.target
 		},
 		Systemd: ignition.Systemd{
 			Units: []ignition.Unit{
-				ignition.Unit{
+				{
 					// don't appear to be running while install is in progress
 					Name: "sshd.service",
 					Mask: util.BoolToPtr(true),
 				},
-				ignition.Unit{
+				{
 					// allow remote detection of install in progress
 					Name:     "discard.socket",
 					Enabled:  util.BoolToPtr(true),
 					Contents: util.StrToPtr(discardSocketUnit),
 				},
-				ignition.Unit{
+				{
 					Name:     "discard@.service",
 					Contents: util.StrToPtr(discardServiceUnit),
 				},
-				ignition.Unit{
+				{
 					Name:     "coreos-installer.service",
 					Enabled:  util.BoolToPtr(true),
 					Contents: util.StrToPtr(installUnit),

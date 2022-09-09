@@ -118,11 +118,11 @@ func tagSpecCreatedByMantle(name, resourceType string) []*ec2.TagSpecification {
 		{
 			ResourceType: aws.String(resourceType),
 			Tags: []*ec2.Tag{
-				&ec2.Tag{
+				{
 					Key:   aws.String("CreatedBy"),
 					Value: aws.String("mantle"),
 				},
-				&ec2.Tag{
+				{
 					Key:   aws.String("Name"),
 					Value: aws.String(name),
 				},

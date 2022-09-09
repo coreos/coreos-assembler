@@ -17,11 +17,12 @@ package misc
 import (
 	"strings"
 
+	coreosarch "github.com/coreos/stream-metadata-go/arch"
+
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/platform/conf"
-	"github.com/coreos/mantle/system"
 )
 
 var (
@@ -131,7 +132,7 @@ func verifyBootDropins(c cluster.TestCluster, m platform.Machine, checkBootuuid 
 	c.RunCmdSync(m, "sudo test -f /boot/.root_uuid")
 	if checkBootuuid {
 		// Check for bootuuid dropins where available
-		switch system.RpmArch() {
+		switch coreosarch.CurrentRpmArch() {
 		case "s390x":
 		case "x86_64", "aarch64":
 			c.RunCmdSync(m, `

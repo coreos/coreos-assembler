@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"time"
 
+	coreosarch "github.com/coreos/stream-metadata-go/arch"
+
 	"github.com/coreos/mantle/kola"
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
@@ -11,7 +13,6 @@ import (
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/platform/conf"
 	"github.com/coreos/mantle/platform/machine/unprivqemu"
-	"github.com/coreos/mantle/system"
 	"github.com/coreos/mantle/util"
 )
 
@@ -90,8 +91,8 @@ func setupTangMachine(c cluster.TestCluster) ut.TangServer {
 	// TODO: move container image to centralized namespace
 	// container source: https://github.com/mike-nguyen/tang-docker-container/
 	containerImage := "quay.io/mike_nguyen/tang"
-	if system.RpmArch() != "x86_64" {
-		containerImage = "quay.io/multi-arch/tang:" + system.RpmArch()
+	if coreosarch.CurrentRpmArch() != "x86_64" {
+		containerImage = "quay.io/multi-arch/tang:" + coreosarch.CurrentRpmArch()
 	}
 
 	containerID, errMsg, err := m.SSH("sudo podman run -d -p 80:80 " + containerImage)
@@ -161,7 +162,7 @@ func runTest(c cluster.TestCluster, tpm2 bool, threshold int, killTangAfterFirst
 		MinMemory: 4096,
 	}
 	// ppc64le and aarch64 use 64K pages
-	switch system.RpmArch() {
+	switch coreosarch.CurrentRpmArch() {
 	case "ppc64le", "aarch64":
 		opts.MinMemory = 8192
 	}
@@ -171,7 +172,7 @@ func runTest(c cluster.TestCluster, tpm2 bool, threshold int, killTangAfterFirst
 	}
 	rootPart := "/dev/disk/by-partlabel/root"
 	// hacky,  but needed for s390x because of gpt issue with naming on big endian systems: https://bugzilla.redhat.com/show_bug.cgi?id=1899990
-	if system.RpmArch() == "s390x" {
+	if coreosarch.CurrentRpmArch() == "s390x" {
 		rootPart = "/dev/disk/by-id/virtio-primary-disk-part4"
 	}
 	ut.LUKSSanityTest(c, tangd, m, tpm2, killTangAfterFirstBoot, rootPart)

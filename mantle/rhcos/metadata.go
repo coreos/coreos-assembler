@@ -21,9 +21,8 @@ import (
 	"net/http"
 	"net/url"
 
+	coreosarch "github.com/coreos/stream-metadata-go/arch"
 	"github.com/coreos/stream-metadata-go/stream"
-
-	"github.com/coreos/mantle/system"
 )
 
 const (
@@ -86,5 +85,5 @@ func FetchStreamArtifacts(stream, architecture string) (*stream.Arch, error) {
 // FetchStreamThisArchitecture returns artifacts for the current architecture from
 // the given stream.
 func FetchStreamThisArchitecture(stream string) (*stream.Arch, error) {
-	return FetchStreamArtifacts(stream, system.RpmArch())
+	return FetchStreamArtifacts(stream, coreosarch.CurrentRpmArch())
 }

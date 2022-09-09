@@ -79,11 +79,11 @@ func (a *API) FindSnapshot(imageName string) (*Snapshot, error) {
 	// Look for an existing snapshot with this image name.
 	snapshotRes, err := a.ec2.DescribeSnapshots(&ec2.DescribeSnapshotsInput{
 		Filters: []*ec2.Filter{
-			&ec2.Filter{
+			{
 				Name:   aws.String("status"),
 				Values: aws.StringSlice([]string{"completed"}),
 			},
-			&ec2.Filter{
+			{
 				Name:   aws.String("tag:Name"),
 				Values: aws.StringSlice([]string{imageName}),
 			},
@@ -350,7 +350,7 @@ func (a *API) CreateHVMImage(snapshotID string, diskSizeGiB uint, name string, d
 		VirtualizationType: aws.String("hvm"),
 		RootDeviceName:     aws.String("/dev/xvda"),
 		BlockDeviceMappings: []*ec2.BlockDeviceMapping{
-			&ec2.BlockDeviceMapping{
+			{
 				DeviceName: aws.String("/dev/xvda"),
 				Ebs: &ec2.EbsBlockDevice{
 					SnapshotId:          aws.String(snapshotID),
@@ -359,7 +359,7 @@ func (a *API) CreateHVMImage(snapshotID string, diskSizeGiB uint, name string, d
 					VolumeType:          aws.String("gp2"),
 				},
 			},
-			&ec2.BlockDeviceMapping{
+			{
 				DeviceName:  aws.String("/dev/xvdb"),
 				VirtualName: aws.String("ephemeral0"),
 			},
@@ -701,7 +701,7 @@ func (a *API) copyImageIn(sourceRegion, sourceImageID, name, description string,
 func (a *API) FindImage(name string) (string, error) {
 	describeRes, err := a.ec2.DescribeImages(&ec2.DescribeImagesInput{
 		Filters: []*ec2.Filter{
-			&ec2.Filter{
+			{
 				Name:   aws.String("name"),
 				Values: aws.StringSlice([]string{name}),
 			},
@@ -747,7 +747,7 @@ func (a *API) PublishImage(imageID string) error {
 		SnapshotId: &snapshotID,
 		CreateVolumePermission: &ec2.CreateVolumePermissionModifications{
 			Add: []*ec2.CreateVolumePermission{
-				&ec2.CreateVolumePermission{
+				{
 					Group: aws.String("all"),
 				},
 			},
@@ -763,7 +763,7 @@ func (a *API) PublishImage(imageID string) error {
 		ImageId:   aws.String(imageID),
 		LaunchPermission: &ec2.LaunchPermissionModifications{
 			Add: []*ec2.LaunchPermission{
-				&ec2.LaunchPermission{
+				{
 					Group: aws.String("all"),
 				},
 			},

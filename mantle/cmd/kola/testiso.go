@@ -31,8 +31,8 @@ import (
 	"time"
 
 	"github.com/coreos/mantle/platform/conf"
-	"github.com/coreos/mantle/system"
 	"github.com/coreos/mantle/util"
+	coreosarch "github.com/coreos/stream-metadata-go/arch"
 	"github.com/pkg/errors"
 
 	"github.com/spf13/cobra"
@@ -310,7 +310,7 @@ func newQemuBuilderWithDisk(outdir string) (*platform.QemuBuilder, *conf.Conf, e
 	}
 
 	//TBD: see if we can remove this and just use AddDisk and inject bootindex during startup
-	if system.RpmArch() == "s390x" || system.RpmArch() == "aarch64" {
+	if coreosarch.CurrentRpmArch() == "s390x" || coreosarch.CurrentRpmArch() == "aarch64" {
 		// s390x and aarch64 need to use bootindex as they don't support boot once
 		if err := builder.AddDisk(&disk); err != nil {
 			return nil, nil, err
@@ -340,7 +340,7 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 	}
 
 	// s390x: iso-install does not work because s390x uses an El Torito image
-	if system.RpmArch() == "s390x" {
+	if coreosarch.CurrentRpmArch() == "s390x" {
 		fmt.Println("Skipping iso-install on s390x")
 		noiso = true
 	}
@@ -464,7 +464,7 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 		if kola.CosaBuild.Meta.BuildArtifacts.LiveIso == nil {
 			return fmt.Errorf("build %s has no live ISO", kola.CosaBuild.Meta.Name)
 		}
-		switch system.RpmArch() {
+		switch coreosarch.CurrentRpmArch() {
 		case "x86_64":
 			ranTest = true
 			duration, err := testAsDisk(ctx, filepath.Join(outputDir, scenarioISOAsDisk))
@@ -474,7 +474,7 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 			}
 		default:
 			// no hybrid partition table to boot from
-			fmt.Printf("%s unsupported on %s; skipping\n", scenarioISOAsDisk, system.RpmArch())
+			fmt.Printf("%s unsupported on %s; skipping\n", scenarioISOAsDisk, coreosarch.CurrentRpmArch())
 		}
 	}
 	if _, ok := targetScenarios[scenarioMinISOInstall]; ok {

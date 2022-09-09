@@ -21,12 +21,11 @@ import (
 	"net/http"
 	"net/url"
 
+	coreosarch "github.com/coreos/stream-metadata-go/arch"
 	"github.com/coreos/stream-metadata-go/fedoracoreos"
 	fcosinternals "github.com/coreos/stream-metadata-go/fedoracoreos/internals"
 	"github.com/coreos/stream-metadata-go/release"
 	"github.com/coreos/stream-metadata-go/stream"
-
-	"github.com/coreos/mantle/system"
 )
 
 func fetchURL(u url.URL) ([]byte, error) {
@@ -92,7 +91,7 @@ func FetchCanonicalStreamArtifacts(stream, architecture string) (*stream.Arch, e
 // FetchStreamThisArchitecture returns artifacts for the current architecture from
 // the given stream.
 func FetchStreamThisArchitecture(stream string) (*stream.Arch, error) {
-	return FetchCanonicalStreamArtifacts(stream, system.RpmArch())
+	return FetchCanonicalStreamArtifacts(stream, coreosarch.CurrentRpmArch())
 }
 
 // GetCosaBuildURL returns a URL prefix for the coreos-assembler build.
