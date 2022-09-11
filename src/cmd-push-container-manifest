@@ -1,10 +1,7 @@
 #!/usr/bin/python3
 
 # Push a container manifest (i.e. multi-arch) to a container registry based on
-# arguments provided by ther user.
-
-# The inverse of cmd-buildfetch (i.e. we upload a build which later can be
-# partially re-downloaded with cmd-buildfetch).
+# arguments provided by the user.
 
 import argparse
 import os
