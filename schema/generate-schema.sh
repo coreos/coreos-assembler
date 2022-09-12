@@ -27,10 +27,10 @@ cat > "${tdir}/schema_doc.go" <<EOM
 // Source hash: ${digest}
 // DO NOT EDIT
 
-package cosa
+package builds
 
 var generatedSchemaJSON = \`$(< ${schema_json})
 \`
 EOM
 
-cp -av ${tdir}/*go ${mydir}/cosa/
+cp -av ${tdir}/*go ${mydir}/../pkg/builds/
