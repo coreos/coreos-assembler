@@ -56,6 +56,12 @@ partition or configuring the filesystem types.  If you want to do anything like
 that today it requires forking the assembler and rebuilding it.
 See the fedora-coreos-config for an example.
 
+### `pipeline.yaml`
+
+This YAML file configures default values for various parts of coreos-assembler.
+At the moment, there is only one configuration knob for compression.  Consult
+`/usr/lib/coreos-assembler/pipeline-default.yaml` for canonical documentation.
+
 ## Hacking on "config git"
 
 First you can expand the size of the image; edit `src/config/image.yaml` and
