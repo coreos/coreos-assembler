@@ -4,7 +4,7 @@ version = $(shell cd .. && git log -n 1 --date=short --pretty=format:%cs.%h~${st
 cosa_dir = $(shell test -d /usr/lib/coreos-assembler && echo /usr/lib/coreos-assembler)
 ldflags=-X main.version=${version} -X main.cosaDir=${cosa_dir}
 buildtags=containers_image_openpgp
-export PATH := $(my_dir)/bin:$(shell readlink -f ../tools/bin):$(PATH)
+export PATH := $(my_dir)/bin:$(PATH)
 
 PREFIX ?= /usr
 DESTDIR ?=
