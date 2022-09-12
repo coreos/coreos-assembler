@@ -8,6 +8,5 @@ maipo/
 *.pyo
 *.shellchecked
 .coverage
-tools/bin
 .idea
 bin/

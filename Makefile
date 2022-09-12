@@ -9,11 +9,11 @@ DESTDIR ?=
 # W504 line break after binary operator
 PYIGNORE ?= E128,E241,E402,E501,E722,W503,W504
 
-.PHONY: all check shellcheck flake8 pycheck unittest clean mantle mantle-check install tools
+.PHONY: all check shellcheck flake8 pycheck unittest clean mantle mantle-check install
 
 MANTLE_BINARIES := ore kola plume
 
-all: bin/coreos-assembler tools mantle
+all: bin/coreos-assembler mantle
 
 src:=$(shell find src -maxdepth 1 -type f -executable -print)
 pysources=$(shell find src -type f -name '*.py') $(shell for x in $(src); do if head -1 $$x | grep -q python; then echo $$x; fi; done)
@@ -64,7 +64,6 @@ cosa-go-check:
 
 clean:
 	rm -f ${src_checked} ${tests_checked} ${cwd_checked}
-	rm -rf tools/bin
 	find . -name "*.py[co]" -type f | xargs rm -f
 	find . -name "__pycache__" -type d | xargs rm -rf
 
@@ -77,9 +76,6 @@ $(MANTLE_BINARIES) kolet:
 
 mantle-check:
 	cd mantle && $(MAKE) test
-
-tools:
-	cd tools && $(MAKE)
 
 .PHONY: schema
 schema:
@@ -113,5 +109,4 @@ install:
 	ln -sf ../lib/coreos-assembler/cp-reflink $(DESTDIR)$(PREFIX)/bin/
 	ln -sf coreos-assembler $(DESTDIR)$(PREFIX)/bin/cosa
 	install -d $(DESTDIR)$(PREFIX)/lib/coreos-assembler/tests/kola
-	cd tools && $(MAKE) install DESTDIR=$(DESTDIR)
 	cd mantle && $(MAKE) install DESTDIR=$(DESTDIR)

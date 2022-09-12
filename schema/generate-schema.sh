@@ -1,4 +1,6 @@
-#!/bin/bash -xe
+#!/bin/bash
+set -euo pipefail
+topdir=$(git rev-parse --show-toplevel)
 mydir=$(dirname $(readlink -f $0))
 tdir="${mydir}/tmp"
 mkdir -p "${tdir}"
@@ -11,8 +13,19 @@ echo "Generating COSA Schema ${schema_version}"
 
 out="${tdir}/cosa_${schema_version}.go"
 
-"schematyper" \
-    "${schema_version}.json" \
+schematyper=
+if test -f ${topdir}/bin/schematyper; then
+    schematyper=${topdir}/bin/schematyper
+else
+    schematyper=$(which schematyper 2>/dev/null || true)
+fi
+if test -z "${schematyper}"; then
+    env GOBIN=${topdir}/bin go install github.com/idubinskiy/schematyper@latest
+    schematyper=${topdir}/bin/schematyper
+fi
+
+${schematyper} \
+    ${topdir}/src/"${schema_version}.json" \
     -o "${out}" \
     --package="builds" \
     --root-type=Build \
