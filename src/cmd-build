@@ -29,6 +29,7 @@ Usage: coreos-assembler build --help
   --skip-prune        Skip prunning previous builds
   -F | --fetch        Also perform a fetch
   --strict            Only allow installing locked packages when using lockfiles
+  --prepare-only      Do not actually build, only set things up so that `rpm-ostree compose image` works.
   --version VERSION   Use the given version instead of generating one based on current time
 
   Additional environment variables supported:
@@ -45,12 +46,13 @@ FORCE=
 FORCE_IMAGE=
 FETCH=
 SKIP_PRUNE=0
+PREPARE_ONLY=0
 VERSION=
 PARENT=
 PARENT_BUILD=
 STRICT=
 rc=0
-options=$(getopt --options hfFt: --longoptions help,fetch,force,version:,parent:,parent-build:,delay-meta-merge,force-nocache,force-image,skip-prune,strict -- "$@") || rc=$?
+options=$(getopt --options hfFt: --longoptions help,fetch,force,version:,parent:,parent-build:,delay-meta-merge,force-nocache,force-image,skip-prune,prepare-only,strict -- "$@") || rc=$?
 [ $rc -eq 0 ] || {
     print_help
     exit 1
@@ -76,6 +78,9 @@ while true; do
             ;;
         --skip-prune)
             SKIP_PRUNE=1
+            ;;
+        --prepare-only)
+            PREPARE_ONLY=1
             ;;
         --strict)
             STRICT=1
@@ -278,6 +283,12 @@ extra_compose_args+=("$parent_arg")
 lockfile_out=${tmprepo}/tmp/manifest-lock.generated.${basearch}.json
 # shellcheck disable=SC2119
 prepare_compose_overlays
+
+if test "${PREPARE_ONLY}" = 1; then
+    echo "Option --prepare-only was specified; exiting"
+    exit 0
+fi
+
 # See https://github.com/coreos/coreos-assembler/pull/1379 - we want the local
 # dev case to explicitly fetch updates when they want them, plus CI pipelines
 # generally want to react to "changed or not" with a separate `fetch`.
