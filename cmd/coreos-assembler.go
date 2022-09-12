@@ -15,7 +15,7 @@ import (
 var buildCommands = []string{"init", "fetch", "build", "run", "prune", "clean", "list"}
 var advancedBuildCommands = []string{"buildfetch", "buildupload", "oc-adm-release", "push-container", "upload-oscontainer", "buildextend-extensions"}
 var buildextendCommands = []string{"aliyun", "aws", "azure", "digitalocean", "exoscale", "gcp", "ibmcloud", "kubevirt", "live", "metal", "metal4k", "nutanix", "openstack", "qemu", "secex", "virtualbox", "vmware", "vultr"}
-var utilityCommands = []string{"aws-replicate", "build-extensions-container", "compress", "generate-hashlist", "koji-upload", "kola", "push-container-manifest", "remote-build-container", "remote-prune", "remote-session", "sign", "tag", "update-variant"}
+var utilityCommands = []string{"aws-replicate", "build-extensions-container", "compress", "generate-hashlist", "koji-upload", "kola", "push-container-manifest", "remote-build-container", "remote-prune", "remote-session", "sign", "update-variant"}
 var otherCommands = []string{"shell", "meta"}
 
 func init() {
