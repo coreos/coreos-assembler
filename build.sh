@@ -106,6 +106,13 @@ configure_user(){
     echo '%wheel ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers.d/wheel-nopasswd
     # Contents of /etc/sudoers.d need not to be world writable
     chmod 600 /etc/sudoers.d/wheel-nopasswd
+
+    # Allow the builder user to run rootless podman
+    # Referenced at: https://github.com/containers/podman/issues/4056#issuecomment-1245715492
+    # Lifted from: https://github.com/containers/podman/blob/6e382d9ec2e6eb79a72537544341e496368b6c63/contrib/podmanimage/stable/Containerfile#L25-L26
+    echo -e "builder:1:999\nbuilder:1001:64535" > /etc/subuid
+    echo -e "builder:1:999\nbuilder:1001:64535" > /etc/subgid
+
 }
 
 write_archive_info() {
