@@ -8,7 +8,6 @@ import tempfile
 import tenacity
 
 from cosalib.cmdlib import runcmd
-from os import environ
 
 # Set up logging
 logging.basicConfig(level=logging.INFO,
@@ -105,7 +104,7 @@ def main():
     if args.authfile:
         os.environ["REGISTRY_AUTH_FILE"] = args.authfile
     # Check for requisite env vars
-    if environ.get('CONTAINER_HOST') is None or environ.get('CONTAINER_SSHKEY') is None:
+    if os.environ.get('CONTAINER_HOST') is None or os.environ.get('CONTAINER_SSHKEY') is None:
         sys.exit('You must have CONTAINER_HOST and CONTAINER_SSHKEY environment variables setup')
 
     # Podman supports building from a specific commit
