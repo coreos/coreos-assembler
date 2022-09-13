@@ -124,6 +124,17 @@ def main():
         commit = runcmd(cmd, quiet=True, capture_output=True).stdout.strip().decode()
         shortcommit = commit[0:7]
         logging.info(f"Translated {args.git_url}#{args.git_ref} into {shortcommit}")
+        # Add some information about the commit to labels for the container
+        cmd = ["git", "-C", gitdir, "show", "--quiet",
+               "FETCH_HEAD", "--pretty=format:%aN|%ad|%s"]
+        gitinfo = runcmd(cmd, quiet=True, capture_output=True).stdout.strip().decode()
+        gitauthor, gitdate, gittitle = gitinfo.split("|")
+        args.labels.append(f"build.commit.id={commit}")
+        args.labels.append(f"build.commit.ref={args.git_ref}")
+        args.labels.append(f"build.commit.url={args.git_url}")
+        args.labels.append(f"build.commit.author={gitauthor}")
+        args.labels.append(f"build.commit.date={gitdate}")
+        args.labels.append(f"build.commit.title={gittitle}")
         # If a tag wasn't passed then use the arch + shortcommit
         if not args.tag:
             args.tag = f"{args.arch}-{shortcommit}"
@@ -150,7 +161,7 @@ def main():
         if needbuild:
             logging.info("Building container via podman")
             builddir = os.path.join(gitdir, args.git_sub_dir)
-            build_container_image(args.label, builddir,
+            build_container_image(args.labels, builddir,
                                   args.cache_ttl, args.repo, args.tag)
 
     # Push to the registry if needed, else save the image to a file
@@ -191,7 +202,7 @@ Examples:
         help="""Pass along --cache-ttl=<value> to `podman build`.
                 Defaults to 0.1s, which is effectively `--no-cache`""")
     parser.add_argument(
-        '--label', default=[], action='append',
+        '--label', dest="labels", default=[], action='append',
         required=False, help='Add image label(s)')
     parser.add_argument(
         '--force', required=False, action='store_true',
