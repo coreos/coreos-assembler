@@ -25,11 +25,12 @@ def delete_local_container_manifest(repo, tag):
     runcmd(cmd)
 
 
-def push_container_manifest(repo, tag, v2s2=False):
+def push_container_manifest(repo, tag, digestfile, v2s2=False):
     '''
     Push manifest to registry
     @param repo str registry repository
     @param tag str manifest tag
+    @param digestfile str write container digest to file
     @param v2s2 boolean use to force v2s2 format
     '''
     cmd = ["podman", "manifest", "push",
@@ -39,17 +40,20 @@ def push_container_manifest(repo, tag, v2s2=False):
         # to create a manifest with 2 different mediaType. It seems to be
         # a Quay issue.
         cmd.extend(["--remove-signatures", "-f", "v2s2"])
+    if digestfile:
+        cmd.extend([f"--digestfile={digestfile}"])
     runcmd(cmd)
 
 
-def create_and_push_container_manifest(repo, tag, images, v2s2):
+def create_and_push_container_manifest(repo, tag, images, v2s2, digestfile):
     '''
     Do it all! Create, Push, Cleanup
     @param repo str registry repository
     @param tag str manifest tag
     @param images list of image specifications (including transport)
     @param v2s2 boolean use to force v2s2 format
+    @param digestfile str write container digest to file
     '''
     create_local_container_manifest(repo, tag, images)
-    push_container_manifest(repo, tag, v2s2)
+    push_container_manifest(repo, tag, digestfile, v2s2)
     delete_local_container_manifest(repo, tag)
