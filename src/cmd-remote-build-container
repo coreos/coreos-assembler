@@ -15,11 +15,12 @@ logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s %(levelname)s - %(message)s")
 
 
-def build_container_image(labels, buildDir, cacheTTL, repo, tag):
+def build_container_image(labels, buildDir, fromimage, cacheTTL, repo, tag):
     '''
     Build the image  using podman remote and push to the registry
     @param labels list labels to add to image
     @param buildDir str the location of the directory to build from
+    @param fromimage str value to pass to `podman build --from=`
     @param cacheTTL str value to pass to `podman build --cache-ttl=`
     @param repo str registry repository
     @param tag  str image tag
@@ -27,6 +28,8 @@ def build_container_image(labels, buildDir, cacheTTL, repo, tag):
     cmd = ["podman", "build", f"--cache-ttl={cacheTTL}", f"--tag={repo}:{tag}", buildDir]
     for label in labels:
         cmd.extend([f"--label={label}"])
+    if fromimage:
+        cmd.extend([f"--from={fromimage}"])
     # Long running command. Send output to stdout for logging
     runcmd(cmd)
 
@@ -153,7 +156,7 @@ def main():
         if needbuild:
             logging.info("Building container via podman")
             builddir = os.path.join(gitdir, args.git_sub_dir)
-            build_container_image(args.labels, builddir,
+            build_container_image(args.labels, builddir, args.fromimage,
                                   args.cache_ttl, args.repo, args.tag)
 
     # Push to the registry if needed, else save the image to a file
@@ -199,6 +202,9 @@ Examples:
     parser.add_argument(
         '--force', required=False, action='store_true',
         help='Force image overwrite')
+    parser.add_argument(
+        '--from', dest="fromimage", required=False,
+        help='Pass along --from=<value> to `podman build`.')
     parser.add_argument(
         '--git-ref', required=True,
         help='Git branch or tag or commit')
