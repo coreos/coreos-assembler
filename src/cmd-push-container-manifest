@@ -69,7 +69,7 @@ def main():
         # Update the meta.json in each build/arch metadata
         for _, buildmeta in buildmetas.items():
             buildmeta[args.metajsonname] = {'image': f"{args.repo}@{digest}"}
-        buildmeta.write(artifact_name=args.metajsonname)
+            buildmeta.write(artifact_name=args.metajsonname)
 
 
 def parse_args():
