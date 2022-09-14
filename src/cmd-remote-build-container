@@ -118,7 +118,9 @@ def main():
         # fetch the git repo contents for the build and determine commit/shortcommit
         cmd = ["git", "-C", gitdir, "init", "."]
         runcmd(cmd, quiet=True, capture_output=True)
-        cmd = ["git", "-C", gitdir, "fetch", "--depth=1", args.git_url, args.git_ref]
+        cmd = ["git", "-C", gitdir, "remote", "add", "origin", args.git_url]
+        runcmd(cmd, quiet=True, capture_output=True)
+        cmd = ["git", "-C", gitdir, "fetch", "--depth=1", "origin", args.git_ref]
         runcmd(cmd, quiet=True, capture_output=True)
         cmd = ["git", "-C", gitdir, "checkout", "FETCH_HEAD"]
         runcmd(cmd, quiet=True, capture_output=True)
