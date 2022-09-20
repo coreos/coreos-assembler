@@ -251,8 +251,9 @@ prepare_build() {
     # Abuse the rojig/name as the name of the VM images
     # Also grab rojig summary for image upload descriptions
     name=$(jq -r '.rojig.name' < "${flattened_manifest}")
+    summary=$(jq -r '.rojig.summary' < "${flattened_manifest}")
     ref=$(jq -r '.ref//""' < "${flattened_manifest}")
-    export name ref
+    export name ref summary
     # And validate fields coreos-assembler requires, but not rpm-ostree
     required_fields=("automatic-version-prefix")
     for field in "${required_fields[@]}"; do
