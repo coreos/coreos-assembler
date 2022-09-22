@@ -34,7 +34,7 @@ EOF
 }
 
 # Parse options
-hostkey=src/config/secex-hostkey
+hostkey=/srv/src/config/secex-hostkey
 genprotimgvm=
 rc=0
 build=
