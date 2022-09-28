@@ -12,7 +12,6 @@
 """
 
 import argparse
-import os
 import sys
 
 # Pick up libraries we use that are delivered along with COSA
@@ -29,6 +28,7 @@ from cosalib.cmdlib import get_basearch
 
 # Give the importer some time to do the import
 OSTREE_IMPORTER_REQUEST_TIMEOUT_SEC = 15 * 60
+
 
 def parse_args():
     parser = argparse.ArgumentParser()
