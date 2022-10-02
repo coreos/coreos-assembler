@@ -414,11 +414,6 @@ else
     # `cannot mount layer, mount label "" too large 4168 > page size 4096`
     MAX_OSTREECONTAINER_LAYERS=50
     case "${ostree_format}" in
-        oci) ;;
-        # Note rpm-ostree always copies the rpmostree.inputhash key
-        oci-chunked)
-            cmd=(rpm-ostree compose container-encapsulate --max-layers="$MAX_OSTREECONTAINER_LAYERS" --format-version=0)
-        ;;
         oci-chunked-v1)
             cmd=(rpm-ostree compose container-encapsulate --max-layers="$MAX_OSTREECONTAINER_LAYERS" --format-version=1)
         ;;
