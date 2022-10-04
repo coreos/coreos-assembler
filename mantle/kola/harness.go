@@ -847,23 +847,23 @@ func RunUpgradeTests(patterns []string, rerun bool, pltfrm, outputDir string, pr
 
 // externalTestMeta is parsed from kola.json in external tests
 type externalTestMeta struct {
-	Architectures             string   `json:"architectures,omitempty"`
-	Platforms                 string   `json:"platforms,omitempty"`
-	Distros                   string   `json:"distros,omitempty"`
-	Tags                      string   `json:"tags,omitempty"`
-	RequiredTag               string   `json:"requiredTag,omitempty"`
-	AdditionalDisks           []string `json:"additionalDisks,omitempty"`
-	InjectContainer           bool     `json:"injectContainer,omitempty"`
-	MinMemory                 int      `json:"minMemory,omitempty"`
-	MinDiskSize               int      `json:"minDisk,omitempty"`
-	AdditionalNics            int      `json:"additionalNics,omitempty"`
-	AppendKernelArgs          string   `json:"appendKernelArgs,omitempty"`
-	AppendFirstbootKernelArgs string   `json:"appendFirstbootKernelArgs,omitempty"`
-	Exclusive                 bool     `json:"exclusive"`
-	TimeoutMin                int      `json:"timeoutMin"`
-	Conflicts                 []string `json:"conflicts"`
-	AllowConfigWarnings       bool     `json:"allowConfigWarnings"`
-	NoInstanceCreds           bool     `json:"noInstanceCreds"`
+	Architectures             string   `json:"architectures,omitempty"             yaml:"architectures,omitempty"`
+	Platforms                 string   `json:"platforms,omitempty"                 yaml:"platforms,omitempty"`
+	Distros                   string   `json:"distros,omitempty"                   yaml:"distros,omitempty"`
+	Tags                      string   `json:"tags,omitempty"                      yaml:"tags,omitempty"`
+	RequiredTag               string   `json:"requiredTag,omitempty"               yaml:"requiredTag,omitempty"`
+	AdditionalDisks           []string `json:"additionalDisks,omitempty"           yaml:"additionalDisks,omitempty"`
+	InjectContainer           bool     `json:"injectContainer,omitempty"           yaml:"injectContainer,omitempty"`
+	MinMemory                 int      `json:"minMemory,omitempty"                 yaml:"minMemory,omitempty"`
+	MinDiskSize               int      `json:"minDisk,omitempty"                   yaml:"minDisk,omitempty"`
+	AdditionalNics            int      `json:"additionalNics,omitempty"            yaml:"additionalNics,omitempty"`
+	AppendKernelArgs          string   `json:"appendKernelArgs,omitempty"          yaml:"appendKernelArgs,omitempty"`
+	AppendFirstbootKernelArgs string   `json:"appendFirstbootKernelArgs,omitempty" yaml:"appendFirstbootKernelArgs,omitempty"`
+	Exclusive                 bool     `json:"exclusive"                           yaml:"exclusive"`
+	TimeoutMin                int      `json:"timeoutMin"                          yaml:"timeoutMin"`
+	Conflicts                 []string `json:"conflicts"                           yaml:"conflicts"`
+	AllowConfigWarnings       bool     `json:"allowConfigWarnings"                 yaml:"allowConfigWarnings"`
+	NoInstanceCreds           bool     `json:"noInstanceCreds"                     yaml:"noInstanceCreds"`
 }
 
 // metadataFromTestBinary extracts JSON-in-comment like:
