@@ -34,8 +34,8 @@ EOF
 }
 
 # Parse options
-hostkey=/srv/src/config/secex-hostkey
-genprotimgvm=
+hostkey=
+genprotimgvm=/data.secex/genprotimgvm.qcow2
 rc=0
 build=
 force=
@@ -187,15 +187,18 @@ qemu_args=()
 # SecureExecution extra stuff
 if [[ $secure_execution -eq "1" ]]; then
     disk_args+=("--with-secure-execution")
-    if [ -z "${genprotimgvm}" ]; then
-        qemu_args+=("-drive" "if=none,id=hostkey,format=raw,file=$hostkey,readonly=on" \
-                            "-device" "virtio-blk,serial=hostkey,drive=hostkey")
-    else
+    if [ -z "${hostkey}" ]; then
+        if [ ! -f "${genprotimgvm}" ]; then
+            fatal "No genprotimgvm provided at ${genprotimgvm}"
+        fi
         genprotimg_img="${PWD}/secex-genprotimg.img"
         qemu-img create -f raw "${genprotimg_img}" 512M
         mkfs.ext4 "${genprotimg_img}"
         qemu_args+=("-drive" "if=none,id=genprotimg,format=raw,file=${genprotimg_img}" \
                             "-device" "virtio-blk,serial=genprotimg,drive=genprotimg")
+    else
+        qemu_args+=("-drive" "if=none,id=hostkey,format=raw,file=$hostkey,readonly=on" \
+                            "-device" "virtio-blk,serial=hostkey,drive=hostkey")
     fi
 fi
 
@@ -268,7 +271,7 @@ runvm "${qemu_args[@]}" -- \
             ${platforms_json:+--platforms-json "${platforms_json}"} \
             "${disk_args[@]}"
 
-if [[ $secure_execution -eq "1" && -n "${genprotimgvm}" ]]; then
+if [[ $secure_execution -eq "1" && -z "${hostkey}" ]]; then
     /usr/lib/coreos-assembler/secex-genprotimgvm-scripts/runvm.sh \
         --genprotimgvm "${genprotimgvm}" -- "${qemu_args[@]}"
 fi

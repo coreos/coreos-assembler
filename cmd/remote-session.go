@@ -138,6 +138,7 @@ func runCreate(c *cobra.Command, args []string) error {
 		"--pull=always", "--privileged", "--security-opt=label=disable",
 		"--volume", remoteSessionOpts.CreateWorkdir,
 		"--workdir", remoteSessionOpts.CreateWorkdir,
+		"--volume=secex-data:/data.secex:ro",
 		"--uidmap=1000:0:1", "--uidmap=0:1:1000", "--uidmap=1001:1001:64536",
 		"--device=/dev/kvm", "--device=/dev/fuse", "--tmpfs=/tmp",
 		"--entrypoint=/usr/bin/dumb-init", remoteSessionOpts.CreateImage,
