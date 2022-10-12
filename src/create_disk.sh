@@ -501,7 +501,7 @@ esac
 
 # enable support for GRUB password
 # shellcheck disable=SC2031
-if "$arch" != "s390x"; then
+if [ "$arch" != s390x ]; then
     ostree config --repo $rootfs/ostree/repo set sysroot.bls-append-except-default 'grub_users=""'
 fi
 
