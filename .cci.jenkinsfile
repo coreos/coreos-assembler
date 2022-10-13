@@ -17,10 +17,10 @@ pod(image: imageName + ":latest", kvm: true, cpu: cpuCount, memory: "10Gi") {
     archiveArtifacts artifacts: 'rpmdb.txt'
 
     // Run stage Build FCOS (init, fetch and build)
-    fcosBuild(skipKola: 1, cosaDir: "/srv", noForce: true)
+    cosaBuild(skipKola: 1, cosaDir: "/srv", noForce: true)
 
     // Run stage Kola QEMU (basic-qemu-scenarios, upgrade and self tests)
-    fcosKola(cosaDir: "/srv", addExtTests: ["${env.WORKSPACE}/ci/run-kola-self-tests"])
+    kola(cosaDir: "/srv", addExtTests: ["${env.WORKSPACE}/ci/run-kola-self-tests"])
 
     stage("Build Metal") {
         cosaParallelCmds(cosaDir: "/srv", commands: ["metal", "metal4k"])
@@ -32,7 +32,7 @@ pod(image: imageName + ":latest", kvm: true, cpu: cpuCount, memory: "10Gi") {
         utils.cosaCmd(cosaDir: "/srv", args: "buildextend-live --fast")
     }
 
-    fcosKolaTestIso(cosaDir: "/srv", extraArgs4k: "--no-pxe")
+    kolaTestIso(cosaDir: "/srv", extraArgs4k: "--no-pxe")
 
     stage("Build Cloud Images") {
         cosaParallelCmds(cosaDir: "/srv", commands: ["Aliyun", "AWS", "Azure", "DigitalOcean", "Exoscale", "GCP",
