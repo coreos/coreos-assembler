@@ -12,6 +12,7 @@ import (
 type RemoteSessionOptions struct {
 	CreateImage      string
 	CreateExpiration string
+	CreateWorkdir    string
 	SyncQuiet        bool
 }
 
@@ -133,8 +134,10 @@ func preRunCheckEnv(c *cobra.Command, args []string) error {
 // The user is then expected to store this ID in the
 // COREOS_ASSEMBLER_REMOTE_SESSION environment variable.
 func runCreate(c *cobra.Command, args []string) error {
-	podmanargs := []string{"--remote", "run", "--rm", "-d", "--pull=always",
-		"--privileged", "--security-opt=label=disable", "--volume=/srv/",
+	podmanargs := []string{"--remote", "run", "--rm", "-d",
+		"--pull=always", "--privileged", "--security-opt=label=disable",
+		"--volume", remoteSessionOpts.CreateWorkdir,
+		"--workdir", remoteSessionOpts.CreateWorkdir,
 		"--uidmap=1000:0:1", "--uidmap=0:1:1000", "--uidmap=1001:1001:64536",
 		"--device=/dev/kvm", "--device=/dev/fuse", "--tmpfs=/tmp",
 		"--entrypoint=/usr/bin/dumb-init", remoteSessionOpts.CreateImage,
@@ -246,6 +249,9 @@ func init() {
 	cmdRemoteSessionCreate.Flags().StringVarP(
 		&remoteSessionOpts.CreateExpiration, "expiration", "", "infinity",
 		"The amount of time before the remote-session auto-exits")
+	cmdRemoteSessionCreate.Flags().StringVarP(
+		&remoteSessionOpts.CreateWorkdir, "workdir", "", "/srv",
+		"The COSA working directory to use inside the container")
 
 	// cmdRemoteSessionSync options
 	cmdRemoteSessionSync.Flags().BoolVarP(
