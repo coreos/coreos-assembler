@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.)
 
-package v4_12_exp
+package v4_12
 
 import (
 	"net/url"
@@ -20,12 +20,12 @@ import (
 	"strings"
 
 	"github.com/coreos/butane/config/common"
-	"github.com/coreos/butane/config/openshift/v4_12_exp/result"
+	"github.com/coreos/butane/config/openshift/v4_12/result"
 	cutil "github.com/coreos/butane/config/util"
 	"github.com/coreos/butane/translate"
 
 	"github.com/coreos/ignition/v2/config/util"
-	"github.com/coreos/ignition/v2/config/v3_4_experimental/types"
+	"github.com/coreos/ignition/v2/config/v3_2/types"
 	"github.com/coreos/vcontext/path"
 	"github.com/coreos/vcontext/report"
 )
@@ -42,11 +42,10 @@ const (
 // can be tracked back to their source in the source config.  No config
 // validation is performed on input or output.
 func (c Config) ToMachineConfig4_12Unvalidated(options common.TranslateOptions) (result.MachineConfig, translate.TranslationSet, report.Report) {
-	cfg, ts, r := c.Config.ToIgn3_4Unvalidated(options)
+	cfg, ts, r := c.Config.ToIgn3_2Unvalidated(options)
 	if r.IsFatal() {
 		return result.MachineConfig{}, ts, r
 	}
-	ts = translateUserGrubCfg(&cfg, &ts)
 
 	// wrap
 	ts = ts.PrefixPaths(path.New("yaml"), path.New("json", "spec", "config"))
@@ -103,11 +102,11 @@ func (c Config) ToMachineConfig4_12(options common.TranslateOptions) (result.Mac
 	return cfg.(result.MachineConfig), r, err
 }
 
-// ToIgn3_4Unvalidated translates the config to an Ignition config.  It also
+// ToIgn3_2Unvalidated translates the config to an Ignition config.  It also
 // returns the set of translations it did so paths in the resultant config
 // can be tracked back to their source in the source config.  No config
 // validation is performed on input or output.
-func (c Config) ToIgn3_4Unvalidated(options common.TranslateOptions) (types.Config, translate.TranslationSet, report.Report) {
+func (c Config) ToIgn3_2Unvalidated(options common.TranslateOptions) (types.Config, translate.TranslationSet, report.Report) {
 	mc, ts, r := c.ToMachineConfig4_12Unvalidated(options)
 	cfg := mc.Spec.Config
 
@@ -122,21 +121,21 @@ func (c Config) ToIgn3_4Unvalidated(options common.TranslateOptions) (types.Conf
 	return cfg, ts, r
 }
 
-// ToIgn3_4 translates the config to an Ignition config.  It returns a
+// ToIgn3_2 translates the config to an Ignition config.  It returns a
 // report of any errors or warnings in the source and resultant config.  If
 // the report has fatal errors or it encounters other problems translating,
 // an error is returned.
-func (c Config) ToIgn3_4(options common.TranslateOptions) (types.Config, report.Report, error) {
-	cfg, r, err := cutil.Translate(c, "ToIgn3_4Unvalidated", options)
+func (c Config) ToIgn3_2(options common.TranslateOptions) (types.Config, report.Report, error) {
+	cfg, r, err := cutil.Translate(c, "ToIgn3_2Unvalidated", options)
 	return cfg.(types.Config), r, err
 }
 
-// ToConfigBytes translates from a v4.12 Butane config to a v4.12 MachineConfig or a v3.4.0 Ignition config. It returns a report of any errors or
+// ToConfigBytes translates from a v4.12 Butane config to a v4.12 MachineConfig or a v3.2.0 Ignition config. It returns a report of any errors or
 // warnings in the source and resultant config. If the report has fatal errors or it encounters other problems
 // translating, an error is returned.
 func ToConfigBytes(input []byte, options common.TranslateBytesOptions) ([]byte, report.Report, error) {
 	if options.Raw {
-		return cutil.TranslateBytes(input, &Config{}, "ToIgn3_4", options)
+		return cutil.TranslateBytes(input, &Config{}, "ToIgn3_2", options)
 	} else {
 		return cutil.TranslateBytesYAML(input, &Config{}, "ToMachineConfig4_12", options)
 	}
@@ -207,10 +206,6 @@ func validateMCOSupport(mc result.MachineConfig, ts translate.TranslationSet) re
 	// FORBIDDEN - Not supported by the MCD.  If present in MC, MCD will
 	// mark the node degraded.  We reject these.
 	//
-	// REDUNDANT - Feature is also provided by a MachineConfig-specific
-	// field with different semantics.  To reduce confusion, disable
-	// this implementation.
-	//
 	// IMMUTABLE - Permitted in MC, passed through to Ignition, but not
 	// supported by the MCD.  MCD will mark the node degraded if the
 	// field changes after the node is provisioned.  We reject these
@@ -223,12 +218,6 @@ func validateMCOSupport(mc result.MachineConfig, ts translate.TranslationSet) re
 	// supported fields.  We reject these.
 
 	var r report.Report
-	for i, fs := range mc.Spec.Config.Storage.Filesystems {
-		if fs.Format != nil && *fs.Format == "none" {
-			// UNPARSABLE
-			r.AddOnError(path.New("json", "spec", "config", "storage", "filesystems", i, "format"), common.ErrFilesystemNoneSupport)
-		}
-	}
 	for i := range mc.Spec.Config.Storage.Directories {
 		// IMMUTABLE
 		r.AddOnError(path.New("json", "spec", "config", "storage", "directories", i), common.ErrDirectorySupport)
@@ -286,36 +275,5 @@ func validateMCOSupport(mc result.MachineConfig, ts translate.TranslationSet) re
 			r.AddOnError(path.New("json", "spec", "config", "passwd", "users", i), common.ErrUserNameSupport)
 		}
 	}
-	for i := range mc.Spec.Config.KernelArguments.ShouldExist {
-		// UNPARSABLE, REDUNDANT
-		r.AddOnError(path.New("json", "spec", "config", "kernelArguments", "shouldExist", i), common.ErrKernelArgumentSupport)
-	}
-	for i := range mc.Spec.Config.KernelArguments.ShouldNotExist {
-		// UNPARSABLE, REDUNDANT
-		r.AddOnError(path.New("json", "spec", "config", "kernelArguments", "shouldNotExist", i), common.ErrKernelArgumentSupport)
-	}
 	return cutil.TranslateReportPaths(r, ts)
-}
-
-// fcos config generates a user.cfg file using append; however, OpenShift config
-// does not support append (since MCO does not support it). Let change the file to use contents
-func translateUserGrubCfg(config *types.Config, ts *translate.TranslationSet) translate.TranslationSet {
-	newMappings := translate.NewTranslationSet("json", "json")
-	for i, file := range config.Storage.Files {
-		if file.Path == "/boot/grub2/user.cfg" {
-			if len(file.Append) != 1 {
-				// The number of append objects was different from expected, this file
-				// was created by the user and not via butane GRUB sugar
-				return *ts
-			}
-			fromPath := path.New("json", "storage", "files", i, "append", 0)
-			translatedPath := path.New("json", "storage", "files", i, "contents")
-			config.Storage.Files[i].FileEmbedded1.Contents = file.Append[0]
-			config.Storage.Files[i].FileEmbedded1.Append = nil
-			newMappings.AddFromCommonObject(fromPath, translatedPath, config.Storage.Files[i].FileEmbedded1.Contents)
-
-			return ts.Map(newMappings)
-		}
-	}
-	return *ts
 }

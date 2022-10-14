@@ -11,15 +11,15 @@ require (
 	github.com/aliyun/alibaba-cloud-sdk-go v1.61.1442
 	github.com/aliyun/aliyun-oss-go-sdk v2.0.3+incompatible
 	github.com/aws/aws-sdk-go v1.34.28
-	github.com/coreos/butane v0.15.0
+	github.com/coreos/butane v0.16.0
 	github.com/coreos/coreos-assembler v0.14.0
 	github.com/coreos/go-semver v0.3.0
 	github.com/coreos/go-systemd v0.0.0-20190321100706-95778dfbb74e
-	github.com/coreos/go-systemd/v22 v22.0.0
+	github.com/coreos/go-systemd/v22 v22.4.0
 	github.com/coreos/ignition/v2 v2.14.0
 	github.com/coreos/pkg v0.0.0-20180928190104-399ea9e2e55f
 	github.com/coreos/stream-metadata-go v0.4.0
-	github.com/coreos/vcontext v0.0.0-20220603180515-2076d8d16945
+	github.com/coreos/vcontext v0.0.0-20220810162454-88bd546c634c
 	github.com/digitalocean/go-qemu v0.0.0-20200529005954-1b453d036a9c
 	github.com/digitalocean/godo v1.33.0
 	github.com/gophercloud/gophercloud v0.22.0
@@ -48,13 +48,13 @@ require (
 require (
 	cloud.google.com/go v0.65.0 // indirect
 	github.com/baiyubin/aliyun-sts-go-sdk v0.0.0-20180326062324-cfa1a18b161f // indirect
-	github.com/clarketm/json v1.14.1 // indirect
-	github.com/coreos/go-json v0.0.0-20211020211907-c63f628265de // indirect
+	github.com/clarketm/json v1.17.1 // indirect
+	github.com/coreos/go-json v0.0.0-20220810161552-7cce03887f34 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible // indirect
 	github.com/digitalocean/go-libvirt v0.0.0-20200810224808-b9c702499bf7 // indirect
 	github.com/dimchansky/utfbom v1.1.1 // indirect
-	github.com/godbus/dbus/v5 v5.0.3 // indirect
+	github.com/godbus/dbus/v5 v5.0.4 // indirect
 	github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e // indirect
 	github.com/golang/protobuf v1.4.2 // indirect
 	github.com/google/go-querystring v1.0.0 // indirect

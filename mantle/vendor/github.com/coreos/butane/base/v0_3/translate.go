@@ -16,7 +16,6 @@ package v0_3
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	slashpath "path"
 	"path/filepath"
@@ -27,7 +26,7 @@ import (
 	"github.com/coreos/butane/config/common"
 	"github.com/coreos/butane/translate"
 
-	"github.com/coreos/go-systemd/unit"
+	"github.com/coreos/go-systemd/v22/unit"
 	"github.com/coreos/ignition/v2/config/util"
 	"github.com/coreos/ignition/v2/config/v3_2/types"
 	"github.com/coreos/vcontext/path"
@@ -145,7 +144,7 @@ func translateResource(from Resource, options common.TranslateOptions) (to types
 			return
 		}
 
-		contents, err := ioutil.ReadFile(filePath)
+		contents, err := os.ReadFile(filePath)
 		if err != nil {
 			r.AddOnError(c, err)
 			return
@@ -284,7 +283,7 @@ func walkTree(yamlPath path.ContextPath, ts *translate.TranslationSet, r *report
 					ts.AddTranslation(yamlPath, path.New("json", "storage", "files"))
 				}
 			}
-			contents, err := ioutil.ReadFile(srcPath)
+			contents, err := os.ReadFile(srcPath)
 			if err != nil {
 				r.AddOnError(yamlPath, err)
 				return nil
