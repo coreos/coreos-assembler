@@ -48,4 +48,12 @@ for mnt in dev proc sys run var tmp; do
     mount --rbind /$mnt "${deploydir}/$mnt"
 done
 
-RUST_BACKTRACE=full chroot "${deploydir}" coreos-installer "$@"
+# some dirs which we expect to exist already
+mkdir -p "${deploydir}/var/"{home,mnt,opt,roothome,srv}
+
+# and pass through the workdir itself
+workdir=$(pwd)
+mkdir -p "${deploydir}/${workdir}/"
+mount --bind "${workdir}" "${deploydir}/${workdir}"
+
+RUST_BACKTRACE=full chroot "${deploydir}" env -C "${workdir}" coreos-installer "$@"
