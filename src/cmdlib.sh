@@ -656,7 +656,11 @@ runvm() {
     # tmp_builddir is set in prepare_build, but some stages may not
     # know that it exists.
     # shellcheck disable=SC2086
-    export tmp_builddir="${tmp_builddir:-$(mktemp -p ${workdir}/tmp -d supermin.XXXX)}"
+    if [ -z "${tmp_builddir:-}" ]; then
+        tmp_builddir="$(mktemp -p ${workdir}/tmp -d supermin.XXXX)"
+        export tmp_builddir
+        local cleanup_tmpdir=1
+    fi
 
     # shellcheck disable=SC2155
     local vmpreparedir="${tmp_builddir}/supermin.prepare"
@@ -784,6 +788,12 @@ EOF
         fatal "Couldn't find rc file; failure inside supermin init?"
     fi
     rc="$(cat "${rc_file}")"
+
+    if [ -n "${cleanup_tmpdir:-}" ]; then
+        rm -rf "${tmp_builddir}"
+        unset tmp_builddir
+    fi
+
     return "${rc}"
 }
 
