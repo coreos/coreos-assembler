@@ -36,8 +36,8 @@ func EnsurePathWithinFilesDir(path, filesDir string) error {
 	return nil
 }
 
-/// CheckForDecimalMode fails if the specified mode appears to have been
-/// incorrectly specified in decimal instead of octal.
+// CheckForDecimalMode fails if the specified mode appears to have been
+// incorrectly specified in decimal instead of octal.
 func CheckForDecimalMode(mode int, directory bool) error {
 	correctedMode, ok := decimalModeToOctal(mode)
 	if !ok {
@@ -49,9 +49,9 @@ func CheckForDecimalMode(mode int, directory bool) error {
 	return nil
 }
 
-/// isTypicalMode returns true if the specified mode is unsurprising.
-/// It returns false for some modes that are unusual but valid in limited
-/// cases.
+// isTypicalMode returns true if the specified mode is unsurprising.
+// It returns false for some modes that are unusual but valid in limited
+// cases.
 func isTypicalMode(mode int, directory bool) bool {
 	// no permissions is always reasonable (root ignores mode bits)
 	if mode == 0 {
@@ -126,8 +126,8 @@ func isTypicalMode(mode int, directory bool) bool {
 	return true
 }
 
-/// decimalModeToOctal takes a mode written in decimal and converts it to
-/// octal, returning (0, false) on failure.
+// decimalModeToOctal takes a mode written in decimal and converts it to
+// octal, returning (0, false) on failure.
 func decimalModeToOctal(mode int) (int, bool) {
 	if mode < 0 || mode > 7777 {
 		// out of range
