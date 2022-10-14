@@ -23,7 +23,8 @@ basearch = cmdlib.get_basearch()
 # Parse args and dispatch
 parser = argparse.ArgumentParser()
 parser.add_argument("--build", help="Build ID")
-parser.add_argument("--basic-qemu-scenarios", help="Run the basic test across uefi-secure,nvme etc.", action='store_true')
+parser.add_argument("--basic-qemu-scenarios", help="Run the basic test using QEMU scenarios: NVME drive, UEFI boot, UEFI SecureBoot", action='store_true')
+parser.add_argument("--skip-scenarios", help="QEMU basic scenario to skip; can be used multiple times", choices=BASIC_SCENARIOS, action='append')
 parser.add_argument("--output-dir", help="Output directory")
 parser.add_argument("--upgrades", help="Run upgrade tests", action='store_true')
 parser.add_argument("subargs", help="Remaining arguments for kola", nargs='*',
@@ -60,6 +61,9 @@ kolaargs.extend(unknown_args)
 if args.basic_qemu_scenarios:
     if arch == "x86_64":
         for scenario in BASIC_SCENARIOS:
+            if scenario in args.skip_scenarios:
+                print(f'Skipping the QEMU scenario: {scenario}')
+                continue
             subargs = kolaargs + ['--qemu-' + scenario, 'basic']
             print(subprocess.list2cmdline(subargs), flush=True)
             subprocess.check_call(subargs)
