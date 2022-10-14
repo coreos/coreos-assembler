@@ -15,6 +15,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -190,8 +191,8 @@ func registerTestMap(m map[string]*register.Test) {
 
 // dispatchRunExtUnit returns true if unit completed successfully, false if
 // it's still running (or unit was terminated by SIGTERM)
-func dispatchRunExtUnit(unitname string, sdconn *systemddbus.Conn) (bool, error) {
-	props, err := sdconn.GetAllProperties(unitname)
+func dispatchRunExtUnit(ctx context.Context, unitname string, sdconn *systemddbus.Conn) (bool, error) {
+	props, err := sdconn.GetAllPropertiesContext(ctx, unitname)
 	if err != nil {
 		return false, errors.Wrapf(err, "listing unit properties")
 	}
@@ -206,7 +207,7 @@ func dispatchRunExtUnit(unitname string, sdconn *systemddbus.Conn) (bool, error)
 
 	switch state {
 	case "inactive":
-		_, err := sdconn.StartUnit(unitname, "fail", nil)
+		_, err := sdconn.StartUnitContext(ctx, unitname, "fail", nil)
 		return false, err
 	case "activating":
 		return false, nil
@@ -294,19 +295,20 @@ func runExtUnit(cmd *cobra.Command, args []string) error {
 		}()
 	}
 
+	ctx := context.Background()
 	unitname := args[0]
 	// Restrict this to services, don't need to support anything else right now
 	if !strings.HasSuffix(unitname, ".service") {
 		unitname = unitname + ".service"
 	}
-	sdconn, err := systemddbus.NewSystemConnection()
+	sdconn, err := systemddbus.NewSystemConnectionContext(ctx)
 	if err != nil {
 		return errors.Wrapf(err, "systemd connection")
 	}
 
 	// Start the unit; it's not started by default because we need to
 	// do some preparatory work above (and some is done in the harness)
-	if _, err := sdconn.StartUnit(unitname, "fail", nil); err != nil {
+	if _, err := sdconn.StartUnitContext(ctx, unitname, "fail", nil); err != nil {
 		return errors.Wrapf(err, "starting unit")
 	}
 
@@ -314,7 +316,7 @@ func runExtUnit(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	// Check the status now to avoid any race conditions
-	_, err = dispatchRunExtUnit(unitname, sdconn)
+	_, err = dispatchRunExtUnit(ctx, unitname, sdconn)
 	if err != nil {
 		return err
 	}
@@ -336,7 +338,7 @@ func runExtUnit(cmd *cobra.Command, args []string) error {
 			for n := range m {
 				if n == unitname {
 					systemdjournal.Print(systemdjournal.PriInfo, "Dispatching %s", n)
-					r, err := dispatchRunExtUnit(unitname, sdconn)
+					r, err := dispatchRunExtUnit(ctx, unitname, sdconn)
 					systemdjournal.Print(systemdjournal.PriInfo, "Done dispatching %s", n)
 					if err != nil {
 						return err
