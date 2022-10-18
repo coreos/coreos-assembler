@@ -98,7 +98,7 @@ Examples:
     parser.add_argument("--tag", required=True, help="The tag of the manifest to use")
     parser.add_argument("--authfile", help="A file to use for registry auth")
     parser.add_argument('--v2s2', action='store_true',
-                        help='Use old image manifest version2 schema 2 format')
+                        help='Use old image manifest version 2 schema 2 format')
 
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--image", dest='images', action='append', default=[],
@@ -112,7 +112,7 @@ Examples:
     parser.add_argument("--arch", dest='arches', action='append', default=[],
                         help="""Limit the architectures to upload to the specificed set
                         (otherwise it defaults to all available for that build). Can be
-                        specificed multiple times like: --arch x86_64 --arch aarch64""")
+                        specified multiple times like: --arch x86_64 --arch aarch64""")
     parser.add_argument("--metajsonname",
                         help="The name under which to store the container information in meta.json")
     return parser.parse_args()
