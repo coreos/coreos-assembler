@@ -73,3 +73,4 @@ Those less commonly used commands are listed here:
 | [tag](https://github.com/coreos/coreos-assembler/blob/main/src/cmd-tag) | Operate on the tags in `builds.json`
 | [test-coreos-installer](https://github.com/coreos/coreos-assembler/blob/main/src/cmd-test-coreos-installer) | Automate an end-to-end run of coreos-installer with the metal image
 | [upload-oscontainer](https://github.com/coreos/coreos-assembler/blob/main/src/cmd-upload-oscontainer) | Upload an oscontainer (historical wrapper for `cosa oscontainer`)
+| [create-legacy-oscontainer](https://github.com/coreos/coreos-assembler/blob/main/src/cmd-create-legacy-oscontainer) | Create an oscontainer in legacy format (i.e. not OSTree-native)
