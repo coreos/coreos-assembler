@@ -440,6 +440,7 @@
         "digitalocean",
         "exoscale",
         "extensions-container",
+        "legacy-oscontainer",
         "gcp",
         "kubevirt",
         "ibmcloud",
@@ -484,6 +485,12 @@
           "$id": "#/properties/images/properties/extensions-container",
           "type": "object",
           "title": "extensions-container",
+          "$ref": "#/definitions/artifact"
+        },
+        "legacy-oscontainer": {
+          "$id": "#/properties/images/properties/legacy-oscontainer",
+          "type": "object",
+          "title": "legacy-oscontainer",
           "$ref": "#/definitions/artifact"
         },
         "qemu": {
