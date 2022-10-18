@@ -27,6 +27,10 @@ if [[ ${HASSHELLCHECK} == 1 ]]; then
     if [[ $shebang =~ ^#!/.*/bash.* ]] || [[ $shebang =~ ^#!/.*/env\ bash ]]; then
         shellcheck -x "$f"
         bash -n "$f"
+        if grep -E '(^|[[:space:]])if[[:space:]]+"?\$' "$f"; then
+            echo "Possible unbracketed conditional in $f"
+            exit 1
+        fi
         echo "OK ${f}"
     fi
 fi
