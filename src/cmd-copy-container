@@ -1,0 +1,132 @@
+#!/usr/bin/python3
+
+# This is a glorified wrapper around `skopeo copy` but with support for
+# "deconstructing" a manifest-listed image to copy into a registry that does
+# not support it.
+
+import argparse
+import json
+import sys
+
+from cosalib.utils import runcmd
+
+EXAMPLE_USAGE = """examples:
+  cosa copy-container --tag=main --tag=4.12 \\
+          quay.io/jlebon/coreos-assembler \\
+          quay.io/dustymabe/coreos-assembler
+
+  cosa copy-container --authfile=auth.json --tag=stable \\
+          quay.io/jlebon/fedora-coreos \\
+          registry.ci.openshift.org/jlebon/fedora-coreos
+"""
+
+MEDIA_TYPE_IMAGE_INDEX = 'application/vnd.oci.image.index.v1+json'
+
+
+def main():
+    args = parse_args()
+
+    # verify no tag is provided in src and dest
+    for s in [args.src_repo, args.dest_repo]:
+        if ':' in s:
+            raise Exception(f"Invalid repo '{s}': use --tag to provide tags")
+
+    # if fallback is enabled, let's check upfront if dest registry supports
+    # manifest lists
+    if args.manifest_list_to_arch_tag == 'never':
+        keep_manifest_lists = True
+    elif args.manifest_list_to_arch_tag == 'always':
+        keep_manifest_lists = False
+    elif args.manifest_list_to_arch_tag == 'auto':
+        keep_manifest_lists = registry_supports_manifest_lists(args.dest_repo)
+    else:
+        assert False, f"unreachable: {args.manifest_list_to_arch_tag}"
+
+    for tag in args.tags:
+        copies = {}
+        if keep_manifest_lists:
+            copies[f'{args.src_repo}:{tag}'] = f'{args.dest_repo}:{tag}'
+        else:
+            inspect = skopeo_inspect(f'{args.src_repo}:{tag}', args.authfile)
+            if inspect.get('mediaType') != MEDIA_TYPE_IMAGE_INDEX:
+                # src is not manifest listed, so no arch peeling needed
+                copies[f'{args.src_repo}:{tag}'] = f'{args.dest_repo}:{tag}'
+            else:
+                for manifest in inspect['manifests']:
+                    digest = manifest['digest']
+                    arch = manifest['platform']['architecture']
+                    final_tag = f'{tag}-{arch}'
+                    copies[f'{args.src_repo}@{digest}'] = f'{args.dest_repo}:{final_tag}'
+
+        for pullspec, pushspec in copies.items():
+            skopeo_copy(pullspec, args.authfile, pushspec, args.dest_authfile,
+                        args.v2s2)
+
+
+def skopeo_inspect(fqin, authfile):
+    args = ['skopeo', 'inspect', '--raw']
+    if authfile:
+        args += ['--authfile', authfile]
+    return run_get_json(args + [f'docker://{fqin}'])
+
+
+def skopeo_copy(pullspec, src_authfile, pushspec, dest_authfile, v2s2):
+    args = ['skopeo', 'copy', '--all', '--quiet']
+    if src_authfile and dest_authfile:
+        args += ['--src-authfile', src_authfile,
+                 '--dest-authfile', dest_authfile]
+    # assume --authfile applies to both src and dest
+    elif src_authfile:
+        args += ['--authfile', src_authfile]
+    elif dest_authfile:
+        args += ['--dest-authfile', dest_authfile]
+    if v2s2:
+        args += ['--format=v2s2', '--remove-signatures']
+    runcmd(args + [f'docker://{pullspec}', f'docker://{pushspec}'])
+
+
+# XXX: dedupe with oscontainer-deprecated-legacy-format.py
+def run_get_json(args):
+    return json.loads(runcmd(args, capture_output=True).stdout)
+
+
+def registry_supports_manifest_lists(repo):
+    # XXX: Ideally here, we'd figure out a way to query the registry to know if
+    # manifest lists are supported. For now, just hardcode known cases.
+    if repo.startswith("quay.io/"):
+        return True
+    if repo.startswith("registry.ci.openshift.org/"):
+        return False
+    # assume manifest lists are supported
+    return True
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(
+        prog="cosa copy-container",
+        usage="%(prog)s [OPTION...] --tag=TAG ... SRC_REPO DEST_REPO",
+        description="Copy a container from one location to another.",
+        epilog=EXAMPLE_USAGE,
+        formatter_class=argparse.RawDescriptionHelpFormatter)
+
+    parser.add_argument("--authfile", help="A file to use for registry auth")
+    parser.add_argument("--dest-authfile",
+                        help="A file to use for dest registry auth")
+    # could support a `--tag SRC_TAG:DEST_TAG` syntax in the future if needed
+    parser.add_argument("--tag", required=True, dest='tags', action='append',
+                        help="The tag of the manifest to use")
+    parser.add_argument('--v2s2', action='store_true',
+                        help='Use old image manifest version 2 schema 2 format')
+    parser.add_argument("--manifest-list-to-arch-tag",
+                        choices=["always", "never", "auto"], default="auto",
+                        help="""Whether source images using manifest lists are
+                        converted to use `-${arch}` tag suffixes in the
+                        destination repo. `auto` enables the feature only if the
+                        destination registry doesn't support manifest lists.""")
+    parser.add_argument('src_repo', help='Repo from which to copy')
+    parser.add_argument('dest_repo', help='Repo to which to copy')
+    return parser.parse_args()
+
+
+if __name__ == '__main__':
+    sys.exit(main())
