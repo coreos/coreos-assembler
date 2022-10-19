@@ -34,8 +34,6 @@ fi
 
 # This runs inside supermin
 
-set -x
-
 mkdir -p /sysroot
 rootfs=/dev/disk/by-id/virtio-coreos-part4
 mount -o ro "${rootfs}" /sysroot
@@ -55,5 +53,8 @@ mkdir -p "${deploydir}/var/"{home,mnt,opt,roothome,srv}
 workdir=$(pwd)
 mkdir -p "${deploydir}/${workdir}/"
 mount --bind "${workdir}" "${deploydir}/${workdir}"
+
+# echo back the invocation
+set -x
 
 RUST_BACKTRACE=full chroot "${deploydir}" env -C "${workdir}" coreos-installer "$@"
