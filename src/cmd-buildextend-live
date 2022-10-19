@@ -311,16 +311,17 @@ def generate_iso():
         fast_arg = ['--fast']
     print('Generating osmet file for 512b metal image')
     runcmd(['/usr/lib/coreos-assembler/runvm-coreos-installer', img_metal,
-            'pack', 'osmet', '/dev/disk/by-id/virtio-coreos', '--description',
-            pretty_name, '--checksum', img_metal_checksum, '--output',
-            tmp_osmet] + fast_arg)
+            tmp_osmet, 'pack', 'osmet', '/dev/disk/by-id/virtio-coreos',
+            '--description', pretty_name, '--checksum', img_metal_checksum,
+            '--output', '/var/tmp/coreos-installer-output'] + fast_arg)
     if img_metal4k_obj:
         tmp_osmet4k = os.path.join(tmpinitrd_rootfs, img_metal4k_obj['path'] + '.osmet')
         print('Generating osmet file for 4k metal image')
         runcmd(['/usr/lib/coreos-assembler/runvm-coreos-installer',
-                img_metal4k, 'pack', 'osmet', '/dev/disk/by-id/virtio-coreos',
-                '--description', pretty_name, '--checksum',
-                img_metal4k_checksum, '--output', tmp_osmet4k] + fast_arg)
+                img_metal4k, tmp_osmet4k, 'pack', 'osmet',
+                '/dev/disk/by-id/virtio-coreos', '--description', pretty_name,
+                '--checksum', img_metal4k_checksum, '--output',
+                '/var/tmp/coreos-installer-output'] + fast_arg)
 
     # Generate root squashfs
     print(f'Compressing squashfs with {squashfs_compression}')
@@ -676,7 +677,7 @@ boot
     if basearch == "x86_64":
         runcmd(['/usr/bin/isohybrid', '--uefi', f'{tmpisofile}.minimal'])
     # this consumes the minimal image
-    runcmd(['/usr/lib/coreos-assembler/runvm-coreos-installer', img_metal,
+    runcmd(['/usr/lib/coreos-assembler/runvm-coreos-installer', img_metal, '',
             'pack', 'minimal-iso', tmpisofile, f'{tmpisofile}.minimal',
             '--consume'])
 

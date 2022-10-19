@@ -3,8 +3,10 @@ set -euo pipefail
 
 # This script runs the coreos-installer found in the compose itself inside a
 # chroot inside a supermin VM. The first argument is the path to the metal
-# image. All following arguments are passed as is to coreos-installer.
-# The metal image is available as /dev/disk/by-id/virtio-coreos.
+# image. It will be available as /dev/disk/by-id/virtio-coreos. The second
+# argument is an optional path to an output file. It will be available as
+# /var/tmp/coreos-installer-output. All following arguments are passed as is to
+# coreos-installer.
 
 if [ ! -f /etc/cosa-supermin ]; then
     dn=$(dirname "$0")
@@ -12,6 +14,8 @@ if [ ! -f /etc/cosa-supermin ]; then
     . "${dn}"/cmdlib.sh
 
     img_src=$1; shift
+    output_path=$1; shift
+
     if [[ $img_src == *.gz || $img_src == *.xz ]]; then
         img="$(basename "$img_src")"
         fatal "Cannot pack osmet from $img; not an uncompressed image"
@@ -24,9 +28,15 @@ if [ ! -f /etc/cosa-supermin ]; then
         device_opts=",physical_block_size=4096,logical_block_size=4096"
     fi
 
-    # stamp it with "coreos" serial so we find it easily in the VM
+    virtioserial_args=()
+    if [ -n "${output_path}" ]; then
+        virtioserial_args+=(-chardev "file,id=coreosout,path=${output_path}" \
+                            -device "virtserialport,chardev=coreosout,name=coreosout")
+    fi
+
     runvm -drive "if=none,id=coreos,format=raw,readonly=on,file=${img_src}" \
-        -device "virtio-blk,serial=coreos,drive=coreos${device_opts}" -- \
+        -device "virtio-blk,serial=coreos,drive=coreos${device_opts}" \
+        "${virtioserial_args[@]}" -- \
         /usr/lib/coreos-assembler/runvm-coreos-installer "$@"
 
     exit 0
@@ -58,3 +68,8 @@ mount --bind "${workdir}" "${deploydir}/${workdir}"
 set -x
 
 RUST_BACKTRACE=full chroot "${deploydir}" env -C "${workdir}" coreos-installer "$@"
+
+# and now transfer out the output file if provided (see header)
+if [ -f /var/tmp/coreos-installer-output ]; then
+    cp /var/tmp/coreos-installer-output /dev/virtio-ports/coreosout
+fi
