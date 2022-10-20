@@ -68,7 +68,10 @@ with tempfile.NamedTemporaryFile(dir='tmp', prefix='push-container-digestfile') 
     container = 'base-oscontainer'
     if args.image != 'ostree':
         container = args.image
-    meta[container] = {'image': f"{container_name}@{digest}"}
+    meta[container] = {
+        'image': container_name,
+        'digest': digest
+    }
     metapath_new = f"{metapath}.new"
     with open(metapath_new, 'w') as f:
         json.dump(meta, f, sort_keys=True)
