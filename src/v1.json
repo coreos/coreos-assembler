@@ -50,10 +50,10 @@
     "image": {
       "type": "object",
       "required": [
-        "digest",
         "image"
       ],
       "optional": [
+        "digest",
         "comment"
       ],
       "properties": {
@@ -876,31 +876,13 @@
       "$id": "#/properties/base-oscontainer",
       "type": "object",
       "title": "Base OS container",
-      "required": [
-        "image"
-      ],
-      "properties": {
-        "image": {
-          "$id": "#/properties/base-oscontainer/image",
-          "type": "string",
-          "title": "Image"
-        }
-      }
+      "$ref": "#/definitions/image"
     },
     "extensions-container": {
       "$id": "#/properties/extensions-container",
       "type": "object",
       "title": "Extensions container",
-      "required": [
-        "image"
-      ],
-      "properties": {
-        "image": {
-          "$id": "#/properties/extensions-container/image",
-          "type": "string",
-          "title": "Image"
-        }
-      }
+      "$ref": "#/definitions/image"
     },
     "gcp": {
       "$id": "#/properties/gcp",
