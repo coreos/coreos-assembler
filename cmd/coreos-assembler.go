@@ -88,6 +88,8 @@ func run(argv []string) error {
 	switch cmd {
 	case "clean":
 		return runClean(argv)
+	case "build-cimage":
+		return runBuildCImage(argv)
 	case "update-variant":
 		return runUpdateVariant(argv)
 	case "remote-session":

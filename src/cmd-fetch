@@ -85,6 +85,7 @@ fi
 
 prepare_build
 
+# NOTE: Keep this logic in sync with buildcimage.go
 args=
 if [ -n "${UPDATE_LOCKFILE}" ]; then
     # Put this under tmprepo so it gets automatically chown'ed if needed
