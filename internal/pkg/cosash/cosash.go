@@ -137,6 +137,11 @@ func (r *CosaSh) ProcessWithReply(buf string) (string, error) {
 	if _, err := io.WriteString(r.input, buf); err != nil {
 		return "", err
 	}
+	if !strings.HasSuffix(buf, "\n") {
+		if _, err := io.WriteString(r.input, "\n"); err != nil {
+			return "", err
+		}
+	}
 
 	select {
 	case reply := <-r.replychan:
