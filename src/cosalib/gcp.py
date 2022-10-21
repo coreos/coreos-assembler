@@ -42,6 +42,8 @@ def gcp_run_ore(build, args):
         raise Exception(arg_exp_str.format("json-key", "GCP_JSON_AUTH"))
     if args.project is None:
         raise Exception(arg_exp_str.format("project", "GCP_PROJECT"))
+    if not args.create_image:
+        raise Exception("Invalid to call with --create-image=False")
 
     gcp_name = re.sub(r'[_\.]', '-', build.image_name_base)
     if not re.fullmatch(GCP_NAMING_RE, gcp_name):
@@ -66,13 +68,12 @@ def gcp_run_ore(build, args):
         '--name', gcp_name,
         '--file', f"{build.image_path}",
         '--write-url', urltmp,
+        '--create-image=true',
     ]
     if args.description:
         ore_upload_cmd.extend(['--description', args.description])
     if args.public:
         ore_upload_cmd.extend(['--public'])
-    if not args.create_image:
-        ore_upload_cmd.extend(['--create-image=false'])
     for license in args.license or DEFAULT_LICENSES:
         ore_upload_cmd.extend(['--license', license])
     runcmd(ore_upload_cmd)
@@ -146,6 +147,7 @@ def gcp_cli(parser):
     parser.add_argument("--description",
                         help="The description that should be attached to the image",
                         default=None)
+    # Remove --create-image after some time in which callers can be updated
     parser.add_argument("--create-image",
                         type=boolean_string,
                         help="Whether or not to create an image in GCP after upload.",
