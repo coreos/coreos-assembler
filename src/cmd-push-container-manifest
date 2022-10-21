@@ -74,7 +74,8 @@ def main():
                 arch = 'x86_64'
             buildmetas[arch][args.metajsonname] = {
                 'image': args.repo,
-                'digest': manifest['digest']
+                'digest': manifest['digest'],
+                'tags': args.tags
             }
             buildmetas[arch].write(artifact_name=args.metajsonname)
 

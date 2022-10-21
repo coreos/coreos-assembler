@@ -54,6 +54,7 @@
       ],
       "optional": [
         "digest",
+        "tags",
         "comment"
       ],
       "properties": {
@@ -71,6 +72,16 @@
           "$id": "#/image/image",
           "type": "string",
           "title": "Image"
+        },
+        "tags": {
+          "$id": "#/image/tags",
+          "type": "array",
+          "title": "Tags",
+          "items": {
+            "$id": "#/image/tags/item",
+            "title": "Tag",
+            "type": "string"
+          }
         }
       }
     },
