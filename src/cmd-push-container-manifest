@@ -6,7 +6,6 @@
 import argparse
 import os
 import sys
-import tempfile
 from cosalib.container_manifest import create_and_push_container_manifest
 from cosalib.builds import Builds
 from cosalib.meta import GenericBuildMeta
@@ -22,7 +21,7 @@ def main():
     if args.images:
         # User provided images directly
         create_and_push_container_manifest(
-            args.repo, args.tags, args.images, args.v2s2, None)
+            args.repo, args.tags, args.images, args.v2s2)
     else:
         # Picking up images from artifacts in meta.json
         builds = Builds()
@@ -60,19 +59,24 @@ def main():
             images.append(f"oci-archive:{ociarchive}")
 
         # Create/Upload the manifest list to the container registry
-        with tempfile.NamedTemporaryFile() as digestfile:
-            create_and_push_container_manifest(
-                args.repo, args.tags, images, args.v2s2, digestfile.name)
-            digestfile.seek(0)
-            digest = digestfile.read().decode('utf-8').strip()
+        manifest_info = create_and_push_container_manifest(
+            args.repo, args.tags, images, args.v2s2)
 
-        # Update the meta.json in each build/arch metadata
-        for _, buildmeta in buildmetas.items():
-            buildmeta[args.metajsonname] = {
+        # Update the `meta.json` files. Note the digest included is the
+        # arch-specific one for each individual arch, and not the manifest list
+        # digest. See: https://github.com/coreos/coreos-assembler/issues/3122.
+        assert len(manifest_info['manifests']) == len(buildmetas)
+        for manifest in manifest_info['manifests']:
+            arch = manifest['platform']['architecture']
+            if arch == 'arm64':
+                arch = 'aarch64'
+            elif arch == 'amd64':
+                arch = 'x86_64'
+            buildmetas[arch][args.metajsonname] = {
                 'image': args.repo,
-                'digest': digest
+                'digest': manifest['digest']
             }
-            buildmeta.write(artifact_name=args.metajsonname)
+            buildmetas[arch].write(artifact_name=args.metajsonname)
 
 
 def parse_args():
