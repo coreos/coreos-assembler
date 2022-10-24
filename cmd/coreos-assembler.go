@@ -14,8 +14,8 @@ import (
 // commands we'd expect to use in the local dev path
 var buildCommands = []string{"init", "fetch", "build", "run", "prune", "clean", "list"}
 var advancedBuildCommands = []string{"buildfetch", "buildupload", "oc-adm-release", "push-container", "upload-oscontainer", "buildextend-extensions", "create-legacy-oscontainer"}
-var buildextendCommands = []string{"aliyun", "aws", "azure", "digitalocean", "exoscale", "extensions", "gcp", "ibmcloud", "kubevirt", "live", "metal", "metal4k", "nutanix", "openstack", "qemu", "secex", "virtualbox", "vmware", "vultr"}
-var utilityCommands = []string{"aws-replicate", "build-extensions-container", "compress", "copy-container", "generate-hashlist", "koji-upload", "kola", "push-container-manifest", "remote-build-container", "remote-prune", "remote-session", "sign", "update-variant"}
+var buildextendCommands = []string{"aliyun", "aws", "azure", "digitalocean", "exoscale", "extensions", "extensions-container", "gcp", "ibmcloud", "kubevirt", "live", "metal", "metal4k", "nutanix", "openstack", "qemu", "secex", "virtualbox", "vmware", "vultr"}
+var utilityCommands = []string{"aws-replicate", "compress", "copy-container", "generate-hashlist", "koji-upload", "kola", "push-container-manifest", "remote-build-container", "remote-prune", "remote-session", "sign", "update-variant"}
 var otherCommands = []string{"shell", "meta"}
 
 func init() {
@@ -92,7 +92,8 @@ func run(argv []string) error {
 		return runUpdateVariant(argv)
 	case "remote-session":
 		return runRemoteSession(argv)
-	case "build-extensions-container":
+	case "build-extensions-container", // old alias
+		"buildextend-extensions-container":
 		return buildExtensionContainer()
 	}
 
