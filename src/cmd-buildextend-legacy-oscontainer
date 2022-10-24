@@ -106,7 +106,7 @@ if args.arch_tag:
 digestfile = "tmp/oscontainer-digest"
 print("Entering vm to build oscontainer for build: {}".format(latest_build))
 
-cosa_argv = (['/usr/lib/coreos-assembler/create-legacy-oscontainer.sh', '--workdir=./tmp', 'build', f'--from={args.from_image}'])
+cosa_argv = (['/usr/lib/coreos-assembler/buildextend-legacy-oscontainer.sh', '--workdir=./tmp', 'build', f'--from={args.from_image}'])
 for d in args.add_directory:
     cosa_argv.append(f'--add-directory="{d}"')
 cosa_argv.append(f'--display-name="{display_name}"')
