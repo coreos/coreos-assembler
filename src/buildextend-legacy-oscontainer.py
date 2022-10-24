@@ -217,7 +217,7 @@ def oscontainer_build(containers_storage, tmpdir, src, ref, image_name_and_tag,
             podCmd.append(f'--format={pushformat}')
 
         # Historically upload-oscontainer would require --name which was in our
-        # pipeline a repository URL. Going forward create-legacy-oscontainer
+        # pipeline a repository URL. Going forward buildextend-legacy-oscontainer
         # just creates an oci-archive and a url is not a valid name/tag combination.
         if '/' in image_name_and_tag:
             image_name_and_tag = image_name_and_tag.rsplit('/', 1)[1]
