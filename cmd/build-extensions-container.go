@@ -32,7 +32,7 @@ func buildExtensionContainer() error {
 		return err
 	}
 	targetname := "extensions-container-" + buildID + "." + arch + ".ociarchive"
-	process := "runvm -- /usr/lib/coreos-assembler/build-extensions-oscontainer.sh " + arch + " $tmp_builddir/" + targetname + " " + buildID
+	process := "runvm -- /usr/lib/coreos-assembler/build-extensions-container.sh " + arch + " $tmp_builddir/" + targetname + " " + buildID
 	if err := sh.Process(process); err != nil {
 		return err
 	}
