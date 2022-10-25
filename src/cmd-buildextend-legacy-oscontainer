@@ -131,3 +131,4 @@ metapath_new = f"{metapath}.new"
 with open(metapath_new, 'w') as f:
     json.dump(meta, f, sort_keys=True)
 shutil.move(metapath_new, metapath)
+print(f"Updated {metapath}")
