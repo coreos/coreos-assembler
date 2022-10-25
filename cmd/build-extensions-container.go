@@ -82,7 +82,7 @@ func buildExtensionContainer() error {
 		Path:            targetname,
 		Sha256:          sha256sum,
 		SizeInBytes:     float64(stat.Size()),
-		SkipCompression: false,
+		SkipCompression: true,
 	}
 
 	newBytes, err := json.MarshalIndent(cosaBuild, "", "    ")
