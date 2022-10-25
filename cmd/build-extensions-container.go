@@ -45,6 +45,9 @@ func buildExtensionContainer() error {
 	if err := exec.Command("/usr/lib/coreos-assembler/finalize-artifact", filepath.Join(tmpdir, targetname), targetPath).Run(); err != nil {
 		return err
 	}
+
+	fmt.Printf("Built %s\n", targetPath)
+
 	// Gather metadata of the OCI archive (sha256, size)
 	file, err := os.Open(targetPath)
 	if err != nil {
@@ -94,5 +97,7 @@ func buildExtensionContainer() error {
 	if err != nil {
 		return err
 	}
+
+	fmt.Printf("Updated %s\n", metapath)
 	return nil
 }
