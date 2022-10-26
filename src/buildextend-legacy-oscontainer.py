@@ -95,7 +95,7 @@ def oscontainer_extract(containers_storage, tmpdir, src, dest,
 def oscontainer_build(containers_storage, tmpdir, src, ref, image_name_and_tag,
                       base_image, tls_verify=True, pushformat=None,
                       add_directories=[], cert_dir="", authfile="", digestfile=None,
-                      ociarchive=None, display_name=None, labeled_pkgs=[]):
+                      output=None, display_name=None, labeled_pkgs=[]):
     r = OSTree.Repo.new(Gio.File.new_for_path(src))
     r.open(None)
 
@@ -209,7 +209,7 @@ def oscontainer_build(containers_storage, tmpdir, src, ref, image_name_and_tag,
         subprocess.call(buildah_base_argv + ['umount', bid], stdout=subprocess.DEVNULL)
         subprocess.call(buildah_base_argv + ['rm', bid], stdout=subprocess.DEVNULL)
 
-    if ociarchive:
+    if output:
         print("Saving container to oci-archive")
         podCmd = buildah_base_argv + ['push']
 
@@ -227,7 +227,7 @@ def oscontainer_build(containers_storage, tmpdir, src, ref, image_name_and_tag,
 
         podCmd.append(image_name_and_tag)
 
-        podCmd.append(f'oci-archive:{ociarchive}')
+        podCmd.append(f'oci-archive:{output}')
 
         runcmd(podCmd)
     elif digestfile is not None:
@@ -274,7 +274,7 @@ def main():
         help="Write image digest to file",
         action='store',
         metavar='FILE')
-    parser.add_argument("--ociarchive", help="Write image as OCI archive to file")
+    parser.add_argument("--output", help="Write image as OCI archive to file")
     args = parser.parse_args()
 
     labeled_pkgs = []
@@ -306,7 +306,7 @@ def main():
                 getattr(args, 'from'),
                 display_name=args.display_name,
                 digestfile=args.digestfile,
-                ociarchive=args.ociarchive,
+                output=args.output,
                 add_directories=args.add_directory,
                 pushformat=args.format,
                 tls_verify=not args.disable_tls_verify,
