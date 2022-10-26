@@ -136,6 +136,8 @@ def aws_run_ore(build, args):
         ore_args.extend(['--grant-user', user])
     for user in args.grant_user_snapshot:
         ore_args.extend(['--grant-user-snapshot', user])
+    if args.public:
+        ore_args.extend(['--public'])
 
     print("+ {}".format(subprocess.list2cmdline(ore_args)))
     ore_data = json.loads(subprocess.check_output(ore_args))
@@ -170,4 +172,5 @@ def aws_cli(parser):
                         nargs="*", default=[])
     parser.add_argument("--grant-user-snapshot", help="Grant user snapshot volume permission",
                         nargs="*", default=[])
+    parser.add_argument("--public", action="store_true", help="Mark images as publicly available")
     return parser
