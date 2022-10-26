@@ -94,7 +94,7 @@ def oscontainer_extract(containers_storage, tmpdir, src, dest,
 # oscontainer with it.
 def oscontainer_build(containers_storage, tmpdir, src, ref, image_name_and_tag,
                       base_image, tls_verify=True, pushformat=None,
-                      add_directories=[], cert_dir="", authfile="", digestfile=None,
+                      add_directories=[], cert_dir="", authfile="",
                       output=None, display_name=None, labeled_pkgs=[]):
     r = OSTree.Repo.new(Gio.File.new_for_path(src))
     r.open(None)
@@ -212,9 +212,6 @@ def oscontainer_build(containers_storage, tmpdir, src, ref, image_name_and_tag,
     print("Saving container to oci-archive")
     podCmd = buildah_base_argv + ['push']
 
-    if digestfile is not None:
-        podCmd.append(f'--digestfile={digestfile}')
-
     if pushformat is not None:
         podCmd.append(f'--format={pushformat}')
 
@@ -264,11 +261,6 @@ def main():
     parser_build.add_argument("--labeled-packages", help="Packages whose NEVRAs are included as labels on the image")
     # For now we forcibly override to v2s2 https://bugzilla.redhat.com/show_bug.cgi?id=2058421
     parser_build.add_argument("--format", help="Pass through push format to buildah", default="v2s2")
-    parser_build.add_argument(
-        "--digestfile",
-        help="Write image digest to file",
-        action='store',
-        metavar='FILE')
     parser.add_argument("--output", required=True, help="Write image as OCI archive to file")
     args = parser.parse_args()
 
@@ -300,7 +292,6 @@ def main():
                 containers_storage, tmpdir, args.src, args.rev, args.name,
                 getattr(args, 'from'),
                 display_name=args.display_name,
-                digestfile=args.digestfile,
                 output=args.output,
                 add_directories=args.add_directory,
                 pushformat=args.format,
