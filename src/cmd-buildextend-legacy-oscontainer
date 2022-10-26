@@ -106,6 +106,7 @@ if args.arch_tag:
 # TODO: Remove --from
 print("Entering vm to build oscontainer for build: {}".format(latest_build))
 
+oci_archive = f"{latest_build_path}/{args.name}"
 cosa_argv = (['/usr/lib/coreos-assembler/buildextend-legacy-oscontainer.sh', '--workdir=./tmp', 'build', f'--from={args.from_image}'])
 for d in args.add_directory:
     cosa_argv.append(f'--add-directory="{d}"')
@@ -116,12 +117,11 @@ if 'labeled-packages' in configyaml:
 if args.format is not None:
     cosa_argv.append(f'--format={args.format}')
 subprocess.check_call(cosa_argv +
-    ['--push', tmprepo,
+    ['--ociarchive', oci_archive, tmprepo,
         meta['ostree-commit'],
         osc_name_and_tag])
 
 # Inject the oscontainer with SHA256 into the build metadata
-oci_archive = f"{latest_build_path}/{args.name}"
 meta['images']['legacy-oscontainer'] = {'path': args.name,
                                         'sha256': sha256sum_file(oci_archive),
                                         'size': os.path.getsize(oci_archive),
