@@ -7,6 +7,9 @@
 #
 # This command manipulates those images.
 
+# This file was forked from src/oscontainer-deprecated-legacy-format.py and is
+# now only used to build the legacy oscontainer via supermin.
+
 import gi
 
 gi.require_version('OSTree', '1.0')
