@@ -31,7 +31,7 @@ func buildExtensionContainer() error {
 	if _, err := sh.PrepareBuild(); err != nil {
 		return err
 	}
-	targetname := "extensions-container-" + buildID + "." + arch + ".ociarchive"
+	targetname := lastBuild.Name + "-" + buildID + "-extensions-container" + "." + arch + ".ociarchive"
 	process := "runvm -- /usr/lib/coreos-assembler/build-extensions-container.sh " + arch + " $tmp_builddir/" + targetname + " " + buildID
 	if err := sh.Process(process); err != nil {
 		return err
