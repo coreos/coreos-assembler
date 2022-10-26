@@ -103,18 +103,8 @@ class HashListV1(dict):
         initramfs_path = os.path.realpath(initramfs_path)
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            skipcpio = subprocess.Popen(
-                ['/usr/lib/dracut/skipcpio', initramfs_path],
-                stdout=subprocess.PIPE)
-            gunzip = subprocess.Popen(
-                ['gunzip', '-c'],
-                stdin=skipcpio.stdout,
-                stdout=subprocess.PIPE)
-            cpio = subprocess.Popen(
-                ['cpio', '-idmv'],
-                stdin=gunzip.stdout,
-                cwd=tmpdir)
-            cpio.wait(timeout=300)  # timeout of 5 minutes
+            subprocess.check_call(['lsinitrd', '--unpack', initramfs_path],
+                                  cwd=tmpdir)
             self.hash_from_path(tmpdir)
 
         shutil.rmtree(checkout)
