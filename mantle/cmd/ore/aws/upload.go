@@ -60,6 +60,7 @@ After a successful run, the final line of output will be a line of JSON describi
 	uploadObjectFormat       aws.EC2ImageFormat
 	uploadAMIName            string
 	uploadAMIDescription     string
+	uploadPublic             bool
 	uploadGrantUsers         []string
 	uploadGrantUsersSnapshot []string
 	uploadTags               []string
@@ -80,6 +81,7 @@ func init() {
 	cmdUpload.Flags().Var(&uploadObjectFormat, "object-format", fmt.Sprintf("object format: %s or %s (default: %s)", aws.EC2ImageFormatVmdk, aws.EC2ImageFormatRaw, aws.EC2ImageFormatVmdk))
 	cmdUpload.Flags().StringVar(&uploadAMIName, "ami-name", "", "name of the AMI to create")
 	cmdUpload.Flags().StringVar(&uploadAMIDescription, "ami-description", "", "description of the AMI to create (default: empty)")
+	cmdUpload.Flags().BoolVar(&uploadPublic, "public", false, "make image and snapshot volume public")
 	cmdUpload.Flags().StringSliceVar(&uploadGrantUsers, "grant-user", []string{}, "grant launch permission to this AWS user ID")
 	cmdUpload.Flags().StringSliceVar(&uploadGrantUsersSnapshot, "grant-user-snapshot", []string{}, "grant snapshot volume permission to this AWS user ID")
 	cmdUpload.Flags().StringSliceVar(&uploadTags, "tags", []string{}, "list of key=value tags to attach to the AMI")
@@ -260,6 +262,15 @@ func runUpload(cmd *cobra.Command, args []string) error {
 		err = API.GrantVolumePermission(sourceSnapshot, uploadGrantUsersSnapshot)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "unable to grant snapshot volume permission: %v\n", err)
+			os.Exit(1)
+		}
+	}
+
+	// make the image/snaphsot public if requested
+	if uploadPublic {
+		err = API.PublishImage(amiID)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "failed to make image/snapshot public: %v\n", err)
 			os.Exit(1)
 		}
 	}
