@@ -33,7 +33,7 @@ metapath = f"{latest_build_path}/meta.json"
 with open(metapath) as f:
     meta = json.load(f)
 
-name = meta['name'] + '-' + meta['buildid'] + '-oscontainer.' + arch + '.ociarchive'
+name = meta['name'] + '-' + meta['buildid'] + '-legacy-oscontainer.' + arch + '.ociarchive'
 parser = argparse.ArgumentParser()
 parser.add_argument("--arch-tag", help="append arch name to push tag",
                     action='store_true')
