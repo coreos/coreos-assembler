@@ -103,7 +103,6 @@ if args.arch_tag:
 # TODO: Use labels for the build hash and avoid pulling the oscontainer
 # every time we want to poll.
 # TODO: Remove --from
-digestfile = "tmp/oscontainer-digest"
 print("Entering vm to build oscontainer for build: {}".format(latest_build))
 
 cosa_argv = (['/usr/lib/coreos-assembler/buildextend-legacy-oscontainer.sh', '--workdir=./tmp', 'build', f'--from={args.from_image}'])
@@ -116,8 +115,7 @@ if 'labeled-packages' in configyaml:
 if args.format is not None:
     cosa_argv.append(f'--format={args.format}')
 subprocess.check_call(cosa_argv +
-    [f'--digestfile={digestfile}',
-        '--push', tmprepo,
+    ['--push', tmprepo,
         meta['ostree-commit'],
         osc_name_and_tag])
 
