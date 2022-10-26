@@ -90,6 +90,10 @@ class HashListV1(dict):
             'ostree', 'checkout',
             '--repo=tmp/repo', '-U',
             self._metadata['ostree-commit'], checkout])
+        # Force all dirs to be owner writable so that we can delete the
+        # checkout at the end. XXX: Lower into a new `ostree checkout` flag.
+        subprocess.check_call(['find', checkout, '-type', 'd', '-exec',
+                               'chmod', 'u+w', '{}', '+'])
         self.hash_from_path(checkout)
 
         # Extract initramfs contents
