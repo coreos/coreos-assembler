@@ -90,9 +90,9 @@ def oscontainer_extract(containers_storage, tmpdir, src, dest,
 # Given an OSTree repository at src (and exactly one ref) generate an
 # oscontainer with it.
 def oscontainer_build(containers_storage, tmpdir, src, ref, image_name_and_tag,
-                      base_image, push=False, tls_verify=True, pushformat=None,
+                      base_image, tls_verify=True, pushformat=None,
                       add_directories=[], cert_dir="", authfile="", digestfile=None,
-                      display_name=None, labeled_pkgs=[]):
+                      ociarchive=None, display_name=None, labeled_pkgs=[]):
     r = OSTree.Repo.new(Gio.File.new_for_path(src))
     r.open(None)
 
@@ -206,7 +206,7 @@ def oscontainer_build(containers_storage, tmpdir, src, ref, image_name_and_tag,
         subprocess.call(buildah_base_argv + ['umount', bid], stdout=subprocess.DEVNULL)
         subprocess.call(buildah_base_argv + ['rm', bid], stdout=subprocess.DEVNULL)
 
-    if push:
+    if ociarchive:
         print("Saving container to oci-archive")
         podCmd = buildah_base_argv + ['push']
 
@@ -224,7 +224,7 @@ def oscontainer_build(containers_storage, tmpdir, src, ref, image_name_and_tag,
 
         podCmd.append(image_name_and_tag)
 
-        podCmd.append(f'oci-archive:{builddir}/{image_name_and_tag}')
+        podCmd.append(f'oci-archive:{ociarchive}')
 
         runcmd(podCmd)
     elif digestfile is not None:
@@ -271,10 +271,7 @@ def main():
         help="Write image digest to file",
         action='store',
         metavar='FILE')
-    parser_build.add_argument(
-        "--push",
-        help="Push to registry",
-        action='store_true')
+    parser.add_argument("--ociarchive", help="Write image as OCI archive to file")
     args = parser.parse_args()
 
     labeled_pkgs = []
@@ -306,8 +303,8 @@ def main():
                 getattr(args, 'from'),
                 display_name=args.display_name,
                 digestfile=args.digestfile,
+                ociarchive=args.ociarchive,
                 add_directories=args.add_directory,
-                push=args.push,
                 pushformat=args.format,
                 tls_verify=not args.disable_tls_verify,
                 cert_dir=args.cert_dir,
