@@ -9,6 +9,7 @@ import argparse
 import datetime
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -78,6 +79,8 @@ class HashListV1(dict):
         :raises: IndexError
         """
         checkout = 'tmp/repo/tmp/keylime-checkout'
+        if os.path.isdir(checkout):
+            shutil.rmtree(checkout)
 
         import_ostree_commit(
             os.getcwd(),
@@ -109,6 +112,8 @@ class HashListV1(dict):
                 cwd=tmpdir)
             cpio.wait(timeout=300)  # timeout of 5 minutes
             self.hash_from_path(tmpdir)
+
+        shutil.rmtree(checkout)
 
     def hash_from_path(self, toppath):
         """
