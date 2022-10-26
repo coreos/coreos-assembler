@@ -209,31 +209,26 @@ def oscontainer_build(containers_storage, tmpdir, src, ref, image_name_and_tag,
         subprocess.call(buildah_base_argv + ['umount', bid], stdout=subprocess.DEVNULL)
         subprocess.call(buildah_base_argv + ['rm', bid], stdout=subprocess.DEVNULL)
 
-    if output:
-        print("Saving container to oci-archive")
-        podCmd = buildah_base_argv + ['push']
+    print("Saving container to oci-archive")
+    podCmd = buildah_base_argv + ['push']
 
-        if digestfile is not None:
-            podCmd.append(f'--digestfile={digestfile}')
+    if digestfile is not None:
+        podCmd.append(f'--digestfile={digestfile}')
 
-        if pushformat is not None:
-            podCmd.append(f'--format={pushformat}')
+    if pushformat is not None:
+        podCmd.append(f'--format={pushformat}')
 
-        # Historically upload-oscontainer would require --name which was in our
-        # pipeline a repository URL. Going forward buildextend-legacy-oscontainer
-        # just creates an oci-archive and a url is not a valid name/tag combination.
-        if '/' in image_name_and_tag:
-            image_name_and_tag = image_name_and_tag.rsplit('/', 1)[1]
+    # Historically upload-oscontainer would require --name which was in our
+    # pipeline a repository URL. Going forward buildextend-legacy-oscontainer
+    # just creates an oci-archive and a url is not a valid name/tag combination.
+    if '/' in image_name_and_tag:
+        image_name_and_tag = image_name_and_tag.rsplit('/', 1)[1]
 
-        podCmd.append(image_name_and_tag)
+    podCmd.append(image_name_and_tag)
 
-        podCmd.append(f'oci-archive:{output}')
+    podCmd.append(f'oci-archive:{output}')
 
-        cmdlib.runcmd(podCmd)
-    elif digestfile is not None:
-        inspect = run_get_json(buildah_base_argv + ['inspect', image_name_and_tag])[0]
-        with open(digestfile, 'w') as f:
-            f.write(inspect['Digest'])
+    cmdlib.runcmd(podCmd)
 
 
 def main():
@@ -274,7 +269,7 @@ def main():
         help="Write image digest to file",
         action='store',
         metavar='FILE')
-    parser.add_argument("--output", help="Write image as OCI archive to file")
+    parser.add_argument("--output", required=True, help="Write image as OCI archive to file")
     args = parser.parse_args()
 
     labeled_pkgs = []
