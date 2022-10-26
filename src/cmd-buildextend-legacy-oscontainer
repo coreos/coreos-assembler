@@ -107,7 +107,7 @@ if args.arch_tag:
 print("Entering vm to build oscontainer for build: {}".format(latest_build))
 
 oci_archive = f"{latest_build_path}/{args.name}"
-cosa_argv = (['/usr/lib/coreos-assembler/buildextend-legacy-oscontainer.sh', oci_archive, '--workdir=./tmp', 'build', f'--from={args.from_image}'])
+cosa_argv = (['/usr/lib/coreos-assembler/buildextend-legacy-oscontainer.sh', oci_archive, 'build', f'--from={args.from_image}'])
 for d in args.add_directory:
     cosa_argv.append(f'--add-directory="{d}"')
 cosa_argv.append(f'--display-name="{display_name}"')
