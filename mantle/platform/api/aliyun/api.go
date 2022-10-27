@@ -17,15 +17,17 @@ package aliyun
 import (
 	"fmt"
 	"io"
+	"os"
 	"sort"
 	"time"
 
-	"github.com/coreos/mantle/auth"
 	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/util"
 	"github.com/coreos/pkg/capnslog"
 	"github.com/coreos/pkg/multierror"
 
+	"github.com/aliyun/alibaba-cloud-sdk-go/sdk/auth/credentials"
+	"github.com/aliyun/alibaba-cloud-sdk-go/sdk/auth/credentials/provider"
 	"github.com/aliyun/alibaba-cloud-sdk-go/sdk/requests"
 	"github.com/aliyun/alibaba-cloud-sdk-go/services/ecs"
 	"github.com/aliyun/aliyun-oss-go-sdk/oss"
@@ -41,8 +43,11 @@ type Options struct {
 	// The aliyun region regional api calls should use
 	Region string
 
-	// Config file. Defaults to ~/.aliyun/config.json
-	ConfigPath string
+
+	// Path to an ALIBABA_CLOUD_CREDENTIALS_FILE
+	// https://github.com/aliyun/alibaba-cloud-sdk-go/blob/master/docs/2-Client-EN.md#2-credentials-file
+	CredentialsFile string
+
 	// The profile to use when resolving credentials, if applicable
 	Profile string
 
@@ -62,30 +67,40 @@ type API struct {
 // standard credentials sources, including the environment and the profile
 // configured in ~/.aliyun.
 func New(opts *Options) (*API, error) {
-	profiles, err := auth.ReadAliyunConfig(opts.ConfigPath)
-	if err != nil {
-		return nil, fmt.Errorf("couldn't read aliyun config: %v", err)
-	}
 
-	if opts.Profile == "" {
-		opts.Profile = "default"
-	}
+	// If the user didn't provide an access key and secret directly then try to pick up
+	// the credentials from the normal locations defined by the SDK
+	// https://github.com/aliyun/alibaba-cloud-sdk-go/blob/master/docs/2-Client-EN.md#default-credential-provider-chain
+	if opts.AccessKeyID == "" || opts.SecretKey == "" {
 
-	profile, ok := profiles[opts.Profile]
-	if !ok {
-		return nil, fmt.Errorf("no such profile %q", opts.Profile)
-	}
+		// If the user provided a path to a credential file then
+		// let's set it now the only supported way, which is with
+		// the ALIBABA_CLOUD_CREDENTIALS_FILE env var.
+		if opts.CredentialsFile != "" {
+			os.Setenv(provider.ENVCredentialFile, opts.CredentialsFile)
+			defer os.Unsetenv(provider.ENVCredentialFile)
+		}
 
-	if opts.AccessKeyID == "" {
-		opts.AccessKeyID = profile.AccessKeyID
-	}
-
-	if opts.SecretKey == "" {
-		opts.SecretKey = profile.AccessKeySecret
-	}
-
-	if opts.Region == "" {
-		opts.Region = profile.Region
+		var p provider.Provider
+		if opts.Profile != "" {
+			// If the user specified a profile then they're
+			// using a credentials file with profiles in them.
+			p = provider.NewProfileProvider(opts.Profile)
+		} else {
+			// If not then they could be using environment variables
+			// so use the DefaultChain (includes env var provider)
+			p = provider.DefaultChain
+		}
+		credential, err := p.Resolve()
+		if err != nil {
+			return nil, fmt.Errorf("failed to detect aliyun auth credentials: %w", err)
+		}
+		keycred, ok := credential.(*credentials.AccessKeyCredential)
+		if !ok {
+			return nil, fmt.Errorf("failed to convert the credential to an AccessKeyCredential")
+		}
+		opts.AccessKeyID = keycred.AccessKeyId
+		opts.SecretKey = keycred.AccessKeySecret
 	}
 
 	ecs, err := ecs.NewClientWithAccessKey(opts.Region, opts.AccessKeyID, opts.SecretKey)
