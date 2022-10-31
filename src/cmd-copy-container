@@ -20,7 +20,8 @@ EXAMPLE_USAGE = """examples:
           registry.ci.openshift.org/jlebon/fedora-coreos
 """
 
-MEDIA_TYPE_IMAGE_INDEX = 'application/vnd.oci.image.index.v1+json'
+MEDIA_TYPE_OCI_IMAGE_INDEX = 'application/vnd.oci.image.index.v1+json'
+MEDIA_TYPE_DOCKER_MANIFEST_LIST = 'application/vnd.docker.distribution.manifest.list.v2+json'
 
 
 def main():
@@ -48,7 +49,8 @@ def main():
             copies[f'{args.src_repo}:{tag}'] = f'{args.dest_repo}:{tag}'
         else:
             inspect = skopeo_inspect(f'{args.src_repo}:{tag}', args.authfile)
-            if inspect.get('mediaType') != MEDIA_TYPE_IMAGE_INDEX:
+            if inspect.get('mediaType') not in [MEDIA_TYPE_OCI_IMAGE_INDEX,
+                                                MEDIA_TYPE_DOCKER_MANIFEST_LIST]:
                 # src is not manifest listed, so no arch peeling needed
                 copies[f'{args.src_repo}:{tag}'] = f'{args.dest_repo}:{tag}'
             else:
