@@ -1038,3 +1038,13 @@ buildmeta = builds.get_build_meta('${buildid}')
 cmdlib.import_ostree_commit(workdir, builddir, buildmeta)
 ")
 }
+
+# Extract the value of NAME from os-release
+extract_osrelease_name() {
+    local buildid=$1; shift
+    local out="$workdir/tmp/osrelease"
+    rm "${out}" -rf
+    ostree checkout --repo "${tmprepo}" --user-mode --subpath=/usr/lib/os-release "${buildid}" "$out"
+    # shellcheck disable=SC1091,SC2153
+    (. "$out/os-release" && echo "${NAME}")
+}

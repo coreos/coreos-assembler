@@ -10,6 +10,8 @@ extra-kargs: []
 
 # Can also be oci-chunked
 ostree-format: oci-chunked-v1
+# Inject io.openshift.build.version-display-names for OpenShift CVO
+ostree-container-inject-openshift-cvo-labels: false
 # True if we should use `ostree container image deploy`
 deploy-via-container: false
 
