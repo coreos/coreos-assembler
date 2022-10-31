@@ -13,14 +13,15 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"time"
 )
 
 func buildExtensionContainer() error {
-	lastBuild, buildPath, err := cosa.ReadBuild("builds", "", "")
+	cosaBuild, buildPath, err := cosa.ReadBuild("builds", "", "")
 	if err != nil {
 		return err
 	}
-	buildID := lastBuild.BuildID
+	buildID := cosaBuild.BuildID
 	fmt.Printf("Generating extensions container for build: %s\n", buildID)
 
 	arch := cosa.BuilderArch()
@@ -31,7 +32,7 @@ func buildExtensionContainer() error {
 	if _, err := sh.PrepareBuild(); err != nil {
 		return err
 	}
-	targetname := lastBuild.Name + "-" + buildID + "-extensions-container" + "." + arch + ".ociarchive"
+	targetname := cosaBuild.Name + "-" + buildID + "-extensions-container" + "." + arch + ".ociarchive"
 	process := "runvm -- /usr/lib/coreos-assembler/build-extensions-container.sh " + arch + " $tmp_builddir/" + targetname + " " + buildID
 	if err := sh.Process(process); err != nil {
 		return err
@@ -64,40 +65,36 @@ func buildExtensionContainer() error {
 	}
 	sha256sum := fmt.Sprintf("%x", hash.Sum(nil))
 
-	// Update the meta.json to include metadata for our OCI archive
-	metapath := filepath.Join(buildPath, "meta.json")
-	jsonFile, err := os.Open(metapath)
-	if err != nil {
-		fmt.Println(err)
-	}
-	defer jsonFile.Close()
-	jsonBytes, err := ioutil.ReadAll(jsonFile)
-	if err != nil {
-		return err
-	}
-	var cosaBuild cosa.Build
-	err = json.Unmarshal(jsonBytes, &cosaBuild)
-	if err != nil {
-		return err
-	}
-
 	cosaBuild.BuildArtifacts.ExtensionsContainer = &cosa.Artifact{
 		Path:            targetname,
 		Sha256:          sha256sum,
 		SizeInBytes:     float64(stat.Size()),
 		SkipCompression: true,
 	}
+	cosaBuild.MetaStamp = float64(time.Now().UnixNano())
 
 	newBytes, err := json.MarshalIndent(cosaBuild, "", "    ")
 	if err != nil {
 		return err
 	}
-
-	err = ioutil.WriteFile(metapath, newBytes, 0644)
+	extensions_container_meta_path := filepath.Join(buildPath, "meta.extensions-container.json")
+	err = ioutil.WriteFile(extensions_container_meta_path, newBytes, 0644)
 	if err != nil {
 		return err
 	}
-
-	fmt.Printf("Updated %s\n", metapath)
+	defer os.Remove(extensions_container_meta_path)
+	workdir, err := filepath.Abs(".")
+	if err != nil {
+		return err
+	}
+	abs_new_json, err := filepath.Abs(extensions_container_meta_path)
+	if err != nil {
+		return err
+	}
+	// Calling `cosa meta` as it locks the file and we need to make sure no other process writes to the file at the same time.
+	// Golang does not appear to have a public api to lock files at the moment. https://github.com/coreos/coreos-assembler/issues/3149
+	if err := exec.Command("cosa", "meta", "--workdir", workdir, "--build", buildID, "--artifact-json", abs_new_json).Run(); err != nil {
+		return err
+	}
 	return nil
 }
