@@ -407,6 +407,7 @@ else
     ostree_tarfile_path="${name}-${buildid}-ostree.${basearch}.ociarchive"
     gitsrc=$(jq -r .git.origin < "${PWD}/coreos-assembler-config-git.json")
     cmd=(ostree container encapsulate --copymeta="rpmostree.inputhash")
+    openshift_cvo_labels=$(jq -r '.["ostree-container-inject-openshift-cvo-labels"]' < "${image_json}")
 
     # The ostree-ext default is 64, but this is still too much apparently
     # for (older?) versions of podman AKA containers/storage (or maybe)
@@ -419,11 +420,18 @@ else
         ;;
         *) fatal "Unknown ostree-format: ${ostree_format}"
     esac
+    labels=()
+    if test "${openshift_cvo_labels}" = "true"; then
+        labels+=("--label=io.openshift.build.version-display-names=machine-os=$(extract_osrelease_name "$buildid")" \
+                 "--label=io.openshift.build.versions=machine-os=${buildid}"
+                )
+    fi
     runv "${cmd[@]}" --repo="${tmprepo}" \
         --label="coreos-assembler.image-config-checksum=${image_config_checksum}" \
         --label="coreos-assembler.image-input-checksum=${image_input_checksum}" \
         --label="org.opencontainers.image.source=${gitsrc}" \
         --label="org.opencontainers.image.revision=${config_gitrev}" \
+        "${labels[@]}" \
         "${buildid}" \
         oci-archive:"${ostree_tarfile_path}".tmp:latest
     /usr/lib/coreos-assembler/finalize-artifact "${ostree_tarfile_path}"{.tmp,}
