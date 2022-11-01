@@ -4,11 +4,13 @@
 # arguments provided by the user.
 
 import argparse
+import json
 import os
 import sys
 from cosalib.container_manifest import create_and_push_container_manifest
 from cosalib.builds import Builds
 from cosalib.meta import GenericBuildMeta
+from cosalib.cmdlib import runcmd
 from cosalib.cmdlib import sha256sum_file
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -16,6 +18,10 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 def main():
     args = parse_args()
+    map_arch = {}
+    map_arch['arm64'] = 'aarch64'
+    map_arch['amd64'] = 'x86_64'
+
     if args.authfile:
         os.environ["REGISTRY_AUTH_FILE"] = args.authfile
     if args.images:
@@ -37,6 +43,18 @@ def main():
         #   - Store the path to the container image in the container_images list
         images = []
         buildmetas = dict()
+        registry_digests = {}
+        upload = False
+        # Collect registry_digests of current manifest list in remote registry
+        inspect = skopeo_inspect(f'{args.repo}:{args.tags[0]}', args.authfile)
+        if inspect.returncode == 0:
+            manifests = json.loads(inspect.stdout)
+            for manifest in manifests['manifests']:
+                arch = manifest['platform']['architecture']
+                if arch in map_arch:
+                    arch = map_arch[arch]
+                registry_digests[arch] = manifest['digest']
+
         for arch in args.arches:
             if arch not in build_arches:
                 print(f"Requested architecture {arch} is not in {args.build}")
@@ -48,6 +66,13 @@ def main():
             if not buildmeta['images'][args.artifact]:
                 print(f"No artifact {args.artifact} in {args.build}/{arch}")
                 raise Exception
+
+            # Checks if the meta digest matches each arch digest in the remote.
+            # If it doesn't match (or doesn't exist), we need to upload.
+            if 'digest' in buildmetas[arch][args.metajsonname]:
+                meta_digest = buildmetas[arch][args.metajsonname]['digest']
+                if meta_digest != registry_digests.get(arch):
+                    upload = True
             ociarchive = os.path.join(builddir, buildmeta['images'][args.artifact]['path'])
             ocisha256sum = buildmeta['images'][args.artifact]['sha256']
             if not os.path.exists(ociarchive):
@@ -57,6 +82,10 @@ def main():
                 print(f"The file on disk {ociarchive} has an incorrect checksum")
                 raise Exception
             images.append(f"oci-archive:{ociarchive}")
+
+        if not upload and not args.force:
+            print("Remote already matches desired state; skipping push. Use --force to override.")
+            return
 
         # Create/Upload the manifest list to the container registry
         manifest_info = create_and_push_container_manifest(
@@ -68,10 +97,8 @@ def main():
         assert len(manifest_info['manifests']) == len(buildmetas)
         for manifest in manifest_info['manifests']:
             arch = manifest['platform']['architecture']
-            if arch == 'arm64':
-                arch = 'aarch64'
-            elif arch == 'amd64':
-                arch = 'x86_64'
+            if arch in map_arch:
+                arch = map_arch[arch]
             buildmetas[arch][args.metajsonname] = {
                 'image': args.repo,
                 'digest': manifest['digest'],
@@ -108,6 +135,7 @@ Examples:
     parser.add_argument("--authfile", help="A file to use for registry auth")
     parser.add_argument('--v2s2', action='store_true',
                         help='Use old image manifest version 2 schema 2 format')
+    parser.add_argument("--force", help="Force manifest overwriting", action='store_true')
 
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--image", dest='images', action='append', default=[],
@@ -125,6 +153,13 @@ Examples:
     parser.add_argument("--metajsonname",
                         help="The name under which to store the container information in meta.json")
     return parser.parse_args()
+
+
+def skopeo_inspect(fqin, authfile):
+    args = ['skopeo', 'inspect', '--raw']
+    if authfile:
+        args += ['--authfile', authfile]
+    return runcmd((args + [f'docker://{fqin}']), capture_output=True, check=False)
 
 
 if __name__ == '__main__':
