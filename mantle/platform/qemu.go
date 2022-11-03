@@ -55,6 +55,10 @@ import (
 	"golang.org/x/sys/unix"
 )
 
+// UefiFirmwareDefault is used on x86_64 and aarch64.  In the future
+// this may change to be e.g. uefi-secure.
+const UefiFirmwareDefault = "uefi"
+
 var (
 	// ErrInitramfsEmergency is the marker error returned upon node blocking in emergency mode in initramfs.
 	ErrInitramfsEmergency = errors.New("entered emergency.target in initramfs")
@@ -448,8 +452,16 @@ type QemuBuilder struct {
 
 // NewQemuBuilder creates a new build for QEMU with default settings.
 func NewQemuBuilder() *QemuBuilder {
+	var defaultFirmware string
+	switch coreosarch.CurrentRpmArch() {
+	case "x86_64", "aarch64":
+		// Default to UEFI (but not secure boot for now)
+		defaultFirmware = UefiFirmwareDefault
+	default:
+		defaultFirmware = ""
+	}
 	ret := QemuBuilder{
-		Firmware:  "bios",
+		Firmware:  defaultFirmware,
 		Swtpm:     true,
 		Pdeathsig: true,
 		Argv:      []string{},
@@ -1395,8 +1407,8 @@ func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 	argv = append(argv, "-smp", fmt.Sprintf("%d", builder.Processors))
 
 	switch builder.Firmware {
-	case "bios":
-		break
+	case "":
+		// Nothing to do, use qemu default
 	case "uefi":
 		if err := builder.setupUefi(false); err != nil {
 			return nil, err
@@ -1405,8 +1417,12 @@ func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 		if err := builder.setupUefi(true); err != nil {
 			return nil, err
 		}
+	case "bios":
+		if coreosarch.CurrentRpmArch() != "x86_64" {
+			return nil, fmt.Errorf("unknown firmware: %s", builder.Firmware)
+		}
 	default:
-		panic(fmt.Sprintf("Unknown firmware: %s", builder.Firmware))
+		return nil, fmt.Errorf("unknown firmware: %s", builder.Firmware)
 	}
 
 	// We always provide a random source
