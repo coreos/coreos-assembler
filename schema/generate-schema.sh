@@ -11,7 +11,7 @@ echo "Generating COSA Schema ${schema_version}"
 
 out="${tdir}/cosa_${schema_version}.go"
 
-"schematyper" \
+/var/b/shared/code/go/bin/schematyper \
     "${schema_version}.json" \
     -o "${out}" \
     --package="cosa" \
