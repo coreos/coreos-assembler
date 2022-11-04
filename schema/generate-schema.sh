@@ -15,7 +15,18 @@ echo "Generating COSA Schema ${schema_version}"
 
 out="${tdir}/cosa_${schema_version}.go"
 
-"${GOBIN}/schematyper" \
+schematyper=
+if test -f ${topdir}/bin/schematyper; then
+    schematyper=${topdir}/bin/schematyper
+else
+    schematyper=$(which schematyper 2>/dev/null || true)
+fi
+if test -z "${schematyper}"; then
+    env GOBIN=${topdir}/bin go install github.com/idubinskiy/schematyper@latest
+    schematyper=${topdir}/bin/schematyper
+fi
+
+${schematyper} \
     "${schema_version}.json" \
     -o "${out}" \
     --package="cosa" \
