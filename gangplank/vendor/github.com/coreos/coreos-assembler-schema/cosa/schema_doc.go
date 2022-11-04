@@ -239,6 +239,7 @@ var generatedSchemaJSON = `{
    "coreos-assembler.image-input-checksum",
    "coreos-assembler.meta-stamp",
    "coreos-assembler.overrides-active",
+   "coreos-assembler.yumrepos-git",
    "fedora-coreos.parent-commit",
    "fedora-coreos.parent-version",
    "ref"
@@ -338,6 +339,12 @@ var generatedSchemaJSON = `{
      "type":"boolean",
      "title":"COSA Delayed Meta Merge",
      "default": "False"
+    },
+    "coreos-assembler.yumrepos-git": {
+     "$id":"#/properties/coreos-assembler.yumrepos-git",
+     "type":"object",
+     "title":"YUM repos Git",
+     "$ref":"#/definitions/git"
     },
    "coreos-assembler.meta-stamp": {
      "$id":"#/properties/coreos-assembler.meta-stamp",
