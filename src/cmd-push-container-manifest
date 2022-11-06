@@ -69,10 +69,15 @@ def main():
 
             # Checks if the meta digest matches each arch digest in the remote.
             # If it doesn't match (or doesn't exist), we need to upload.
-            if 'digest' in buildmetas[arch][args.metajsonname]:
+            if buildmetas[arch].get(args.metajsonname):
                 meta_digest = buildmetas[arch][args.metajsonname]['digest']
                 if meta_digest != registry_digests.get(arch):
                     upload = True
+            else:
+                # If there is no entry in the meta.json yet then we know
+                # we need to upload.
+                upload = True
+
             ociarchive = os.path.join(builddir, buildmeta['images'][args.artifact]['path'])
             ocisha256sum = buildmeta['images'][args.artifact]['sha256']
             if not os.path.exists(ociarchive):
