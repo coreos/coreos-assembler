@@ -539,14 +539,15 @@ def generate_iso():
             vendor_ids = [n for n in os.listdir(tmpimageefidir) if n != "BOOT"]
             if len(vendor_ids) != 1:
                 raise Exception(f"did not find exactly one EFI vendor ID: {vendor_ids}")
+            vendor_id = vendor_ids[0]
 
-            # Always replace live/EFI/{vendor} to actual live/EFI/{vendor_id[0]}
+            # Always replace live/EFI/{vendor} to actual live/EFI/{vendor_id}
             # https://github.com/openshift/os/issues/954
             grubfilepath = ensure_glob(os.path.join(tmpdir, 'live/EFI/*/grub.cfg'))
             if len(grubfilepath) != 1:
                 raise Exception(f'Found != 1 grub.cfg files: {grubfilepath}')
             srcpath = os.path.dirname(grubfilepath[0])
-            os.renames(srcpath, os.path.join(os.path.dirname(srcpath), vendor_ids[0]))
+            os.renames(srcpath, os.path.join(os.path.dirname(srcpath), vendor_id))
 
             # Delete fallback and its CSV file.  Its purpose is to create
             # EFI boot variables, which we don't want when booting from
@@ -557,19 +558,19 @@ def generate_iso():
             # exists.  But for now, fail if fallback.efi is missing.
             for path in ensure_glob(os.path.join(tmpimageefidir, "BOOT", "fb*.efi")):
                 os.unlink(path)
-            for path in ensure_glob(os.path.join(tmpimageefidir, vendor_ids[0], "BOOT*.CSV")):
+            for path in ensure_glob(os.path.join(tmpimageefidir, vendor_id, "BOOT*.CSV")):
                 os.unlink(path)
 
             # Drop vendor copies of shim; we already have it in BOOT*.EFI in
             # BOOT
-            for path in ensure_glob(os.path.join(tmpimageefidir, vendor_ids[0], "shim*.efi")):
+            for path in ensure_glob(os.path.join(tmpimageefidir, vendor_id, "shim*.efi")):
                 os.unlink(path)
 
             # Consolidate remaining files into BOOT.  shim needs GRUB to be
             # there, and the rest doesn't hurt.
-            for path in ensure_glob(os.path.join(tmpimageefidir, vendor_ids[0], "*")):
+            for path in ensure_glob(os.path.join(tmpimageefidir, vendor_id, "*")):
                 shutil.move(path, os.path.join(tmpimageefidir, "BOOT"))
-            os.rmdir(os.path.join(tmpimageefidir, vendor_ids[0]))
+            os.rmdir(os.path.join(tmpimageefidir, vendor_id))
 
             # Inject a stub grub.cfg pointing to the one in the main ISO image.
             #
@@ -587,7 +588,7 @@ def generate_iso():
             # pointing to efiboot.img) and needs a grub.cfg there.
             with open(os.path.join(tmpimageefidir, "BOOT", "grub.cfg"), "w") as fh:
                 fh.write(f'''search --label "{volid}" --set root --no-floppy
-set prefix=($root)/EFI/{vendor_ids[0]}
+set prefix=($root)/EFI/{vendor_id}
 echo "Booting via ESP..."
 configfile $prefix/grub.cfg
 boot
