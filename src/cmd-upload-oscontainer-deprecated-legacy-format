@@ -1,0 +1,134 @@
+#!/usr/bin/python3 -u
+# Upload an oscontainer.  This is a wrapper for
+# `cosa oscontainer` that just for historical reasons
+# used to live downstream in the redhat-coreos pipeline.
+# In the future we should just have one `cosa oscontainer`
+# command.
+
+import argparse
+import json
+import yaml
+import os
+import shutil
+import subprocess
+import sys
+
+cosa_dir = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, cosa_dir)
+
+from cosalib import cmdlib
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--arch-tag", help="append arch name to push tag",
+                    action='store_true')
+parser.add_argument("--name", help="oscontainer name",
+                    action='store', required=True)
+parser.add_argument("--from", help="Base image", default='scratch',
+                    dest='from_image')
+parser.add_argument("--format", help="Format to use for push")
+parser.add_argument("--add-directory", help="Copy in all content from referenced directory DIR",
+                    metavar='DIR', action='append', default=[])
+
+args = parser.parse_args()
+
+with open('builds/builds.json') as f:
+    builds = json.load(f)['builds']
+if len(builds) == 0:
+    cmdlib.fatal("No builds found")
+latest_build = builds[0]['id']
+arch = cmdlib.get_basearch()
+latest_build_path = f"builds/{latest_build}/{arch}"
+
+metapath = f"{latest_build_path}/meta.json"
+with open(metapath) as f:
+    meta = json.load(f)
+
+# for backcompat, we auto-build extensions if they're missing
+if os.path.exists('src/config/extensions.yaml'):
+    if 'extensions' not in meta:
+        cmdlib.run_verbose(['coreos-assembler', 'buildextend-extensions'])
+        with open(metapath) as f:
+            meta = json.load(f)
+    assert 'extensions' in meta
+
+configdir = os.path.abspath('src/config')
+oscconfigpath = f'{configdir}/oscontainer.yaml'
+# XXX: fold oscontainer.yaml handling into oscontainer.py
+configyaml = {}
+if os.path.exists(oscconfigpath):
+    with open(oscconfigpath) as f:
+        configyaml = yaml.safe_load(f)
+
+if 'base' in configyaml:
+    args.from_image = configyaml['base']
+
+print("Preparing to upload oscontainer for build: {}".format(latest_build))
+ostree_commit = meta['ostree-commit']
+
+tmprepo = "{}/tmp/repo".format(os.getcwd())
+# if tmprepo is not a directory, but is unexpectedly a file,
+# just nuke it
+if not os.path.isdir(tmprepo) and os.path.exists(tmprepo):
+    os.remove(tmprepo)
+
+# if tmprepo is not a directory and not a file, recreate from
+# the tarfile
+if not os.path.exists(tmprepo):
+    os.makedirs(tmprepo, exist_ok=True)
+    ostree_commit_tar = meta['images']['ostree']['path']
+    subprocess.check_call(['tar', '-xf',
+                           f'{latest_build_path}/{ostree_commit_tar}',
+                           '-C', tmprepo])
+
+tmp_osreleasedir = 'tmp/usrlib-osrelease'
+subprocess.check_call(['rm', '-rf', tmp_osreleasedir])
+cmdlib.run_verbose(['/usr/bin/ostree', 'checkout', '--repo', tmprepo,
+                    '--user-mode', '--subpath=/usr/lib/os-release', ostree_commit,
+                    tmp_osreleasedir])
+display_name = None
+with open(os.path.join(tmp_osreleasedir, "os-release")) as f:
+    display_name = subprocess.check_output(['/bin/sh', '-c', 'set -euo pipefail; . /proc/self/fd/0 && echo $NAME'], stdin=f, encoding='UTF-8').strip()
+if display_name == "":
+    raise SystemExit(f"Failed to find NAME= in /usr/lib/os-release in commit {ostree_commit}")
+shutil.rmtree(tmp_osreleasedir)
+
+osc_name_and_tag = f"{args.name}:{latest_build}"
+if args.arch_tag:
+    arch = meta.get("coreos-assembler.basearch", cmdlib.get_basearch)
+    osc_name_and_tag = f"{args.name}:{latest_build}-{arch}"
+
+# TODO: Use labels for the build hash and avoid pulling the oscontainer
+# every time we want to poll.
+# TODO: Remove --from
+digestfile = "tmp/oscontainer-digest"
+# We need to pass the auth file from the unpriv user to the root process
+cosa_argv = ['sudo', '--preserve-env=container,DISABLE_TLS_VERIFICATION,SSL_CERT_DIR,SSL_CERT_FILE,REGISTRY_AUTH_FILE,OSCONTAINER_CERT_DIR']
+authfile = os.environ.get("REGISTRY_AUTH_FILE", os.path.expanduser('~/.docker/config.json'))
+if not os.path.isfile(authfile):
+    raise SystemExit(f"Missing {authfile}")
+os.environ['REGISTRY_AUTH_FILE'] = authfile
+cosa_argv.extend(['/usr/lib/coreos-assembler/oscontainer.py', '--workdir=./tmp', 'build',  f"--from={args.from_image}"])
+for d in args.add_directory:
+    cosa_argv.append(f"--add-directory={d}")
+cosa_argv.append(f"--display-name={display_name}")
+if 'labeled-packages' in configyaml:
+    pkgs = ' '.join(configyaml['labeled-packages'])
+    cosa_argv.append(f"--labeled-packages={pkgs}")
+if args.format is not None:
+    cosa_argv.append(f'--format={args.format}')
+subprocess.check_call(cosa_argv +
+    [f'--digestfile={digestfile}',
+        '--push', tmprepo,
+        meta['ostree-commit'],
+        osc_name_and_tag])
+
+with open(digestfile) as f:
+    osc_digest = f.read().strip()
+
+# Inject the oscontainer with SHA256 into the build metadata
+meta['oscontainer'] = {'image': args.name,
+                       'digest': osc_digest}
+metapath_new = f"{metapath}.new"
+with open(metapath_new, 'w') as f:
+    json.dump(meta, f, sort_keys=True)
+shutil.move(metapath_new, metapath)
