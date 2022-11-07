@@ -548,13 +548,14 @@ def generate_iso():
             if len(grubfilepath) != 1:
                 raise Exception(f'Found != 1 grub.cfg files: {grubfilepath}')
             srcpath = os.path.dirname(grubfilepath[0])
-            os.rename(srcpath, f"EFI/{vendor_id}", src_dir_fd=dfd, dst_dir_fd=dfd)
+            if srcpath != f'EFI/{vendor_id}':
+                print(f"Renaming '{srcpath}' to 'EFI/{vendor_id}'")
+                os.rename(srcpath, f"EFI/{vendor_id}", src_dir_fd=dfd, dst_dir_fd=dfd)
+                # And update kargs.json
+                for file in kargs_json['files']:
+                    if file['path'] == grubfilepath[0]:
+                        file['path'] = f'EFI/{vendor_id}/grub.cfg'
             os.close(dfd)
-
-            # And update kargs.json
-            for file in kargs_json['files']:
-                if file['path'] == grubfilepath[0]:
-                    file['path'] = f'EFI/{vendor_id}/grub.cfg'
 
             # Delete fallback and its CSV file.  Its purpose is to create
             # EFI boot variables, which we don't want when booting from
