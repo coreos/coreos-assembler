@@ -551,6 +551,11 @@ def generate_iso():
             os.rename(srcpath, f"EFI/{vendor_id}", src_dir_fd=dfd, dst_dir_fd=dfd)
             os.close(dfd)
 
+            # And update kargs.json
+            for file in kargs_json['files']:
+                if file['path'] == grubfilepath[0]:
+                    file['path'] = f'EFI/{vendor_id}/grub.cfg'
+
             # Delete fallback and its CSV file.  Its purpose is to create
             # EFI boot variables, which we don't want when booting from
             # removable media.
