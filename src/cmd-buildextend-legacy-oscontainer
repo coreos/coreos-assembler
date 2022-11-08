@@ -27,6 +27,7 @@ parser.add_argument("--arch-tag", help="append arch name to push tag",
 parser.add_argument("--from", help="Base image", default='scratch',
                     dest='from_image')
 parser.add_argument("--format", help="Format to use for push")
+parser.add_argument("--build", help="Build ID")
 parser.add_argument("--add-directory", help="Copy in all content from referenced directory DIR",
                     metavar='DIR', action='append', default=[])
 
@@ -36,11 +37,12 @@ with open('builds/builds.json') as f:
     builds = json.load(f)['builds']
 if len(builds) == 0:
     cmdlib.fatal("No builds found")
-latest_build = builds[0]['id']
+if not args.build:
+    args.build = builds[0]['id']
 arch = cmdlib.get_basearch()
-latest_build_path = f"builds/{latest_build}/{arch}"
+build_path = f"builds/{args.build}/{arch}"
 
-metapath = f"{latest_build_path}/meta.json"
+metapath = f"{build_path}/meta.json"
 with open(metapath) as f:
     meta = json.load(f)
 
@@ -65,7 +67,7 @@ if os.path.exists(oscconfigpath):
 if 'base' in configyaml:
     args.from_image = configyaml['base']
 
-print("Preparing to upload oscontainer for build: {}".format(latest_build))
+print("Preparing to upload oscontainer for build: {}".format(args.build))
 ostree_commit = meta['ostree-commit']
 
 tmprepo = "{}/tmp/repo".format(os.getcwd())
@@ -80,7 +82,7 @@ if not os.path.exists(tmprepo):
     os.makedirs(tmprepo, exist_ok=True)
     ostree_commit_tar = meta['images']['ostree']['path']
     subprocess.check_call(['tar', '-xf',
-                           f'{latest_build_path}/{ostree_commit_tar}',
+                           f'{build_path}/{ostree_commit_tar}',
                            '-C', tmprepo])
 
 tmp_osreleasedir = 'tmp/usrlib-osrelease'
@@ -95,17 +97,17 @@ if display_name == "":
     raise SystemExit(f"Failed to find NAME= in /usr/lib/os-release in commit {ostree_commit}")
 shutil.rmtree(tmp_osreleasedir)
 
-osc_name_and_tag = f"{name}:{latest_build}"
+osc_name_and_tag = f"{name}:{args.build}"
 if args.arch_tag:
     arch = meta.get("coreos-assembler.basearch", cmdlib.get_basearch)
-    osc_name_and_tag = f"{name}:{latest_build}-{arch}"
+    osc_name_and_tag = f"{name}:{args.build}-{arch}"
 
 # TODO: Use labels for the build hash and avoid pulling the oscontainer
 # every time we want to poll.
 # TODO: Remove --from
-print("Entering vm to build oscontainer for build: {}".format(latest_build))
+print("Entering vm to build oscontainer for build: {}".format(args.build))
 
-oci_archive = f"{latest_build_path}/{name}"
+oci_archive = f"{build_path}/{name}"
 cosa_argv = (['/usr/lib/coreos-assembler/buildextend-legacy-oscontainer.sh', oci_archive, 'build', f'--from={args.from_image}'])
 for d in args.add_directory:
     cosa_argv.append(f'--add-directory="{d}"')
