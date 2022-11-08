@@ -36,8 +36,6 @@ name = meta['name'] + '-' + meta['buildid'] + '-legacy-oscontainer.' + arch + '.
 parser = argparse.ArgumentParser()
 parser.add_argument("--arch-tag", help="append arch name to push tag",
                     action='store_true')
-parser.add_argument("--name", help="oscontainer name",
-                    action='store', default=f'{name}')
 parser.add_argument("--from", help="Base image", default='scratch',
                     dest='from_image')
 parser.add_argument("--format", help="Format to use for push")
@@ -95,17 +93,17 @@ if display_name == "":
     raise SystemExit(f"Failed to find NAME= in /usr/lib/os-release in commit {ostree_commit}")
 shutil.rmtree(tmp_osreleasedir)
 
-osc_name_and_tag = f"{args.name}:{latest_build}"
+osc_name_and_tag = f"{name}:{latest_build}"
 if args.arch_tag:
     arch = meta.get("coreos-assembler.basearch", cmdlib.get_basearch)
-    osc_name_and_tag = f"{args.name}:{latest_build}-{arch}"
+    osc_name_and_tag = f"{name}:{latest_build}-{arch}"
 
 # TODO: Use labels for the build hash and avoid pulling the oscontainer
 # every time we want to poll.
 # TODO: Remove --from
 print("Entering vm to build oscontainer for build: {}".format(latest_build))
 
-oci_archive = f"{latest_build_path}/{args.name}"
+oci_archive = f"{latest_build_path}/{name}"
 cosa_argv = (['/usr/lib/coreos-assembler/buildextend-legacy-oscontainer.sh', oci_archive, 'build', f'--from={args.from_image}'])
 for d in args.add_directory:
     cosa_argv.append(f'--add-directory="{d}"')
@@ -118,7 +116,7 @@ if args.format is not None:
 subprocess.check_call(cosa_argv + [tmprepo, meta['ostree-commit'], osc_name_and_tag])
 
 # Inject the oscontainer with SHA256 into the build metadata
-meta['images']['legacy-oscontainer'] = {'path': args.name,
+meta['images']['legacy-oscontainer'] = {'path': name,
                                         'sha256': sha256sum_file(oci_archive),
                                         'size': os.path.getsize(oci_archive),
                                         "skip-compression": True}
