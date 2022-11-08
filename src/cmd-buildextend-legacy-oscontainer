@@ -6,7 +6,6 @@
 # command.
 
 import argparse
-import json
 import yaml
 import os
 import shutil
@@ -19,6 +18,8 @@ cosa_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, cosa_dir)
 
 from cosalib import cmdlib
+from cosalib.builds import Builds
+from cosalib.meta import GenericBuildMeta
 
 
 parser = argparse.ArgumentParser()
@@ -33,18 +34,13 @@ parser.add_argument("--add-directory", help="Copy in all content from referenced
 
 args = parser.parse_args()
 
-with open('builds/builds.json') as f:
-    builds = json.load(f)['builds']
-if len(builds) == 0:
-    cmdlib.fatal("No builds found")
+builds = Builds()
 if not args.build:
-    args.build = builds[0]['id']
+    args.build = builds.get_latest()
 arch = cmdlib.get_basearch()
 build_path = f"builds/{args.build}/{arch}"
 
-metapath = f"{build_path}/meta.json"
-with open(metapath) as f:
-    meta = json.load(f)
+meta = GenericBuildMeta(build=args.build)
 
 name = meta['name'] + '-' + meta['buildid'] + '-legacy-oscontainer.' + arch + '.ociarchive'
 
@@ -52,8 +48,7 @@ name = meta['name'] + '-' + meta['buildid'] + '-legacy-oscontainer.' + arch + '.
 if os.path.exists('src/config/extensions.yaml'):
     if 'extensions' not in meta:
         runcmd(['coreos-assembler', 'buildextend-extensions'])
-        with open(metapath) as f:
-            meta = json.load(f)
+        meta = GenericBuildMeta(build=args.build)
     assert 'extensions' in meta
 
 configdir = os.path.abspath('src/config')
@@ -124,7 +119,5 @@ meta['images']['legacy-oscontainer'] = {'path': name,
                                         'sha256': sha256sum_file(oci_archive),
                                         'size': os.path.getsize(oci_archive),
                                         "skip-compression": True}
-metapath_new = f"{metapath}.new"
-with open(metapath_new, 'w') as f:
-    json.dump(meta, f, sort_keys=True)
-shutil.move(metapath_new, metapath)
+meta.write(artifact_name='legacy-oscontainer')
+print("Updated meta.json")
