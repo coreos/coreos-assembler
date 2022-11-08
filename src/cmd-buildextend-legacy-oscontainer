@@ -20,6 +20,17 @@ sys.path.insert(0, cosa_dir)
 from cosalib import cmdlib
 
 
+parser = argparse.ArgumentParser()
+parser.add_argument("--arch-tag", help="append arch name to push tag",
+                    action='store_true')
+parser.add_argument("--from", help="Base image", default='scratch',
+                    dest='from_image')
+parser.add_argument("--format", help="Format to use for push")
+parser.add_argument("--add-directory", help="Copy in all content from referenced directory DIR",
+                    metavar='DIR', action='append', default=[])
+
+args = parser.parse_args()
+
 with open('builds/builds.json') as f:
     builds = json.load(f)['builds']
 if len(builds) == 0:
@@ -33,16 +44,6 @@ with open(metapath) as f:
     meta = json.load(f)
 
 name = meta['name'] + '-' + meta['buildid'] + '-legacy-oscontainer.' + arch + '.ociarchive'
-parser = argparse.ArgumentParser()
-parser.add_argument("--arch-tag", help="append arch name to push tag",
-                    action='store_true')
-parser.add_argument("--from", help="Base image", default='scratch',
-                    dest='from_image')
-parser.add_argument("--format", help="Format to use for push")
-parser.add_argument("--add-directory", help="Copy in all content from referenced directory DIR",
-                    metavar='DIR', action='append', default=[])
-
-args = parser.parse_args()
 
 # for backcompat, we auto-build extensions if they're missing
 if os.path.exists('src/config/extensions.yaml'):
