@@ -33,7 +33,10 @@ func buildExtensionContainer() error {
 		return err
 	}
 	targetname := cosaBuild.Name + "-" + buildID + "-extensions-container" + "." + arch + ".ociarchive"
-	process := "runvm -- /usr/lib/coreos-assembler/build-extensions-container.sh " + arch + " $tmp_builddir/" + targetname + " " + buildID
+	process := "runvm -chardev \"file,id=ociarchiveout,path=${tmp_builddir}/\"" + targetname +
+		" -device \"virtserialport,chardev=ociarchiveout,name=ociarchiveout\"" +
+		" -- /usr/lib/coreos-assembler/build-extensions-container.sh " + arch +
+		" /dev/virtio-ports/ociarchiveout " + buildID
 	if err := sh.Process(process); err != nil {
 		return err
 	}
