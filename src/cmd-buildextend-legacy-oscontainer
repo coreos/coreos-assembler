@@ -62,7 +62,7 @@ if os.path.exists(oscconfigpath):
 if 'base' in configyaml:
     args.from_image = configyaml['base']
 
-print("Preparing to upload oscontainer for build: {}".format(args.build))
+print(f"Building legacy-oscontainer for build {args.build}")
 ostree_commit = meta['ostree-commit']
 
 tmprepo = "{}/tmp/repo".format(os.getcwd())
