@@ -626,11 +626,10 @@ boot
                        '-efi-boot', 'images/efiboot.img',
                        '-no-emul-boot']
 
-    # Sanity-check that all kargs files that we found earlier still exist. This
-    # ensures that any modifications made also updated kargs_json as needed.
-    for f in kargs_json['files']:
-        fn = os.path.join(tmpisoroot, f['path'])
-        assert os.path.exists(fn), f"{fn} no longer exists"
+    # We've done everything that might affect kargs, so filter out any files
+    # that no longer exist and write out the kargs JSON if it lists any files
+    kargs_json['files'] = [f for f in kargs_json['files']
+            if os.path.exists(os.path.join(tmpisoroot, f['path']))]
     kargs_json['files'].sort(key=lambda f: f['path'])
     if kargs_json['files']:
         # Store the location of "karg embed areas" for use by
