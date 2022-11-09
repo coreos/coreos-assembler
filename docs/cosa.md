@@ -42,7 +42,7 @@ other platforms or cloud providers:
 | Name | Description |
 | ---- | ----------- |
 | [buildextend-live](https://github.com/coreos/coreos-assembler/blob/main/src/cmd-buildextend-live) | Generate the Live ISO
-| [buildextend-{dasd,metal,metal4k,qemu}](https://github.com/coreos/coreos-assembler/blob/main/src/cmd-buildextend-metal) | Generate artifacts for the given platforms
+| [buildextend-{dasd,metal,metal4k,qemu,secex}](https://github.com/coreos/coreos-assembler/blob/main/src/cmd-buildextend-metal) | Generate artifacts for the given platforms
 | [buildextend-{aliyun,aws,azure,digitalocean,exoscale,gcp,vultr}](https://github.com/coreos/coreos-assembler/blob/main/src/cmd-ore-wrapper) | Generate artifacts for the given platforms
 | [buildextend-{azurestack,ibmcloud,openstack,vmware}](https://github.com/coreos/coreos-assembler/blob/main/src/cmd-artifact-disk) | Generate artifacts for the given platforms
 | [{aliyun,aws}-replicate](https://github.com/coreos/coreos-assembler/blob/main/src/cmd-ore-wrapper) | Replicate images on the platforms (AMIs for AWS)
