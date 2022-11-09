@@ -72,6 +72,12 @@ export PATH=$PATH:/sbin:/usr/sbin
 arch="$(uname -m)"
 
 if [ -n "$platforms_json" ]; then
+    # just copy it over to /tmp and work from there to minimize 9p I/O
+    cp "${platforms_json}" /tmp/platforms.json
+    platforms_json=/tmp/platforms.json
+fi
+
+if [ -n "$platforms_json" ]; then
     platform_grub_cmds=$(jq -r ".${arch}.${platform}.grub_commands // [] | join(\"\\\\n\")" < "${platforms_json}")
     platform_kargs=$(jq -r ".${arch}.${platform}.kernel_arguments // [] | join(\" \")" < "${platforms_json}")
 else
