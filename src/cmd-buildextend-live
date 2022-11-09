@@ -421,7 +421,7 @@ def generate_iso():
             if key == grubpath:
                 files_with_karg_embed_areas[boot_grubpath] = files_with_karg_embed_areas[key]
                 del files_with_karg_embed_areas[key]
-        
+
         # safely remove things we don't need in the final ISO tree
         for d in ['EFI', 'isolinux', 'zipl.prm']:
             run_verbose(['rm', '-rf', os.path.join(tmpisoroot, d)])
