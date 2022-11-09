@@ -30,7 +30,7 @@ func buildExtensionContainer() error {
 	if err != nil {
 		return err
 	}
-	if _, err := sh.PrepareBuild(); err != nil {
+	if _, err := sh.PrepareBuild("extensions-container"); err != nil {
 		return errors.Wrapf(err, "calling prepare_build")
 	}
 	targetname := cosaBuild.Name + "-" + buildID + "-extensions-container" + "." + arch + ".ociarchive"
