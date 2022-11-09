@@ -164,7 +164,10 @@ func (sh *CosaSh) Process(buf string) error {
 }
 
 // PrepareBuild prepares for a build, returning the newly allocated build directory
-func (sh *CosaSh) PrepareBuild() (string, error) {
+func (sh *CosaSh) PrepareBuild(artifact_name string) (string, error) {
+	if artifact_name != "" {
+		sh.Process(fmt.Sprintf("IMAGE_TYPE=%s", artifact_name))
+	}
 	return sh.ProcessWithReply(`prepare_build
 pwd >&3
 `)
