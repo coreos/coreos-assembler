@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC1091
 set -euo pipefail
-# Start VM and call buildah
+# shellcheck source=src/cmdlib.sh
 . /usr/lib/coreos-assembler/cmdlib.sh
+
+# Start VM and call buildah
 final_outfile=$(realpath "$1"); shift
 IMAGE_TYPE=legacy-oscontainer
 prepare_build
-# shellcheck disable=SC2154
 tmp_outfile=${tmp_builddir}/legacy-oscontainer.ociarchive
 runvm -chardev "file,id=ociarchiveout,path=${tmp_outfile}" \
     -device "virtserialport,chardev=ociarchiveout,name=ociarchiveout" -- \
