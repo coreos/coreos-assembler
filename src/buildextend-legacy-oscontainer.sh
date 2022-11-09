@@ -4,6 +4,7 @@ set -euo pipefail
 # Start VM and call buildah
 . /usr/lib/coreos-assembler/cmdlib.sh
 final_outfile=$(realpath "$1"); shift
+IMAGE_TYPE=legacy-oscontainer
 prepare_build
 # shellcheck disable=SC2154
 tmp_outfile=${tmp_builddir}/legacy-oscontainer.ociarchive
