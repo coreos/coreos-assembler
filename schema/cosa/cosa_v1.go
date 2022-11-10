@@ -88,6 +88,7 @@ type BuildArtifacts struct {
 	Initramfs          *Artifact `json:"initramfs,omitempty"`
 	Iso                *Artifact `json:"iso,omitempty"`
 	Kernel             *Artifact `json:"kernel,omitempty"`
+	LegacyOscontainer  *Artifact `json:"legacy-oscontainer,omitempty"`
 	LiveInitramfs      *Artifact `json:"live-initramfs,omitempty"`
 	LiveIso            *Artifact `json:"live-iso,omitempty"`
 	LiveKernel         *Artifact `json:"live-kernel,omitempty"`
