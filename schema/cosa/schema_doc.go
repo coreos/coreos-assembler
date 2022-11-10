@@ -178,7 +178,7 @@ var generatedSchemaJSON = `{
       }
  },
  "$schema":"http://json-schema.org/draft-07/schema#",
- "$id":"http://github.com/coreos/coreos-assembler/blob/main/schema/v1.json",
+ "$id":"http://github.com/coreos/coreos-assembler/blob/main/v1.json.json",
  "type":"object",
  "title":"CoreOS Assember v1 meta.json schema",
  "required": [
@@ -400,6 +400,7 @@ var generatedSchemaJSON = `{
        "dasd",
        "digitalocean",
        "exoscale",
+       "legacy-oscontainer",
        "gcp",
        "ibmcloud",
        "powervs",
@@ -434,6 +435,12 @@ var generatedSchemaJSON = `{
          "$id":"#/properties/images/properties/exoscale",
          "type":"object",
          "title":"exoscale",
+         "$ref": "#/definitions/artifact"
+       },
+       "legacy-oscontainer": {
+         "$id": "#/properties/images/properties/legacy-oscontainer",
+         "type": "object",
+         "title": "legacy-oscontainer",
          "$ref": "#/definitions/artifact"
        },
        "qemu": {
