@@ -72,6 +72,7 @@ type Build struct {
 	PkgdiffBetweenBuilds      PackageSetDifferences `json:"pkgdiff,omitempty"`
 	PowerVirtualServer        *Cloudartifact        `json:"powervs,omitempty"`
 	ReleasePayload            *Image                `json:"release-payload,omitempty"`
+	YumReposGit               *Git                  `json:"coreos-assembler.yumrepos-git,omitempty"`
 }
 
 type BuildArtifacts struct {
