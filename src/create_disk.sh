@@ -69,11 +69,11 @@ udevtrig() {
 }
 
 export PATH=$PATH:/sbin:/usr/sbin
-arch="$(uname -m)"
+archname="$(uname -m)"
 
 if [ -n "$platforms_json" ]; then
-    platform_grub_cmds=$(jq -r ".${arch}.${platform}.grub_commands // [] | join(\"\\\\n\")" < "${platforms_json}")
-    platform_kargs=$(jq -r ".${arch}.${platform}.kernel_arguments // [] | join(\" \")" < "${platforms_json}")
+    platform_grub_cmds=$(jq -r ".${archname}.${platform}.grub_commands // [] | join(\"\\\\n\")" < "${platforms_json}")
+    platform_kargs=$(jq -r ".${archname}.${platform}.kernel_arguments // [] | join(\" \")" < "${platforms_json}")
 else
     # Add legacy kargs and console settings
     platform_grub_cmds='serial --speed=115200\nterminal_input serial console\nterminal_output serial console'
@@ -84,8 +84,7 @@ else
     # DEFAULT_TERMINAL as ttysclp0, which is helpful for building/testing
     # with KVM+virtio (cmd-run).  For aarch64, ttyAMA0 is used as the
     # default console
-    # shellcheck disable=SC2031
-    case "$arch" in
+    case "$archname" in
         "aarch64"|"s390x") platform_kargs= ;;
         *) platform_kargs="console=tty0 console=${DEFAULT_TERMINAL},115200n8" ;;
     esac
@@ -162,8 +161,7 @@ if [ "${rootfs_size}" != "0" ]; then
     rootfs_size="+${rootfs_size}"
 fi
 
-# shellcheck disable=SC2031
-case "$arch" in
+case "$archname" in
     x86_64)
         EFIPN=2
         sgdisk -Z "$disk" \
@@ -327,8 +325,7 @@ fi
 
 # Compute kargs
 allkargs="$extrakargs"
-# shellcheck disable=SC2031
-if [ "$arch" != s390x ]; then
+if [ "$archname" != s390x ]; then
     # Note that $ignition_firstboot is interpreted by grub at boot time,
     # *not* the shell here.  Hence the backslash escape.
     allkargs+=" \$ignition_firstboot"
@@ -441,10 +438,9 @@ install_grub_cfg() {
         > $rootfs/boot/grub2/grub.cfg
     if [ -n "$platforms_json" ]; then
         # Copy platforms table if it's non-empty for this arch
-        # shellcheck disable=SC2031
-        if jq -e ".$arch" < "$platforms_json" > /dev/null; then
+        if jq -e ".$archname" < "$platforms_json" > /dev/null; then
             mkdir -p "$rootfs/boot/coreos"
-            jq ".$arch" < "$platforms_json" > "$rootfs/boot/coreos/platforms.json"
+            jq ".$archname" < "$platforms_json" > "$rootfs/boot/coreos/platforms.json"
         fi
     fi
 }
@@ -462,8 +458,7 @@ chroot_run() {
 }
 
 # Other arch-specific bootloader changes
-# shellcheck disable=SC2031
-case "$arch" in
+case "$archname" in
 x86_64)
     # UEFI
     install_uefi
@@ -500,8 +495,7 @@ s390x)
 esac
 
 # enable support for GRUB password
-# shellcheck disable=SC2031
-if [ "$arch" != s390x ]; then
+if [ "$archname" != s390x ]; then
     ostree config --repo $rootfs/ostree/repo set sysroot.bls-append-except-default 'grub_users=""'
 fi
 
