@@ -147,6 +147,11 @@ type QemuInstance struct {
 	qmpSocketPath string
 }
 
+// Signaled returns whether QEMU process was signaled.
+func (inst *QemuInstance) Signaled() bool {
+	return inst.qemu.Signaled()
+}
+
 // Pid returns the PID of QEMU process.
 func (inst *QemuInstance) Pid() int {
 	return inst.qemu.Pid()
