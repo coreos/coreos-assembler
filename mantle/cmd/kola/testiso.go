@@ -537,8 +537,12 @@ func awaitCompletion(ctx context.Context, inst *platform.QemuInstance, outdir st
 	}
 	go func() {
 		err := inst.Wait()
+		// only one Wait() gets process data, so also manually check for signal
+		if err == nil && inst.Signaled() {
+			err = errors.New("process killed")
+		}
 		if err != nil {
-			errchan <- err
+			errchan <- errors.Wrapf(err, "QEMU unexpectedly exited while awaiting completion")
 		}
 		time.Sleep(1 * time.Minute)
 		errchan <- fmt.Errorf("QEMU exited; timed out waiting for completion")
@@ -549,6 +553,10 @@ func awaitCompletion(ctx context.Context, inst *platform.QemuInstance, outdir st
 			l, err := r.ReadString('\n')
 			if err != nil {
 				if err == io.EOF {
+					// this may be from QEMU getting killed or exiting; wait a bit
+					// to give a chance for .Wait() above to feed the channel with a
+					// better error
+					time.Sleep(1 * time.Second)
 					errchan <- fmt.Errorf("Got EOF from completion channel, %s expected", exp)
 				} else {
 					errchan <- errors.Wrapf(err, "reading from completion channel")
