@@ -41,11 +41,8 @@ install_rpms() {
     local builddeps
     local frozendeps
 
-    # freeze grub2 due to https://github.com/coreos/coreos-assembler/issues/3148
+    # no frozen deps right now
     frozendeps=""
-    if [ "${arch}" != s390x ]; then
-        frozendeps=$(echo grub2{-common,-tools-extra}-2.06-52.fc36)
-    fi
 
     # First, a general update; this is best practice.  We also hit an issue recently
     # where qemu implicitly depended on an updated libusbx but didn't have a versioned
