@@ -47,6 +47,9 @@ type Cmd interface {
 
 	// Simplified wrapper for Process.Pid
 	Pid() int
+
+	// Simplified wrapper to know if a process was signaled
+	Signaled() bool
 }
 
 // Basic Cmd implementation based on exec.Cmd
@@ -91,6 +94,14 @@ func (cmd *ExecCmd) Kill() error {
 		}
 	}
 	return err
+}
+
+func (cmd *ExecCmd) Signaled() bool {
+	if cmd.ProcessState == nil {
+		return false
+	}
+	status := cmd.ProcessState.Sys().(syscall.WaitStatus)
+	return status.Signaled()
 }
 
 func (cmd *ExecCmd) Pid() int {
