@@ -476,7 +476,9 @@ x86_64)
     if [ "${x86_bios_bootloader}" = 1 ]; then
         # And BIOS grub in addition.  See also
         # https://github.com/coreos/fedora-coreos-tracker/issues/32
-        grub2-install \
+        # Install BIOS/PReP bootloader using the target system's grub2-install,
+        # see https://github.com/coreos/coreos-assembler/issues/3156
+        chroot_run /sbin/grub2-install \
             --target i386-pc \
             --boot-directory $rootfs/boot \
             --modules mdraid1x \
@@ -489,7 +491,7 @@ aarch64)
     ;;
 ppc64le)
     # to populate PReP Boot, i.e. support pseries
-    grub2-install --target=powerpc-ieee1275 --boot-directory $rootfs/boot --no-nvram "${disk}${PREPPN}"
+    chroot_run /sbin/grub2-install --target=powerpc-ieee1275 --boot-directory $rootfs/boot --no-nvram "${disk}${PREPPN}"
     install_grub_cfg
     ;;
 s390x)
