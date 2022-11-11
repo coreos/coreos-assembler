@@ -24,6 +24,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	coreosarch "github.com/coreos/stream-metadata-go/arch"
 	"github.com/pkg/errors"
@@ -436,10 +437,24 @@ func (t *installerRun) completePxeSetup(kargs []string) error {
 func switchBootOrderSignal(qinst *QemuInstance, bootstartedchan *os.File, booterrchan *chan error) {
 	*booterrchan = make(chan error)
 	go func() {
+		err := qinst.Wait()
+		// only one Wait() gets process data, so also manually check for signal
+		if err == nil && qinst.Signaled() {
+			err = errors.New("process killed")
+		}
+		if err != nil {
+			*booterrchan <- errors.Wrapf(err, "QEMU unexpectedly exited while waiting for %s", bootStartedSignal)
+		}
+	}()
+	go func() {
 		r := bufio.NewReader(bootstartedchan)
 		l, err := r.ReadString('\n')
 		if err != nil {
 			if err == io.EOF {
+				// this may be from QEMU getting killed or exiting; wait a bit
+				// to give a chance for .Wait() above to feed the channel with a
+				// better error
+				time.Sleep(1 * time.Second)
 				*booterrchan <- fmt.Errorf("Got EOF from boot started channel, %s expected", bootStartedSignal)
 			} else {
 				*booterrchan <- errors.Wrapf(err, "reading from boot started channel")
