@@ -174,10 +174,9 @@ func (a *API) CopyObject(srcBucket, srcName, destBucket string) error {
 	})
 	if err != nil {
 		if awserr, ok := err.(awserr.Error); ok {
-			if awserr.Code() == "BucketAlreadyOwnedByYou" {
-				return nil
-			}
+			err = awserr
 		}
+		return fmt.Errorf("Error copying object to bucket: %v", err)
 	}
 
 	// Wait to see if the item got copied
