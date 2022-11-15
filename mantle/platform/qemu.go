@@ -136,6 +136,7 @@ type bootIso struct {
 // QemuInstance holds an instantiated VM through its lifecycle.
 type QemuInstance struct {
 	qemu               exec.Cmd
+	architecture       string
 	tempdir            string
 	swtpm              exec.Cmd
 	nbdServers         []exec.Cmd
@@ -295,7 +296,10 @@ func (inst *QemuInstance) Destroy() {
 // is used to boot from the network device (boot once is not supported). For s390x, the boot ordering was not a problem as it
 // would always read from disk first. For aarch64, the bootindex needs to be switched to boot from disk before a reboot
 func (inst *QemuInstance) SwitchBootOrder() (err2 error) {
-	if coreosarch.CurrentRpmArch() != "s390x" && coreosarch.CurrentRpmArch() != "aarch64" {
+	switch inst.architecture {
+	case "s390x", "aarch64":
+		break
+	default:
 		//Not applicable for other arches
 		return nil
 	}
@@ -401,6 +405,8 @@ type QemuBuilder struct {
 	// File to which to redirect the serial console
 	ConsoleFile string
 
+	// If set, use QEMU full emulation for the target architecture
+	architecture string
 	// Memory defaults to 1024 on most architectures, others it may be 2048
 	Memory int
 	// Processors < 0 means to use host count, unset means 1, values > 1 are directly used
@@ -454,10 +460,11 @@ type QemuBuilder struct {
 // NewQemuBuilder creates a new build for QEMU with default settings.
 func NewQemuBuilder() *QemuBuilder {
 	ret := QemuBuilder{
-		Firmware:  "bios",
-		Swtpm:     true,
-		Pdeathsig: true,
-		Argv:      []string{},
+		Firmware:     "bios",
+		Swtpm:        true,
+		Pdeathsig:    true,
+		Argv:         []string{},
+		architecture: coreosarch.CurrentRpmArch(),
 	}
 	return &ret
 }
@@ -526,15 +533,15 @@ func (builder *QemuBuilder) AddFd(fd *os.File) string {
 }
 
 // virtio returns a virtio device argument for qemu, which is architecture dependent
-func virtio(device, args string) string {
+func virtio(arch, device, args string) string {
 	var suffix string
-	switch coreosarch.CurrentRpmArch() {
+	switch arch {
 	case "x86_64", "ppc64le", "aarch64":
 		suffix = "pci"
 	case "s390x":
 		suffix = "ccw"
 	default:
-		panic(fmt.Sprintf("RpmArch %s unhandled in virtio()", coreosarch.CurrentRpmArch()))
+		panic(fmt.Sprintf("RpmArch %s unhandled in virtio()", arch))
 	}
 	return fmt.Sprintf("virtio-%s-%s,%s", device, suffix, args)
 }
@@ -574,7 +581,7 @@ func (builder *QemuBuilder) setupNetworking() error {
 		netdev += ",restrict=on"
 	}
 
-	builder.Append("-netdev", netdev, "-device", virtio("net", "netdev=eth0"))
+	builder.Append("-netdev", netdev, "-device", virtio(builder.architecture, "net", "netdev=eth0"))
 	return nil
 }
 
@@ -587,12 +594,22 @@ func (builder *QemuBuilder) setupAdditionalNetworking() error {
 		macSuffix := fmt.Sprintf("%02x", macCounter)
 
 		netdev := fmt.Sprintf("user,id=eth%s,dhcpstart=10.0.2.%s", idSuffix, netSuffix)
-		device := virtio("net", fmt.Sprintf("netdev=eth%s,mac=52:55:00:d1:56:%s", idSuffix, macSuffix))
+		device := virtio(builder.architecture, "net", fmt.Sprintf("netdev=eth%s,mac=52:55:00:d1:56:%s", idSuffix, macSuffix))
 		builder.Append("-netdev", netdev, "-device", device)
 		macCounter++
 	}
 
 	return nil
+}
+
+// SetArchitecture enables qemu full emulation for the target architecture.
+func (builder *QemuBuilder) SetArchitecture(arch string) error {
+	switch arch {
+	case "x86_64", "aarch64", "s390x", "ppc64le":
+		builder.architecture = arch
+		return nil
+	}
+	return fmt.Errorf("architecture %s not supported by coreos-assembler qemu", arch)
 }
 
 // Mount9p sets up a mount point from the host to guest.  To be replaced
@@ -604,13 +621,13 @@ func (builder *QemuBuilder) Mount9p(source, destHint string, readonly bool) {
 		readonlyStr = ",readonly=on"
 	}
 	builder.Append("--fsdev", fmt.Sprintf("local,id=fs%d,path=%s,security_model=mapped%s", builder.fs9pID, source, readonlyStr))
-	builder.Append("-device", virtio("9p", fmt.Sprintf("fsdev=fs%d,mount_tag=%s", builder.fs9pID, destHint)))
+	builder.Append("-device", virtio(builder.architecture, "9p", fmt.Sprintf("fsdev=fs%d,mount_tag=%s", builder.fs9pID, destHint)))
 }
 
 // supportsFwCfg if the target system supports injecting
 // Ignition via the qemu -fw_cfg option.
 func (builder *QemuBuilder) supportsFwCfg() bool {
-	switch coreosarch.CurrentRpmArch() {
+	switch builder.architecture {
 	case "s390x", "ppc64le":
 		return false
 	}
@@ -619,7 +636,7 @@ func (builder *QemuBuilder) supportsFwCfg() bool {
 
 // supportsSwtpm if the target system supports a virtual TPM device
 func (builder *QemuBuilder) supportsSwtpm() bool {
-	switch coreosarch.CurrentRpmArch() {
+	switch builder.architecture {
 	case "s390x":
 		// s390x does not support a backend for TPM
 		return false
@@ -655,7 +672,7 @@ type coreosGuestfish struct {
 	remote string
 }
 
-func newGuestfish(diskImagePath string, diskSectorSize int) (*coreosGuestfish, error) {
+func newGuestfish(arch, diskImagePath string, diskSectorSize int) (*coreosGuestfish, error) {
 	// Set guestfish backend to direct in order to avoid libvirt as backend.
 	// Using libvirt can lead to permission denied issues if it does not have access
 	// rights to the qcow image
@@ -668,7 +685,7 @@ func newGuestfish(diskImagePath string, diskSectorSize int) (*coreosGuestfish, e
 	cmd.Env = append(os.Environ(), "LIBGUESTFS_BACKEND=direct")
 
 	// Hack to run with a wrapper on older P8 hardware running RHEL7
-	switch coreosarch.CurrentRpmArch() {
+	switch arch {
 	case "ppc64le":
 		u := unix.Utsname{}
 		if err := unix.Uname(&u); err != nil {
@@ -736,8 +753,8 @@ func (gf *coreosGuestfish) destroy() {
 }
 
 // setupPreboot performs changes necessary before the disk is booted
-func setupPreboot(confPath, firstbootkargs, kargs string, diskImagePath string, diskSectorSize int) error {
-	gf, err := newGuestfish(diskImagePath, diskSectorSize)
+func setupPreboot(arch, confPath, firstbootkargs, kargs string, diskImagePath string, diskSectorSize int) error {
+	gf, err := newGuestfish(arch, diskImagePath, diskSectorSize)
 	if err != nil {
 		return err
 	}
@@ -898,7 +915,7 @@ func (builder *QemuBuilder) addDiskImpl(disk *Disk, primary bool) error {
 		}
 		requiresInjection := builder.ConfigFile != "" && builder.ForceConfigInjection
 		if requiresInjection || builder.AppendFirstbootKernelArgs != "" || builder.AppendKernelArgs != "" {
-			if err := setupPreboot(builder.ConfigFile, builder.AppendFirstbootKernelArgs, builder.AppendKernelArgs,
+			if err := setupPreboot(builder.architecture, builder.ConfigFile, builder.AppendFirstbootKernelArgs, builder.AppendKernelArgs,
 				disk.dstFileName, disk.SectorSize); err != nil {
 				return errors.Wrapf(err, "ignition injection with guestfs failed")
 			}
@@ -952,13 +969,13 @@ func (builder *QemuBuilder) addDiskImpl(disk *Disk, primary bool) error {
 		wwn := rand.Uint64()
 
 		var bus string
-		switch coreosarch.CurrentRpmArch() {
+		switch builder.architecture {
 		case "x86_64", "ppc64le", "aarch64":
 			bus = "pci"
 		case "s390x":
 			bus = "ccw"
 		default:
-			panic(fmt.Sprintf("Mantle doesn't know which bus type to use on %s", coreosarch.CurrentRpmArch()))
+			panic(fmt.Sprintf("Mantle doesn't know which bus type to use on %s", builder.architecture))
 		}
 
 		for i := 0; i < 2; i++ {
@@ -984,7 +1001,7 @@ func (builder *QemuBuilder) addDiskImpl(disk *Disk, primary bool) error {
 		disk.dstFileName = ""
 		switch channel {
 		case "virtio":
-			builder.Append("-device", virtio("blk", fmt.Sprintf("drive=%s%s", id, opts)))
+			builder.Append("-device", virtio(builder.architecture, "blk", fmt.Sprintf("drive=%s%s", id, opts)))
 		case "nvme":
 			builder.Append("-device", fmt.Sprintf("nvme,drive=%s%s", id, opts))
 		default:
@@ -1067,7 +1084,7 @@ func (builder *QemuBuilder) finalize() {
 
 		// Then later, other non-x86_64 seemed to just copy that.
 		memory := 1024
-		switch coreosarch.CurrentRpmArch() {
+		switch builder.architecture {
 		case "aarch64", "s390x", "ppc64le":
 			memory = 2048
 		}
@@ -1083,15 +1100,16 @@ func (builder *QemuBuilder) Append(args ...string) {
 
 // baseQemuArgs takes a board and returns the basic qemu
 // arguments needed for the current architecture.
-func baseQemuArgs() []string {
+func baseQemuArgs(arch string) ([]string, error) {
 	accel := "accel=kvm"
 	kvm := true
-	if _, ok := os.LookupEnv("COSA_NO_KVM"); ok {
+	hostArch := coreosarch.CurrentRpmArch()
+	if _, ok := os.LookupEnv("COSA_NO_KVM"); ok || hostArch != arch {
 		accel = "accel=tcg"
 		kvm = false
 	}
 	var ret []string
-	switch coreosarch.CurrentRpmArch() {
+	switch arch {
 	case "x86_64":
 		ret = []string{
 			"qemu-system-x86_64",
@@ -1113,19 +1131,19 @@ func baseQemuArgs() []string {
 			"-machine", "pseries,kvm-type=HV,vsmt=8,cap-fwnmi=off," + accel,
 		}
 	default:
-		panic(fmt.Sprintf("RpmArch %s combo not supported for qemu ", coreosarch.CurrentRpmArch()))
+		return nil, fmt.Errorf("architecture %s not supported for qemu", arch)
 	}
 	if kvm {
 		ret = append(ret, "-cpu", "host")
 	} else {
-		if coreosarch.CurrentRpmArch() == "x86_64" {
+		if arch == "x86_64" {
 			// the default qemu64 CPU model does not support x86_64_v2
 			// causing crashes on EL9+ kernels
 			// see https://bugzilla.redhat.com/show_bug.cgi?id=2060839
 			ret = append(ret, "-cpu", "Nehalem")
 		}
 	}
-	return ret
+	return ret, nil
 }
 
 func (builder *QemuBuilder) setupUefi(secureBoot bool) error {
@@ -1289,7 +1307,7 @@ func (builder *QemuBuilder) setupIso() error {
 		}
 		builder.Append("-drive", "file="+builder.iso.path+",format=raw,if=none,readonly=on,id=installiso")
 		if builder.isoAsDisk {
-			builder.Append("-device", virtio("blk", "drive=installiso"+bootindexStr))
+			builder.Append("-device", virtio(builder.architecture, "blk", "drive=installiso"+bootindexStr))
 		} else {
 			builder.Append("-device", "ide-cd,drive=installiso"+bootindexStr)
 		}
@@ -1378,7 +1396,10 @@ func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 		}
 	}()
 
-	argv := baseQemuArgs()
+	argv, err := baseQemuArgs(builder.architecture)
+	if err != nil {
+		return nil, err
+	}
 	argv = append(argv, "-m", fmt.Sprintf("%d", builder.Memory))
 
 	if builder.Processors < 0 {
@@ -1416,7 +1437,7 @@ func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 
 	// We always provide a random source
 	argv = append(argv, "-object", "rng-random,filename=/dev/urandom,id=rng0",
-		"-device", virtio("rng", "rng=rng0"))
+		"-device", virtio(builder.architecture, "rng", "rng=rng0"))
 	if builder.UUID != "" {
 		argv = append(argv, "-uuid", builder.UUID)
 	}
@@ -1518,7 +1539,7 @@ func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 		}
 		argv = append(argv, "-chardev", fmt.Sprintf("socket,id=chrtpm,path=%s", swtpmSock), "-tpmdev", "emulator,id=tpm0,chardev=chrtpm")
 		// There are different device backends on each architecture
-		switch coreosarch.CurrentRpmArch() {
+		switch builder.architecture {
 		case "x86_64":
 			argv = append(argv, "-device", "tpm-tis,tpmdev=tpm0")
 		case "aarch64":
@@ -1560,6 +1581,7 @@ func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 	argv = append(argv, builder.Argv...)
 
 	inst.qemu = exec.Command(argv[0], argv[1:]...)
+	inst.architecture = builder.architecture
 
 	cmd := inst.qemu.(*exec.ExecCmd)
 	cmd.Stderr = os.Stderr

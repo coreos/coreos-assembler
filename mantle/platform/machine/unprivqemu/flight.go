@@ -34,6 +34,7 @@ type Options struct {
 	Board    string
 	Firmware string
 	Memory   string
+	Arch     string
 
 	NbdDisk       bool
 	MultiPathDisk bool
