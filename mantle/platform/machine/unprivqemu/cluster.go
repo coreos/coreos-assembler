@@ -106,7 +106,9 @@ func (qc *Cluster) NewMachineWithQemuOptions(userdata *conf.UserData, options pl
 			return nil, err
 		}
 	}
-	builder.Firmware = qc.flight.opts.Firmware
+	if qc.flight.opts.Firmware != "" {
+		builder.Firmware = qc.flight.opts.Firmware
+	}
 	builder.Swtpm = qc.flight.opts.Swtpm
 	builder.Hostname = fmt.Sprintf("qemu%d", qc.BaseCluster.AllocateMachineSerial())
 	builder.ConsoleFile = qm.consolePath
