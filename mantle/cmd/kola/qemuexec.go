@@ -47,6 +47,8 @@ var (
 	usernet      bool
 	cpuCountHost bool
 
+	architecture string
+
 	hostname       string
 	ignition       string
 	butane         string
@@ -81,6 +83,7 @@ func init() {
 	cmdQemuExec.Flags().StringSliceVar(&ignitionFragments, "add-ignition", nil, "Append well-known Ignition fragment: [\"autologin\", \"autoresize\"]")
 	cmdQemuExec.Flags().StringVarP(&hostname, "hostname", "", "", "Set hostname via DHCP")
 	cmdQemuExec.Flags().IntVarP(&memory, "memory", "m", 0, "Memory in MB")
+	cmdQemuExec.Flags().StringVar(&architecture, "arch", "", "Use full emulation for target architecture (e.g. aarch64, x86_64, s390x, ppc64le)")
 	cmdQemuExec.Flags().StringArrayVarP(&addDisks, "add-disk", "D", []string{}, "Additional disk, human readable size (repeatable)")
 	cmdQemuExec.Flags().BoolVar(&cpuCountHost, "auto-cpus", false, "Automatically set number of cpus to host count")
 	cmdQemuExec.Flags().BoolVar(&directIgnition, "ignition-direct", false, "Do not parse Ignition, pass directly to instance")
@@ -204,6 +207,12 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 
 	builder := platform.NewQemuBuilder()
 	defer builder.Close()
+
+	if architecture != "" {
+		if err := builder.SetArchitecture(architecture); err != nil {
+			return err
+		}
+	}
 
 	var config *conf.Conf
 	if butane != "" {

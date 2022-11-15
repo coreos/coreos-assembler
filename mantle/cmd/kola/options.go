@@ -298,6 +298,9 @@ func syncOptionsImpl(useCosa bool) error {
 			return err
 		}
 	}
+	// Currently the `--arch` option is defined in terms of coreos-assembler, but
+	// we also unconditionally use it for qemu if present.
+	kola.QEMUOptions.Arch = kola.Options.CosaBuildArch
 
 	units, _ := root.PersistentFlags().GetStringSlice("debug-systemd-units")
 	for _, unit := range units {
