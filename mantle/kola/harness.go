@@ -1144,23 +1144,28 @@ func testIsDenyListed(testname string) (bool, error) {
 }
 
 // registerTestDir parses one test directory and registers it as a test
-func registerTestDir(dir, testprefix string, children []os.FileInfo) error {
+func registerTestDir(dir, testprefix string, children []os.DirEntry) error {
 	var dependencydir string
 	var meta externalTestMeta
-	var err error
 	userdata := conf.EmptyIgnition()
 	executables := []string{}
 	for _, c := range children {
 		fpath := filepath.Join(dir, c.Name())
+
+		info, err := c.Info()
+		if err != nil {
+			return errors.Wrapf(err, "c.Info %s", c.Name())
+		}
+
 		// follow symlinks; oddly, there's no IsSymlink()
-		if c.Mode()&os.ModeSymlink != 0 {
-			c, err = os.Stat(fpath)
+		if info.Mode()&os.ModeSymlink != 0 {
+			info, err = os.Stat(fpath)
 			if err != nil {
 				return errors.Wrapf(err, "stat %s", fpath)
 			}
 		}
-		isreg := c.Mode().IsRegular()
-		if isreg && (c.Mode().Perm()&0001) > 0 {
+		isreg := info.Mode().IsRegular()
+		if isreg && (info.Mode().Perm()&0001) > 0 {
 			executables = append(executables, filepath.Join(dir, c.Name()))
 		} else if isreg && c.Name() == "config.ign" {
 			v, err := ioutil.ReadFile(filepath.Join(dir, c.Name()))
@@ -1189,7 +1194,7 @@ func registerTestDir(dir, testprefix string, children []os.FileInfo) error {
 			}
 		} else if c.IsDir() && c.Name() == kolaExtBinDataName {
 			dependencydir = filepath.Join(dir, c.Name())
-		} else if c.Mode()&os.ModeSymlink != 0 && c.Name() == kolaExtBinDataName {
+		} else if info.Mode()&os.ModeSymlink != 0 && c.Name() == kolaExtBinDataName {
 			target, err := filepath.EvalSymlinks(filepath.Join(dir, c.Name()))
 			if err != nil {
 				return err
@@ -1197,7 +1202,7 @@ func registerTestDir(dir, testprefix string, children []os.FileInfo) error {
 			dependencydir = target
 		} else if c.IsDir() {
 			subdir := filepath.Join(dir, c.Name())
-			subchildren, err := ioutil.ReadDir(subdir)
+			subchildren, err := os.ReadDir(subdir)
 			if err != nil {
 				return err
 			}
@@ -1205,7 +1210,7 @@ func registerTestDir(dir, testprefix string, children []os.FileInfo) error {
 			if err := registerTestDir(subdir, subprefix, subchildren); err != nil {
 				return err
 			}
-		} else if isreg && (c.Mode().Perm()&0001) == 0 {
+		} else if isreg && (info.Mode().Perm()&0001) == 0 {
 			file, err := os.Open(filepath.Join(dir, c.Name()))
 			if err != nil {
 				return errors.Wrapf(err, "opening %s", c.Name())
@@ -1244,7 +1249,7 @@ func registerTestDir(dir, testprefix string, children []os.FileInfo) error {
 
 func RegisterExternalTestsWithPrefix(dir, prefix string) error {
 	testsdir := filepath.Join(dir, "tests/kola")
-	children, err := ioutil.ReadDir(testsdir)
+	children, err := os.ReadDir(testsdir)
 	if err != nil {
 		if os.IsNotExist(err) {
 			// The directory doesn't exist.. Skip registering tests
