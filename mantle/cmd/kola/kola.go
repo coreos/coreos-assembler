@@ -386,6 +386,7 @@ func runList(cmd *cobra.Command, args []string) error {
 	}
 	var testlist []*item
 	for name, test := range register.Tests {
+		// fmt.Printf("Looking at test: %s\n", name)
 		item := &item{
 			name,
 			test.Platforms,

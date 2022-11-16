@@ -1151,6 +1151,7 @@ func registerTestDir(dir, testprefix string, children []os.DirEntry) error {
 	executables := []string{}
 	for _, c := range children {
 		fpath := filepath.Join(dir, c.Name())
+		fmt.Printf("Looking at: %s\n", fpath)
 
 		info, err := c.Info()
 		if err != nil {
@@ -1158,12 +1159,22 @@ func registerTestDir(dir, testprefix string, children []os.DirEntry) error {
 		}
 
 		// follow symlinks; oddly, there's no IsSymlink()
+		// Note: we currently don't support nested symlinks
 		if info.Mode()&os.ModeSymlink != 0 {
-			info, err = os.Stat(fpath)
+			fmt.Printf("Found symlink: %s\n", c.Name())
+			dest, err := os.Readlink(fpath)
+			if err != nil {
+				return errors.Wrapf(err, "could not resolve symlink: %s", fpath)
+			}
+			resolved := filepath.Join(dir, dest)
+			fmt.Printf("Resolved: %s\n", resolved)
+			info, err = os.Stat(resolved)
 			if err != nil {
 				return errors.Wrapf(err, "stat %s", fpath)
 			}
+			fmt.Printf("Info: %s\n", info)
 		}
+		// fmt.Printf("Info: %s\n", info)
 		isreg := info.Mode().IsRegular()
 		if isreg && (info.Mode().Perm()&0001) > 0 {
 			executables = append(executables, filepath.Join(dir, c.Name()))
@@ -1193,6 +1204,7 @@ func registerTestDir(dir, testprefix string, children []os.DirEntry) error {
 				return errors.Wrapf(err, "parsing %s", fpath)
 			}
 		} else if c.IsDir() && c.Name() == kolaExtBinDataName {
+			fmt.Printf("Found dir: %s\n", c.Name())
 			dependencydir = filepath.Join(dir, c.Name())
 		} else if info.Mode()&os.ModeSymlink != 0 && c.Name() == kolaExtBinDataName {
 			target, err := filepath.EvalSymlinks(filepath.Join(dir, c.Name()))
