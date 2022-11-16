@@ -35,6 +35,9 @@ RUN chmod g=u /etc/passwd
 # also allow adding certificates
 RUN chmod -R g=u /etc/pki/ca-trust
 
+# Add dnf repovar to be used in the RHCOS repos
+RUN echo "4.11" > /etc/dnf/vars/ocprelease
+
 # run as `builder` user
 USER builder
 ENTRYPOINT ["/usr/bin/dumb-init", "/usr/bin/coreos-assembler"]
