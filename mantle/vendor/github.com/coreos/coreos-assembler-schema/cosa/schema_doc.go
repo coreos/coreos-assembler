@@ -414,6 +414,7 @@ var generatedSchemaJSON = `{
        "dasd",
        "digitalocean",
        "exoscale",
+       "legacy-oscontainer",
        "gcp",
        "ibmcloud",
        "powervs",
@@ -449,6 +450,12 @@ var generatedSchemaJSON = `{
          "$id":"#/properties/images/properties/exoscale",
          "type":"object",
          "title":"exoscale",
+         "$ref": "#/definitions/artifact"
+       },
+       "legacy-oscontainer": {
+         "$id": "#/properties/images/properties/legacy-oscontainer",
+         "type": "object",
+         "title": "legacy-oscontainer",
          "$ref": "#/definitions/artifact"
        },
        "qemu": {
