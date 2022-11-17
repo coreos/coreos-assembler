@@ -35,6 +35,10 @@ RUN chmod g=u /etc/passwd
 # also allow adding certificates
 RUN chmod -R g=u /etc/pki/ca-trust
 
+# Add dnf repovar to be used in the RHCOS repos
+# It should be removed once we get merged: https://github.com/coreos/rpm-ostree/pull/4152
+RUN echo "4.12" > /etc/dnf/vars/ocprelease
+
 # run as `builder` user
 USER builder
 ENTRYPOINT ["/usr/bin/dumb-init", "/usr/bin/coreos-assembler"]
