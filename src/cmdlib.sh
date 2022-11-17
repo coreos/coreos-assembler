@@ -395,7 +395,7 @@ EOF
         # Because right now rpm-ostree doesn't look for .repo files in
         # each included dir.
         # https://github.com/projectatomic/rpm-ostree/issues/1628
-        find "${configdir}/" -name '*.repo' -maxdepth 1 -type f -exec cp -t "${tmp_overridesdir}" {} +
+        find "${configdir}/" -maxdepth 1 -type f -name '*.repo' -exec cp -t "${tmp_overridesdir}" {} +
         if [ -d "${workdir}/src/yumrepos" ]; then
             find "${workdir}/src/yumrepos/" -maxdepth 1 -type f -name '*.repo' -exec cp -t "${tmp_overridesdir}" {} +
         fi
