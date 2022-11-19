@@ -435,6 +435,7 @@ else
         --label="coreos-assembler.image-input-checksum=${image_input_checksum}" \
         --label="org.opencontainers.image.source=${gitsrc}" \
         --label="org.opencontainers.image.revision=${config_gitrev}" \
+        --copymeta-opt=fedora-coreos.stream \
         "${labels[@]}" \
         "${buildid}" \
         oci-archive:"${ostree_tarfile_path}".tmp:latest
