@@ -42,16 +42,6 @@ parser.add_argument("--fast", action='store_true',
                     help="Override compression to `gzip -1`")
 args = parser.parse_args()
 
-# that's the tool default
-gzip_level = 6
-if args.fast:
-    args.compressor = 'gzip'
-    gzip_level = 1
-
-# find extension for --compressor
-ext_dict = {'xz': '.xz', 'gzip': '.gz'}
-ext = ext_dict[args.compressor]
-
 builds = Builds()
 
 # default to latest build if not specified
@@ -61,6 +51,16 @@ else:
     build = builds.get_latest()
 
 print(f"Targeting build: {build}")
+
+# that's the tool default
+gzip_level = 6
+if args.fast:
+    args.compressor = 'gzip'
+    gzip_level = 1
+
+# find extension for compressor
+ext_dict = {'xz': '.xz', 'gzip': '.gz'}
+ext = ext_dict[args.compressor]
 
 
 def get_cpu_param(param):
