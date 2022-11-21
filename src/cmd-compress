@@ -11,7 +11,9 @@ import argparse
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from cosalib.builds import Builds
+from cosalib.meta import GenericBuildMeta
 from cosalib.cmdlib import (
+    extract_image_json,
     ncpu,
     rm_allow_noent,
     runcmd,
@@ -56,7 +58,14 @@ if args.fast:
     args.compressor = 'gzip'
     gzip_level = 1
 elif not args.compressor:
-    args.compressor = DEFAULT_COMPRESSOR
+    workdir = os.getcwd()
+    arches = builds.get_build_arches(build)
+    # image.json isn't arch-dependent, so just extract it from the first arch
+    buildmeta = GenericBuildMeta(workdir=workdir, build=build, basearch=arches[0])
+    extract_image_json(workdir, buildmeta['ostree-commit'])
+    with open(os.path.join(workdir, 'tmp/image.json')) as f:
+        image_json = json.load(f)
+    args.compressor = image_json.get('compressor', DEFAULT_COMPRESSOR)
 
 # find extension for compressor
 ext_dict = {'xz': '.xz', 'gzip': '.gz'}
