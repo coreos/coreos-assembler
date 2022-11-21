@@ -26,10 +26,10 @@ type Worker func(context.Context) error
 
 // WorkerGroup is similar in principle to sync.WaitGroup but manages the
 // Workers itself. This allows it to provide a few helpful features:
-//  - Integration with the context library.
-//  - Limit the number of concurrent Workers.
-//  - Capture the errors returned by each Worker.
-//  - Abort everything after a single Worker reports an error.
+//   - Integration with the context library.
+//   - Limit the number of concurrent Workers.
+//   - Capture the errors returned by each Worker.
+//   - Abort everything after a single Worker reports an error.
 type WorkerGroup struct {
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -98,7 +98,6 @@ func (wg *WorkerGroup) Wait() error {
 //	if err := wg.Start(worker); err != nil {
 //		return wg.WaitError(err)
 //	}
-//
 func (wg *WorkerGroup) WaitError(err error) error {
 	if werr := wg.Wait(); werr != nil {
 		return werr

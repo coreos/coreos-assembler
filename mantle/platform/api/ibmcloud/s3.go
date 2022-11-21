@@ -134,7 +134,7 @@ func (a *API) checkIfObjectExists(objectName, bucketName string) bool {
 	return err == nil
 }
 
-//UploadObject - upload to s3 bucket
+// UploadObject - upload to s3 bucket
 func (a *API) UploadObject(r io.Reader, objectName, bucketName string, force bool) error {
 	// check if image exists and force is not set then bail
 	if !force {

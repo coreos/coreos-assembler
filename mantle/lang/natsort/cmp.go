@@ -19,15 +19,14 @@
 // Strings are sorted as usual, except that decimal integer substrings
 // are compared on their numeric value. For example:
 //
-//     a < a0 < a1 < a1a < a1b < a2 < a10 < a20
+//	a < a0 < a1 < a1a < a1b < a2 < a10 < a20
 //
 // All white space and control characters are ignored.
 //
 // Leading zeros are *not* ignored, which tends to give more
 // reasonable results on decimal fractions:
 //
-//     1.001 < 1.002 < 1.010 < 1.02 < 1.1 < 1.3
-//
+//	1.001 < 1.002 < 1.010 < 1.02 < 1.1 < 1.3
 package natsort
 
 func isDigit(s string, i int) bool {

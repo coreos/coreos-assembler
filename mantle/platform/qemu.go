@@ -1334,10 +1334,10 @@ func (builder *QemuBuilder) SerialPipe() (*os.File, error) {
 
 // VirtioJournal configures the OS and VM to stream the systemd journal
 // (post-switchroot) over a virtio-serial channel.
-// - The first parameter is a poitner to the configuration of the target VM.
-// - The second parameter is an optional queryArguments to filter the stream -
-//   see `man journalctl` for more information.
-// - The return value is a file stream which will be newline-separated JSON.
+//   - The first parameter is a poitner to the configuration of the target VM.
+//   - The second parameter is an optional queryArguments to filter the stream -
+//     see `man journalctl` for more information.
+//   - The return value is a file stream which will be newline-separated JSON.
 func (builder *QemuBuilder) VirtioJournal(config *conf.Conf, queryArguments string) (*os.File, error) {
 	stream, err := builder.VirtioChannelRead("mantlejournal")
 	if err != nil {

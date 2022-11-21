@@ -23,27 +23,28 @@
 //
 // Tests may be skipped if not applicable with a call to
 // the Skip method of *H:
-//     func NeedsSomeData(h *harness.H) {
-//         if os.Getenv("SOME_DATA") == "" {
-//             h.Skip("skipping test due to missing SOME_DATA")
-//         }
-//         ...
-//     }
 //
-// Subtests
+//	func NeedsSomeData(h *harness.H) {
+//	    if os.Getenv("SOME_DATA") == "" {
+//	        h.Skip("skipping test due to missing SOME_DATA")
+//	    }
+//	    ...
+//	}
+//
+// # Subtests
 //
 // The Run method of H allow defining subtests,
 // without having to define separate functions for each. This enables uses
 // like table-driven and hierarchical tests.
 // It also provides a way to share common setup and tear-down code:
 //
-//     func Foo(h *harness.H) {
-//         // <setup code>
-//         h.Run("A=1", func(h *harness.H) { ... })
-//         h.Run("A=2", func(h *harness.H) { ... })
-//         h.Run("B=1", func(h *harness.H) { ... })
-//         // <tear-down code>
-//     }
+//	func Foo(h *harness.H) {
+//	    // <setup code>
+//	    h.Run("A=1", func(h *harness.H) { ... })
+//	    h.Run("A=2", func(h *harness.H) { ... })
+//	    h.Run("B=1", func(h *harness.H) { ... })
+//	    // <tear-down code>
+//	}
 //
 // Each subtest has a unique name: the combination of the name
 // of the top-level test and the sequence of names passed to Run, separated by
@@ -56,40 +57,40 @@
 // empty expression matches any string.
 // For example, using "matching" to mean "whose name contains":
 //
-//     go run foo.go -harness.run ''      # Run all tests.
-//     go run foo.go -harness.run Foo     # Run top-level tests matching "Foo", such as "TestFooBar".
-//     go run foo.go -harness.run Foo/A=  # For top-level tests matching "Foo", run subtests matching "A=".
-//     go run foo.go -harness.run /A=1    # For all top-level tests, run subtests matching "A=1".
+//	go run foo.go -harness.run ''      # Run all tests.
+//	go run foo.go -harness.run Foo     # Run top-level tests matching "Foo", such as "TestFooBar".
+//	go run foo.go -harness.run Foo/A=  # For top-level tests matching "Foo", run subtests matching "A=".
+//	go run foo.go -harness.run /A=1    # For all top-level tests, run subtests matching "A=1".
 //
 // Subtests can also be used to control parallelism. A parent test will only
 // complete once all of its subtests complete. In this example, all tests are
 // run in parallel with each other, and only with each other, regardless of
 // other top-level tests that may be defined:
 //
-//     func GroupedParallel(h *harness.H) {
-//         for _, tc := range tests {
-//             tc := tc // capture range variable
-//             h.Run(tc.Name, func(h *harness.H) {
-//                 h.Parallel()
-//                 ...
-//             })
-//         }
-//     }
+//	func GroupedParallel(h *harness.H) {
+//	    for _, tc := range tests {
+//	        tc := tc // capture range variable
+//	        h.Run(tc.Name, func(h *harness.H) {
+//	            h.Parallel()
+//	            ...
+//	        })
+//	    }
+//	}
 //
 // Run does not return until parallel subtests have completed, providing a way
 // to clean up after a group of parallel tests:
 //
-//     func TeardownParallel(h *harness.H) {
-//         // This Run will not return until the parallel tests finish.
-//         h.Run("group", func(h *harness.H) {
-//             h.Run("Test1", parallelTest1)
-//             h.Run("Test2", parallelTest2)
-//             h.Run("Test3", parallelTest3)
-//         })
-//         // <tear-down code>
-//     }
+//	func TeardownParallel(h *harness.H) {
+//	    // This Run will not return until the parallel tests finish.
+//	    h.Run("group", func(h *harness.H) {
+//	        h.Run("Test1", parallelTest1)
+//	        h.Run("Test2", parallelTest2)
+//	        h.Run("Test3", parallelTest3)
+//	    })
+//	    // <tear-down code>
+//	}
 //
-// Suite
+// # Suite
 //
 // Individual tests are grouped into a test suite in order to execute them.
 // TODO: this part of the API deviates from the "testing" package and is TBD.
@@ -111,5 +112,4 @@
 //		}
 //		fmt.Println("PASS")
 //	}
-//
 package harness
