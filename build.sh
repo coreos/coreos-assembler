@@ -66,11 +66,6 @@ install_rpms() {
     # as we want to enable fast iteration there.
     yum -y --enablerepo=updates-testing upgrade rpm-ostree
 
-    # Downgrade edk2-ovmf to work around crazy bug with (rhel7 host, rhel8 guest, fedora userspace)
-    # https://github.com/openshift/os/issues/862
-    # https://bugzilla.redhat.com/show_bug.cgi?id=2101573
-    if rpm -q edk2-ovmf 2>/dev/null; then yum -y --setopt=releasever=35 distro-sync edk2-ovmf; fi
-
     # Delete file that only exists on ppc64le because it is causing
     # sudo to not work.
     # https://bugzilla.redhat.com/show_bug.cgi?id=2082149
