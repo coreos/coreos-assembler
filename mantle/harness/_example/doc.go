@@ -27,5 +27,4 @@
 //	--- SKIP: SkipIt (0.00s)
 //	        main.go:40: Missing "TEST_DATA_else" in environment.
 //	PASS
-//
 package main
