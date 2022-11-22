@@ -140,8 +140,6 @@ class _Build:
                  self.summary, self.build_name.upper(), self.basearch,
                  self.build_id)
 
-        self.set_token()
-
     def __del__(self):
         try:
             tmpdir = getattr(self, "_tmpdir", None)
@@ -411,7 +409,9 @@ class _Build:
         :raises: NotImplementedError
         """
         log.info("Processing the build artifacts")
+        self.set_token()
         self._build_artifacts(*args, **kwargs)
+        self.unset_token()
         log.info("Finished building artifacts")
         if len(self._found_files.keys()) == 0:
             log.warn("There were no files found after building")
