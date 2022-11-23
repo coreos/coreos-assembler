@@ -423,7 +423,6 @@ def flatten_image_yaml(srcfile, base=None):
 
     # first, special-case list values
     merge_lists(base, srcyaml, 'extra-kargs')
-    merge_lists(base, srcyaml, 'ignition-network-kcmdline')
 
     # then handle all the non-list values
     base = merge_dicts(base, srcyaml)
