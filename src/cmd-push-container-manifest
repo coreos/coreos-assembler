@@ -95,6 +95,14 @@ def main():
         # Create/Upload the manifest list to the container registry
         manifest_info = create_and_push_container_manifest(
             args.repo, args.tags, images, args.v2s2)
+        # if we pushed in v2s2 mode, we need to reload from the repo the actual
+        # final digests: https://github.com/containers/podman/issues/16603
+        if args.v2s2:
+            inspect = skopeo_inspect(f'{args.repo}:{args.tags[0]}', args.authfile)
+            if inspect.returncode != 0:
+                print(f"Can't inspect {args.repo}:{args.tags[0]} even though we just pushed it?")
+                raise Exception
+            manifest_info = json.loads(inspect.stdout)
 
         # Update the `meta.json` files. Note the digest included is the
         # arch-specific one for each individual arch, and not the manifest list
