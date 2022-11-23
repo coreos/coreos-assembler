@@ -94,6 +94,9 @@ def merge_dicts(x, y):
             elif type(x[k]) == dict and type(y[k]) == dict:
                 # recursively merge
                 ret.update({k: merge_dicts(x[k], y[k])})
+            elif type(x[k]) == list and type(y[k]) == list:
+                ret.update({k: x[k]})
+                merge_lists(ret, y, k)
             else:
                 # first dictionary always takes precedence
                 ret.update({k: x[k]})
