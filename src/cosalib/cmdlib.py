@@ -361,12 +361,14 @@ def flatten_image_yaml_to_file(srcfile, outfile):
         yaml.dump(flattened, f)
 
 
+# Merge two lists, avoiding duplicates. Exact duplicate kargs could be valid
+# but we have no use case for them right now in our official images.
 def merge_lists(x, y, k):
     x[k] = x.get(k, [])
     assert type(x[k]) == list
     y[k] = y.get(k, [])
     assert type(y[k]) == list
-    x[k].extend(y[k])
+    x[k].extend([i for i in y[k] if i not in x[k]])
 
 
 def flatten_image_yaml(srcfile, base=None):
