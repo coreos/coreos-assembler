@@ -96,7 +96,9 @@ func runFcosRelease(cmd *cobra.Command, args []string) {
 
 	api := getAWSApi()
 	doS3(api)
-	modifyReleaseMetadataIndex(api)
+	rel := getReleaseMetadata(api)
+	makeReleaseAMIsPublic(rel)
+	modifyReleaseMetadataIndex(api, rel)
 }
 
 func getAWSApi() *aws.API {
@@ -182,7 +184,7 @@ func makeReleaseAMIsPublic(rel release.Release) {
 	}
 }
 
-func modifyReleaseMetadataIndex(api *aws.API) {
+func modifyReleaseMetadataIndex(api *aws.API, rel release.Release) {
 	// Note we use S3 directly here instead of
 	// FetchAndParseCanonicalReleaseIndex(), since that one uses the
 	// CloudFronted URL and we need to be sure we're operating on the latest
@@ -225,8 +227,6 @@ func modifyReleaseMetadataIndex(api *aws.API) {
 		plog.Fatalf("creating metadata url: %v", err)
 	}
 
-	rel := getReleaseMetadata(api)
-
 	var commits []release.IndexReleaseCommit
 	for arch, vals := range rel.Architectures {
 		commits = append(commits, release.IndexReleaseCommit{
@@ -262,8 +262,6 @@ func modifyReleaseMetadataIndex(api *aws.API) {
 			}
 		}
 	}
-
-	makeReleaseAMIsPublic(rel)
 
 	releaseIdx.Releases = append(releaseIdx.Releases, newIdxRelease)
 
