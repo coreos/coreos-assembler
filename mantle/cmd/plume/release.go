@@ -165,6 +165,7 @@ func makeReleaseAMIsPublic(rel release.Release) {
 				plog.Fatalf("creating AWS API for modifying launch permissions: %v", err)
 			}
 
+			plog.Noticef("making AMI %s public", ami.Image)
 			err = aws_api.PublishImage(ami.Image)
 			if err != nil {
 				plog.Fatalf("couldn't publish image in %v: %v", region, err)
@@ -239,6 +240,7 @@ func modifyReleaseMetadataIndex(api *aws.API, rel release.Release) {
 			comp := compareCommits(rel.Commits, newIdxRelease.Commits)
 			if comp == 0 {
 				// the build is already the latest release, exit
+				plog.Notice("build is already present and is the latest release")
 				return
 			} else if comp == -1 {
 				// the build is present and contains a subset of the new release data,
