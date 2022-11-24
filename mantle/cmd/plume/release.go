@@ -35,7 +35,6 @@ var (
 	selectedDistro     string
 
 	specBucket  string
-	specPolicy  string
 	specProfile string
 	specRegion  string
 	specStream  string
@@ -60,7 +59,6 @@ func init() {
 		plog.Fatalf("failed to make --bucket deprecated: %v", err)
 	}
 	cmdRelease.Flags().StringVar(&specBucketPrefix, "bucket-prefix", "", "S3 bucket and prefix")
-	cmdRelease.Flags().StringVar(&specPolicy, "policy", "public-read", "Canned ACL policy")
 	cmdRelease.Flags().StringVar(&specProfile, "profile", "default", "AWS profile")
 	cmdRelease.Flags().StringVar(&specRegion, "region", "us-east-1", "S3 bucket region")
 	cmdRelease.Flags().StringVarP(&specStream, "stream", "S", "testing", "target stream")
@@ -267,7 +265,7 @@ func modifyReleaseMetadataIndex(api *aws.API, rel release.Release) {
 
 	// we don't want this to be cached for very long so that e.g. Cincinnati picks it up quickly
 	var releases_max_age = 60 * 5
-	err = api.UploadObjectExt(bytes.NewReader(out), bucket, path, true, specPolicy, aws.ContentTypeJSON, releases_max_age)
+	err = api.UploadObjectExt(bytes.NewReader(out), bucket, path, true, "public-read", aws.ContentTypeJSON, releases_max_age)
 	if err != nil {
 		plog.Fatalf("uploading release metadata json: %v", err)
 	}
