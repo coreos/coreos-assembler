@@ -38,9 +38,18 @@ def aws_run_ore_replicate(build, args):
     if len(buildmeta.get('amis', [])) < 1:
         raise SystemExit(("buildmeta doesn't contain source AMIs."
                          " Run buildextend-aws --upload first"))
+
+    # Determine which region to copy from
+    if not args.source_region:
+        args.source_region = buildmeta['amis'][0]['name']
+
+    # If no region specified then autodetect the regions to replicate to.
+    # Specify --region=args.source_region here so ore knows to talk to
+    # a region that exists (i.e. it will talk to govcloud if copying
+    # from a govcloud region).
     if not args.region:
         args.region = subprocess.check_output([
-            'ore', 'aws', 'list-regions'
+            'ore', 'aws', '--region', args.source_region, 'list-regions'
         ]).decode().strip().split()
 
     # only replicate to regions that don't already exist
@@ -54,9 +63,6 @@ def aws_run_ore_replicate(build, args):
     if len(region_list) == 0:
         print("no new regions detected")
         sys.exit(0)
-
-    if not args.source_region:
-        args.source_region = buildmeta['amis'][0]['name']
 
     source_image = None
     for a in buildmeta['amis']:
