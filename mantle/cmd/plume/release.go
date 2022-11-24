@@ -21,6 +21,7 @@ import (
 	"io/ioutil"
 	"net/url"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws/awserr"
@@ -40,6 +41,8 @@ var (
 	specStream  string
 	specVersion string
 
+	specBucketPrefix string
+
 	cmdRelease = &cobra.Command{
 		Use:   "release [options]",
 		Short: "Publish a new CoreOS release.",
@@ -51,7 +54,12 @@ var (
 func init() {
 	cmdRelease.Flags().StringVar(&awsCredentialsFile, "aws-credentials", "", "AWS credentials file")
 	cmdRelease.Flags().StringVar(&selectedDistro, "distro", "fcos", "system to release")
-	cmdRelease.Flags().StringVar(&specBucket, "bucket", "fcos-builds", "S3 bucket")
+	cmdRelease.Flags().StringVar(&specBucket, "bucket", "", "S3 bucket")
+	err := cmdRelease.Flags().MarkDeprecated("bucket", "please use --bucket-prefix instead")
+	if err != nil {
+		plog.Fatalf("failed to make --bucket deprecated: %v", err)
+	}
+	cmdRelease.Flags().StringVar(&specBucketPrefix, "bucket-prefix", "", "S3 bucket and prefix")
 	cmdRelease.Flags().StringVar(&specPolicy, "policy", "public-read", "Canned ACL policy")
 	cmdRelease.Flags().StringVar(&specProfile, "profile", "default", "AWS profile")
 	cmdRelease.Flags().StringVar(&specRegion, "region", "us-east-1", "S3 bucket region")
@@ -79,8 +87,8 @@ func runFcosRelease(cmd *cobra.Command, args []string) {
 	if specStream == "" {
 		plog.Fatal("--stream is required")
 	}
-	if specBucket == "" {
-		plog.Fatal("--bucket is required")
+	if specBucket == "" && specBucketPrefix == "" {
+		plog.Fatal("--bucket or --bucket-prefix is required")
 	}
 	if specRegion == "" {
 		plog.Fatal("--region is required")
@@ -91,8 +99,17 @@ func runFcosRelease(cmd *cobra.Command, args []string) {
 }
 
 func getBucketAndStreamPrefix() (string, string) {
+	if specBucketPrefix != "" {
+		split := strings.SplitN(specBucketPrefix, "/", 2)
+		if len(split) != 2 {
+			plog.Fatalf("can't split %q into bucket and prefix", specBucketPrefix)
+		}
+		return split[0], split[1]
+	}
+
 	// Assumes the bucket layout defined inside of
 	// https://github.com/coreos/fedora-coreos-tracker/issues/189.
+	// We'll drop support for this soon.
 	return specBucket, filepath.Join("prod", "streams", specStream)
 }
 
