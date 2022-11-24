@@ -43,14 +43,30 @@ var (
 	specBucketPrefix string
 
 	cmdRelease = &cobra.Command{
-		Use:   "release [options]",
-		Short: "Publish a new CoreOS release.",
-		Run:   runRelease,
-		Long:  `Publish a new CoreOS release.`,
+		Use:        "release [options]",
+		Short:      "Publish a new CoreOS release.",
+		Run:        runRelease,
+		Long:       `Publish a new CoreOS release.`,
+		Deprecated: "please use make-amis-public and update-release-index instead",
+	}
+
+	cmdMakeAmisPublic = &cobra.Command{
+		Use:   "make-amis-public [options]",
+		Short: "Make the AMIs of a CoreOS release public.",
+		Run:   runMakeAmisPublic,
+		Long:  "Make the AMIs of a CoreOS release public.",
+	}
+
+	cmdUpdateReleaseIndex = &cobra.Command{
+		Use:   "update-release-index [options]",
+		Short: "Update a stream's release index for a CoreOS release.",
+		Run:   runUpdateReleaseIndex,
+		Long:  "Update a stream's release index for a CoreOS release.",
 	}
 )
 
 func init() {
+	// XXX: we'll remove this command soon
 	cmdRelease.Flags().StringVar(&awsCredentialsFile, "aws-credentials", "", "AWS credentials file")
 	cmdRelease.Flags().StringVar(&selectedDistro, "distro", "fcos", "system to release")
 	cmdRelease.Flags().StringVar(&specBucket, "bucket", "", "S3 bucket")
@@ -64,6 +80,23 @@ func init() {
 	cmdRelease.Flags().StringVarP(&specStream, "stream", "S", "testing", "target stream")
 	cmdRelease.Flags().StringVarP(&specVersion, "version", "V", "", "release version")
 	root.AddCommand(cmdRelease)
+
+	cmdMakeAmisPublic.Flags().StringVar(&awsCredentialsFile, "aws-credentials", "", "AWS credentials file")
+	cmdMakeAmisPublic.Flags().StringVar(&specBucketPrefix, "bucket-prefix", "", "S3 bucket and prefix")
+	cmdMakeAmisPublic.Flags().StringVar(&specProfile, "profile", "default", "AWS profile")
+	cmdMakeAmisPublic.Flags().StringVar(&specRegion, "region", "us-east-1", "S3 bucket region")
+	cmdMakeAmisPublic.Flags().StringVarP(&specStream, "stream", "", "", "target stream")
+	cmdMakeAmisPublic.Flags().StringVarP(&specVersion, "version", "", "", "release version")
+	root.AddCommand(cmdMakeAmisPublic)
+
+	cmdUpdateReleaseIndex.Flags().StringVar(&awsCredentialsFile, "aws-credentials", "", "AWS credentials file")
+	cmdUpdateReleaseIndex.Flags().StringVar(&specBucketPrefix, "bucket-prefix", "", "S3 bucket and prefix")
+	cmdUpdateReleaseIndex.Flags().StringVar(&specProfile, "profile", "default", "AWS profile")
+	cmdUpdateReleaseIndex.Flags().StringVar(&specRegion, "region", "", "S3 bucket region")
+	cmdUpdateReleaseIndex.Flags().StringVarP(&specStream, "stream", "", "", "target stream")
+	cmdUpdateReleaseIndex.Flags().StringVarP(&specVersion, "version", "", "", "release version")
+	root.AddCommand(cmdUpdateReleaseIndex)
+
 }
 
 func runRelease(cmd *cobra.Command, args []string) {
@@ -95,6 +128,18 @@ func runFcosRelease(cmd *cobra.Command, args []string) {
 	api := getAWSApi()
 	rel := getReleaseMetadata(api)
 	makeReleaseAMIsPublic(rel)
+	modifyReleaseMetadataIndex(api, rel)
+}
+
+func runMakeAmisPublic(cmd *cobra.Command, args []string) {
+	api := getAWSApi()
+	rel := getReleaseMetadata(api)
+	makeReleaseAMIsPublic(rel)
+}
+
+func runUpdateReleaseIndex(cmd *cobra.Command, args []string) {
+	api := getAWSApi()
+	rel := getReleaseMetadata(api)
 	modifyReleaseMetadataIndex(api, rel)
 }
 
