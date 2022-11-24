@@ -158,6 +158,30 @@ func getReleaseMetadata(api *aws.API) release.Release {
 	return rel
 }
 
+func makeReleaseAMIsPublic(rel release.Release) {
+	for _, archs := range rel.Architectures {
+		awsmedia := archs.Media.Aws
+		if awsmedia == nil {
+			continue
+		}
+		for region, ami := range awsmedia.Images {
+			aws_api, err := aws.New(&aws.Options{
+				CredentialsFile: awsCredentialsFile,
+				Profile:         specProfile,
+				Region:          region,
+			})
+			if err != nil {
+				plog.Fatalf("creating AWS API for modifying launch permissions: %v", err)
+			}
+
+			err = aws_api.PublishImage(ami.Image)
+			if err != nil {
+				plog.Fatalf("couldn't publish image in %v: %v", region, err)
+			}
+		}
+	}
+}
+
 func modifyReleaseMetadataIndex(api *aws.API) {
 	// Note we use S3 directly here instead of
 	// FetchAndParseCanonicalReleaseIndex(), since that one uses the
@@ -239,27 +263,7 @@ func modifyReleaseMetadataIndex(api *aws.API) {
 		}
 	}
 
-	for _, archs := range rel.Architectures {
-		awsmedia := archs.Media.Aws
-		if awsmedia == nil {
-			continue
-		}
-		for region, ami := range awsmedia.Images {
-			aws_api, err := aws.New(&aws.Options{
-				CredentialsFile: awsCredentialsFile,
-				Profile:         specProfile,
-				Region:          region,
-			})
-			if err != nil {
-				plog.Fatalf("creating AWS API for modifying launch permissions: %v", err)
-			}
-
-			err = aws_api.PublishImage(ami.Image)
-			if err != nil {
-				plog.Fatalf("couldn't publish image in %v: %v", region, err)
-			}
-		}
-	}
+	makeReleaseAMIsPublic(rel)
 
 	releaseIdx.Releases = append(releaseIdx.Releases, newIdxRelease)
 
