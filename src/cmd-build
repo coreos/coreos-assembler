@@ -30,6 +30,7 @@ Usage: coreos-assembler build --help
   -F | --fetch        Also perform a fetch
   --strict            Only allow installing locked packages when using lockfiles
   --prepare-only      Do not actually build, only set things up so that `rpm-ostree compose image` works.
+  --tag TAG           Set the given tag in the build metadata
   --version VERSION   Use the given version instead of generating one based on current time
 
   Additional environment variables supported:
@@ -50,9 +51,10 @@ PREPARE_ONLY=0
 VERSION=
 PARENT=
 PARENT_BUILD=
+TAG=
 STRICT=
 rc=0
-options=$(getopt --options hfFt: --longoptions help,fetch,force,version:,parent:,parent-build:,delay-meta-merge,force-nocache,force-image,skip-prune,prepare-only,strict -- "$@") || rc=$?
+options=$(getopt --options hfFt: --longoptions tag:,help,fetch,force,version:,parent:,parent-build:,delay-meta-merge,force-nocache,force-image,skip-prune,prepare-only,strict -- "$@") || rc=$?
 [ $rc -eq 0 ] || {
     print_help
     exit 1
@@ -97,6 +99,10 @@ while true; do
         --parent-build)
             shift
             PARENT_BUILD=$1
+            ;;
+        -t | --tag)
+            shift
+            TAG=$1
             ;;
         --)
             shift
@@ -549,6 +555,12 @@ else
   "${dn}"/cmd-prune --workdir "${workdir}"
 fi
 rm builds/.build-commit
+
+if [ -n "${TAG}" ]; then
+    # ideally, we'd do this atomically before moving to builds/latest, but
+    # meh... not much can go wrong with `cosa tag`
+    /usr/lib/coreos-assembler/cmd-tag update --build "${buildid}" --tag "${TAG}"
+fi
 
 # and finally, build the specified targets
 build_followup_targets
