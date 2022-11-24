@@ -1,0 +1,2 @@
+# This file serves as defaults as well as documentation for pipeline.yaml.
+compressor: "gzip"

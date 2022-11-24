@@ -5,6 +5,7 @@ go 1.17
 require (
 	github.com/coreos/stream-metadata-go v0.4.0
 	github.com/spf13/cobra v1.5.0
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (

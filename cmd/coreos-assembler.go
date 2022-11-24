@@ -95,6 +95,8 @@ func run(argv []string) error {
 	case "build-extensions-container", // old alias
 		"buildextend-extensions-container":
 		return buildExtensionContainer()
+	case "internals":
+		return runInternals(argv)
 	}
 
 	target := fmt.Sprintf("/usr/lib/coreos-assembler/cmd-%s", cmd)

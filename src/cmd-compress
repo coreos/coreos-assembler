@@ -8,6 +8,7 @@ import sys
 import json
 import shutil
 import argparse
+import subprocess
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from cosalib.builds import Builds
@@ -17,8 +18,6 @@ from cosalib.cmdlib import (
     runcmd,
     sha256sum_file,
     write_json)
-
-DEFAULT_COMPRESSOR = 'gzip'
 
 cmd = sys.argv[0].rsplit("/", 1)[1]
 if cmd == "cmd-uncompress" or cmd == "cmd-decompress":
@@ -32,8 +31,8 @@ parser.add_argument("--artifact", default=[], action='append',
                     help="Only compress given image ARTIFACT", metavar="ARTIFACT")
 parser.add_argument("--compressor",
                     choices=['xz', 'gzip'],
-                    default=DEFAULT_COMPRESSOR,
-                    help=f"Compressor to use, default is {DEFAULT_COMPRESSOR}")
+                    default=None,
+                    help="Compressor to use")
 parser.add_argument("--mode",
                     choices=['compress', 'uncompress'],
                     default=DEFAULT_MODE,
@@ -41,6 +40,10 @@ parser.add_argument("--mode",
 parser.add_argument("--fast", action='store_true',
                     help="Override compression to `gzip -1`")
 args = parser.parse_args()
+
+pipeline_config = json.loads(subprocess.check_output(["coreos-assembler", "internals", "get-pipeline-json"]))
+if args.compressor is None:
+    args.compressor = pipeline_config["compressor"]
 
 # that's the tool default
 gzip_level = 6
