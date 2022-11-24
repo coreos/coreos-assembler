@@ -95,7 +95,6 @@ func runFcosRelease(cmd *cobra.Command, args []string) {
 	}
 
 	api := getAWSApi()
-	doS3(api)
 	rel := getReleaseMetadata(api)
 	makeReleaseAMIsPublic(rel)
 	modifyReleaseMetadataIndex(api, rel)
@@ -127,14 +126,6 @@ func getBucketAndStreamPrefix() (string, string) {
 	// https://github.com/coreos/fedora-coreos-tracker/issues/189.
 	// We'll drop support for this soon.
 	return specBucket, filepath.Join("prod", "streams", specStream)
-}
-
-func doS3(api *aws.API) {
-	bucket, prefix := getBucketAndStreamPrefix()
-	err := api.UpdateBucketObjectsACL(bucket, filepath.Join(prefix, "builds", specVersion), specPolicy)
-	if err != nil {
-		plog.Fatalf("updating object ACLs: %v", err)
-	}
 }
 
 func getReleaseMetadata(api *aws.API) release.Release {
