@@ -135,6 +135,29 @@ func doS3(api *aws.API) {
 	}
 }
 
+func getReleaseMetadata(api *aws.API) release.Release {
+	bucket, prefix := getBucketAndStreamPrefix()
+	releasePath := filepath.Join(prefix, "builds", specVersion, "release.json")
+	releaseFile, err := api.DownloadFile(bucket, releasePath)
+	if err != nil {
+		plog.Fatalf("downloading release metadata at %s: %v", releasePath, err)
+	}
+	defer releaseFile.Close()
+
+	releaseData, err := ioutil.ReadAll(releaseFile)
+	if err != nil {
+		plog.Fatalf("reading release metadata: %v", err)
+	}
+
+	var rel release.Release
+	err = json.Unmarshal(releaseData, &rel)
+	if err != nil {
+		plog.Fatalf("unmarshaling release metadata: %v", err)
+	}
+
+	return rel
+}
+
 func modifyReleaseMetadataIndex(api *aws.API) {
 	// Note we use S3 directly here instead of
 	// FetchAndParseCanonicalReleaseIndex(), since that one uses the
@@ -171,28 +194,14 @@ func modifyReleaseMetadataIndex(api *aws.API) {
 		plog.Fatalf("unmarshaling release metadata json: %v", err)
 	}
 
+	// XXX: switch the URL to be relative so we don't have to hardcode its final location?
 	releasePath := filepath.Join(prefix, "builds", specVersion, "release.json")
 	url, err := url.Parse(fmt.Sprintf("https://builds.coreos.fedoraproject.org/%s", releasePath))
 	if err != nil {
 		plog.Fatalf("creating metadata url: %v", err)
 	}
 
-	releaseFile, err := api.DownloadFile(bucket, releasePath)
-	if err != nil {
-		plog.Fatalf("downloading release metadata at %s: %v", releasePath, err)
-	}
-	defer releaseFile.Close()
-
-	releaseData, err := ioutil.ReadAll(releaseFile)
-	if err != nil {
-		plog.Fatalf("reading release metadata: %v", err)
-	}
-
-	var rel release.Release
-	err = json.Unmarshal(releaseData, &rel)
-	if err != nil {
-		plog.Fatalf("unmarshaling release metadata: %v", err)
-	}
+	rel := getReleaseMetadata(api)
 
 	var commits []release.IndexReleaseCommit
 	for arch, vals := range rel.Architectures {
