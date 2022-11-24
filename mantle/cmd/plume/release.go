@@ -90,6 +90,12 @@ func runFcosRelease(cmd *cobra.Command, args []string) {
 	modifyReleaseMetadataIndex()
 }
 
+func getBucketAndStreamPrefix() (string, string) {
+	// Assumes the bucket layout defined inside of
+	// https://github.com/coreos/fedora-coreos-tracker/issues/189.
+	return specBucket, filepath.Join("prod", "streams", specStream)
+}
+
 func doS3() {
 	api, err := aws.New(&aws.Options{
 		CredentialsFile: awsCredentialsFile,
@@ -100,9 +106,8 @@ func doS3() {
 		plog.Fatalf("creating aws client: %v", err)
 	}
 
-	// Assumes the bucket layout defined inside of
-	// https://github.com/coreos/fedora-coreos-tracker/issues/189
-	err = api.UpdateBucketObjectsACL(specBucket, filepath.Join("prod", "streams", specStream, "builds", specVersion), specPolicy)
+	bucket, prefix := getBucketAndStreamPrefix()
+	err = api.UpdateBucketObjectsACL(bucket, filepath.Join(prefix, "builds", specVersion), specPolicy)
 	if err != nil {
 		plog.Fatalf("updating object ACLs: %v", err)
 	}
@@ -124,9 +129,10 @@ func modifyReleaseMetadataIndex() {
 	// version.  Plus we need S3 creds anyway later on to push the modified
 	// release index back.
 
-	path := filepath.Join("prod", "streams", specStream, "releases.json")
+	bucket, prefix := getBucketAndStreamPrefix()
+	path := filepath.Join(prefix, "releases.json")
 	data, err := func() ([]byte, error) {
-		f, err := api.DownloadFile(specBucket, path)
+		f, err := api.DownloadFile(bucket, path)
 		if err != nil {
 			if awsErr, ok := err.(awserr.Error); ok {
 				if awsErr.Code() == "NoSuchKey" {
@@ -152,13 +158,13 @@ func modifyReleaseMetadataIndex() {
 		plog.Fatalf("unmarshaling release metadata json: %v", err)
 	}
 
-	releasePath := filepath.Join("prod", "streams", specStream, "builds", specVersion, "release.json")
+	releasePath := filepath.Join(prefix, "builds", specVersion, "release.json")
 	url, err := url.Parse(fmt.Sprintf("https://builds.coreos.fedoraproject.org/%s", releasePath))
 	if err != nil {
 		plog.Fatalf("creating metadata url: %v", err)
 	}
 
-	releaseFile, err := api.DownloadFile(specBucket, releasePath)
+	releaseFile, err := api.DownloadFile(bucket, releasePath)
 	if err != nil {
 		plog.Fatalf("downloading release metadata at %s: %v", releasePath, err)
 	}
@@ -246,7 +252,7 @@ func modifyReleaseMetadataIndex() {
 
 	// we don't want this to be cached for very long so that e.g. Cincinnati picks it up quickly
 	var releases_max_age = 60 * 5
-	err = api.UploadObjectExt(bytes.NewReader(out), specBucket, path, true, specPolicy, aws.ContentTypeJSON, releases_max_age)
+	err = api.UploadObjectExt(bytes.NewReader(out), bucket, path, true, specPolicy, aws.ContentTypeJSON, releases_max_age)
 	if err != nil {
 		plog.Fatalf("uploading release metadata json: %v", err)
 	}
