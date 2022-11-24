@@ -94,8 +94,22 @@ func runFcosRelease(cmd *cobra.Command, args []string) {
 		plog.Fatal("--region is required")
 	}
 
-	doS3()
-	modifyReleaseMetadataIndex()
+	api := getAWSApi()
+	doS3(api)
+	modifyReleaseMetadataIndex(api)
+}
+
+func getAWSApi() *aws.API {
+	api, err := aws.New(&aws.Options{
+		CredentialsFile: awsCredentialsFile,
+		Profile:         specProfile,
+		Region:          specRegion,
+	})
+	if err != nil {
+		plog.Fatalf("creating aws client: %v", err)
+	}
+
+	return api
 }
 
 func getBucketAndStreamPrefix() (string, string) {
@@ -113,33 +127,15 @@ func getBucketAndStreamPrefix() (string, string) {
 	return specBucket, filepath.Join("prod", "streams", specStream)
 }
 
-func doS3() {
-	api, err := aws.New(&aws.Options{
-		CredentialsFile: awsCredentialsFile,
-		Profile:         specProfile,
-		Region:          specRegion,
-	})
-	if err != nil {
-		plog.Fatalf("creating aws client: %v", err)
-	}
-
+func doS3(api *aws.API) {
 	bucket, prefix := getBucketAndStreamPrefix()
-	err = api.UpdateBucketObjectsACL(bucket, filepath.Join(prefix, "builds", specVersion), specPolicy)
+	err := api.UpdateBucketObjectsACL(bucket, filepath.Join(prefix, "builds", specVersion), specPolicy)
 	if err != nil {
 		plog.Fatalf("updating object ACLs: %v", err)
 	}
 }
 
-func modifyReleaseMetadataIndex() {
-	api, err := aws.New(&aws.Options{
-		CredentialsFile: awsCredentialsFile,
-		Profile:         specProfile,
-		Region:          specRegion,
-	})
-	if err != nil {
-		plog.Fatalf("creating aws client: %v", err)
-	}
-
+func modifyReleaseMetadataIndex(api *aws.API) {
 	// Note we use S3 directly here instead of
 	// FetchAndParseCanonicalReleaseIndex(), since that one uses the
 	// CloudFronted URL and we need to be sure we're operating on the latest
