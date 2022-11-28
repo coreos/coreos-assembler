@@ -107,6 +107,7 @@ func ParseDiskSpec(spec string) (*Disk, error) {
 	split := strings.Split(spec, ":")
 	var size string
 	multipathed := false
+	sectorSize := 0
 	if len(split) == 1 {
 		size = split[0]
 	} else if len(split) == 2 {
@@ -114,6 +115,8 @@ func ParseDiskSpec(spec string) (*Disk, error) {
 		for _, opt := range strings.Split(split[1], ",") {
 			if opt == "mpath" {
 				multipathed = true
+			} else if opt == "4k" {
+				sectorSize = 4096
 			} else {
 				return nil, fmt.Errorf("unknown disk option %s", opt)
 			}
@@ -123,6 +126,7 @@ func ParseDiskSpec(spec string) (*Disk, error) {
 	}
 	return &Disk{
 		Size:          size,
+		SectorSize:    sectorSize,
 		MultiPathDisk: multipathed,
 	}, nil
 }

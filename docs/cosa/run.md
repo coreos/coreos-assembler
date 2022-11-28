@@ -83,7 +83,10 @@ lrwxrwxrwx. 1 root root 10 Jan 28 19:23 virtio-primary-disk-part4 -> ../../vdc4
 ```
 
 Additional disks CLI arguments support optional flags using the `--add-disk
-2G:OPT1,OPT2,...` syntax. An example is `mpath`, discussed below.
+2G:OPT1,OPT2,...` syntax. Supported options are:
+
+- `mpath`: enables multipathing for the disk (see below for details).
+- `4k`: sets the disk as 4Kn (4096 physical sector size)
 
 ## Additional kernel arguments
 
