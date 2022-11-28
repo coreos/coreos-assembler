@@ -108,6 +108,7 @@ func ParseDiskSpec(spec string) (*Disk, error) {
 	var size string
 	multipathed := false
 	sectorSize := 0
+	serial_opt := []string{}
 	if len(split) == 1 {
 		size = split[0]
 	} else if len(split) == 2 {
@@ -117,6 +118,12 @@ func ParseDiskSpec(spec string) (*Disk, error) {
 				multipathed = true
 			} else if opt == "4k" {
 				sectorSize = 4096
+			} else if strings.HasPrefix(opt, "serial=") {
+				serial := strings.TrimPrefix(opt, "serial=")
+				if serial == "" {
+					return nil, fmt.Errorf("invalid serial opt %s", opt)
+				}
+				serial_opt = []string{"serial=" + serial}
 			} else {
 				return nil, fmt.Errorf("unknown disk option %s", opt)
 			}
@@ -126,6 +133,7 @@ func ParseDiskSpec(spec string) (*Disk, error) {
 	}
 	return &Disk{
 		Size:          size,
+		DeviceOpts:    serial_opt,
 		SectorSize:    sectorSize,
 		MultiPathDisk: multipathed,
 	}, nil
