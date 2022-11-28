@@ -107,6 +107,14 @@ func (a *API) CreateImage(spec *ImageSpec, overwrite bool) (*compute.Operation, 
 		{
 			Type: "VIRTIO_SCSI_MULTIQUEUE",
 		},
+		// RHEL supports this since 8.4; TODO share logic here with
+		// https://github.com/osbuild/osbuild-composer/blob/c6570f6c94149b47f2f8e2f82d7467d6b96755bb/internal/cloud/gcp/compute.go#L16
+		{
+			Type: "SEV_CAPABLE",
+		},
+		{
+			Type: "GVNIC",
+		},
 		{
 			Type: "UEFI_COMPATIBLE",
 		},
