@@ -573,6 +573,7 @@ func filterTests(tests map[string]*register.Test, patterns []string, pltfrm stri
 				}
 			}
 			for _, i := range exclude {
+				i = strings.TrimPrefix(i, "!")
 				if i == item {
 					allowed = false
 					excluded = true
