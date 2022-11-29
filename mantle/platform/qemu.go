@@ -1140,7 +1140,9 @@ func baseQemuArgs(arch string) ([]string, error) {
 	case "ppc64le":
 		ret = []string{
 			"qemu-system-ppc64",
-			"-machine", "pseries,kvm-type=HV,vsmt=8,cap-fwnmi=off," + accel,
+			// kvm-type=HV ensures we use bare metal KVM and not "user mode"
+			// https://qemu.readthedocs.io/en/latest/system/ppc/pseries.html#switching-between-the-kvm-pr-and-kvm-hv-kernel-module
+			"-machine", "pseries,kvm-type=HV," + accel,
 		}
 	default:
 		return nil, fmt.Errorf("architecture %s not supported for qemu", arch)
