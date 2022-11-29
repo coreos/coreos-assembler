@@ -13,7 +13,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from cosalib.builds import Builds
 from cosalib.meta import GenericBuildMeta
 from cosalib.cmdlib import (
-    extract_image_json,
+    import_ostree_commit,
     ncpu,
     rm_allow_noent,
     runcmd,
@@ -52,24 +52,8 @@ else:
 
 print(f"Targeting build: {build}")
 
-# that's the tool default
-gzip_level = 6
-if args.fast:
-    args.compressor = 'gzip'
-    gzip_level = 1
-elif not args.compressor:
-    workdir = os.getcwd()
-    arches = builds.get_build_arches(build)
-    # image.json isn't arch-dependent, so just extract it from the first arch
-    buildmeta = GenericBuildMeta(workdir=workdir, build=build, basearch=arches[0])
-    extract_image_json(workdir, buildmeta['ostree-commit'])
-    with open(os.path.join(workdir, 'tmp/image.json')) as f:
-        image_json = json.load(f)
-    args.compressor = image_json.get('compressor', DEFAULT_COMPRESSOR)
-
-# find extension for compressor
+# common extensions for known compressors
 ext_dict = {'xz': '.xz', 'gzip': '.gz'}
-ext = ext_dict[args.compressor]
 
 
 def get_cpu_param(param):
@@ -92,6 +76,9 @@ def compress_one_builddir(builddir):
         return False
     with open(buildmeta_path) as f:
         buildmeta = json.load(f)
+
+    # Find what extension to use based on the selected compressor
+    ext = ext_dict[args.compressor]
 
     tmpdir = 'tmp/compress'
     if os.path.isdir(tmpdir):
@@ -252,8 +239,36 @@ def uncompress_one_builddir(builddir):
     return at_least_one
 
 
+def get_image_json():
+    # All arches might not be local. Find one that has the info.
+    workdir = os.getcwd()
+    for arch in builds.get_build_arches(build):
+        builddir = builds.get_build_dir(build, arch)
+        if not os.path.exists(os.path.join(builddir, 'meta.json')):
+            continue
+        buildmeta = GenericBuildMeta(workdir=workdir, build=build, basearch=arch)
+        if not os.path.exists(os.path.join(builddir, buildmeta['images']['ostree']['path'])):
+            continue
+        import_ostree_commit(workdir, builddir, buildmeta)  # runs extract_image_json()
+        with open(os.path.join(workdir, 'tmp/image.json')) as f:
+            return json.load(f)
+    # If we get here we were unsuccessful
+    print("Could not find/extract image.json. Please pass --compressor\n" +
+          "or make sure local ociarchive exists in the build directory.")
+    raise Exception("Could not find/extract image.json")
+
+
 changed = []
 if args.mode == "compress":
+    # Find what compressor we should use, either picking it up from
+    # CLI args or from image.json
+    gzip_level = 6
+    if args.fast:
+        args.compressor = 'gzip'
+        gzip_level = 1
+    elif not args.compressor:
+        image_json = get_image_json()
+        args.compressor = image_json.get('compressor', DEFAULT_COMPRESSOR)
     for arch in builds.get_build_arches(build):
         builddir = builds.get_build_dir(build, arch)
         changed.append(compress_one_builddir(builddir))
