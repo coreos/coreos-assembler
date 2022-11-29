@@ -268,7 +268,9 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 		builder.AppendFirstbootKernelArgs = firstbootkargs
 	}
 	builder.AppendKernelArgs = strings.Join(kargs, " ")
-	builder.Firmware = kola.QEMUOptions.Firmware
+	if kola.QEMUOptions.Firmware != "" {
+		builder.Firmware = kola.QEMUOptions.Firmware
+	}
 	if kola.QEMUOptions.DiskImage != "" {
 		channel := "virtio"
 		if kola.QEMUOptions.Nvme {

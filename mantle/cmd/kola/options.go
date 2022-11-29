@@ -202,17 +202,7 @@ func syncOptionsImpl(useCosa bool) error {
 
 	// native 4k requires a UEFI bootloader
 	if kola.QEMUOptions.Native4k && kola.QEMUOptions.Firmware == "bios" {
-		return fmt.Errorf("native 4k requires uefi firmware")
-	}
-	// default to BIOS, UEFI for aarch64 and x86(only for 4k)
-	if kola.QEMUOptions.Firmware == "" {
-		if kola.Options.CosaBuildArch == "aarch64" {
-			kola.QEMUOptions.Firmware = "uefi"
-		} else if kola.Options.CosaBuildArch == "x86_64" && kola.QEMUOptions.Native4k {
-			kola.QEMUOptions.Firmware = "uefi"
-		} else {
-			kola.QEMUOptions.Firmware = "bios"
-		}
+		kola.QEMUOptions.Firmware = platform.UefiFirmwareDefault
 	}
 
 	if err := validateOption("platform", kolaPlatform, kolaPlatforms); err != nil {
