@@ -18,6 +18,7 @@ cosa_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, cosa_dir)
 
 from cosalib import meta
+from cosalib.builds import Builds
 from cosalib.cmdlib import (
     ensure_glob,
     get_basearch,
@@ -143,6 +144,8 @@ class HashListV1(dict):
         """
         with open(output, 'w') as out:
             out.write(json.dumps(self, indent=4))
+        with open(f'{output}-CHECKSUM', 'w') as out:
+            subprocess.check_call(['sha256sum', output], stdout=out)
 
 
 def main():
@@ -162,12 +165,16 @@ def main():
     parser.add_argument(
         '-a', '--arch', default=get_basearch(),
         help='Target Architecture')
-    parser.add_argument(
-        '-o', '--output',
-        help='Where the output should be written', default='hashlist.json')
+    parser.add_argument('-b', '--build', default='latest', help='Target build')
 
     # Parse arguments and ignore anything we didn't explicitly request
     args = parser.parse_args()
+
+    builds = Builds()
+    builddir = builds.get_build_dir(build_id=args.build, basearch=args.arch)
+
+    # it's not in the schema nor in meta.json yet
+    output = os.path.join(builddir, "exp-hash.json")
 
     # Load metadata
     metadata = meta.GenericBuildMeta(schema=None, basearch=args.arch)
@@ -180,8 +187,8 @@ def main():
     hashlist.populate_hash_list()
 
     # Step 2: Write the hashlist to disk
-    hashlist.write(args.output)
-    print(f'Hash list created at {args.output}')
+    hashlist.write(output)
+    print(f'Hash list created at {output}')
 
 
 if __name__ == '__main__':
