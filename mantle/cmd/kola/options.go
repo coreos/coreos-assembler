@@ -210,8 +210,6 @@ func syncOptionsImpl(useCosa bool) error {
 			kola.QEMUOptions.Firmware = "uefi"
 		} else if kola.Options.CosaBuildArch == "x86_64" && kola.QEMUOptions.Native4k {
 			kola.QEMUOptions.Firmware = "uefi"
-		} else {
-			kola.QEMUOptions.Firmware = "bios"
 		}
 	}
 
