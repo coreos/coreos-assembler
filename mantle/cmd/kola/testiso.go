@@ -615,23 +615,23 @@ func testPXE(ctx context.Context, inst platform.Install, outdir string, offline 
 	}
 	tmpd, err := ioutil.TempDir("", "kola-testiso")
 	if err != nil {
-		return 0, err
+		return 0, errors.Wrapf(err, "creating tempdir")
 	}
 	defer os.RemoveAll(tmpd)
 
 	sshPubKeyBuf, _, err := util.CreateSSHAuthorizedKey(tmpd)
 	if err != nil {
-		return 0, err
+		return 0, errors.Wrapf(err, "creating SSH AuthorizedKey")
 	}
 
 	builder, virtioJournalConfig, err := newQemuBuilderWithDisk(outdir)
 	if err != nil {
-		return 0, err
+		return 0, errors.Wrapf(err, "creating QemuBuilder")
 	}
 	inst.Builder = builder
 	completionChannel, err := inst.Builder.VirtioChannelRead("testisocompletion")
 	if err != nil {
-		return 0, err
+		return 0, errors.Wrapf(err, "setting up virtio-serial channel")
 	}
 
 	var keys []string

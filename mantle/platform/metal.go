@@ -368,7 +368,7 @@ func (t *installerRun) completePxeSetup(kargs []string) error {
 	case "pxe":
 		pxeconfigdir := filepath.Join(t.tftpdir, "pxelinux.cfg")
 		if err := os.Mkdir(pxeconfigdir, 0777); err != nil {
-			return err
+			return errors.Wrapf(err, "creating dir %s", pxeconfigdir)
 		}
 		pxeimages := []string{"pxelinux.0", "ldlinux.c32"}
 		pxeconfig := []byte(fmt.Sprintf(`
@@ -382,8 +382,9 @@ func (t *installerRun) completePxeSetup(kargs []string) error {
 		if coreosarch.CurrentRpmArch() == "s390x" {
 			pxeconfig = []byte(kargsStr)
 		}
-		if err := ioutil.WriteFile(filepath.Join(pxeconfigdir, "default"), pxeconfig, 0777); err != nil {
-			return err
+		pxeconfig_path := filepath.Join(pxeconfigdir, "default")
+		if err := ioutil.WriteFile(pxeconfig_path, pxeconfig, 0777); err != nil {
+			return errors.Wrapf(err, "writing file %s", pxeconfig_path)
 		}
 
 		// this is only for s390x where the pxe image has to be created;
@@ -394,25 +395,31 @@ func (t *installerRun) completePxeSetup(kargs []string) error {
 			err := exec.Command("/usr/bin/mk-s390image", kernelpath, "-r", initrdpath,
 				"-p", filepath.Join(pxeconfigdir, "default"), filepath.Join(t.tftpdir, pxeimages[0])).Run()
 			if err != nil {
-				return err
+				return errors.Wrap(err, "running mk-s390image")
 			}
 		} else {
 			for _, img := range pxeimages {
 				srcpath := filepath.Join("/usr/share/syslinux", img)
-				if err := exec.Command("/usr/lib/coreos-assembler/cp-reflink", srcpath, t.tftpdir).Run(); err != nil {
-					return err
+				cp_cmd := exec.Command("/usr/lib/coreos-assembler/cp-reflink", srcpath, t.tftpdir)
+				cp_cmd.Stderr = os.Stderr
+				if err := cp_cmd.Run(); err != nil {
+					return errors.Wrapf(err, "running cp-reflink %s %s", srcpath, t.tftpdir)
 				}
 			}
 		}
 		t.pxe.bootfile = "/" + pxeimages[0]
 	case "grub":
-		if err := exec.Command("grub2-mknetdir", "--net-directory="+t.tftpdir).Run(); err != nil {
-			return err
+		grub2_mknetdir_cmd := exec.Command("grub2-mknetdir", "--net-directory="+t.tftpdir)
+		grub2_mknetdir_cmd.Stderr = os.Stderr
+		if err := grub2_mknetdir_cmd.Run(); err != nil {
+			return errors.Wrap(err, "running grub2-mknetdir")
 		}
 		if t.pxe.pxeimagepath != "" {
 			dstpath := filepath.Join(t.tftpdir, "boot/grub2")
-			if err := exec.Command("/usr/lib/coreos-assembler/cp-reflink", t.pxe.pxeimagepath, dstpath).Run(); err != nil {
-				return err
+			cp_cmd := exec.Command("/usr/lib/coreos-assembler/cp-reflink", t.pxe.pxeimagepath, dstpath)
+			cp_cmd.Stderr = os.Stderr
+			if err := cp_cmd.Run(); err != nil {
+				return errors.Wrapf(err, "running cp-reflink %s %s", t.pxe.pxeimagepath, dstpath)
 			}
 		}
 		if err := ioutil.WriteFile(filepath.Join(t.tftpdir, "boot/grub2/grub.cfg"), []byte(fmt.Sprintf(`
@@ -425,7 +432,7 @@ func (t *installerRun) completePxeSetup(kargs []string) error {
 				initrd %s
 			}
 		`, t.kern.kernel, kargsStr, t.kern.initramfs)), 0777); err != nil {
-			return err
+			return errors.Wrap(err, "writing grub.cfg")
 		}
 	default:
 		panic("Unhandled boottype " + t.pxe.boottype)
@@ -519,7 +526,7 @@ func (t *installerRun) run() (*QemuInstance, error) {
 func (inst *Install) runPXE(kern *kernelSetup, offline bool) (*InstalledMachine, error) {
 	t, err := inst.setup(kern)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "setting up install")
 	}
 	defer func() {
 		err = t.destroy()
@@ -527,7 +534,7 @@ func (inst *Install) runPXE(kern *kernelSetup, offline bool) (*InstalledMachine,
 
 	bootStartedChan, err := inst.Builder.VirtioChannelRead("bootstarted")
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "setting up bootstarted virtio-serial channel")
 	}
 
 	kargs := renderBaseKargs()
@@ -536,11 +543,11 @@ func (inst *Install) runPXE(kern *kernelSetup, offline bool) (*InstalledMachine,
 
 	kargs = append(kargs, renderInstallKargs(t, offline)...)
 	if err := t.completePxeSetup(kargs); err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "completing PXE setup")
 	}
 	qinst, err := t.run()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "running PXE install")
 	}
 	tempdir := t.tempdir
 	t.tempdir = "" // Transfer ownership
