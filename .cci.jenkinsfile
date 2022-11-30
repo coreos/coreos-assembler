@@ -7,6 +7,7 @@ def cpuCount_s = cpuCount.toString()
 def imageName = buildImage(env: [ENABLE_GO_RACE_DETECTOR: "1", GOMAXPROCS: cpuCount_s], cpu: cpuCount_s)
 
 def memory = (cpuCount * 1536) as Integer
+parallel build: {
 pod(image: imageName + ":latest", kvm: true, cpu: "${cpuCount}", memory: "${memory}Mi") {
     checkout scm
 
@@ -52,6 +53,7 @@ pod(image: imageName + ":latest", kvm: true, cpu: "${cpuCount}", memory: "${memo
         utils.cosaCmd(cosaDir: "/srv", args: "buildupload --dry-run s3 --acl=public-read my-nonexistent-bucket/my/prefix")
     }
 
+
     // Random other tests that aren't about building. XXX: These should be part of `make
     // check` or something and use dummy cosa builds.
     stage("CLI Tests") {
@@ -60,4 +62,13 @@ pod(image: imageName + ":latest", kvm: true, cpu: "${cpuCount}", memory: "${memo
             ${env.WORKSPACE}/tests/test_pruning.sh
         """)
     }
+}
+}, selftests: {
+pod(image: imageName + ":latest", kvm: true, cpu: "${cpuCount}", memory: "4096Mi") {
+    checkout scm
+
+    stage("cosa run tests") {
+        shwrap("./tests/test-cosa-run.sh")
+    }
+}
 }
