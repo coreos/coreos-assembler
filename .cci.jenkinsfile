@@ -34,7 +34,7 @@ pod(image: imageName + ":latest", kvm: true, cpu: "${cpuCount}", memory: "${memo
         utils.cosaCmd(cosaDir: "/srv", args: "buildextend-live --fast")
     }
 
-    kolaTestIso(cosaDir: "/srv", extraArgs4k: "--no-pxe")
+    kolaTestIso(cosaDir: "/srv")
 
     stage("Build Cloud Images") {
         cosaParallelCmds(cosaDir: "/srv", commands: ["Aliyun", "AWS", "Azure", "DigitalOcean", "Exoscale", "GCP",
