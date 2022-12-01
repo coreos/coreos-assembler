@@ -92,7 +92,7 @@ func init() {
 	cmdUpdateReleaseIndex.Flags().StringVar(&awsCredentialsFile, "aws-credentials", "", "AWS credentials file")
 	cmdUpdateReleaseIndex.Flags().StringVar(&specBucketPrefix, "bucket-prefix", "", "S3 bucket and prefix")
 	cmdUpdateReleaseIndex.Flags().StringVar(&specProfile, "profile", "default", "AWS profile")
-	cmdUpdateReleaseIndex.Flags().StringVar(&specRegion, "region", "", "S3 bucket region")
+	cmdUpdateReleaseIndex.Flags().StringVar(&specRegion, "region", "us-east-1", "S3 bucket region")
 	cmdUpdateReleaseIndex.Flags().StringVarP(&specStream, "stream", "", "", "target stream")
 	cmdUpdateReleaseIndex.Flags().StringVarP(&specVersion, "version", "", "", "release version")
 	root.AddCommand(cmdUpdateReleaseIndex)
