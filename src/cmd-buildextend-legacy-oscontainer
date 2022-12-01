@@ -105,7 +105,7 @@ oci_archive = f"{build_path}/{name}"
 cosa_argv = (['/usr/lib/coreos-assembler/buildextend-legacy-oscontainer.sh', oci_archive, 'build', f'--from={args.from_image}'])
 for d in args.add_directory:
     cosa_argv.append(f'--add-directory="{d}"')
-cosa_argv.append(f'--display-name="{display_name}"')
+cosa_argv.append(f'--display-name={display_name}')
 if 'labeled-packages' in configyaml:
     pkgs = ' '.join(configyaml['labeled-packages'])
     cosa_argv.append(f'--labeled-packages="{pkgs}"')
