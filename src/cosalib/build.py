@@ -182,6 +182,7 @@ class _Build:
         tf = getattr(self, "_token_file", None)
         if tf:
             os.unlink(tf)
+            setattr(self, "_token_file", None)
 
     @property
     def workdir(self):
