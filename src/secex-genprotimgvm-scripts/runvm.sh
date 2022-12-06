@@ -2,7 +2,6 @@
 
 set -euo pipefail
 
-workdir="/srv"
 vmrundir="${workdir}/tmp/build.secex"
 memory_default=2048
 runvm_console="${vmrundir}/runvm-console.txt"
