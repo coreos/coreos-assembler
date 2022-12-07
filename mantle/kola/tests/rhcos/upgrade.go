@@ -309,7 +309,9 @@ func downloadLatestReleasedRHCOS(target string) (string, error) {
 
 	graph := &Graph{}
 	graphUrl := fmt.Sprintf("https://api.openshift.com/api/upgrades_info/v1/graph?channel=%s", channel)
-	getJson(graphUrl, &graph)
+	if err := getJson(graphUrl, &graph); err != nil {
+		return "", err
+	}
 
 	// no-op on unreleased OCP versions
 	if len(graph.Nodes) == 0 {
@@ -363,7 +365,9 @@ func downloadLatestReleasedRHCOS(target string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	json.Unmarshal(output, &ocpRelease)
+	if err = json.Unmarshal(output, &ocpRelease); err != nil {
+		return "", err
+	}
 
 	var latestOcpRhcosBuild *cosa.Build
 	rhcosVersion := ocpRelease.DisplayVersions.MachineOS.Version
@@ -372,7 +376,9 @@ func downloadLatestReleasedRHCOS(target string) (string, error) {
 		rhcosVersion,
 		system.RpmArch())
 	latestRhcosBuildMetaUrl := fmt.Sprintf("%s/meta.json", latestBaseUrl)
-	getJson(latestRhcosBuildMetaUrl, &latestOcpRhcosBuild)
+	if err := getJson(latestRhcosBuildMetaUrl, &latestOcpRhcosBuild); err != nil {
+		return "", err
+	}
 
 	latestRhcosQcow2 := latestOcpRhcosBuild.BuildArtifacts.Qemu.Path
 	latestRhcosQcow2Url := fmt.Sprintf("%s/%s", latestBaseUrl, latestRhcosQcow2)
