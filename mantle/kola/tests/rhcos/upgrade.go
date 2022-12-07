@@ -16,6 +16,7 @@ package rhcos
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -25,6 +26,8 @@ import (
 	"time"
 
 	"github.com/coreos/coreos-assembler-schema/cosa"
+
+	"github.com/coreos/go-semver/semver"
 	"github.com/coreos/mantle/kola"
 	"github.com/coreos/mantle/kola/cluster"
 	"github.com/coreos/mantle/kola/register"
@@ -357,8 +360,26 @@ func downloadLatestReleasedRHCOS(target string) (string, error) {
 		return
 	}(releaseIndex, unique)
 
+	// In cases where there is a blocked upgrade to a new Y-stream there can be
+	// two nodes that don't have an edge to upgrade to. This is generally the
+	// latest 4.Y-1.Z and the latest 4.Y.Z. Choose the latest 4.Y.Z
+	if len(difference) < 1 {
+		return "", errors.New("Could not find the latest release")
+	}
+	latest := difference[0]
+	if len(difference) > 1 {
+		latestVersion := semver.New(graph.Nodes[latest].Version)
+		for _, v := range difference {
+			currentVersion := semver.New(graph.Nodes[v].Version)
+			if latestVersion.LessThan(*currentVersion) {
+				latest = v
+				latestVersion = currentVersion
+			}
+		}
+	}
+
 	var ocpRelease *OcpRelease
-	latestOcpPayload := graph.Nodes[difference[0]].Payload
+	latestOcpPayload := graph.Nodes[latest].Payload
 	// oc should be included in cosa since https://github.com/coreos/coreos-assembler/pull/2777
 	cmd := exec.Command("/usr/bin/oc", "adm", "release", "info", latestOcpPayload, "-o", "json")
 	output, err := cmd.Output()
@@ -371,13 +392,23 @@ func downloadLatestReleasedRHCOS(target string) (string, error) {
 
 	var latestOcpRhcosBuild *cosa.Build
 	rhcosVersion := ocpRelease.DisplayVersions.MachineOS.Version
-	latestBaseUrl := fmt.Sprintf("https://rhcos-redirector.apps.art.xq1c.p1.openshiftapps.com/art/storage/releases/rhcos-%s/%s/%s",
+	latestBaseUrl := fmt.Sprintf("https://rhcos.mirror.openshift.com/art/storage/prod/streams/%s/builds/%s/%s",
 		ocpVersionF,
 		rhcosVersion,
 		system.RpmArch())
 	latestRhcosBuildMetaUrl := fmt.Sprintf("%s/meta.json", latestBaseUrl)
 	if err := getJson(latestRhcosBuildMetaUrl, &latestOcpRhcosBuild); err != nil {
-		return "", err
+		// Try the old bucket layout; ideally we'd only do this if the error
+		// was 403 denied (which is really a 404), but meh this is temporary
+		// anyway.
+		latestBaseUrl = fmt.Sprintf("https://rhcos.mirror.openshift.com/art/storage/releases/rhcos-%s/%s/%s",
+			ocpVersionF,
+			rhcosVersion,
+			system.RpmArch())
+		latestRhcosBuildMetaUrl = fmt.Sprintf("%s/meta.json", latestBaseUrl)
+		if err := getJson(latestRhcosBuildMetaUrl, &latestOcpRhcosBuild); err != nil {
+			return "", err
+		}
 	}
 
 	latestRhcosQcow2 := latestOcpRhcosBuild.BuildArtifacts.Qemu.Path
