@@ -104,6 +104,7 @@ func runPromoteImage(cmd *cobra.Command, args []string) {
 		// Perform the deprecation if the image is not already deprecated.
 		// We detect if it is active by checking if it either doesn't
 		// have any deprecation state or if it is explicitly ACTIVE.
+		// nolint (see comment above)
 		if image.Deprecated == nil ||
 			image.Deprecated.State == string(gcloud.DeprecationStateActive) {
 			deprecateImage(
