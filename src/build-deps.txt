@@ -1,2 +1,4 @@
+# A common utility, can/will be used for diagnostics in cosa builds
+time
 # Used by mantle
 golang
