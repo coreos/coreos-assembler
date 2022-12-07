@@ -60,7 +60,16 @@ func Create() (netns.NsHandle, error) {
 		return netns.None(), err
 	}
 	defer origns.Close()
-	defer netns.Set(origns)
 
-	return netns.New()
+	newns, err := netns.New()
+	if err != nil {
+		return netns.None(), err
+	}
+
+	if err := netns.Set(origns); err != nil {
+		newns.Close()
+		return netns.None(), err
+	}
+
+	return newns, nil
 }

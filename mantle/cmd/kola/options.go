@@ -379,7 +379,6 @@ func syncStreamOptions() error {
 		if err != nil {
 			return errors.Wrapf(err, "failed to fetch stream")
 		}
-		break
 	default:
 		return fmt.Errorf("Unhandled stream for distribution %s", kola.Options.Distribution)
 	}

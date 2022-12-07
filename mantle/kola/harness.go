@@ -750,9 +750,7 @@ func getRerunnable(tests []*harness.H) []string {
 		// subtests start due to some initial failure.
 		if nonexclusiveWrapperMatch.MatchString(h.Name()) && !h.GetNonExclusiveTestStarted() {
 			if h.Failed() {
-				for _, testName := range h.Subtests() {
-					testsToRerun = append(testsToRerun, testName)
-				}
+				testsToRerun = append(testsToRerun, h.Subtests()...)
 			}
 		} else {
 			name, isRerunnable := GetRerunnableTestName(h.Name())

@@ -30,6 +30,9 @@ func checkFile(t *testing.T, path string, data []byte, mode os.FileMode) {
 	defer file.Close()
 
 	info, err := file.Stat()
+	if err != nil {
+		t.Fatal(err)
+	}
 	if info.Mode() != mode {
 		t.Fatalf("Unexpected mode: %s != %s %s", info.Mode(), mode, path)
 	}

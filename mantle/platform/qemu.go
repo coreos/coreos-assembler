@@ -314,7 +314,7 @@ func (inst *QemuInstance) SwitchBootOrder() (err2 error) {
 	}
 	// Get boot device (for iso-installs) and block device
 	for _, dev := range blkdevs.Return {
-		devpath := filepath.Clean(strings.Trim(dev.DevicePath, "virtio-backend"))
+		devpath := filepath.Clean(strings.TrimSuffix(dev.DevicePath, "virtio-backend"))
 		switch dev.Device {
 		case "installiso":
 			bootdev = devpath
@@ -613,8 +613,9 @@ func (builder *QemuBuilder) supportsFwCfg() bool {
 
 // supportsSwtpm if the target system supports a virtual TPM device
 func (builder *QemuBuilder) supportsSwtpm() bool {
-	if system.RpmArch() == "s390x" {
-		// ppc64le and aarch64 support TPM as of f33. s390x does not support a backend for TPM
+	switch system.RpmArch() {
+	case "s390x":
+		// s390x does not support a backend for TPM
 		return false
 	}
 	return true
