@@ -142,7 +142,7 @@ ExecStart=/bin/sh -c '/usr/bin/echo %s >/dev/virtio-ports/testisocompletion && s
 RequiredBy=multi-user.target
 `, signalCompleteString)
 
-var checkNoIgnition = fmt.Sprintf(`[Unit]
+var checkNoIgnition = `[Unit]
 Description=TestISO Verify No Ignition Config
 OnFailure=emergency.target
 OnFailureJobMode=isolate
@@ -154,9 +154,9 @@ Type=oneshot
 RemainAfterExit=yes
 ExecStart=/bin/sh -c '[ ! -e /boot/ignition ]'
 [Install]
-RequiredBy=multi-user.target`)
+RequiredBy=multi-user.target`
 
-var multipathedRoot = fmt.Sprintf(`[Unit]
+var multipathedRoot = `[Unit]
 Description=TestISO Verify Multipathed Root
 OnFailure=emergency.target
 OnFailureJobMode=isolate
@@ -166,9 +166,9 @@ Type=oneshot
 RemainAfterExit=yes
 ExecStart=/bin/bash -c '[[ $(findmnt -nvro SOURCE /sysroot) == /dev/mapper/mpatha4 ]]'
 [Install]
-RequiredBy=multi-user.target`)
+RequiredBy=multi-user.target`
 
-var verifyNoEFIBootEntry = fmt.Sprintf(`[Unit]
+var verifyNoEFIBootEntry = `[Unit]
 Description=TestISO Verify No EFI Boot Entry
 OnFailure=emergency.target
 OnFailureJobMode=isolate
@@ -182,7 +182,7 @@ ExecStart=/bin/sh -c '! efibootmgr -v | grep -E "(HD|CDROM)\("'
 # for install scenarios
 RequiredBy=coreos-installer.target
 # for iso-as-disk
-RequiredBy=multi-user.target`)
+RequiredBy=multi-user.target`
 
 var nmConnectionId = "CoreOS DHCP"
 var nmConnectionFile = "coreos-dhcp.nmconnection"
