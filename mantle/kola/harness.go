@@ -18,11 +18,13 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"hash/fnv"
 	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -117,6 +119,9 @@ var (
 
 	DenylistedTests []string // tests which are on the denylist
 	Tags            []string // tags to be ran
+
+	// Sharding is a string of the form: hash:m/n where m and n are integers to run only tests which hash to m.
+	Sharding string
 
 	extTestNum  = 1 // Assigns a unique number to each non-exclusive external test
 	testResults protectedTestResults
@@ -727,9 +732,15 @@ func runProvidedTests(testsBank map[string]*register.Test, patterns []string, mu
 		tests = newTests
 	}
 
+	tests, err = shardTests(tests, Sharding)
+	if err != nil {
+		plog.Fatalf("%v", err)
+	}
+
 	opts := harness.Options{
 		OutputDir: outputDir,
 		Parallel:  TestParallelism,
+		Sharding:  Sharding,
 		Verbose:   true,
 		Reporters: reporters.Reporters{
 			reporters.NewJSONReporter("report.json", pltfrm, versionStr),
@@ -1366,6 +1377,45 @@ mainloop:
 	}
 
 	return buckets
+}
+
+// shardTests filters tests to a particular shard - i.e. a group of tests
+// whose name hashes to the same value.
+func shardTests(tests map[string]*register.Test, sharding string) (map[string]*register.Test, error) {
+	if sharding == "" {
+		return tests, nil
+	}
+	if !strings.HasPrefix(sharding, "hash:") {
+		return nil, fmt.Errorf("invalid sharding syntax: %s", sharding)
+	}
+	parts := strings.SplitN(sharding[len("hash:"):], "/", 2)
+	if len(parts) != 2 {
+		return nil, fmt.Errorf("invalid sharding syntax: %s", sharding)
+	}
+	mv, err := strconv.Atoi(parts[0])
+	if err != nil {
+		return nil, fmt.Errorf("invalid sharding syntax '%s': %w", sharding, err)
+	}
+	nv, err := strconv.Atoi(parts[1])
+	if err != nil {
+		return nil, fmt.Errorf("invalid sharding syntax '%s': %w", sharding, err)
+	}
+	if mv > nv || nv < 1 || mv < 1 {
+		return nil, fmt.Errorf("invalid sharding in '%s'", sharding)
+	}
+	m := uint(mv)
+	n := uint(nv)
+
+	ret := make(map[string]*register.Test)
+	for name, test := range tests {
+		h := fnv.New64()
+		h.Write([]byte(name))
+		d := uint(h.Sum64()%uint64(n)) + 1
+		if d == m {
+			ret[name] = test
+		}
+	}
+	return ret, nil
 }
 
 // Create a parent test that runs non-exclusive tests as subtests

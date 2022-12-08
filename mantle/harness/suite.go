@@ -75,6 +75,9 @@ type Options struct {
 	// Limit number of tests to run in parallel (0 means GOMAXPROCS).
 	Parallel int
 
+	// Sharding splits tests across runners
+	Sharding string
+
 	Reporters reporters.Reporters
 }
 
@@ -297,7 +300,11 @@ func (s *Suite) runTests(out, tap io.Writer) error {
 		go func() { <-t.signal }()
 	})
 	if !t.ran {
-		return SuiteEmpty
+		if s.opts.Sharding != "" {
+			fmt.Printf("notice: sharding %s enabled, no tests matched\n", s.opts.Sharding)
+		} else {
+			return SuiteEmpty
+		}
 	}
 	if t.Failed() {
 		s.opts.Reporters.SetResult(testresult.Fail)

@@ -62,6 +62,7 @@ func init() {
 	bv(&kola.NoNet, "no-net", false, "Don't run tests that require an Internet connection")
 	bv(&kola.ForceRunPlatformIndependent, "run-platform-independent", false, "Run tests that claim platform independence")
 	ssv(&kola.Tags, "tag", []string{}, "Test tag to run. Can be specified multiple times.")
+	sv(&kola.Sharding, "sharding", "", "Provide e.g. 'hash:m/n' where m and n are integers, 1 <= m <= n.  Only tests hashing to m will be run.")
 	bv(&kola.Options.SSHOnTestFailure, "ssh-on-test-failure", false, "SSH into a machine when tests fail")
 	sv(&kola.Options.Stream, "stream", "", "CoreOS stream ID (e.g. for Fedora CoreOS: stable, testing, next)")
 	sv(&kola.Options.CosaWorkdir, "workdir", "", "coreos-assembler working directory")
