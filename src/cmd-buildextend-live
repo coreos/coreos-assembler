@@ -476,10 +476,8 @@ def generate_iso():
                 [fp2.write(line.replace('@INITRD_LOAD_ADDRESS@', INITRD_ADDRESS)) for line in fp1]
         for prmfile in ['cdboot.prm', 'genericdvd.prm', 'generic.prm']:
             with open(os.path.join(tmpisoimages, prmfile), 'w') as fp1:
-                line1 = 'cio_ignore=all,!condev'
                 with open(os.path.join(tmpisoroot, 'zipl.prm'), 'r') as fp2:
-                    line1 += ' ' + ' '.join([line2.strip('\n') for line2 in fp2])
-                fp1.write(line1)
+                    fp1.write(fp2.read().strip())
 
         # s390x's z/VM CMS files are limited to 8 char for filenames and extensions
         # Also it is nice to keep naming convetion with Fedora/RHEL for existing users and code
