@@ -37,7 +37,8 @@ type QOMBlkDev struct {
 		DevicePath string `json:"qdev"`
 		Removable  bool   `json:"removable"`
 		Inserted   struct {
-			BackingFileDepth int `json:"backing_file_depth"`
+			BackingFileDepth int    `json:"backing_file_depth"`
+			NodeName         string `json:"node-name"`
 		} `json:"inserted"`
 	} `json:"return"`
 }

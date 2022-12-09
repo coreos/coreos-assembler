@@ -344,6 +344,10 @@ func (inst *QemuInstance) SwitchBootOrder() (err2 error) {
 			primarydev = devpath
 		case "mpath11":
 			secondarydev = devpath
+		case "":
+			if dev.Inserted.NodeName == "installiso" {
+				bootdev = devpath
+			}
 		default:
 			break
 		}
@@ -1330,7 +1334,14 @@ func (builder *QemuBuilder) setupIso() error {
 	// primary disk is selected. This allows us to have "boot once" functionality on
 	// both UEFI and BIOS (`-boot once=d` OTOH doesn't work with OVMF).
 	switch coreosarch.CurrentRpmArch() {
-	case "s390x", "ppc64le", "aarch64":
+	case "s390x":
+		if builder.isoAsDisk {
+			// we could do it, but boot would fail
+			return errors.New("cannot attach ISO as disk; no hybrid ISO on this arch")
+		}
+		builder.Append("-blockdev", "file,node-name=installiso,filename="+builder.iso.path,
+			"-device", "virtio-scsi", "-device", "scsi-cd,drive=installiso,bootindex=2")
+	case "ppc64le", "aarch64":
 		if builder.isoAsDisk {
 			// we could do it, but boot would fail
 			return errors.New("cannot attach ISO as disk; no hybrid ISO on this arch")
