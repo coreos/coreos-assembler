@@ -18,10 +18,16 @@ if [ -d "${workdir}/src/yumrepos" ]; then
     find "${workdir}/src/yumrepos/" -maxdepth 1 -type f -name '*.repo' -exec cp -t "${ctx_dir}" {} +
 fi
 
-# Build the image, replacing the FROM directive with the local image we have
+variant=""
+if [[ -f "${workdir}/src/config.json" ]]; then
+    variant="$(jq --raw-output '."coreos-assembler.config-variant"' "${workdir}/src/config.json")"
+fi
+
+# Build the image, replacing the FROM directive with the local image we have.
+# The `variant` variable is explicitely unquoted to be skipped when empty.
 img=localhost/extensions-container
 (set -x; podman build --from oci-archive:"$ostree_ociarchive" --network=host \
-    --build-arg COSA=true --label version="$buildid" \
+    --build-arg COSA=true --build-arg VARIANT="${variant}" --label version="$buildid" \
     -t "${img}" -f extensions/Dockerfile "${ctx_dir}")
 
 # Call skopeo to export it from the container storage to an oci-archive.
