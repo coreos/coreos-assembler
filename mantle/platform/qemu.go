@@ -1258,6 +1258,13 @@ func coreosInstallerSupportsISOKargs() (bool, error) {
 	return strings.Contains(out, "kargs"), nil
 }
 
+// supportsIsoKargs returns true if we support modifying ISO kargs on the
+// current arch. We could also auto-detect this, but would probably still want
+// some assertions that we detected as supported on !s390x.
+func (builder *QemuBuilder) supportsIsoKargs() bool {
+	return builder.architecture != "s390x"
+}
+
 func (builder *QemuBuilder) setupIso() error {
 	if err := builder.ensureTempdir(); err != nil {
 		return err
@@ -1301,9 +1308,12 @@ func (builder *QemuBuilder) setupIso() error {
 			if len(builder.AppendKernelArgs) > 0 {
 				return errors.Wrapf(err, "running `coreos-installer iso kargs modify`; old CoreOS ISO?")
 			}
-			stderr := stderrb.String()
-			plog.Warningf("running coreos-installer iso kargs modify: %v: %q", err, stderr)
-			plog.Warning("likely targeting an old CoreOS ISO; ignoring...")
+			// Only actually emit a warning if we expected it to be supported
+			if builder.supportsIsoKargs() {
+				stderr := stderrb.String()
+				plog.Warningf("running coreos-installer iso kargs modify: %v: %q", err, stderr)
+				plog.Warning("likely targeting an old CoreOS ISO; ignoring...")
+			}
 		}
 	} else if len(builder.AppendKernelArgs) > 0 {
 		return fmt.Errorf("coreos-installer does not support appending kernel args")
