@@ -339,6 +339,12 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 		targetScenarios[scenario] = true
 	}
 
+	// Only x86_64 supports hybrid ISOs.
+	if coreosarch.CurrentRpmArch() != "x86_64" {
+		fmt.Printf("Skipping iso-as-disk; not supported on %s\n", coreosarch.CurrentRpmArch())
+		delete(targetScenarios, scenarioISOAsDisk)
+	}
+
 	// s390x: iso-install does not work because s390x uses an El Torito image
 	if coreosarch.CurrentRpmArch() == "s390x" {
 		fmt.Println("Skipping iso-install on s390x")
