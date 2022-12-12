@@ -23,9 +23,6 @@ const (
 // RHCOS services we expect disabled/inactive
 var offServices = []string{
 	"dnsmasq.service",
-	"iscsid.service",
-	"iscsid.socket",
-	"iscsiuio.service",
 	"nfs-blkmap.service",
 	"nfs-idmapd.service",
 	"nfs-mountd.service",
