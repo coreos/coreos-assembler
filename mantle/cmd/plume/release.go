@@ -32,7 +32,6 @@ import (
 
 var (
 	awsCredentialsFile string
-	selectedDistro     string
 
 	specBucket  string
 	specProfile string
@@ -41,14 +40,6 @@ var (
 	specVersion string
 
 	specBucketPrefix string
-
-	cmdRelease = &cobra.Command{
-		Use:        "release [options]",
-		Short:      "Publish a new CoreOS release.",
-		Run:        runRelease,
-		Long:       `Publish a new CoreOS release.`,
-		Deprecated: "please use make-amis-public and update-release-index instead",
-	}
 
 	cmdMakeAmisPublic = &cobra.Command{
 		Use:   "make-amis-public [options]",
@@ -66,21 +57,6 @@ var (
 )
 
 func init() {
-	// XXX: we'll remove this command soon
-	cmdRelease.Flags().StringVar(&awsCredentialsFile, "aws-credentials", "", "AWS credentials file")
-	cmdRelease.Flags().StringVar(&selectedDistro, "distro", "fcos", "system to release")
-	cmdRelease.Flags().StringVar(&specBucket, "bucket", "", "S3 bucket")
-	err := cmdRelease.Flags().MarkDeprecated("bucket", "please use --bucket-prefix instead")
-	if err != nil {
-		plog.Fatalf("failed to make --bucket deprecated: %v", err)
-	}
-	cmdRelease.Flags().StringVar(&specBucketPrefix, "bucket-prefix", "", "S3 bucket and prefix")
-	cmdRelease.Flags().StringVar(&specProfile, "profile", "default", "AWS profile")
-	cmdRelease.Flags().StringVar(&specRegion, "region", "us-east-1", "S3 bucket region")
-	cmdRelease.Flags().StringVarP(&specStream, "stream", "S", "testing", "target stream")
-	cmdRelease.Flags().StringVarP(&specVersion, "version", "V", "", "release version")
-	root.AddCommand(cmdRelease)
-
 	cmdMakeAmisPublic.Flags().StringVar(&awsCredentialsFile, "aws-credentials", "", "AWS credentials file")
 	cmdMakeAmisPublic.Flags().StringVar(&specBucketPrefix, "bucket-prefix", "", "S3 bucket and prefix")
 	cmdMakeAmisPublic.Flags().StringVar(&specProfile, "profile", "default", "AWS profile")
@@ -99,15 +75,6 @@ func init() {
 
 }
 
-func runRelease(cmd *cobra.Command, args []string) {
-	switch selectedDistro {
-	case "fcos":
-		runFcosRelease(cmd, args)
-	default:
-		plog.Fatalf("Unknown distro %q:", selectedDistro)
-	}
-}
-
 func validateArgs(args []string) {
 	if len(args) > 0 {
 		plog.Fatal("No args accepted")
@@ -124,14 +91,6 @@ func validateArgs(args []string) {
 	if specRegion == "" {
 		plog.Fatal("--region is required")
 	}
-}
-
-func runFcosRelease(cmd *cobra.Command, args []string) {
-	validateArgs(args)
-	api := getAWSApi()
-	rel := getReleaseMetadata(api)
-	makeReleaseAMIsPublic(rel)
-	modifyReleaseMetadataIndex(api, rel)
 }
 
 func runMakeAmisPublic(cmd *cobra.Command, args []string) {
