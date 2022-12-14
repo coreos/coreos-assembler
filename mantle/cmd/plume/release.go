@@ -169,12 +169,12 @@ func makeReleaseAMIsPublic(rel release.Release) bool {
 				Region:          region,
 			})
 			if err != nil {
-				plog.Warningf("creating AWS API for modifying launch permissions: %v", err)
+				plog.Warningf("creating AWS API for region %s modifying launch permissions: %v", region, err)
 				at_least_one_failed = true
 				continue
 			}
 
-			plog.Noticef("making AMI %s public", ami.Image)
+			plog.Noticef("making AMI %s in region %s public", ami.Image, region)
 			err = aws_api.PublishImage(ami.Image)
 			if err != nil {
 				plog.Warningf("couldn't publish image in %v: %v", region, err)
