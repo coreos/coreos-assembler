@@ -325,7 +325,7 @@ func (inst *QemuInstance) SwitchBootOrder() (err2 error) {
 	}
 
 	var bootdev, primarydev, secondarydev string
-	// Get bootdevice for pxe boot
+	// Get boot device for PXE boots
 	for _, dev := range devs.Return {
 		switch dev.Type {
 		case "child<virtio-net-pci>", "child<virtio-net-ccw>":
@@ -334,7 +334,7 @@ func (inst *QemuInstance) SwitchBootOrder() (err2 error) {
 			break
 		}
 	}
-	// Get boot device (for iso-installs) and block device
+	// Get boot device for ISO boots and target block device
 	for _, dev := range blkdevs.Return {
 		devpath := filepath.Clean(strings.TrimSuffix(dev.DevicePath, "virtio-backend"))
 		switch dev.Device {
@@ -347,6 +347,19 @@ func (inst *QemuInstance) SwitchBootOrder() (err2 error) {
 		default:
 			break
 		}
+	}
+
+	if bootdev == "" {
+		return fmt.Errorf("Could not find boot device using QMP.\n"+
+			"Full list of peripherals: %v.\n"+
+			"Full list of block devices: %v.\n",
+			devs.Return, blkdevs.Return)
+	}
+
+	if primarydev == "" {
+		return fmt.Errorf("Could not find target disk using QMP.\n"+
+			"Full list of block devices: %v.\n",
+			blkdevs.Return)
 	}
 
 	// unset bootindex for the boot device
