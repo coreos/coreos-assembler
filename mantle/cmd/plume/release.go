@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/url"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -96,7 +97,10 @@ func runMakeAmisPublic(cmd *cobra.Command, args []string) {
 	validateArgs(args)
 	api := getAWSApi()
 	rel := getReleaseMetadata(api)
-	makeReleaseAMIsPublic(rel)
+	incomplete := makeReleaseAMIsPublic(rel)
+	if incomplete {
+		os.Exit(77)
+	}
 }
 
 func runUpdateReleaseIndex(cmd *cobra.Command, args []string) {
@@ -150,7 +154,9 @@ func getReleaseMetadata(api *aws.API) release.Release {
 	return rel
 }
 
-func makeReleaseAMIsPublic(rel release.Release) {
+func makeReleaseAMIsPublic(rel release.Release) bool {
+	at_least_one_passed := false
+	at_least_one_failed := false
 	for _, archs := range rel.Architectures {
 		awsmedia := archs.Media.Aws
 		if awsmedia == nil {
@@ -163,16 +169,30 @@ func makeReleaseAMIsPublic(rel release.Release) {
 				Region:          region,
 			})
 			if err != nil {
-				plog.Fatalf("creating AWS API for modifying launch permissions: %v", err)
+				plog.Warningf("creating AWS API for modifying launch permissions: %v", err)
+				at_least_one_failed = true
+				continue
 			}
 
 			plog.Noticef("making AMI %s public", ami.Image)
 			err = aws_api.PublishImage(ami.Image)
 			if err != nil {
-				plog.Fatalf("couldn't publish image in %v: %v", region, err)
+				plog.Warningf("couldn't publish image in %v: %v", region, err)
+				at_least_one_failed = true
+				continue
 			}
+
+			at_least_one_passed = true
 		}
 	}
+
+	// if none passed, then it's likely a more fundamental issue like wrong
+	// permissions or API usage, etc... let's just hard fail in that case
+	if !at_least_one_passed {
+		plog.Fatal("failed to make AMIs public in all regions")
+	}
+
+	return at_least_one_failed
 }
 
 func modifyReleaseMetadataIndex(api *aws.API, rel release.Release) {
