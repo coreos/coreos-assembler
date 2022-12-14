@@ -108,7 +108,7 @@ func runRelease(cmd *cobra.Command, args []string) {
 	}
 }
 
-func runFcosRelease(cmd *cobra.Command, args []string) {
+func validateArgs(args []string) {
 	if len(args) > 0 {
 		plog.Fatal("No args accepted")
 	}
@@ -124,7 +124,10 @@ func runFcosRelease(cmd *cobra.Command, args []string) {
 	if specRegion == "" {
 		plog.Fatal("--region is required")
 	}
+}
 
+func runFcosRelease(cmd *cobra.Command, args []string) {
+	validateArgs(args)
 	api := getAWSApi()
 	rel := getReleaseMetadata(api)
 	makeReleaseAMIsPublic(rel)
@@ -132,12 +135,14 @@ func runFcosRelease(cmd *cobra.Command, args []string) {
 }
 
 func runMakeAmisPublic(cmd *cobra.Command, args []string) {
+	validateArgs(args)
 	api := getAWSApi()
 	rel := getReleaseMetadata(api)
 	makeReleaseAMIsPublic(rel)
 }
 
 func runUpdateReleaseIndex(cmd *cobra.Command, args []string) {
+	validateArgs(args)
 	api := getAWSApi()
 	rel := getReleaseMetadata(api)
 	modifyReleaseMetadataIndex(api, rel)
