@@ -33,7 +33,6 @@ import (
 var (
 	awsCredentialsFile string
 
-	specBucket  string
 	specProfile string
 	specRegion  string
 	specStream  string
@@ -85,8 +84,8 @@ func validateArgs(args []string) {
 	if specStream == "" {
 		plog.Fatal("--stream is required")
 	}
-	if specBucket == "" && specBucketPrefix == "" {
-		plog.Fatal("--bucket or --bucket-prefix is required")
+	if specBucketPrefix == "" {
+		plog.Fatal("--bucket-prefix is required")
 	}
 	if specRegion == "" {
 		plog.Fatal("--region is required")
@@ -121,18 +120,11 @@ func getAWSApi() *aws.API {
 }
 
 func getBucketAndStreamPrefix() (string, string) {
-	if specBucketPrefix != "" {
-		split := strings.SplitN(specBucketPrefix, "/", 2)
-		if len(split) != 2 {
-			plog.Fatalf("can't split %q into bucket and prefix", specBucketPrefix)
-		}
-		return split[0], split[1]
+	split := strings.SplitN(specBucketPrefix, "/", 2)
+	if len(split) != 2 {
+		plog.Fatalf("can't split %q into bucket and prefix", specBucketPrefix)
 	}
-
-	// Assumes the bucket layout defined inside of
-	// https://github.com/coreos/fedora-coreos-tracker/issues/189.
-	// We'll drop support for this soon.
-	return specBucket, filepath.Join("prod", "streams", specStream)
+	return split[0], split[1]
 }
 
 func getReleaseMetadata(api *aws.API) release.Release {
