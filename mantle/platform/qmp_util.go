@@ -55,12 +55,12 @@ func (inst *QemuInstance) listDevices() (*QOMDev, error) {
 	listcmd := `{ "execute": "qom-list", "arguments": { "path": "/machine/peripheral-anon" } }`
 	out, err := inst.runQmpCommand(listcmd)
 	if err != nil {
-		return nil, errors.Wrapf(err, "Running QMP list command")
+		return nil, errors.Wrapf(err, "Running QMP qom-list command")
 	}
 
 	var devs QOMDev
 	if err = json.Unmarshal(out, &devs); err != nil {
-		return nil, errors.Wrapf(err, "De-serializing QMP output")
+		return nil, errors.Wrapf(err, "De-serializing QMP qom-list output")
 	}
 	return &devs, nil
 }
@@ -70,22 +70,22 @@ func (inst *QemuInstance) listBlkDevices() (*QOMBlkDev, error) {
 	listcmd := `{ "execute": "query-block" }`
 	out, err := inst.runQmpCommand(listcmd)
 	if err != nil {
-		return nil, errors.Wrapf(err, "Running QMP list command")
+		return nil, errors.Wrapf(err, "Running QMP query-block command")
 	}
 
 	var devs QOMBlkDev
 	if err = json.Unmarshal(out, &devs); err != nil {
-		return nil, errors.Wrapf(err, "De-serializing QMP output")
+		return nil, errors.Wrapf(err, "De-serializing QMP query-block output")
 	}
 	return &devs, nil
 }
 
-// setBootIndenx uses the qmp socket to the bootindex for the particular device.
+// setBootIndexForDevice uses the qmp socket to the bootindex for the particular device.
 func (inst *QemuInstance) setBootIndexForDevice(device string, bootindex int) error {
 	cmd := fmt.Sprintf(`{ "execute":"qom-set", "arguments": { "path":"%s", "property":"bootindex", "value":%d } }`,
 		device, bootindex)
 	if _, err := inst.runQmpCommand(cmd); err != nil {
-		return errors.Wrapf(err, "Running QMP command")
+		return errors.Wrapf(err, "Setting bootindex of device %s to %d", device, bootindex)
 	}
 	return nil
 }
@@ -94,7 +94,7 @@ func (inst *QemuInstance) setBootIndexForDevice(device string, bootindex int) er
 func (inst *QemuInstance) deleteBlockDevice(device string) error {
 	cmd := fmt.Sprintf(`{ "execute": "device_del", "arguments": { "id":"%s" } }`, device)
 	if _, err := inst.runQmpCommand(cmd); err != nil {
-		return errors.Wrapf(err, "Running QMP command")
+		return errors.Wrapf(err, "Deleting block device %s", device)
 	}
 	return nil
 }
