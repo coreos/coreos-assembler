@@ -87,7 +87,7 @@ const NeedsInternetTag = "needs-internet"
 const PlatformIndependentTag = "platform-independent"
 
 // defaultPlatformIndependentPlatform is the platform where we run tests that claim platform independence
-const defaultPlatformIndependentPlatform = "qemu"
+const defaultPlatformIndependentPlatform = "qemu-unpriv"
 
 // Don't e.g. check console for kernel errors, SELinux AVCs, etc.
 const SkipBaseChecksTag = "skip-base-checks"
