@@ -489,6 +489,14 @@ def generate_iso():
         shutil.move(os.path.join(tmpisoimagespxe, kernel_img), kernel_dest)
         kernel_img = 'kernel.img'
 
+        if args.fixture:
+            # truncate it to 128k so it includes the offsets to the initrd and kargs
+            # https://github.com/ibm-s390-linux/s390-tools/blob/032304d5034e/netboot/mk-s390image#L21-L24
+            with open(kernel_dest, 'rb+') as f:
+                f.truncate(128 * 1024)
+            with open(iso_initramfs, 'rb+') as f:
+                f.truncate(1024)
+
         # On s390x, we reserve space for the Ignition config in the initrd
         # image directly since the bootloader doesn't support multiple initrds.
         # We do this by inflating the initramfs just for the duration of the
@@ -693,17 +701,19 @@ boot
             fh.write('initrd data\n')
         with open(os.path.join(tmpisoimagespxe, 'vmlinuz'), 'w') as fh:
             fh.write('the kernel\n')
-        with open(os.path.join(tmpisoisolinux, 'isolinux.bin'), 'rb+') as fh:
-            flen = fh.seek(0, 2)
-            fh.truncate(0)
-            fh.truncate(flen)
-            fh.seek(64)
-            # isohybrid checks for this magic
-            fh.write(b'\xfb\xc0\x78\x70')
-        for f in ensure_glob(os.path.join(tmpisoisolinux, '*.c32')):
-            os.unlink(f)
-        for f in ensure_glob(os.path.join(tmpisoisolinux, '*.msg')):
-            os.unlink(f)
+        # this directory doesn't exist on s390x
+        if os.path.isdir(tmpisoisolinux):
+            with open(os.path.join(tmpisoisolinux, 'isolinux.bin'), 'rb+') as fh:
+                flen = fh.seek(0, 2)
+                fh.truncate(0)
+                fh.truncate(flen)
+                fh.seek(64)
+                # isohybrid checks for this magic
+                fh.write(b'\xfb\xc0\x78\x70')
+            for f in ensure_glob(os.path.join(tmpisoisolinux, '*.c32')):
+                os.unlink(f)
+            for f in ensure_glob(os.path.join(tmpisoisolinux, '*.msg')):
+                os.unlink(f)
 
     runcmd(genisoargs_final)
 
