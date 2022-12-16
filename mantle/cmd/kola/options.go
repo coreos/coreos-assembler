@@ -69,6 +69,7 @@ func init() {
 	sv(&kola.Options.CosaBuildId, "build", "", "coreos-assembler build ID")
 	sv(&kola.Options.CosaBuildArch, "arch", coreosarch.CurrentRpmArch(), "The target architecture of the build")
 	sv(&kola.Options.AppendButane, "append-butane", "", "Path to Butane config which is merged with test code")
+	sv(&kola.Options.AppendIgnition, "append-ignition", "", "Path to Ignition config which is merged with test code")
 	// rhcos-specific options
 	sv(&kola.Options.OSContainer, "oscontainer", "", "oscontainer image pullspec for pivot (RHCOS only)")
 

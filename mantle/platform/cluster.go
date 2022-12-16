@@ -222,6 +222,20 @@ func (bc *BaseCluster) RenderUserData(userdata *platformConf.UserData, ignitionV
 		confSources = append(confSources, subConf)
 	}
 
+	// If Ignition is specified, parse and add that.
+	if bc.bf.baseopts.AppendIgnition != "" {
+		buf, err := ioutil.ReadFile(bc.bf.baseopts.AppendIgnition)
+		if err != nil {
+			return nil, err
+		}
+		subData := platformConf.Ignition(string(buf))
+		subConf, err := subData.Render(platformConf.ReportWarnings)
+		if err != nil {
+			return nil, err
+		}
+		confSources = append(confSources, subConf)
+	}
+
 	// Look at the array of configs we have so far; if there is exactly one,
 	// then we don't need to do any merging.
 	var conf *platformConf.Conf
