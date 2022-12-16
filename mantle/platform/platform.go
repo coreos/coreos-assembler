@@ -184,7 +184,8 @@ type Options struct {
 
 	NoTestExitError bool
 
-	AppendButane string
+	AppendButane   string
+	AppendIgnition string
 
 	// OSContainer is an image pull spec that can be given to the pivot service
 	// in RHCOS machines to perform machine content upgrades.
