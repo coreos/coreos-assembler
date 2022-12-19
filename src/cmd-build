@@ -259,6 +259,17 @@ prepare_git_artifacts "${configdir_gitrepo}" "${PWD}/coreos-assembler-config-git
 
 extra_compose_args=()
 
+# Apply autolock from another build for this version if no base lockfile exists.
+# Do this before so that overrides come after. Don't do this if in strict mode.
+# They're theoretically independent, but in practice it's unlikely that an
+# autolockfile will include all the packages needed to satisfy --strict.
+if [ ! -f "${manifest_lock}" ] && [ -n "${VERSION}" ] && [ -z "${STRICT}" ]; then
+    autolockfile=$(generate_autolock "${VERSION}")
+    if [ -n "${autolockfile}" ]; then
+        extra_compose_args+=("--ex-lockfile=${autolockfile}")
+    fi
+fi
+
 for lock in "${manifest_lock}" "${manifest_lock_overrides}" "${manifest_lock_arch_overrides}"; do
     if [ -f "${lock}" ]; then
         extra_compose_args+=("--ex-lockfile=${lock}")
