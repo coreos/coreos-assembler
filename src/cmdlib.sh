@@ -628,6 +628,45 @@ strip_out_lockfile_digests() {
     mv "$1.tmp" "$1"
 }
 
+# Strip out the arch field from lockfiles to make them archless.
+strip_out_lockfile_arches() {
+    python3 -c '
+import sys, json
+lockfile = json.load(sys.stdin)
+new_packages = {}
+for pkg, meta in lockfile["packages"].items():
+    evra = meta.get("evra")
+    if evra is None or evra.endswith(".noarch"):
+        new_packages[pkg] = meta
+        continue
+    new_packages[pkg] = {
+        "evr": evra[:evra.rindex(".")]
+    }
+lockfile["packages"] = new_packages
+json.dump(lockfile, sys.stdout)
+' < "$1" > "$1.tmp"
+    mv "$1.tmp" "$1"
+}
+
+# Create the autolock for a given version
+generate_autolock() {
+    local version=$1; shift
+    local autolockfile="${tmprepo}/tmp/manifest-autolock-${version}.json"
+    if [ ! -f "${autolockfile}" ]; then
+        # Just use the first arch available. In practice, this'll likely always be
+        # x86_64, but it should work just as well if not.
+        local lockfile
+        lockfile=$(find "${workdir}/builds/${version}/" -name 'manifest-lock.generated.*.json' -print -quit 2>/dev/null)
+        if [ -z "${lockfile}" ]; then
+            # no generated lockfiles found; we can't autolock
+            return
+        fi
+        cp "${lockfile}" "${autolockfile}"
+        strip_out_lockfile_arches "${autolockfile}"
+    fi
+    echo "${autolockfile}"
+}
+
 json_key() {
     jq -r ".[\"$1\"]" < "${builddir}/meta.json"
 }

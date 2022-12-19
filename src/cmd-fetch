@@ -31,10 +31,12 @@ Usage: coreos-assembler fetch --help
   --update-lockfile        Update base lockfile to latest packages
   --write-lockfile-to=FILE Write updated base lockfile to separate file
   --with-cosa-overrides    Don't ignore cosa overrides in `overrides/rpm`
+  --autolock=VERSION       If no base lockfile used, create one from any arch build of `VERSION`
 
 EOF
 }
 
+AUTOLOCK_VERSION=
 UPDATE_LOCKFILE=
 OUTPUT_LOCKFILE=
 IGNORE_COSA_OVERRIDES_ARG=--ignore-cosa-overrides
@@ -42,7 +44,7 @@ DRY_RUN=
 FORCE_ARG=
 STRICT=
 rc=0
-options=$(getopt --options h --longoptions help,update-lockfile,dry-run,with-cosa-overrides,write-lockfile-to:,strict,force -- "$@") || rc=$?
+options=$(getopt --options h --longoptions help,update-lockfile,dry-run,with-cosa-overrides,write-lockfile-to:,strict,force,autolock: -- "$@") || rc=$?
 [ $rc -eq 0 ] || {
     print_help
     exit 1
@@ -74,6 +76,10 @@ while true; do
         --force)
             FORCE_ARG=--force-nocache
             ;;
+        --autolock)
+            shift;
+            AUTOLOCK_VERSION=$1
+            ;;
         --)
             shift
             break
@@ -96,6 +102,20 @@ prepare_build
 
 lock_args=
 extra_args=
+
+# Apply autolock from another build for this version if no base lockfile
+# exists. Do this before so that overrides come after.
+if  [ -n "${AUTOLOCK_VERSION}" ]; then
+    if [ -f "${manifest_lock}" ]; then
+        fatal "ERROR: Requested --autolock, but base lockfile found"
+    fi
+    autolockfile=$(generate_autolock "${AUTOLOCK_VERSION}")
+    if [ -z "${autolockfile}" ]; then
+        fatal "ERROR: Requested --autolock, but no generated lockfile found"
+    fi
+    lock_args+=" --ex-lockfile=${autolockfile}"
+fi
+
 if [ -n "${UPDATE_LOCKFILE}" ]; then
     # Put this under tmprepo so it gets automatically chown'ed if needed
     extra_args+=" --ex-write-lockfile-to=${tmprepo}/tmp/manifest-lock.json"
@@ -120,6 +140,12 @@ if [ -n "${DRY_RUN}" ]; then
 fi
 
 if [ -n "${STRICT}" ]; then
+    if [ -n "${AUTOLOCK_VERSION}" ]; then
+        # They're theoretically independent, but in practice it's unlikely
+        # that an autolockfile will include all the packages needed to satisfy
+        # --strict. So let's just catch it early.
+        fatal "ERROR: Can't use --autolock and --strict together"
+    fi
     extra_args+=" --ex-lockfile-strict"
 fi
 
