@@ -20,9 +20,18 @@ fi
 print_help() {
     cat 1>&2 <<'EOF'
 Usage: coreos-assembler fetch --help
-       coreos-assembler fetch [--update-lockfile] [--write-lockfile-to=file] [--with-cosa-overrides] [--strict] [--force]
+       coreos-assembler fetch [OPTIONS]...
 
   Fetch and import the latest packages.
+
+  The following options are supported:
+
+  --force                  Redownload packages even if nothing changed since last build
+  --strict                 Only download locked packages when using lockfiles
+  --update-lockfile        Update base lockfile to latest packages
+  --write-lockfile-to=FILE Write updated base lockfile to separate file
+  --with-cosa-overrides    Don't ignore cosa overrides in `overrides/rpm`
+
 EOF
 }
 
