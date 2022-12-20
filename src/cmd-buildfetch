@@ -157,7 +157,7 @@ def main():
                                   stdout=subprocess.DEVNULL)
 
     # and finally the symlink
-    if args.build is None:
+    if args.build is None or args.build == builds.get_latest():
         rm_allow_noent('builds/latest')
         os.symlink(buildid, 'builds/latest')
 
