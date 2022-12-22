@@ -155,6 +155,7 @@ func getReleaseMetadata(api *aws.API) release.Release {
 }
 
 func makeReleaseAMIsPublic(rel release.Release) bool {
+	at_least_one_tried := false
 	at_least_one_passed := false
 	at_least_one_failed := false
 	for _, archs := range rel.Architectures {
@@ -163,6 +164,8 @@ func makeReleaseAMIsPublic(rel release.Release) bool {
 			continue
 		}
 		for region, ami := range awsmedia.Images {
+			at_least_one_tried = true
+
 			aws_api, err := aws.New(&aws.Options{
 				CredentialsFile: awsCredentialsFile,
 				Profile:         specProfile,
@@ -186,12 +189,16 @@ func makeReleaseAMIsPublic(rel release.Release) bool {
 		}
 	}
 
-	// if none passed, then it's likely a more fundamental issue like wrong
-	// permissions or API usage, etc... let's just hard fail in that case
-	if !at_least_one_passed {
+	if !at_least_one_tried {
+		// if none were found, then we no-op
+		return false
+	} else if !at_least_one_passed {
+		// if none passed, then it's likely a more fundamental issue like wrong
+		// permissions or API usage, etc... let's just hard fail in that case
 		plog.Fatal("failed to make AMIs public in all regions")
 	}
 
+	// all passed or some failed
 	return at_least_one_failed
 }
 
