@@ -289,8 +289,8 @@ func NewFlight(pltfrm string) (flight platform.Flight, err error) {
 	return
 }
 
-// matchesPatterns returns true if `s` matches one of the patterns in `patterns`.
-func matchesPatterns(s string, patterns []string) (bool, error) {
+// MatchesPatterns returns true if `s` matches one of the patterns in `patterns`.
+func MatchesPatterns(s string, patterns []string) (bool, error) {
 	for _, pattern := range patterns {
 		match, err := filepath.Match(pattern, s)
 		if err != nil {
@@ -303,8 +303,8 @@ func matchesPatterns(s string, patterns []string) (bool, error) {
 	return false, nil
 }
 
-// hasString returns true if `s` equals one of the strings in `slice`.
-func hasString(s string, slice []string) bool {
+// HasString returns true if `s` equals one of the strings in `slice`.
+func HasString(s string, slice []string) bool {
 	for _, e := range slice {
 		if e == s {
 			return true
@@ -358,7 +358,7 @@ type InitConfigData struct {
 	ConfigVariant string `json:"coreos-assembler.config-variant"`
 }
 
-func parseDenyListYaml(pltfrm string) error {
+func ParseDenyListYaml(pltfrm string) error {
 	var objs []DenyListObj
 
 	// Parse kola-denylist into structs
@@ -420,19 +420,19 @@ func parseDenyListYaml(pltfrm string) error {
 	// Accumulate patterns filtering by set policies
 	plog.Debug("Processing denial patterns from yaml...")
 	for _, obj := range objs {
-		if len(obj.Arches) > 0 && !hasString(arch, obj.Arches) {
+		if len(obj.Arches) > 0 && !HasString(arch, obj.Arches) {
 			continue
 		}
 
-		if len(obj.Platforms) > 0 && !hasString(pltfrm, obj.Platforms) {
+		if len(obj.Platforms) > 0 && !HasString(pltfrm, obj.Platforms) {
 			continue
 		}
 
-		if len(stream) > 0 && len(obj.Streams) > 0 && !hasString(stream, obj.Streams) {
+		if len(stream) > 0 && len(obj.Streams) > 0 && !HasString(stream, obj.Streams) {
 			continue
 		}
 
-		if len(osversion) > 0 && len(obj.OsVersion) > 0 && !hasString(osversion, obj.OsVersion) {
+		if len(osversion) > 0 && len(obj.OsVersion) > 0 && !HasString(osversion, obj.OsVersion) {
 			continue
 		}
 
@@ -488,7 +488,7 @@ func filterTests(tests map[string]*register.Test, patterns []string, pltfrm stri
 	// Higher-level functions default to '*' if the user didn't pass anything.
 	// Notice this. (This totally ignores the corner case where the user
 	// actually typed '*').
-	userTypedPattern := !hasString("*", patterns)
+	userTypedPattern := !HasString("*", patterns)
 	for name, t := range tests {
 		if NoNet && testRequiresInternet(t) {
 			plog.Debugf("Skipping test that requires network: %s", t.Name)
@@ -533,14 +533,14 @@ func filterTests(tests map[string]*register.Test, patterns []string, pltfrm stri
 			continue
 		}
 
-		nameMatch, err := matchesPatterns(t.Name, patterns)
+		nameMatch, err := MatchesPatterns(t.Name, patterns)
 		if err != nil {
 			return nil, err
 		}
 
 		tagMatch := false
 		for _, tag := range positiveTags {
-			tagMatch = hasString(tag, t.Tags) || tag == t.RequiredTag
+			tagMatch = HasString(tag, t.Tags) || tag == t.RequiredTag
 			if tagMatch {
 				break
 			}
@@ -548,7 +548,7 @@ func filterTests(tests map[string]*register.Test, patterns []string, pltfrm stri
 
 		negativeTagMatch := false
 		for _, tag := range negativeTags {
-			negativeTagMatch = hasString(tag, t.Tags)
+			negativeTagMatch = HasString(tag, t.Tags)
 			if negativeTagMatch {
 				break
 			}
@@ -668,7 +668,7 @@ func runProvidedTests(testsBank map[string]*register.Test, patterns []string, mu
 	//    either way
 
 	// Add denylisted tests in kola-denylist.yaml to DenylistedTests
-	err := parseDenyListYaml(pltfrm)
+	err := ParseDenyListYaml(pltfrm)
 	if err != nil {
 		plog.Fatal(err)
 	}
