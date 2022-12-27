@@ -11,7 +11,7 @@ nav_order: 1
 
 ## Quick Start
 
-1. Fork and clone the [`coreos-assembler` repository](https://github.com/coreos/coreos-aasembler/)
+1. Fork and clone the [`coreos-assembler` repository](https://github.com/coreos/coreos-assembler/)
 2. Move into `mantle/kola/tests/` and look for the package your test would best fit
 3. Edit the file and add your test(s), ensuring that you register your new test(s) in the packages `init()`
 4. Commit, push, and PR your result
