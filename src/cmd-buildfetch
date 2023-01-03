@@ -122,7 +122,8 @@ def main():
         assert builddir.startswith("builds/")
         builddir = builddir[len("builds/"):]
 
-        objects = ['meta.json', 'commitmeta.json', 'ostree-commit-object']
+        default_objects = ['meta.json', 'commitmeta.json', 'ostree-commit-object']
+        objects = default_objects + args.file
         for f in objects:
             fetcher.fetch(f'{builddir}/{f}')
 
@@ -175,6 +176,8 @@ def parse_args():
                         help="the target architecture(s)")
     parser.add_argument("--artifact", default=[], action='append',
                         help="Fetch given image artifact(s)", metavar="ARTIFACT")
+    parser.add_argument("--file", default=[], action='append',
+                        help="Fetch given non-artifact file(s)")
     parser.add_argument("--aws-config-file", metavar='CONFIG', default="",
                         help="Path to AWS config file")
     parser.add_argument("--find-build-for-arch", action='store_true',
