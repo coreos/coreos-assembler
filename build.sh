@@ -41,14 +41,8 @@ install_rpms() {
     local builddeps
     local frozendeps
 
+    # no frozen deps right now
     frozendeps=""
-
-    # freeze grub2 for https://github.com/coreos/fedora-coreos-tracker/issues/1352
-    case "${arch}" in
-        x86_64) frozendeps=$(echo grub2-{common,efi-x64,pc,pc-modules,tools,tools-extra,tools-minimal}-1:2.06-63.fc37);;
-        aarch64) frozendeps=$(echo grub2-{common,efi-aa64,tools,tools-extra,tools-minimal}-1:2.06-63.fc37);;
-        *) ;;
-    esac
 
     # First, a general update; this is best practice.  We also hit an issue recently
     # where qemu implicitly depended on an updated libusbx but didn't have a versioned
