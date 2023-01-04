@@ -31,7 +31,7 @@ type Options struct {
 	DiskImage string
 	// DiskSize if non-empty will expand the disk
 	DiskSize string
-	Board    string
+	// Firmware will be passed to qemu
 	Firmware string
 	Memory   string
 	Arch     string
