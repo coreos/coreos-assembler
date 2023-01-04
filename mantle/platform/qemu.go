@@ -91,7 +91,8 @@ type Disk struct {
 	BackingFile   string   // raw disk image to use.
 	BackingFormat string   // qcow2, raw, etc.  If unspecified will be autodetected.
 	Channel       string   // virtio (default), nvme
-	DeviceOpts    []string // extra options to pass to qemu. "serial=XXXX" makes disks show up as /dev/disk/by-id/virtio-<serial>
+	DeviceOpts    []string // extra options to pass to qemu -device. "serial=XXXX" makes disks show up as /dev/disk/by-id/virtio-<serial>
+	DriveOpts     []string // extra options to pass to -drive
 	SectorSize    int      // if not 0, override disk sector size
 	NbdDisk       bool     // if true, the disks should be presented over nbd:unix socket
 	MultiPathDisk bool     // if true, present multiple paths
@@ -997,6 +998,9 @@ func (builder *QemuBuilder) addDiskImpl(disk *Disk, primary bool) error {
 	// Avoid file locking detection, and the disks we create
 	// here are always currently ephemeral.
 	defaultDiskOpts := "auto-read-only=off,cache=unsafe"
+	if len(disk.DriveOpts) > 0 {
+		defaultDiskOpts += "," + strings.Join(disk.DriveOpts, ",")
+	}
 
 	if disk.MultiPathDisk {
 		// Fake a NVME device with a fake WWN. All these attributes are needed in order
