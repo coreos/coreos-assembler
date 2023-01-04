@@ -289,11 +289,16 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 		if kola.QEMUOptions.Native4k {
 			sectorSize = 4096
 		}
+		options := []string{}
+		if kola.QEMUOptions.DriveOpts != "" {
+			options = append(options, strings.Split(kola.QEMUOptions.DriveOpts, ",")...)
+		}
 		err = builder.AddBootDisk(&platform.Disk{
 			BackingFile:   kola.QEMUOptions.DiskImage,
 			Channel:       channel,
 			Size:          kola.QEMUOptions.DiskSize,
 			SectorSize:    sectorSize,
+			DriveOpts:     options,
 			MultiPathDisk: kola.QEMUOptions.MultiPathDisk,
 			NbdDisk:       kola.QEMUOptions.NbdDisk,
 		})

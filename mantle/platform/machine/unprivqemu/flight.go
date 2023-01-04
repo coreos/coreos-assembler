@@ -31,6 +31,8 @@ type Options struct {
 	DiskImage string
 	// DiskSize if non-empty will expand the disk
 	DiskSize string
+	// DriveOpts is arbitrary comma-separated list of options
+	DriveOpts string
 	// Firmware will be passed to qemu
 	Firmware string
 	Memory   string
