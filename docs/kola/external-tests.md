@@ -191,6 +191,7 @@ Here's an example `kola.json`:
     "platforms": "qemu-unpriv",
     "tags": "sometagname needs-internet skip-base-checks othertag",
     "requiredTag": "special",
+    "instanceType": "nano",
     "additionalDisks": [ "5G" ],
     "minMemory": 4096,
     "minDisk": 15,
@@ -240,6 +241,10 @@ The `minDisk` key takes a size in GB and ensures that an instance type with at
 least the specified amount of primary disk space is used. On QEMU, this is
 equivalent to the `--qemu-size` argument to `qemuexec`. This is currently only
 enforced on `qemu-unpriv` and `aws`.
+
+The `instanceType` key accepts a generic instance type specifier, currently one
+of `nano | micro | small | medium | large | xlarge`.  The specific CPU/memory
+sizes for these can be found in the mantle codebase.
 
 The `minMemory` key takes a size in MB and ensures that an instance type with
 at least the specified amount of memory is used. On QEMU, this is equivalent to

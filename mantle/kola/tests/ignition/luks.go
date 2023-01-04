@@ -159,12 +159,12 @@ func runTest(c cluster.TestCluster, tpm2 bool, threshold int, killTangAfterFirst
 	}`, tpm2, tangd.Address, tangd.Thumbprint, threshold))
 
 	opts := platform.MachineOptions{
-		MinMemory: 4096,
+		InstanceType: "medium",
 	}
 	// ppc64le and aarch64 use 64K pages
 	switch coreosarch.CurrentRpmArch() {
 	case "ppc64le", "aarch64":
-		opts.MinMemory = 8192
+		opts.InstanceType = "large"
 	}
 	m, err := c.NewMachineWithOptions(ignition, opts)
 	if err != nil {

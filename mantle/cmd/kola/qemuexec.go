@@ -46,6 +46,7 @@ var (
 	addDisks     []string
 	usernet      bool
 	cpuCountHost bool
+	instanceType string
 
 	architecture string
 
@@ -83,6 +84,7 @@ func init() {
 	cmdQemuExec.Flags().StringSliceVar(&ignitionFragments, "add-ignition", nil, "Append well-known Ignition fragment: [\"autologin\", \"autoresize\"]")
 	cmdQemuExec.Flags().StringVarP(&hostname, "hostname", "", "", "Set hostname via DHCP")
 	cmdQemuExec.Flags().IntVarP(&memory, "memory", "m", 0, "Memory in MB")
+	cmdQemuExec.Flags().StringVarP(&instanceType, "instance-type", "I", "", "Generic instance type (nano | micro | small | medium | large | xlarge | 2xlarge)")
 	cmdQemuExec.Flags().StringVar(&architecture, "arch", "", "Use full emulation for target architecture (e.g. aarch64, x86_64, s390x, ppc64le)")
 	cmdQemuExec.Flags().StringArrayVarP(&addDisks, "add-disk", "D", []string{}, "Additional disk, human readable size (repeatable)")
 	cmdQemuExec.Flags().BoolVar(&cpuCountHost, "auto-cpus", false, "Automatically set number of cpus to host count")
@@ -174,7 +176,9 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("No disk image provided")
 		}
 		ignitionFragments = append(ignitionFragments, "autologin")
-		cpuCountHost = true
+		if instanceType == "" {
+			cpuCountHost = true
+		}
 		usernet = true
 		// Can't use 9p on RHEL8, need https://virtio-fs.gitlab.io/ instead in the future
 		if kola.Options.CosaWorkdir != "" && !strings.HasPrefix(filepath.Base(kola.QEMUOptions.DiskImage), "rhcos") && !strings.HasPrefix(filepath.Base(kola.QEMUOptions.DiskImage), "scos") && kola.Options.Distribution != "rhcos" && kola.Options.Distribution != "scos" {
@@ -210,6 +214,12 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 
 	if architecture != "" {
 		if err := builder.SetArchitecture(architecture); err != nil {
+			return err
+		}
+	}
+
+	if instanceType != "" {
+		if err := builder.SetInstanceType(instanceType); err != nil {
 			return err
 		}
 	}

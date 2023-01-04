@@ -650,6 +650,16 @@ func (builder *QemuBuilder) SetArchitecture(arch string) error {
 	return fmt.Errorf("architecture %s not supported by coreos-assembler qemu", arch)
 }
 
+func (builder *QemuBuilder) SetInstanceType(t string) error {
+	it, err := LookupInstanceType(t)
+	if err != nil {
+		return err
+	}
+	builder.Memory = int(it.Memory)
+	builder.Processors = int(it.Cpu)
+	return nil
+}
+
 // Mount9p sets up a mount point from the host to guest.  To be replaced
 // with https://virtio-fs.gitlab.io/ once it lands everywhere.
 func (builder *QemuBuilder) Mount9p(source, destHint string, readonly bool) {

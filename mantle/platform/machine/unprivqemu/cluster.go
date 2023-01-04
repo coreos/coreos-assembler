@@ -123,6 +123,12 @@ func (qc *Cluster) NewMachineWithQemuOptions(userdata *conf.UserData, options pl
 		builder.Memory = options.MinMemory
 	}
 
+	if options.InstanceType != "" {
+		if err := builder.SetInstanceType(options.InstanceType); err != nil {
+			return nil, err
+		}
+	}
+
 	channel := "virtio"
 	if qc.flight.opts.Nvme {
 		channel = "nvme"

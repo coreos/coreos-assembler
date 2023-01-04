@@ -81,6 +81,9 @@ type Test struct {
 	// InjectContainer will cause the ostree base image to be injected into the target
 	InjectContainer bool
 
+	// InstanceType is a generic instance type
+	InstanceType string
+
 	// Minimum amount of memory in MB required for test.
 	MinMemory int
 

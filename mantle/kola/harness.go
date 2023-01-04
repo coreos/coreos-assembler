@@ -865,6 +865,7 @@ type externalTestMeta struct {
 	RequiredTag               string   `json:"requiredTag,omitempty"               yaml:"requiredTag,omitempty"`
 	AdditionalDisks           []string `json:"additionalDisks,omitempty"           yaml:"additionalDisks,omitempty"`
 	InjectContainer           bool     `json:"injectContainer,omitempty"           yaml:"injectContainer,omitempty"`
+	InstanceType              string   `json:"instanceType,omitempty"              yaml:"instanceType,omitempty"`
 	MinMemory                 int      `json:"minMemory,omitempty"                 yaml:"minMemory,omitempty"`
 	MinDiskSize               int      `json:"minDisk,omitempty"                   yaml:"minDisk,omitempty"`
 	AdditionalNics            int      `json:"additionalNics,omitempty"            yaml:"additionalNics,omitempty"`
@@ -1075,6 +1076,7 @@ ExecStart=%s
 
 		AdditionalDisks:           targetMeta.AdditionalDisks,
 		InjectContainer:           targetMeta.InjectContainer,
+		InstanceType:              targetMeta.InstanceType,
 		MinMemory:                 targetMeta.MinMemory,
 		MinDiskSize:               targetMeta.MinDiskSize,
 		AdditionalNics:            targetMeta.AdditionalNics,
@@ -1564,6 +1566,7 @@ func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flig
 		options := platform.MachineOptions{
 			MultiPathDisk:             t.MultiPathDisk,
 			AdditionalDisks:           t.AdditionalDisks,
+			InstanceType:              t.InstanceType,
 			MinMemory:                 t.MinMemory,
 			MinDiskSize:               t.MinDiskSize,
 			AdditionalNics:            t.AdditionalNics,
