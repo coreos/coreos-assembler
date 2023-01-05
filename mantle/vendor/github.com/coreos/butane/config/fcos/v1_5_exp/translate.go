@@ -335,7 +335,11 @@ func (c Config) processPackages(options common.TranslateOptions) (types.Config, 
 		return ret, ts, r
 	}
 	hash := sha256.New()
-	hash.Write([]byte(src))
+	count, err := hash.Write([]byte(src))
+	if count != len(src) || err != nil {
+		// hash write shouldn't fail
+		panic(fmt.Sprintf("short write to hash: %v", err))
+	}
 	sha := hex.EncodeToString(hash.Sum(nil))[0:7]
 	file := types.File{
 		Node: types.Node{
