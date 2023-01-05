@@ -553,7 +553,7 @@ runcompose_tree() {
     else
         local tarball="${workdir}/tmp/repo/commit.tar"
         rm -f "${tarball}"
-        runvm_with_cache /usr/lib/coreos-assembler/compose.sh \
+        runvm_with_cache -- /usr/lib/coreos-assembler/compose.sh \
             "${tarball}" "${composejson}" "$@"
         if [ ! -f "${tarball}" ]; then
             return
@@ -592,7 +592,7 @@ runcompose_extensions() {
         (umask 0022 && sudo -E "$@")
         sudo chown -R -h "${USER}":"${USER}" "${outputdir}"
     else
-        runvm_with_cache "$@"
+        runvm_with_cache -- "$@"
     fi
 }
 
@@ -614,7 +614,7 @@ runvm_with_cache() {
     fi
     cache_args+=("-drive" "if=none,id=cache,$cachedriveargs,file=${workdir}/cache/cache2.qcow2" \
                         "-device" "virtio-blk,drive=cache")
-    runvm "${cache_args[@]}" -- "$@"
+    runvm "${cache_args[@]}" "$@"
 }
 
 # Strips out the digest field from lockfiles since they subtly conflict with
