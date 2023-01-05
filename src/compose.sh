@@ -2,13 +2,11 @@
 set -euo pipefail
 
 output_tarball=$1; shift
-output_composejson=$1; shift
-
-tarball=cache/output.tar
-composejson=cache/compose.json
 
 repo=cache/repo
-rm -rf "${repo}" "${composejson}"
+composejson=cache/repo/compose.json
+
+rm -rf "${repo}"
 ostree init --repo="${repo}" --mode=archive-z2
 
 # we do need to pull at least the overlay bits over 9p, but it shouldn't be that
@@ -31,8 +29,4 @@ if [ ! -f "${composejson}" ]; then
     exit 0
 fi
 
-tar -f "${tarball}" -C "${repo}" -c .
-
-# this is key bit where we move the OSTree content over 9p
-mv "${tarball}" "${output_tarball}"
-mv "${composejson}" "${output_composejson}"
+tar -f "${output_tarball}" -C "${repo}" -c .
