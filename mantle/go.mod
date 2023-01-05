@@ -11,11 +11,11 @@ require (
 	github.com/aliyun/alibaba-cloud-sdk-go v1.61.1442
 	github.com/aliyun/aliyun-oss-go-sdk v2.0.3+incompatible
 	github.com/aws/aws-sdk-go v1.34.28
-	github.com/coreos/butane v0.16.0
+	github.com/coreos/butane v0.17.0
 	github.com/coreos/coreos-assembler v0.14.0
 	github.com/coreos/go-semver v0.3.0
 	github.com/coreos/go-systemd v0.0.0-20190321100706-95778dfbb74e
-	github.com/coreos/go-systemd/v22 v22.4.0
+	github.com/coreos/go-systemd/v22 v22.5.0
 	github.com/coreos/ignition/v2 v2.14.0
 	github.com/coreos/pkg v0.0.0-20180928190104-399ea9e2e55f
 	github.com/coreos/stream-metadata-go v0.4.0
@@ -70,7 +70,7 @@ require (
 	github.com/satori/go.uuid v1.2.0 // indirect
 	github.com/sirupsen/logrus v1.9.0 // indirect
 	github.com/spf13/pflag v1.0.6-0.20210604193023-d5e0c0615ace // indirect
-	github.com/stretchr/testify v1.8.0 // indirect
+	github.com/stretchr/testify v1.8.1 // indirect
 	github.com/xeipuuv/gojsonpointer v0.0.0-20180127040702-4e3ac2762d5f // indirect
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
 	github.com/xeipuuv/gojsonschema v1.2.0 // indirect

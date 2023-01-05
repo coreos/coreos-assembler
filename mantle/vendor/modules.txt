@@ -168,7 +168,7 @@ github.com/aws/aws-sdk-go/service/sts/stsiface
 # github.com/clarketm/json v1.17.1
 ## explicit
 github.com/clarketm/json
-# github.com/coreos/butane v0.16.0
+# github.com/coreos/butane v0.17.0
 ## explicit; go 1.17
 github.com/coreos/butane/base/util
 github.com/coreos/butane/base/v0_1
@@ -198,6 +198,8 @@ github.com/coreos/butane/config/openshift/v4_8
 github.com/coreos/butane/config/openshift/v4_8/result
 github.com/coreos/butane/config/openshift/v4_9
 github.com/coreos/butane/config/openshift/v4_9/result
+github.com/coreos/butane/config/r4e/v1_0
+github.com/coreos/butane/config/r4e/v1_1_exp
 github.com/coreos/butane/config/rhcos/v0_1
 github.com/coreos/butane/config/util
 github.com/coreos/butane/translate
@@ -214,7 +216,7 @@ github.com/coreos/go-semver/semver
 ## explicit
 github.com/coreos/go-systemd/journal
 github.com/coreos/go-systemd/unit
-# github.com/coreos/go-systemd/v22 v22.4.0
+# github.com/coreos/go-systemd/v22 v22.5.0
 ## explicit; go 1.12
 github.com/coreos/go-systemd/v22/dbus
 github.com/coreos/go-systemd/v22/journal
@@ -386,7 +388,7 @@ github.com/spf13/cobra
 # github.com/spf13/pflag v1.0.6-0.20210604193023-d5e0c0615ace
 ## explicit; go 1.12
 github.com/spf13/pflag
-# github.com/stretchr/testify v1.8.0
+# github.com/stretchr/testify v1.8.1
 ## explicit; go 1.13
 github.com/stretchr/testify/assert
 # github.com/vincent-petithory/dataurl v1.0.0
