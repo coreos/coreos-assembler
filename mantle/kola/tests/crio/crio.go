@@ -367,12 +367,7 @@ func crioNetwork(c cluster.TestCluster) {
 // crioNetworksReliably verifies that crio containers have a reliable network
 func crioNetworksReliably(c cluster.TestCluster) {
 	m := c.Machines()[0]
-
-	// Figure out the host IP address on the crio default bridge. This is
-	// required as the default subnet was changed in 1.18 to avoid a conflict
-	// with the default podman bridge.
-	subnet := c.MustSSH(m, "jq --raw-output '.ipam.ranges[0][0].subnet' /usr/etc/cni/net.d/100-crio-bridge.conf")
-	hostIP := fmt.Sprintf("%s.1", strings.TrimSuffix(string(subnet), ".0/16"))
+	hostIP := "127.0.0.1"
 
 	// Here we generate 10 pods, each will run a container responsible for
 	// pinging to host
