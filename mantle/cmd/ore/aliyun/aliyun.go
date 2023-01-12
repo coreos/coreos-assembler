@@ -16,7 +16,6 @@ package aliyun
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/coreos/pkg/capnslog"
 	"github.com/spf13/cobra"
@@ -38,9 +37,7 @@ var (
 )
 
 func init() {
-	defaultConfigPath := os.Getenv("ALIYUN_CONFIG_FILE")
-
-	Aliyun.PersistentFlags().StringVar(&options.ConfigPath, "config-file", defaultConfigPath, "config file (default \""+defaultConfigPath+"\")")
+	Aliyun.PersistentFlags().StringVar(&options.CredentialsFile, "credentials-file", "", "Use custom path for Aliyun credentials file")
 	Aliyun.PersistentFlags().StringVar(&options.Profile, "profile", "", "profile (default \"default\")")
 	Aliyun.PersistentFlags().StringVar(&options.Region, "region", "", "region")
 	cli.WrapPreRun(Aliyun, preflightCheck)

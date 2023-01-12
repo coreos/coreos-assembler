@@ -19,44 +19,35 @@ kola spawn -p aws --aws-profile other_profile
 
 ## aliyun
 
-`aliyun` reads the `~/.aliyun/config.json` file used by Aliyun's aliyun command-line tool.
-It can be created using the `aliyun` command:
+The Access Key/Secret for the Aliyun SDK can be specified either
+in a [credentials file](https://github.com/aliyun/alibaba-cloud-sdk-go/blob/master/docs/2-Client-EN.md#2-credentials-file)
+or directly in [environment variables](https://github.com/aliyun/alibaba-cloud-sdk-go/blob/master/docs/2-Client-EN.md#1-environment-credentials)
+as authentication input.
+
+- credentials file
+    - place the file in `~/.alibabacloud/credentials`
+    - populate the `ALIBABA_CLOUD_CREDENTIALS_FILE` environment variable
+      with the path to the credentials file.
+- environment variables
+    - populate the key in the `ALIBABA_CLOUD_ACCESS_KEY_ID` environment variable
+    - populate the secret in the `ALIBABA_CLOUD_ACCESS_KEY_SECRET` environment variable
+
+Ironically, the `aliyun` CLI uses the slightly different
+[environment variables](https://github.com/aliyun/aliyun-cli#support-for-environment-variables)
+of `ALIBABACLOUD_ACCESS_KEY_ID` and `ALIBABACLOUD_ACCESS_KEY_SECRET`.
+
+
+For mantle populate the credentials file and either place it at `~/.alibabacloud/credentials`
+or populate the `ALIBABA_CLOUD_CREDENTIALS_FILE` environment variable.
+
 ```
-$ aliyun configure
-```
-To configure a different profile, use the `--profile` flag
-```
-$ aliyun configure --profile other_profile
+[default]
+type=access_key
+access_key_id=ACCESS_KEY_ID
+access_key_secret=ACCESS_KEY_SECRET
 ```
 
-The `~/.aliyun/config.json` file can also be populated manually:
-```
-{
-  "current": "",
-  "profiles": [
-    {
-      "name": "",
-      "mode": "AK",
-      "access_key_id": "ACCESS_KEY_ID",
-      "access_key_secret": "ACCESS_KEY_SECRET",
-      "sts_token": "",
-      "ram_role_name": "",
-      "ram_role_arn": "",
-      "ram_session_name": "",
-      "private_key": "",
-      "key_pair_name": "",
-      "expired_seconds": 0,
-      "verified": "",
-      "region_id": "eu-central-1",
-      "output_format": "json",
-      "language": "zh",
-      "site": "",
-      "retry_timeout": 0,
-      "retry_count": 0
-    }
-  ]
-}
-```
+To configure a different profile than `default`, use the `--profile` flag.
 
 ## aws
 

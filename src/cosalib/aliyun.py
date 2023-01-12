@@ -31,7 +31,7 @@ def aliyun_run_ore_replicate(build, args):
 
     if not args.region:
         args.region = subprocess.check_output([
-            'ore', f'--config-file={args.config}' if args.config else '',
+            'ore', f'--credentials-file={args.credentials_file}' if args.credentials_file else '',
             'aliyun', 'list-regions'
         ]).decode().strip().split()
         log.info(("default: replicating to all regions. If this is not "
@@ -65,8 +65,8 @@ def aliyun_run_ore_replicate(build, args):
         '--wait-for-ready'
     ]
 
-    if args.config:
-        ore_args.extend(['--config-file', args.config])
+    if args.credentials_file:
+        ore_args.extend(['--credentials-file', args.credentials_file])
 
     upload_failed_in_region = None
 
@@ -115,8 +115,8 @@ def make_public(build, args):
         'aliyun', 'visibility', '--public'
     ]
 
-    if args.config:
-        make_public_args.extend(['--config-file', args.config])
+    if args.credentials_file:
+        make_public_args.extend(['--credentials-file', args.credentials_file])
 
     # build out a list of region:image pairs to pass to `ore aliyun visibility`
     region_image_pairs = []
@@ -157,7 +157,7 @@ def aliyun_run_ore(build, args):
         raise Exception("Must supply OSS bucket when uploading")
 
     ore_args.extend([
-        f'--config-file={args.config}' if args.config else '',
+        f'--credentails-file={args.credentials_file}' if args.credentials_file else '',
         'aliyun', 'create-image',
         '--region', region,
         '--bucket', args.bucket,
@@ -187,6 +187,7 @@ def aliyun_run_ore(build, args):
 
 def aliyun_cli(parser):
     parser.add_argument("--bucket", help="OSS Bucket")
+    parser.add_argument("--credentials-file", help="Credentials file to use")
     parser.add_argument("--name-suffix", help="Suffix for uploaded image name")
     parser.add_argument("--public", action="store_true", help="Mark images as publicly available")
     return parser
