@@ -12,6 +12,7 @@ PYIGNORE ?= E128,E241,E402,E501,E722,W503,W504
 .PHONY: all check shellcheck flake8 pycheck unittest clean mantle mantle-check install
 
 MANTLE_BINARIES := ore kola plume
+KOLET_ARCHES := aarch64 ppc64le s390x x86_64
 
 all: bin/coreos-assembler mantle
 
@@ -66,16 +67,16 @@ clean:
 	rm -f ${src_checked} ${tests_checked} ${cwd_checked}
 	find . -name "*.py[co]" -type f | xargs rm -f
 	find . -name "__pycache__" -type d | xargs rm -rf
+	rm -rfv bin
 
-mantle:
-	cd mantle && $(MAKE)
+mantle: $(MANTLE_BINARIES) kolet
 
 .PHONY: $(MANTLE_BINARIES) kolet
 $(MANTLE_BINARIES) kolet:
-	cd mantle && $(MAKE) $@
+	mantle/build cmd/$(basename $@)
 
 mantle-check:
-	cd mantle && $(MAKE) test
+	cd mantle && ./test
 
 .PHONY: schema
 schema:
@@ -84,17 +85,12 @@ schema:
 # To update the coreos-assembler schema:
 # Edit src/v1.json
 # $ make schema
-# $ (cd mantle && go mod vendor)
 .PHONY: schema-check
 schema-check: DIGEST = $(shell sha256sum src/v1.json | awk '{print $$1}')
 schema-check:
 	# Is the generated Go code synced with the schema?
 	grep -q "$(DIGEST)" pkg/builds/cosa_v1.go
 	grep -q "$(DIGEST)" pkg/builds/schema_doc.go
-	# Are the vendored copies of the generated code synced with the
-	# canonical ones?
-	diff -u mantle/vendor/github.com/coreos/coreos-assembler/pkg/builds/cosa_v1.go pkg/builds/cosa_v1.go
-	diff -u mantle/vendor/github.com/coreos/coreos-assembler/pkg/builds/schema_doc.go pkg/builds/schema_doc.go
 
 install:
 	install -d $(DESTDIR)$(PREFIX)/lib/coreos-assembler
@@ -111,4 +107,13 @@ install:
 	ln -sf ../lib/coreos-assembler/cp-reflink $(DESTDIR)$(PREFIX)/bin/
 	ln -sf coreos-assembler $(DESTDIR)$(PREFIX)/bin/cosa
 	install -d $(DESTDIR)$(PREFIX)/lib/coreos-assembler/tests/kola
-	cd mantle && $(MAKE) install DESTDIR=$(DESTDIR)
+	cd bin && install -D -t $(DESTDIR)$(PREFIX)/bin $(MANTLE_BINARIES)
+	for arch in $(KOLET_ARCHES); do \
+		install -D -m 0755 -t $(DESTDIR)$(PREFIX)/lib/kola/$${arch} bin/$${arch}/kolet; \
+	done
+
+.PHONY: vendor
+vendor:
+	@go mod vendor
+	@go mod tidy
+

@@ -29,7 +29,7 @@ host_build() {
     go build \
         -ldflags "${ldflags}" \
         -mod vendor \
-        -o "bin/$cmd" \
+        -o "../bin/$cmd" \
         ${race} \
         "$@" "${REPO_PATH}/cmd/$cmd"
 }
@@ -38,13 +38,13 @@ cross_static_build() {
     local cmd=$1; shift
     local a
 	for a in ${KOLET_ARCHES}; do \
-        mkdir -p "bin/$a"
+        mkdir -p "../bin/$a"
         echo "Building $a/$cmd (static)"
         CGO_ENABLED=0 GOARCH=${BASEARCH_TO_GOARCH[$a]} \
         go build \
             -ldflags "${ldflags} -extldflags=-static" \
             -mod vendor \
-            -o "bin/$a/$cmd" \
+            -o "../bin/$a/$cmd" \
             -tags osusergo,netgo \
             "${REPO_PATH}/cmd/$cmd"
     done
