@@ -28,7 +28,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/arm/compute"
 	"github.com/Azure/azure-sdk-for-go/arm/network"
 
-	"github.com/coreos/mantle/util"
+	"github.com/coreos/coreos-assembler/mantle/util"
 )
 
 type Machine struct {

@@ -31,11 +31,11 @@ import (
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 	"github.com/coreos/pkg/capnslog"
 
-	internalAuth "github.com/coreos/mantle/auth"
+	internalAuth "github.com/coreos/coreos-assembler/mantle/auth"
 )
 
 var (
-	plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "platform/api/azure")
+	plog = capnslog.NewPackageLogger("github.com/coreos/coreos-assembler/mantle", "platform/api/azure")
 )
 
 type API struct {

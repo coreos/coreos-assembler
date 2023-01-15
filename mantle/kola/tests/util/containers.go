@@ -17,8 +17,8 @@ package util
 import (
 	"strings"
 
-	"github.com/coreos/mantle/kola/cluster"
-	"github.com/coreos/mantle/platform"
+	"github.com/coreos/coreos-assembler/mantle/kola/cluster"
+	"github.com/coreos/coreos-assembler/mantle/platform"
 )
 
 // GenPodmanScratchContainer creates a podman scratch container out of binaries from the host

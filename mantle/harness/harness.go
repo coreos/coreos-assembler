@@ -30,8 +30,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/coreos/mantle/harness/reporters"
-	"github.com/coreos/mantle/harness/testresult"
+	"github.com/coreos/coreos-assembler/mantle/harness/reporters"
+	"github.com/coreos/coreos-assembler/mantle/harness/testresult"
 )
 
 const DefaultTimeoutFlag = 0

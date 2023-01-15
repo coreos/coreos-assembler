@@ -22,8 +22,8 @@ import (
 	"github.com/coreos/pkg/capnslog"
 	"github.com/vishvananda/netlink"
 
-	"github.com/coreos/mantle/system/exec"
-	"github.com/coreos/mantle/util"
+	"github.com/coreos/coreos-assembler/mantle/system/exec"
+	"github.com/coreos/coreos-assembler/mantle/util"
 )
 
 type Interface struct {
@@ -94,7 +94,7 @@ dhcp-host={{.HardwareAddr}}{{template "ips" .DHCPv4}}{{template "ips" .DHCPv6}}
 `
 )
 
-var plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "platform/local")
+var plog = capnslog.NewPackageLogger("github.com/coreos/coreos-assembler/mantle", "platform/local")
 
 func newInterface(s byte, i uint16) *Interface {
 	return &Interface{

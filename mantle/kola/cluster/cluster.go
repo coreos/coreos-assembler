@@ -24,14 +24,14 @@ import (
 
 	"github.com/kballard/go-shellquote"
 
-	"github.com/coreos/mantle/harness"
-	"github.com/coreos/mantle/platform"
+	"github.com/coreos/coreos-assembler/mantle/harness"
+	"github.com/coreos/coreos-assembler/mantle/platform"
 	"github.com/coreos/pkg/capnslog"
 	"github.com/pkg/errors"
 )
 
 var (
-	plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "kola/cluster")
+	plog = capnslog.NewPackageLogger("github.com/coreos/coreos-assembler/mantle", "kola/cluster")
 )
 
 // TestCluster embedds a Cluster to provide platform independant helper

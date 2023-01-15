@@ -18,13 +18,13 @@ import (
 	"github.com/coreos/pkg/capnslog"
 	"github.com/spf13/cobra"
 
-	"github.com/coreos/mantle/auth"
-	"github.com/coreos/mantle/cli"
-	"github.com/coreos/mantle/platform/api/azure"
+	"github.com/coreos/coreos-assembler/mantle/auth"
+	"github.com/coreos/coreos-assembler/mantle/cli"
+	"github.com/coreos/coreos-assembler/mantle/platform/api/azure"
 )
 
 var (
-	plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "ore/azure")
+	plog = capnslog.NewPackageLogger("github.com/coreos/coreos-assembler/mantle", "ore/azure")
 
 	Azure = &cobra.Command{
 		Use:   "azure [command]",

@@ -22,8 +22,8 @@ import (
 
 	"golang.org/x/crypto/ssh"
 
-	"github.com/coreos/mantle/platform"
-	"github.com/coreos/mantle/platform/api/azure"
+	"github.com/coreos/coreos-assembler/mantle/platform"
+	"github.com/coreos/coreos-assembler/mantle/platform/api/azure"
 )
 
 type machine struct {

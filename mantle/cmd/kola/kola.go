@@ -31,23 +31,23 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
+	"github.com/coreos/coreos-assembler/mantle/cli"
+	"github.com/coreos/coreos-assembler/mantle/fcos"
+	"github.com/coreos/coreos-assembler/mantle/harness/reporters"
+	"github.com/coreos/coreos-assembler/mantle/harness/testresult"
+	"github.com/coreos/coreos-assembler/mantle/kola"
+	"github.com/coreos/coreos-assembler/mantle/kola/register"
+	"github.com/coreos/coreos-assembler/mantle/system"
+	"github.com/coreos/coreos-assembler/mantle/util"
 	cosa "github.com/coreos/coreos-assembler/pkg/builds"
-	"github.com/coreos/mantle/cli"
-	"github.com/coreos/mantle/fcos"
-	"github.com/coreos/mantle/harness/reporters"
-	"github.com/coreos/mantle/harness/testresult"
-	"github.com/coreos/mantle/kola"
-	"github.com/coreos/mantle/kola/register"
-	"github.com/coreos/mantle/system"
-	"github.com/coreos/mantle/util"
 	coreosarch "github.com/coreos/stream-metadata-go/arch"
 
 	// register OS test suite
-	_ "github.com/coreos/mantle/kola/registry"
+	_ "github.com/coreos/coreos-assembler/mantle/kola/registry"
 )
 
 var (
-	plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "kola")
+	plog = capnslog.NewPackageLogger("github.com/coreos/coreos-assembler/mantle", "kola")
 
 	root = &cobra.Command{
 		Use:   "kola [command]",
@@ -172,7 +172,7 @@ func preRun(cmd *cobra.Command, args []string) error {
 
 	// Packet uses storage, and storage talks too much.
 	if !plog.LevelAt(capnslog.INFO) {
-		mantleLogger := capnslog.MustRepoLogger("github.com/coreos/mantle")
+		mantleLogger := capnslog.MustRepoLogger("github.com/coreos/coreos-assembler/mantle")
 		mantleLogger.SetLogLevel(map[string]capnslog.LogLevel{
 			"storage": capnslog.WARNING,
 		})

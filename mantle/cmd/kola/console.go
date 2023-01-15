@@ -22,7 +22,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/coreos/mantle/kola"
+	"github.com/coreos/coreos-assembler/mantle/kola"
 )
 
 var (

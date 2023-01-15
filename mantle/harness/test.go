@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/coreos/mantle/lang/maps"
+	"github.com/coreos/coreos-assembler/mantle/lang/maps"
 )
 
 // Test is a single test function.

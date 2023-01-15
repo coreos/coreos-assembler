@@ -32,11 +32,11 @@ import (
 	"github.com/IBM-Cloud/bluemix-go/rest"
 	bluemixsession "github.com/IBM-Cloud/bluemix-go/session"
 
-	"github.com/coreos/mantle/platform"
+	"github.com/coreos/coreos-assembler/mantle/platform"
 	"github.com/coreos/pkg/capnslog"
 )
 
-var plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "platform/api/ibmcloud")
+var plog = capnslog.NewPackageLogger("github.com/coreos/coreos-assembler/mantle", "platform/api/ibmcloud")
 
 var (
 	tokenProviderEndpoint                = "https://iam.cloud.ibm.com"

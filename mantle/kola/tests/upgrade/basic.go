@@ -25,18 +25,18 @@ import (
 
 	"github.com/coreos/pkg/capnslog"
 
-	"github.com/coreos/mantle/kola"
-	"github.com/coreos/mantle/kola/cluster"
-	"github.com/coreos/mantle/kola/register"
-	"github.com/coreos/mantle/kola/tests/util"
-	"github.com/coreos/mantle/platform"
-	"github.com/coreos/mantle/platform/conf"
+	"github.com/coreos/coreos-assembler/mantle/kola"
+	"github.com/coreos/coreos-assembler/mantle/kola/cluster"
+	"github.com/coreos/coreos-assembler/mantle/kola/register"
+	"github.com/coreos/coreos-assembler/mantle/kola/tests/util"
+	"github.com/coreos/coreos-assembler/mantle/platform"
+	"github.com/coreos/coreos-assembler/mantle/platform/conf"
 )
 
 const workdir = "/var/srv/upgrade"
 const ostreeRepo = workdir + "/repo"
 
-var plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "kola/tests/upgrade")
+var plog = capnslog.NewPackageLogger("github.com/coreos/coreos-assembler/mantle", "kola/tests/upgrade")
 
 func init() {
 	register.RegisterUpgradeTest(&register.Test{

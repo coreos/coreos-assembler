@@ -39,14 +39,14 @@ import (
 	"github.com/gophercloud/utils/openstack/clientconfig"
 	utilsSecurityGroups "github.com/gophercloud/utils/openstack/networking/v2/extensions/security/groups"
 
-	"github.com/coreos/mantle/platform"
-	"github.com/coreos/mantle/util"
+	"github.com/coreos/coreos-assembler/mantle/platform"
+	"github.com/coreos/coreos-assembler/mantle/util"
 
 	"gopkg.in/yaml.v2"
 )
 
 var (
-	plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "platform/api/openstack")
+	plog = capnslog.NewPackageLogger("github.com/coreos/coreos-assembler/mantle", "platform/api/openstack")
 )
 
 type Options struct {

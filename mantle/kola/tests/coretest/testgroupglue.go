@@ -1,7 +1,7 @@
 package coretest
 
 import (
-	"github.com/coreos/mantle/kola/cluster"
+	"github.com/coreos/coreos-assembler/mantle/kola/cluster"
 )
 
 // run various native functions that only require a single machine

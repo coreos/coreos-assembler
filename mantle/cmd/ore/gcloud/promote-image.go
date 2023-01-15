@@ -15,7 +15,7 @@
 package gcloud
 
 import (
-	"github.com/coreos/mantle/platform/api/gcloud"
+	"github.com/coreos/coreos-assembler/mantle/platform/api/gcloud"
 	"github.com/spf13/cobra"
 	"golang.org/x/net/context"
 )

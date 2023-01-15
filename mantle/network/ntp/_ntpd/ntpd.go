@@ -21,11 +21,11 @@ import (
 
 	"github.com/coreos/pkg/capnslog"
 
-	"github.com/coreos/mantle/network/ntp"
+	"github.com/coreos/coreos-assembler/mantle/network/ntp"
 )
 
 var (
-	plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "main")
+	plog = capnslog.NewPackageLogger("github.com/coreos/coreos-assembler/mantle", "main")
 	now  = flag.String("now", "", "Internal time for the server.")
 	leap = flag.String("leap", "", "Handle a leap second.")
 )

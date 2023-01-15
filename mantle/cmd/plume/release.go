@@ -26,7 +26,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/coreos/mantle/platform/api/aws"
+	"github.com/coreos/coreos-assembler/mantle/platform/api/aws"
 	"github.com/coreos/stream-metadata-go/release"
 	"github.com/spf13/cobra"
 )

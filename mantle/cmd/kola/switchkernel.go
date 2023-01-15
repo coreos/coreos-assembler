@@ -22,9 +22,9 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/coreos/mantle/kola"
-	"github.com/coreos/mantle/platform"
-	"github.com/coreos/mantle/platform/conf"
+	"github.com/coreos/coreos-assembler/mantle/kola"
+	"github.com/coreos/coreos-assembler/mantle/platform"
+	"github.com/coreos/coreos-assembler/mantle/platform/conf"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )

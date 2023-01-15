@@ -15,7 +15,7 @@
 package main
 
 import (
-	"github.com/coreos/mantle/cmd/ore/openstack"
+	"github.com/coreos/coreos-assembler/mantle/cmd/ore/openstack"
 )
 
 func init() {

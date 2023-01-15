@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/coreos/mantle/platform/api/aws"
+	"github.com/coreos/coreos-assembler/mantle/platform/api/aws"
 
 	"github.com/spf13/cobra"
 )

@@ -20,7 +20,7 @@ import (
 
 	"golang.org/x/crypto/ssh"
 
-	"github.com/coreos/mantle/platform"
+	"github.com/coreos/coreos-assembler/mantle/platform"
 	"github.com/packethost/packngo"
 )
 

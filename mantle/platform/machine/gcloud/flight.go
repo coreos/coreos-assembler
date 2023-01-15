@@ -19,9 +19,9 @@ package gcloud
 import (
 	"github.com/coreos/pkg/capnslog"
 
-	"github.com/coreos/mantle/platform"
-	"github.com/coreos/mantle/platform/api/gcloud"
-	"github.com/coreos/mantle/platform/conf"
+	"github.com/coreos/coreos-assembler/mantle/platform"
+	"github.com/coreos/coreos-assembler/mantle/platform/api/gcloud"
+	"github.com/coreos/coreos-assembler/mantle/platform/conf"
 )
 
 type flight struct {
@@ -34,7 +34,7 @@ const (
 )
 
 var (
-	plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "platform/machine/gcloud")
+	plog = capnslog.NewPackageLogger("github.com/coreos/coreos-assembler/mantle", "platform/machine/gcloud")
 )
 
 func NewFlight(opts *gcloud.Options) (platform.Flight, error) {

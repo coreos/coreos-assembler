@@ -18,11 +18,11 @@ package local
 import (
 	"github.com/vishvananda/netns"
 
-	"github.com/coreos/mantle/lang/destructor"
-	"github.com/coreos/mantle/network"
-	"github.com/coreos/mantle/network/ntp"
-	"github.com/coreos/mantle/platform"
-	"github.com/coreos/mantle/system/ns"
+	"github.com/coreos/coreos-assembler/mantle/lang/destructor"
+	"github.com/coreos/coreos-assembler/mantle/network"
+	"github.com/coreos/coreos-assembler/mantle/network/ntp"
+	"github.com/coreos/coreos-assembler/mantle/platform"
+	"github.com/coreos/coreos-assembler/mantle/system/ns"
 )
 
 const (

@@ -30,9 +30,9 @@ import (
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
 
-	"github.com/coreos/mantle/platform/conf"
-	"github.com/coreos/mantle/system/exec"
-	"github.com/coreos/mantle/util"
+	"github.com/coreos/coreos-assembler/mantle/platform/conf"
+	"github.com/coreos/coreos-assembler/mantle/system/exec"
+	"github.com/coreos/coreos-assembler/mantle/util"
 )
 
 const (

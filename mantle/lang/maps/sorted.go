@@ -18,7 +18,7 @@ import (
 	"reflect"
 	"sort"
 
-	"github.com/coreos/mantle/lang/natsort"
+	"github.com/coreos/coreos-assembler/mantle/lang/natsort"
 )
 
 // Keys returns a map's keys as an unordered slice of strings.
@@ -47,7 +47,7 @@ func SortedKeys(m interface{}) []string {
 }
 
 // NaturalKeys returns a map's keys as a natural sorted slice of strings.
-// See github.com/coreos/mantle/lang/natsort
+// See github.com/coreos/coreos-assembler/mantle/lang/natsort
 func NaturalKeys(m interface{}) []string {
 	keys := Keys(m)
 	natsort.Strings(keys)

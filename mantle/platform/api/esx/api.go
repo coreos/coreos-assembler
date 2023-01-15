@@ -37,9 +37,9 @@ import (
 	"github.com/vmware/govmomi/vim25/soap"
 	"github.com/vmware/govmomi/vim25/types"
 
-	"github.com/coreos/mantle/auth"
-	"github.com/coreos/mantle/platform"
-	"github.com/coreos/mantle/platform/conf"
+	"github.com/coreos/coreos-assembler/mantle/auth"
+	"github.com/coreos/coreos-assembler/mantle/platform"
+	"github.com/coreos/coreos-assembler/mantle/platform/conf"
 )
 
 type Options struct {
@@ -56,7 +56,7 @@ type Options struct {
 	BaseVMName string
 }
 
-var plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "platform/api/esx")
+var plog = capnslog.NewPackageLogger("github.com/coreos/coreos-assembler/mantle", "platform/api/esx")
 
 type API struct {
 	options *Options

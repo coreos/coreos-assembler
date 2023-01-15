@@ -18,11 +18,11 @@ import (
 	"github.com/coreos/pkg/capnslog"
 	"github.com/spf13/cobra"
 
-	"github.com/coreos/mantle/cli"
+	"github.com/coreos/coreos-assembler/mantle/cli"
 )
 
 var (
-	plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "plume")
+	plog = capnslog.NewPackageLogger("github.com/coreos/coreos-assembler/mantle", "plume")
 	root = &cobra.Command{
 		Use:   "plume [command]",
 		Short: "The CoreOS release utility",

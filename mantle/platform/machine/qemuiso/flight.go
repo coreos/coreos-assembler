@@ -17,8 +17,8 @@ package qemuiso
 import (
 	"github.com/coreos/pkg/capnslog"
 
-	"github.com/coreos/mantle/platform"
-	"github.com/coreos/mantle/platform/conf"
+	"github.com/coreos/coreos-assembler/mantle/platform"
+	"github.com/coreos/coreos-assembler/mantle/platform/conf"
 )
 
 const (
@@ -42,7 +42,7 @@ type flight struct {
 }
 
 var (
-	plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "platform/machine/qemuiso")
+	plog = capnslog.NewPackageLogger("github.com/coreos/coreos-assembler/mantle", "platform/machine/qemuiso")
 )
 
 func NewFlight(opts *Options) (platform.Flight, error) {

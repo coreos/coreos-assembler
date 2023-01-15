@@ -19,7 +19,7 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/arm/network"
 
-	"github.com/coreos/mantle/util"
+	"github.com/coreos/coreos-assembler/mantle/util"
 )
 
 var (

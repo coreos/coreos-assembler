@@ -21,7 +21,7 @@ import (
 )
 
 var (
-	plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "lang/destructor")
+	plog = capnslog.NewPackageLogger("github.com/coreos/coreos-assembler/mantle", "lang/destructor")
 )
 
 // Destructor is a common interface for objects that need to be cleaned up.

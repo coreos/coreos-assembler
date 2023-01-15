@@ -22,13 +22,13 @@ import (
 
 	"github.com/coreos/pkg/capnslog"
 
-	"github.com/coreos/mantle/kola/cluster"
-	"github.com/coreos/mantle/kola/register"
-	"github.com/coreos/mantle/platform/conf"
-	"github.com/coreos/mantle/util"
+	"github.com/coreos/coreos-assembler/mantle/kola/cluster"
+	"github.com/coreos/coreos-assembler/mantle/kola/register"
+	"github.com/coreos/coreos-assembler/mantle/platform/conf"
+	"github.com/coreos/coreos-assembler/mantle/util"
 )
 
-var plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "kola/tests/etcd")
+var plog = capnslog.NewPackageLogger("github.com/coreos/coreos-assembler/mantle", "kola/tests/etcd")
 
 func init() {
 	register.RegisterTest(&register.Test{

@@ -20,10 +20,10 @@ import (
 	"github.com/vishvananda/netlink"
 	"github.com/vishvananda/netns"
 
-	"github.com/coreos/mantle/lang/destructor"
-	"github.com/coreos/mantle/platform"
-	"github.com/coreos/mantle/system/exec"
-	"github.com/coreos/mantle/system/ns"
+	"github.com/coreos/coreos-assembler/mantle/lang/destructor"
+	"github.com/coreos/coreos-assembler/mantle/platform"
+	"github.com/coreos/coreos-assembler/mantle/system/exec"
+	"github.com/coreos/coreos-assembler/mantle/system/ns"
 )
 
 type LocalCluster struct {

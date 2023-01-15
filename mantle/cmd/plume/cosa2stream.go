@@ -29,7 +29,7 @@ import (
 	"github.com/coreos/stream-metadata-go/stream"
 	"github.com/spf13/cobra"
 
-	"github.com/coreos/mantle/version"
+	"github.com/coreos/coreos-assembler/mantle/version"
 )
 
 const (

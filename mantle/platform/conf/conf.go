@@ -72,7 +72,7 @@ const (
 	FailWarnings
 )
 
-var plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "platform/conf")
+var plog = capnslog.NewPackageLogger("github.com/coreos/coreos-assembler/mantle", "platform/conf")
 
 // UserData is an immutable, unvalidated configuration for a CoreOS
 // machine.

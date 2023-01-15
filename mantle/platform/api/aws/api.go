@@ -27,10 +27,10 @@ import (
 	"github.com/aws/aws-sdk-go/service/sts"
 	"github.com/coreos/pkg/capnslog"
 
-	"github.com/coreos/mantle/platform"
+	"github.com/coreos/coreos-assembler/mantle/platform"
 )
 
-var plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "platform/api/aws")
+var plog = capnslog.NewPackageLogger("github.com/coreos/coreos-assembler/mantle", "platform/api/aws")
 
 type Options struct {
 	*platform.Options

@@ -20,9 +20,9 @@ import (
 	"sort"
 	"time"
 
-	"github.com/coreos/mantle/auth"
-	"github.com/coreos/mantle/platform"
-	"github.com/coreos/mantle/util"
+	"github.com/coreos/coreos-assembler/mantle/auth"
+	"github.com/coreos/coreos-assembler/mantle/platform"
+	"github.com/coreos/coreos-assembler/mantle/util"
 	"github.com/coreos/pkg/capnslog"
 	"github.com/coreos/pkg/multierror"
 
@@ -31,7 +31,7 @@ import (
 	"github.com/aliyun/aliyun-oss-go-sdk/oss"
 )
 
-var plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "platform/api/aliyun")
+var plog = capnslog.NewPackageLogger("github.com/coreos/coreos-assembler/mantle", "platform/api/aliyun")
 
 var defaultConnectTimeout = 15 * time.Second
 var defaultReadTimeout = 30 * time.Second

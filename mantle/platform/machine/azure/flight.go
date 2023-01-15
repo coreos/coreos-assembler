@@ -18,9 +18,9 @@ import (
 	"github.com/coreos/pkg/capnslog"
 	"github.com/pkg/errors"
 
-	"github.com/coreos/mantle/platform"
-	"github.com/coreos/mantle/platform/api/azure"
-	"github.com/coreos/mantle/platform/conf"
+	"github.com/coreos/coreos-assembler/mantle/platform"
+	"github.com/coreos/coreos-assembler/mantle/platform/api/azure"
+	"github.com/coreos/coreos-assembler/mantle/platform/conf"
 )
 
 const (
@@ -28,7 +28,7 @@ const (
 )
 
 var (
-	plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "platform/machine/azure")
+	plog = capnslog.NewPackageLogger("github.com/coreos/coreos-assembler/mantle", "platform/machine/azure")
 )
 
 type flight struct {

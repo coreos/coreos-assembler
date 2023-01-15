@@ -31,12 +31,12 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"github.com/coreos/mantle/cli"
-	"github.com/coreos/mantle/kola"
-	"github.com/coreos/mantle/kola/register"
+	"github.com/coreos/coreos-assembler/mantle/cli"
+	"github.com/coreos/coreos-assembler/mantle/kola"
+	"github.com/coreos/coreos-assembler/mantle/kola/register"
 
 	// Register any tests that we may wish to execute in kolet.
-	_ "github.com/coreos/mantle/kola/registry"
+	_ "github.com/coreos/coreos-assembler/mantle/kola/registry"
 )
 
 const (
@@ -112,7 +112,7 @@ exec ~core/kolet reboot-request "$1"
 )
 
 var (
-	plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "kolet")
+	plog = capnslog.NewPackageLogger("github.com/coreos/coreos-assembler/mantle", "kolet")
 
 	root = &cobra.Command{
 		Use:   "kolet run [test] [func]",

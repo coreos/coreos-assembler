@@ -18,14 +18,14 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/coreos/mantle/cli"
-	"github.com/coreos/mantle/platform/api/esx"
+	"github.com/coreos/coreos-assembler/mantle/cli"
+	"github.com/coreos/coreos-assembler/mantle/platform/api/esx"
 	"github.com/coreos/pkg/capnslog"
 	"github.com/spf13/cobra"
 )
 
 var (
-	plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "ore/esx")
+	plog = capnslog.NewPackageLogger("github.com/coreos/coreos-assembler/mantle", "ore/esx")
 
 	ESX = &cobra.Command{
 		Use:   "esx [command]",
