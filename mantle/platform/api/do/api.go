@@ -24,13 +24,13 @@ import (
 	"github.com/digitalocean/godo"
 	"golang.org/x/oauth2"
 
-	"github.com/coreos/mantle/auth"
-	"github.com/coreos/mantle/platform"
-	"github.com/coreos/mantle/util"
+	"github.com/coreos/coreos-assembler/mantle/auth"
+	"github.com/coreos/coreos-assembler/mantle/platform"
+	"github.com/coreos/coreos-assembler/mantle/util"
 )
 
 var (
-	plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "platform/api/do")
+	plog = capnslog.NewPackageLogger("github.com/coreos/coreos-assembler/mantle", "platform/api/do")
 )
 
 type Options struct {

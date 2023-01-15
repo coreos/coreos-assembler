@@ -20,7 +20,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/coreos/mantle/util"
+	"github.com/coreos/coreos-assembler/mantle/util"
 	"golang.org/x/crypto/ssh/agent"
 	"google.golang.org/api/compute/v1"
 )

@@ -11,7 +11,7 @@ import (
 	"net"
 	"time"
 
-	"github.com/coreos/mantle/lang/bufpipe"
+	"github.com/coreos/coreos-assembler/mantle/lang/bufpipe"
 )
 
 // Pipe creates a synchronous, in-memory, full duplex

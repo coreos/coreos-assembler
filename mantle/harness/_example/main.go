@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/coreos/mantle/harness"
+	"github.com/coreos/coreos-assembler/mantle/harness"
 )
 
 type X struct {

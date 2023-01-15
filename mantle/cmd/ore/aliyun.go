@@ -15,7 +15,7 @@
 package main
 
 import (
-	"github.com/coreos/mantle/cmd/ore/aliyun"
+	"github.com/coreos/coreos-assembler/mantle/cmd/ore/aliyun"
 )
 
 func init() {

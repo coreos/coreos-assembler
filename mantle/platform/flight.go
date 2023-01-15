@@ -22,7 +22,7 @@ import (
 	"github.com/pborman/uuid"
 	"golang.org/x/crypto/ssh/agent"
 
-	"github.com/coreos/mantle/network"
+	"github.com/coreos/coreos-assembler/mantle/network"
 )
 
 type BaseFlight struct {

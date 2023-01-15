@@ -21,8 +21,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/coreos/mantle/platform"
-	platformConf "github.com/coreos/mantle/platform/conf"
+	"github.com/coreos/coreos-assembler/mantle/platform"
+	platformConf "github.com/coreos/coreos-assembler/mantle/platform/conf"
 )
 
 type cluster struct {

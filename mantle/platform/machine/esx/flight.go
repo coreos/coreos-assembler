@@ -18,9 +18,9 @@ package esx
 import (
 	"github.com/coreos/pkg/capnslog"
 
-	"github.com/coreos/mantle/platform"
-	"github.com/coreos/mantle/platform/api/esx"
-	"github.com/coreos/mantle/platform/conf"
+	"github.com/coreos/coreos-assembler/mantle/platform"
+	"github.com/coreos/coreos-assembler/mantle/platform/api/esx"
+	"github.com/coreos/coreos-assembler/mantle/platform/conf"
 )
 
 const (
@@ -28,7 +28,7 @@ const (
 )
 
 var (
-	plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "platform/machine/esx")
+	plog = capnslog.NewPackageLogger("github.com/coreos/coreos-assembler/mantle", "platform/machine/esx")
 )
 
 type flight struct {

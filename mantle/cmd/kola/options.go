@@ -25,13 +25,13 @@ import (
 	"github.com/coreos/stream-metadata-go/stream"
 	"github.com/pkg/errors"
 
-	"github.com/coreos/mantle/auth"
-	"github.com/coreos/mantle/fcos"
-	"github.com/coreos/mantle/kola"
-	"github.com/coreos/mantle/platform"
-	"github.com/coreos/mantle/rhcos"
-	"github.com/coreos/mantle/system"
-	"github.com/coreos/mantle/util"
+	"github.com/coreos/coreos-assembler/mantle/auth"
+	"github.com/coreos/coreos-assembler/mantle/fcos"
+	"github.com/coreos/coreos-assembler/mantle/kola"
+	"github.com/coreos/coreos-assembler/mantle/platform"
+	"github.com/coreos/coreos-assembler/mantle/rhcos"
+	"github.com/coreos/coreos-assembler/mantle/system"
+	"github.com/coreos/coreos-assembler/mantle/util"
 )
 
 var (

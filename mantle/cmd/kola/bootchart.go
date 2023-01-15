@@ -20,8 +20,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/coreos/mantle/kola"
-	"github.com/coreos/mantle/platform"
+	"github.com/coreos/coreos-assembler/mantle/kola"
+	"github.com/coreos/coreos-assembler/mantle/platform"
 )
 
 var cmdBootchart = &cobra.Command{

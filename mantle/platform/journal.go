@@ -27,8 +27,8 @@ import (
 	"github.com/coreos/pkg/multierror"
 	"github.com/pkg/errors"
 
-	"github.com/coreos/mantle/network/journal"
-	"github.com/coreos/mantle/util"
+	"github.com/coreos/coreos-assembler/mantle/network/journal"
+	"github.com/coreos/coreos-assembler/mantle/util"
 )
 
 // Journal manages recording the journal of a Machine.

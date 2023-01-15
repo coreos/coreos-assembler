@@ -27,7 +27,7 @@ import (
 	"google.golang.org/api/option"
 	"google.golang.org/api/storage/v1"
 
-	"github.com/coreos/mantle/platform/api/gcloud"
+	"github.com/coreos/coreos-assembler/mantle/platform/api/gcloud"
 )
 
 var (

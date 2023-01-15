@@ -30,7 +30,7 @@ import (
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
 
-	platformConf "github.com/coreos/mantle/platform/conf"
+	platformConf "github.com/coreos/coreos-assembler/mantle/platform/conf"
 )
 
 type BaseCluster struct {

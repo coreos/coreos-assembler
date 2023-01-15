@@ -22,7 +22,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/iam"
 
-	"github.com/coreos/mantle/util"
+	"github.com/coreos/coreos-assembler/mantle/util"
 )
 
 const (

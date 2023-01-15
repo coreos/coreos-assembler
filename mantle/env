@@ -1,8 +1,6 @@
 #!/bin/bash -e
 
-ORG_PATH="github.com/coreos"
-PROJ="mantle"
-REPO_PATH="${ORG_PATH}/${PROJ}"
+REPO_PATH="github.com/coreos/coreos-assembler/mantle"
 
 export GOBIN=${PWD}/bin
 export GO15VENDOREXPERIMENT=1

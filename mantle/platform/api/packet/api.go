@@ -29,11 +29,11 @@ import (
 	"github.com/packethost/packngo"
 	"golang.org/x/crypto/ssh"
 
-	"github.com/coreos/mantle/auth"
-	"github.com/coreos/mantle/fcos"
-	"github.com/coreos/mantle/platform"
-	"github.com/coreos/mantle/platform/conf"
-	"github.com/coreos/mantle/util"
+	"github.com/coreos/coreos-assembler/mantle/auth"
+	"github.com/coreos/coreos-assembler/mantle/fcos"
+	"github.com/coreos/coreos-assembler/mantle/platform"
+	"github.com/coreos/coreos-assembler/mantle/platform/conf"
+	"github.com/coreos/coreos-assembler/mantle/util"
 )
 
 const (
@@ -49,7 +49,7 @@ const (
 )
 
 var (
-	plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "platform/api/packet")
+	plog = capnslog.NewPackageLogger("github.com/coreos/coreos-assembler/mantle", "platform/api/packet")
 
 	defaultPlan = map[string]string{
 		"arm64":  "c1.large.arm",

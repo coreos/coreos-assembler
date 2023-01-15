@@ -15,7 +15,7 @@
 package main
 
 import (
-	"github.com/coreos/mantle/cmd/ore/gcloud"
+	"github.com/coreos/coreos-assembler/mantle/cmd/ore/gcloud"
 )
 
 func init() {

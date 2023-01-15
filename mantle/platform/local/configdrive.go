@@ -18,7 +18,7 @@ import (
 	"os"
 	"path"
 
-	"github.com/coreos/mantle/platform/conf"
+	"github.com/coreos/coreos-assembler/mantle/platform/conf"
 )
 
 // MakeConfigDrive creates a config drive directory tree under outputDir

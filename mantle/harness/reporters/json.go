@@ -22,7 +22,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/coreos/mantle/harness/testresult"
+	"github.com/coreos/coreos-assembler/mantle/harness/testresult"
 )
 
 type jsonReporter struct {

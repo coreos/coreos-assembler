@@ -20,7 +20,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/coreos/mantle/platform/api/gcloud"
+	"github.com/coreos/coreos-assembler/mantle/platform/api/gcloud"
 )
 
 var (

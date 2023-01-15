@@ -6,7 +6,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/coreos/mantle/network/journal"
+	"github.com/coreos/coreos-assembler/mantle/network/journal"
 )
 
 func main() {

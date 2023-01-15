@@ -28,15 +28,15 @@ import (
 	cosa "github.com/coreos/coreos-assembler/pkg/builds"
 	coreosarch "github.com/coreos/stream-metadata-go/arch"
 
+	"github.com/coreos/coreos-assembler/mantle/kola"
+	"github.com/coreos/coreos-assembler/mantle/kola/cluster"
+	"github.com/coreos/coreos-assembler/mantle/kola/register"
+	"github.com/coreos/coreos-assembler/mantle/kola/tests/util"
+	"github.com/coreos/coreos-assembler/mantle/platform"
+	"github.com/coreos/coreos-assembler/mantle/platform/conf"
+	"github.com/coreos/coreos-assembler/mantle/platform/machine/unprivqemu"
+	installer "github.com/coreos/coreos-assembler/mantle/util"
 	"github.com/coreos/go-semver/semver"
-	"github.com/coreos/mantle/kola"
-	"github.com/coreos/mantle/kola/cluster"
-	"github.com/coreos/mantle/kola/register"
-	"github.com/coreos/mantle/kola/tests/util"
-	"github.com/coreos/mantle/platform"
-	"github.com/coreos/mantle/platform/conf"
-	"github.com/coreos/mantle/platform/machine/unprivqemu"
-	installer "github.com/coreos/mantle/util"
 )
 
 func init() {

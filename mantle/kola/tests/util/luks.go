@@ -16,8 +16,8 @@ package util
 import (
 	"regexp"
 
-	"github.com/coreos/mantle/kola/cluster"
-	"github.com/coreos/mantle/platform"
+	"github.com/coreos/coreos-assembler/mantle/kola/cluster"
+	"github.com/coreos/coreos-assembler/mantle/platform"
 )
 
 // TangServer contains fields required to set up a tang server

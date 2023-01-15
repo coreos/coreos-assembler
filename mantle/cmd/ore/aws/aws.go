@@ -18,15 +18,15 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/coreos/mantle/cli"
-	"github.com/coreos/mantle/platform"
-	"github.com/coreos/mantle/platform/api/aws"
+	"github.com/coreos/coreos-assembler/mantle/cli"
+	"github.com/coreos/coreos-assembler/mantle/platform"
+	"github.com/coreos/coreos-assembler/mantle/platform/api/aws"
 	"github.com/coreos/pkg/capnslog"
 	"github.com/spf13/cobra"
 )
 
 var (
-	plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "ore/aws")
+	plog = capnslog.NewPackageLogger("github.com/coreos/coreos-assembler/mantle", "ore/aws")
 
 	AWS = &cobra.Command{
 		Use:   "aws [command]",

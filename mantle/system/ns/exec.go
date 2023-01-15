@@ -17,7 +17,7 @@ package ns
 import (
 	"github.com/vishvananda/netns"
 
-	"github.com/coreos/mantle/system/exec"
+	"github.com/coreos/coreos-assembler/mantle/system/exec"
 )
 
 type Cmd struct {

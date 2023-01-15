@@ -24,9 +24,9 @@ import (
 	"os/user"
 	"path/filepath"
 
-	"github.com/coreos/mantle/cli"
-	"github.com/coreos/mantle/platform"
-	"github.com/coreos/mantle/platform/api/ibmcloud"
+	"github.com/coreos/coreos-assembler/mantle/cli"
+	"github.com/coreos/coreos-assembler/mantle/platform"
+	"github.com/coreos/coreos-assembler/mantle/platform/api/ibmcloud"
 	"github.com/coreos/pkg/capnslog"
 	"github.com/spf13/cobra"
 )
@@ -39,7 +39,7 @@ type apiKeyFile struct {
 }
 
 var (
-	plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "ore/ibmcloud")
+	plog = capnslog.NewPackageLogger("github.com/coreos/coreos-assembler/mantle", "ore/ibmcloud")
 
 	IbmCloud = &cobra.Command{
 		Use:   "ibmcloud [command]",

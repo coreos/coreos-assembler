@@ -22,8 +22,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/coreos/mantle/platform/api/aws"
-	"github.com/coreos/mantle/util"
+	"github.com/coreos/coreos-assembler/mantle/platform/api/aws"
+	"github.com/coreos/coreos-assembler/mantle/util"
 	"github.com/spf13/cobra"
 )
 

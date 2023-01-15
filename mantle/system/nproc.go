@@ -21,7 +21,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/coreos/mantle/system/exec"
+	"github.com/coreos/coreos-assembler/mantle/system/exec"
 )
 
 // GetProcessors returns a count for number of cores we should use;

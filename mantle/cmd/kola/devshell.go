@@ -31,10 +31,10 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/coreos/mantle/network"
-	"github.com/coreos/mantle/platform"
-	"github.com/coreos/mantle/platform/conf"
-	"github.com/coreos/mantle/util"
+	"github.com/coreos/coreos-assembler/mantle/network"
+	"github.com/coreos/coreos-assembler/mantle/platform"
+	"github.com/coreos/coreos-assembler/mantle/platform/conf"
+	"github.com/coreos/coreos-assembler/mantle/util"
 	"github.com/pkg/errors"
 	"golang.org/x/term"
 )

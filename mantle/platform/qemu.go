@@ -43,13 +43,13 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/coreos/mantle/platform/conf"
-	"github.com/coreos/mantle/util"
+	"github.com/coreos/coreos-assembler/mantle/platform/conf"
+	"github.com/coreos/coreos-assembler/mantle/util"
 	coreosarch "github.com/coreos/stream-metadata-go/arch"
 	"github.com/digitalocean/go-qemu/qmp"
 
-	"github.com/coreos/mantle/system"
-	"github.com/coreos/mantle/system/exec"
+	"github.com/coreos/coreos-assembler/mantle/system"
+	"github.com/coreos/coreos-assembler/mantle/system/exec"
 	"github.com/pkg/errors"
 
 	"golang.org/x/sys/unix"

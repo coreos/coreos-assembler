@@ -17,15 +17,15 @@ package packet
 import (
 	"fmt"
 
-	"github.com/coreos/mantle/auth"
-	"github.com/coreos/mantle/cli"
-	"github.com/coreos/mantle/platform/api/packet"
+	"github.com/coreos/coreos-assembler/mantle/auth"
+	"github.com/coreos/coreos-assembler/mantle/cli"
+	"github.com/coreos/coreos-assembler/mantle/platform/api/packet"
 	"github.com/coreos/pkg/capnslog"
 	"github.com/spf13/cobra"
 )
 
 var (
-	plog = capnslog.NewPackageLogger("github.com/coreos/mantle", "ore/packet")
+	plog = capnslog.NewPackageLogger("github.com/coreos/coreos-assembler/mantle", "ore/packet")
 
 	Packet = &cobra.Command{
 		Use:   "packet [command]",

@@ -11,8 +11,8 @@ import (
 
 	"github.com/pborman/uuid"
 
-	"github.com/coreos/mantle/kola/register"
-	"github.com/coreos/mantle/util"
+	"github.com/coreos/coreos-assembler/mantle/kola/register"
+	"github.com/coreos/coreos-assembler/mantle/util"
 )
 
 const (
