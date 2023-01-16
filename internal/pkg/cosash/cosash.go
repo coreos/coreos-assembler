@@ -173,6 +173,11 @@ pwd >&3
 `)
 }
 
+// BaseArch returns the base architecture
+func (sh *CosaSh) BaseArch() (string, error) {
+	return sh.ProcessWithReply(`echo $basearch >&3`)
+}
+
 // HasPrivileges checks if we can use sudo
 func (sh *CosaSh) HasPrivileges() (bool, error) {
 	r, err := sh.ProcessWithReply(`
