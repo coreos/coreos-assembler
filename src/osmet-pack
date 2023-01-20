@@ -23,7 +23,10 @@ if [ ! -f /etc/cosa-supermin ]; then
         fatal "Cannot pack osmet from $img; not an uncompressed image"
     fi
 
-    set -- "${TMPDIR}/osmet.bin" "${checksum}" "${speed}"
+    virtioserial_args=(-chardev "file,id=coreosout,path=${TMPDIR}/osmet.bin" \
+                       -device "virtserialport,chardev=coreosout,name=coreosout")
+
+    set -- "/dev/virtio-ports/coreosout" "${checksum}" "${speed}"
     if [ -n "${coreinst:-}" ]; then
         cp "${coreinst}" "${TMPDIR}/coreos-installer"
         set -- "$@" "${TMPDIR}/coreos-installer"
@@ -36,7 +39,8 @@ if [ ! -f /etc/cosa-supermin ]; then
 
     # stamp it with "osmet" serial so we find it easily in the VM
     runvm -drive "if=none,id=osmet,format=raw,readonly=on,file=${img_src}" \
-        -device "virtio-blk,serial=osmet,drive=osmet${device_opts}" -- \
+        -device "virtio-blk,serial=osmet,drive=osmet${device_opts}" \
+        "${virtioserial_args[@]}" -- \
         /usr/lib/coreos-assembler/osmet-pack "$@"
 
     mv "${TMPDIR}/osmet.bin" "${osmet_dest}"
@@ -84,4 +88,4 @@ RUST_BACKTRACE=full ${coreinst} pack osmet /dev/disk/by-id/virtio-osmet \
     --checksum "${checksum}" \
     --output /tmp/osmet.bin $fast
 
-mv /tmp/osmet.bin "${osmet_dest}"
+cp /tmp/osmet.bin "${osmet_dest}"
