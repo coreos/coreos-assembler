@@ -67,7 +67,10 @@ if args.basic_qemu_scenarios:
             subprocess.check_call(subargs)
         if not args.skip_secure_boot:
             for scenario in BASIC_SCENARIOS_SECURE_BOOT:
-                subargs = kolaargs + ['--qemu-' + scenario, 'basic']
+                # See https://issues.redhat.com/browse/COS-2000 - there's
+                # some bug with shim/grub2 that fails with secure boot on < ~1300MiB of RAM.
+                # But we're not going to block on that; real world OCP worker nodes are at least 16GiB etc.
+                subargs = kolaargs + ['--qemu-' + scenario, 'basic'] + ["--qemu-memory", "1536"]
                 print(subprocess.list2cmdline(subargs), flush=True)
                 subprocess.check_call(subargs)
     else:
