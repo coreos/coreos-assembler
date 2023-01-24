@@ -11,12 +11,15 @@ BRANCH=""
 COMMIT=""
 TRANSIENT=0
 YUMREPOS=""
+YUMREPOS_BRANCH=""
 
 print_help() {
     cat 1>&2 <<'EOF'
 Usage: coreos-assembler init --help
        coreos-assembler init [--force] [--transient] [--branch BRANCH] 
-                             [--commit COMMIT] [--yumrepos GITREPO] GITCONFIG [SUBDIR]
+                             [--commit COMMIT]
+                             [--yumrepos GITREPO] [--yumrepos-branch BRANCH]
+                             GITCONFIG [SUBDIR]
 
   For example, you can use https://github.com/coreos/fedora-coreos-config
   as GITCONFIG, or fork it.  Another option useful for local development
@@ -27,10 +30,11 @@ Usage: coreos-assembler init --help
   If specified, SUBDIR is a subdirectory of the git repository that should
   contain manifest.yaml and image.yaml (or image.ks).
 
-  Use --yumrepos for builds that need .repo files and a content_sets.yaml which
+  Use `--yumrepos` for builds that need .repo files and a content_sets.yaml which
   are not in GITCONFIG. For example: files need to be hidden behind a firewall
   in GITREPO. Using this option will clone GITREPO alongside GITCONFIG, thus you
-  may need to configure certificates. Local paths are also supported.
+  may need to configure certificates. Use `--yumrepos-branch` to choose a non-default
+  branch when cloning. Local paths are also supported. 
 
   Use `--transient` for builds that will throw away all cached data on success/failure,
   and should hence not invoke `fsync()` for example.
@@ -39,7 +43,7 @@ EOF
 
 # Call getopt to validate the provided input.
 rc=0
-options=$(getopt --options hfb:c: --longoptions help,force,transient,branch:,commit:,yumrepos: -- "$@") || rc=$?
+options=$(getopt --options hfb:c: --longoptions help,force,transient,branch:,commit:,yumrepos:,yumrepos-branch: -- "$@") || rc=$?
 [ $rc -eq 0 ] || {
     print_help
     exit 1
@@ -81,6 +85,15 @@ while true; do
                 shift ;;
             *)
                 YUMREPOS="$2"
+                shift ;;
+        esac
+        ;;
+    --yumrepos-branch)
+        case "$2" in
+            "")
+                shift ;;
+            *)
+                YUMREPOS_BRANCH="$2"
                 shift ;;
         esac
         ;;
@@ -166,7 +179,7 @@ fi
 case "${YUMREPOS}" in
     "");;
     /*) ln -s "${YUMREPOS}" src/yumrepos;;
-    *) git clone --depth=1 "${YUMREPOS}" src/yumrepos;;
+    *) git clone ${YUMREPOS_BRANCH:+--branch=${YUMREPOS_BRANCH}} --depth=1 "${YUMREPOS}" src/yumrepos;;
 esac
 
 set +x
