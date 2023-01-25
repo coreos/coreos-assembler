@@ -18,9 +18,14 @@ if [ -d "${workdir}/src/yumrepos" ]; then
     find "${workdir}/src/yumrepos/" -maxdepth 1 -type f -name '*.repo' -exec cp -t "${ctx_dir}" {} +
 fi
 
+# Get variant if available to pass it to the container build below
 variant=""
 if [[ -f "${workdir}/src/config.json" ]]; then
     variant="$(jq --raw-output '."coreos-assembler.config-variant"' "${workdir}/src/config.json")"
+    # Make sure that we have all GPG keys available for the container build
+    if [[ "${variant}" == "scos" ]] || [[ "${variant}" == "c9s" ]]; then
+        cp -a /usr/share/distribution-gpg-keys/ "${ctx_dir}"
+    fi
 fi
 
 # Build the image, replacing the FROM directive with the local image we have.
