@@ -108,6 +108,19 @@ make_and_makeinstall() {
     rm -rf /root/.cache/go-build
 }
 
+# Workaround for SCOS builds to be able to use GPG keys stored in a single
+# location during builds. See: https://github.com/openshift/os/pull/1118
+centos_stream_gpg_key_workaround() {
+    # Symlink keys from /usr/share/distribution-gpg-keys/centos (that come from
+    # the distribution-gpg-keys package) into /etc to able to use a single path
+    # in the repo files during the general rpm-ostree compose tree step and the
+    # extension container build step.
+    ln -s /usr/share/distribution-gpg-keys/centos/RPM-GPG-KEY-CentOS-Official /etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial
+    ln -s {/usr/share/distribution-gpg-keys/centos,/etc/pki/rpm-gpg}/RPM-GPG-KEY-CentOS-SIG-Extras-SHA512
+    ln -s {/usr/share/distribution-gpg-keys/centos,/etc/pki/rpm-gpg}/RPM-GPG-KEY-CentOS-SIG-NFV
+    ln -s {/usr/share/distribution-gpg-keys/centos,/etc/pki/rpm-gpg}/RPM-GPG-KEY-CentOS-SIG-Virtualization
+}
+
 configure_user(){
     # /dev/kvm might be bound in, but will have the gid from the host, and not all distros
     # a+rw permissions on /dev/kvm. create groups for all the common kvm gids and then add
@@ -158,4 +171,5 @@ else
   make_and_makeinstall
   install_ocp_tools
   configure_user
+  centos_stream_gpg_key_workaround
 fi
