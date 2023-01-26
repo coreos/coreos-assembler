@@ -95,6 +95,10 @@ const SkipBaseChecksTag = "skip-base-checks"
 // Date format for snooze date specified in kola-denylist.yaml (YYYY-MM-DD)
 const snoozeFormat = "2006-01-02"
 
+// SkipConsoleWarningsTag will cause kola not to check console for kernel errors.
+// This overlaps with SkipBaseChecksTag above, but is really a special flag for kola-denylist.yaml.
+const SkipConsoleWarningsTag = "skip-console-warnings"
+
 var (
 	plog = capnslog.NewPackageLogger("github.com/coreos/coreos-assembler/mantle", "kola")
 
@@ -117,8 +121,10 @@ var (
 	// ForceRunPlatformIndependent will cause tests that claim platform-independence to run
 	ForceRunPlatformIndependent bool
 
-	DenylistedTests []string // tests which are on the denylist
-	Tags            []string // tags to be ran
+	// SkipConsoleWarnings is set via SkipConsoleWarningsTag in kola-denylist.yaml
+	SkipConsoleWarnings bool
+	DenylistedTests     []string // tests which are on the denylist
+	Tags                []string // tags to be ran
 
 	// Sharding is a string of the form: hash:m/n where m and n are integers to run only tests which hash to m.
 	Sharding string
@@ -447,7 +453,13 @@ func parseDenyListYaml(pltfrm string) error {
 		if obj.Tracker != "" {
 			fmt.Printf("  👉 %s\n", obj.Tracker)
 		}
-		DenylistedTests = append(DenylistedTests, obj.Pattern)
+
+		/// Process "special" patterns which aren't test names, but influence overall behavior
+		if obj.Pattern == SkipConsoleWarningsTag {
+			SkipConsoleWarnings = true
+		} else {
+			DenylistedTests = append(DenylistedTests, obj.Pattern)
+		}
 	}
 
 	return nil
@@ -1548,7 +1560,11 @@ func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flig
 		}
 		for id, output := range c.ConsoleOutput() {
 			for _, badness := range CheckConsole([]byte(output), t) {
-				h.Errorf("Found %s on machine %s console", badness, id)
+				if !SkipConsoleWarnings {
+					h.Errorf("Found %s on machine %s console", badness, id)
+				} else {
+					plog.Warningf("Found %s on machine %s console", badness, id)
+				}
 			}
 		}
 		for id, output := range c.JournalOutput() {
