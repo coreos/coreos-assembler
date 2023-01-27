@@ -85,6 +85,9 @@ Example format of the file:
 - pattern: test2.test
   ...
 ```
+
+The special pattern `skip-console-warnings` suppresses the default check for kernel errors on the console which would otherwise fail a test.
+
 ## kola list
 
 The list command lists all of the available tests.
