@@ -124,7 +124,7 @@ def append_build(out, input_):
     # build the architectures dict
     arch_dict = {"media": {}}
     ensure_dup(input_, arch_dict, "ostree-commit", "commit")
-    platforms = ["aliyun", "aws", "azure", "azurestack", "digitalocean", "exoscale", "gcp", "ibmcloud", "kubevirt", "metal", "nutanix", "openstack", "powervs", "qemu", "virtualbox", "vmware", "vultr"]
+    platforms = ["aliyun", "aws", "azure", "azurestack", "digitalocean", "exoscale", "gcp", "ibmcloud", "kubevirt", "metal", "nutanix", "openstack", "powervs", "qemu", "virtualbox", "vmware", "vultr", "qemu-secex"]
     for platform in platforms:
         if input_.get("images", {}).get(platform, None) is not None:
             print(f"   - {platform}")
@@ -216,14 +216,6 @@ def append_build(out, input_):
     i = input_.get("images", {}).get("live-rootfs", None)
     if i is not None:
         arch_dict["media"]["metal"]["artifacts"].setdefault("pxe", {})["rootfs"] = artifact(i)
-
-    # Qemu s390x specific additions
-    i = input_.get("images", {}).get("qemu-secex", None)
-    if i is not None:
-        ext = get_extension(i['path'], 'qemu-secex', arch)
-        arch_dict["media"]["qemu"]["artifacts"][f"secex.{ext}"] = {
-            "disk": artifact(i)
-        }
 
     # if architectures as a whole or the individual arch is empty just push our changes
     if out.get('architectures', None) is None or out['architectures'].get(arch, None) is None:
