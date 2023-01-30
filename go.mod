@@ -17,7 +17,7 @@ require (
 	github.com/coreos/go-systemd/v22 v22.5.0
 	github.com/coreos/ignition/v2 v2.14.0
 	github.com/coreos/pkg v0.0.0-20180928190104-399ea9e2e55f
-	github.com/coreos/stream-metadata-go v0.4.0
+	github.com/coreos/stream-metadata-go v0.4.1
 	github.com/coreos/vcontext v0.0.0-20220810162454-88bd546c634c
 	github.com/digitalocean/go-qemu v0.0.0-20200529005954-1b453d036a9c
 	github.com/digitalocean/godo v1.33.0

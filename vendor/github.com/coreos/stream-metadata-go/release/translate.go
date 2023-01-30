@@ -237,6 +237,13 @@ func (releaseArch *Arch) toStreamArch(rel *Release) stream.Arch {
 		}
 	}
 
+	if releaseArch.Media.QemuSecex != nil {
+		artifacts["qemu-secex"] = stream.PlatformArtifacts{
+			Release: rel.Release,
+			Formats: mapFormats(releaseArch.Media.QemuSecex.Artifacts),
+		}
+	}
+
 	if releaseArch.Media.VirtualBox != nil {
 		artifacts["virtualbox"] = stream.PlatformArtifacts{
 			Release: rel.Release,
