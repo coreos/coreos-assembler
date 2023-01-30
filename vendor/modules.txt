@@ -244,7 +244,7 @@ github.com/coreos/ignition/v2/config/validate
 ## explicit
 github.com/coreos/pkg/capnslog
 github.com/coreos/pkg/multierror
-# github.com/coreos/stream-metadata-go v0.4.0
+# github.com/coreos/stream-metadata-go v0.4.1
 ## explicit; go 1.17
 github.com/coreos/stream-metadata-go/arch
 github.com/coreos/stream-metadata-go/fedoracoreos
