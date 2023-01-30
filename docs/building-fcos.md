@@ -100,6 +100,7 @@ cosa() {
               --uidmap=1000:0:1 --uidmap=0:1:1000 --uidmap 1001:1001:64536                          \
               -v ${PWD}:/srv/ --device /dev/kvm --device /dev/fuse                                  \
               --tmpfs /tmp -v /var/tmp:/var/tmp --name cosa                                         \
+              -v ${HOME}/.ssh:/home/builder/.ssh:ro                                                 \
               ${COREOS_ASSEMBLER_CONFIG_GIT:+-v $COREOS_ASSEMBLER_CONFIG_GIT:/srv/src/config/:ro}   \
               ${COREOS_ASSEMBLER_GIT:+-v $COREOS_ASSEMBLER_GIT/src/:/usr/lib/coreos-assembler/:ro}  \
               ${COREOS_ASSEMBLER_CONTAINER_RUNTIME_ARGS}                                            \
@@ -113,20 +114,24 @@ This is a bit more complicated than a simple alias, but it allows for
 hacking on the assembler or the configs and prints out the environment and
 the command that ultimately gets run. Let's step through each part:
 
-- `podman run --rm -ti`: standard container invocation
+- `podman run`: standard container invocation.
+- `-ti`: make it interactive from the command-line.
+- `--rm`: don't retain the container after it exits.  Everything of interest is bind-mounted to the host.
 - `--privileged`: Note we're running as non root, so this is still safe (from the host's perspective)
 - `--security-opt label:disable`: Disable SELinux isolation so we don't need to relabel the build directory
 - `--uidmap=1000:0:1 --uidmap=0:1:1000 --uidmap 1001:1001:64536`: map the `builder` user to root in the user namespace where root in the user namespace is mapped to the calling user from the host. See [this well formatted explanation](https://github.com/debarshiray/toolbox/commit/cfcf4eb31e14b3a300804840d315c62bc32e15ae) of the complexities of user namespaces in rootless podman.
-- `--device /dev/kvm --device /dev/fuse`: Bind in necessary devices
+- `--device /dev/kvm --device /dev/fuse`: Bind in necessary devices.
 - `--tmpfs`: We want /tmp to go away when the container restarts; it's part of the "ABI" of /tmp
 - `-v /var/tmp:/var/tmp`: Some cosa commands may allocate larger temporary files (e.g. supermin; forward this to the host)
 - `-v ${PWD}:/srv/`: mount local working dir under `/srv/` in container
-- `--name cosa`: just a name, feel free to change it
+- `--name cosa`: just a name, feel free to change it or remove it if you want to run multiple at the same time.
+- `${HOME}/.ssh:/home/builder/.ssh:ro` mount your user's SSH directory into the container to support SSH cloning during the `init` command.  Feel free to remove it if you aren't using SSH or are cloning manually.
 
 The environment variables are special purpose:
 
-- `COREOS_ASSEMBLER_CONFIG_GIT`: Allows you to specifiy a local directory that
-  contains the configs for the ostree you are trying to compose.
+- `COREOS_ASSEMBLER_CONFIG_GIT`: Allows you to specifiy an alternative local directory that
+  contains the configs for the ostree you are trying to compose, otherwise the default is 
+  `src/config/` in the working directory.
 - `COREOS_ASSEMBLER_GIT`: Allows you to specify a local directory that contains
   the CoreOS Assembler scripts. This allows for quick hacking on the assembler
   itself.
@@ -165,40 +170,137 @@ example.
 
 You only need to do this once; it will clone the specified configuration repo,
 and create various directories/state such as the OSTree repository. (For
-production, you will want to sync this repository out so clients can get
+production, you will want to sync this OSTree repository out so clients can get
 updates).
 
 ```
 $ cosa init https://github.com/coreos/fedora-coreos-config
 ```
 
-The specified git repository will be cloned into `$PWD/src/config/`.
+Optionally you can include a `--branch=` argument to specify a git reference in
+the config repo that should be checked out instead, otherwise the default
+branch of the repo is used.
 
-If you're doing something custom, you likely want to fork that upstream
-repository.
+The specified git repository will be cloned into `$PWD/src/config/` with the
+branch name specified, if any, and all git submodules initialized.
 
+If you're doing something custom, you likely want to fork the upstream
+repository config repo.
+
+Alternatively you can manually clone the repo to the proper location, and then
+stub-out the cloning portion of the `init` step of the build by calling:
+
+```
+$ cosa init --force /dev/null
+```
+
+The `--force` is required in order to ignore the pre-existing folder created
+by the manual clone in the working directory, while `/dev/null` indicates no
+repo needs to be cloned by `init`.
+
+## (Optional) Fetching a prior build
+
+To build the config as a new ostree commit on top of a prior build, rather than
+a completely independent ostree commit, a reference for the prior build is needed.
+This is fetched using the `buildfetch` command and pointing to a URL where
+the folder containing the prior build's output is located.  The URL should be to
+the architecture-specific sub-folder of the build-id folder in a prior `builds/`
+output directory.
+
+```
+$ cosa buildfetch https://my-webserver.com/prior-build-id-arch-folder-contents/
+```
+
+Different protocols are supported for this command, including `file://` for local references.
+See `cosa buildfetch --help` for details.
+
+The ostree metadata from the target URL is downloaded as part of this, but not all
+of the ostree contents, allowing the proper commit parentage to be configured during
+the build with minimal extra data.
+
+Also note the `cosa build --version=` option 
 ## Performing a build
 
-First, we fetch all the metadata and packages:
+First, we fetch all the metadata and packages, automatically generating a lockfile over the
+config if one isn't already present:
 
 ```
 $ cosa fetch
 ```
 
-And now we can build from these inputs:
+And now we can build from these inputs using various types of build targets, or
+leaving the target out to build the default target (`qemu`):
 
 ```
 $ cosa build
 ```
 
-Each build will create a new directory in `$PWD/builds/`, containing the
-generated OSTree commit (as a tarball) and the qemu VM image.
+Each build will create a new directory in `$PWD/builds/` named after the build-id of
+the build and containing the build outputs, where the build-id is matched to the
+ostree reference created for the generated ostree commit.
+For the default `qemu` target, these build outputs will include the generated OSTree
+commit (as a tarball), and the qemu VM image.
 
-Next, rerun `cosa build` and notice the system correctly
-deduces that nothing changed.  You can run `cosa fetch`
-again to check for updated RPMs.
+Next, rerun `cosa build` and notice the system correctly deduces that nothing
+changed.  You can run `cosa fetch` again to check for additional RPMs needed due to changes
+in the config repo manifests, lockfiles, or lockfile overrides.
 
-## Running
+Subsequent build targets, which are any after the first call to `build`, that are intended
+to perform addtional operations on the same build must be called differently so they can
+be differentiated from a command to perform an entirely new build:
+
+```
+$ cosa buildextend-${TARGET}
+```
+
+### Available build targets
+
+Different build targets exist for different purposes, with some targets automatically
+invoking others. An overview of the target dependencies:
+
+<!-- The path to this SVG is fixed here to make sure that it is correctly
+displayed both on the coreos.github.io website rendered by Jekyll and on
+github.com while browsing the repository view. The main downside here is that
+this will not be updated for branches -->
+<img src="https://coreos.github.io/coreos-assembler/build-targets.svg?sanitize=true">
+
+| Name | Purpose |
+|:-----|:--------|
+| `ostree` | Generates the ostree commit and also saves it compressed to `builds/` |
+| `qemu` | Creates a VM image from the ostree commit |
+| `metal` | Creates a raw disk image from the ostree commit |
+| `metal4k` | Creates a raw disk image with 4KB block sizes from the raw image |
+| `live` | Creates a Live disk ISO from the 4KB block size raw image |
+
+
+The default target is `qemu`.
+
+For full details of available targets, see `cosa build --help`.
+
+
+## Saving artifacts
+
+To save the build artifacts, all artifacts that aren't already compressed can be compressed:
+
+```
+$ cosa compress
+```
+
+Completed builds can be uploaded to an existing artifact storage of builds by 
+specifying the push URL that should be pushed to:
+
+```
+$ cosa buildpush https://my-artifact-storage/fcos-builds/
+```
+
+The push target must be a location configured like the top level of `builds/`,
+with metadata files detailing what builds are included in the subfolders. A new
+subfolder is created for the push, populated with the uploaded content, and the
+metadata is updated.
+
+*Currently only supports `s3://` protocol with other protocols stubbed out.*
+
+## Running VM images
 
 ```
 $ cosa run
@@ -208,7 +310,7 @@ This invokes QEMU on the image in `builds/latest`.  It uses `-snapshot`,
 so any changes are thrown away after you exit qemu.  To exit, type
 `Ctrl-a x`.  For more options, type `Ctrl-a ?`.
 
-## Running with customizations
+### Running VM images with customizations
 
 Using `coreos-assembler`, it is possible to run a CoreOS style qcow2 image
 that was built elsewhere.
@@ -226,3 +328,33 @@ $ cosa kola qemuexec --ignition ./ignition.json --ignition-direct --qemu-image .
 
 There are other customizations that are posible; see the output of `cosa kola qemuexec --help`
 for more options.
+
+## Writing raw images
+
+Raw images and compressed raw images can be written to a system using the
+`coreos-installer` tool and an Ignition file.  See `coreos-installer`
+documentation for details.
+
+## Running Live ISOs
+
+The `live` target is only available for images with limited size, but will
+produce a bootable ISO image that can be run as a Live disk from a USB, CD/DVD,
+or mounted ISO.
+
+## Reproducible builds
+
+Exactly reproducing a build is not a primary goal, but some steps can be taken to make
+ostree commit generation more consistent:
+
+1. Set the build timestamp [via the `SOURCE_DATE_EPOCH` environment variable](https://reproducible-builds.org/specs/source-date-epoch/) inside the build container
+2. Use a lockfile in the Config repo
+3. Use the `fetch --strict` option to ensure the lockfile is complete
+4. Set an explicit ostree reference/cosa build-id with `build --version=${build_id}`
+
+Non-conformant with the current CoreOS and EL builds, the Config should also contain 
+these lines in the manifest until the RPM SQLite database type [can be made reproducible](https://github.com/rpm-software-management/rpm/issues/2219):
+
+```yaml
+rpmdb: bdb
+rpmdb-normalize: true
+```
