@@ -20,6 +20,8 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/ec2"
+
+	"github.com/coreos/coreos-assembler/mantle/util"
 )
 
 // getSecurityGroupID gets a security group matching the given name.
@@ -246,8 +248,16 @@ func (a *API) createInternetGateway(name, vpcId string) (string, error) {
 
 // createSubnets creates a subnet in each availability zone for the region
 // that is associated with the given VPC associated with the given RouteTable
+// NOTE: we ignore local and wavelength availability zones here.
 func (a *API) createSubnets(name, vpcId, routeTableId string) error {
-	azs, err := a.ec2.DescribeAvailabilityZones(&ec2.DescribeAvailabilityZonesInput{})
+	azs, err := a.ec2.DescribeAvailabilityZones(&ec2.DescribeAvailabilityZonesInput{
+		Filters: []*ec2.Filter{
+			{
+				Name:   aws.String("zone-type"),
+				Values: []*string{util.StrToPtr("availability-zone")},
+			},
+		},
+	})
 	if err != nil {
 		return fmt.Errorf("retrieving availability zones: %v", err)
 	}
