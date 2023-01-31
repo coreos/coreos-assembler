@@ -1,6 +1,6 @@
 module github.com/coreos/coreos-assembler
 
-go 1.17
+go 1.19
 
 require (
 	github.com/Azure/azure-sdk-for-go v8.1.0-beta+incompatible
