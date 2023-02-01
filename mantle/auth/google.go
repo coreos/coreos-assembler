@@ -17,8 +17,8 @@ package auth
 
 import (
 	"context"
-	"io/ioutil"
 	"net/http"
+	"os"
 	"os/user"
 	"path/filepath"
 
@@ -58,7 +58,7 @@ func GoogleClientFromKeyFile(path string, scope ...string) (*http.Client, error)
 		}
 		path = filepath.Join(user.HomeDir, GCEConfigPath)
 	}
-	b, err := ioutil.ReadFile(path)
+	b, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}

@@ -19,7 +19,7 @@ package ibmcloud
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -96,7 +96,7 @@ func preflightCheck(cmd *cobra.Command, args []string) error {
 		defer file.Close()
 
 		var apiKeyValues apiKeyFile
-		bytes, err := ioutil.ReadAll(file)
+		bytes, err := io.ReadAll(file)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "could not read apikey file: %v\n", err)
 			os.Exit(1)

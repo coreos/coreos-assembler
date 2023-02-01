@@ -19,7 +19,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"strings"
@@ -66,7 +65,7 @@ func runCosaBuildToStream(cmd *cobra.Command, args []string) error {
 	var outStream stream.Stream
 
 	if target != "" {
-		buf, err := ioutil.ReadFile(target)
+		buf, err := os.ReadFile(target)
 		if err != nil {
 			return err
 		}
@@ -102,7 +101,7 @@ func runCosaBuildToStream(cmd *cobra.Command, args []string) error {
 	}
 
 	for _, arg := range args {
-		releaseTmpf, err := ioutil.TempFile("", "release")
+		releaseTmpf, err := os.CreateTemp("", "release")
 		if err != nil {
 			return err
 		}
@@ -139,7 +138,7 @@ func runCosaBuildToStream(cmd *cobra.Command, args []string) error {
 		}
 
 		var rel release.Release
-		buf, err := ioutil.ReadAll(releaseTmpf)
+		buf, err := io.ReadAll(releaseTmpf)
 		if err != nil {
 			return err
 		}

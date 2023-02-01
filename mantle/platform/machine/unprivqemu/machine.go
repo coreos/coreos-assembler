@@ -17,7 +17,7 @@ package unprivqemu
 import (
 	"context"
 	"errors"
-	"io/ioutil"
+	"os"
 	"time"
 
 	"golang.org/x/crypto/ssh"
@@ -92,7 +92,7 @@ func (m *machine) Destroy() {
 
 	m.journal.Destroy()
 
-	if buf, err := ioutil.ReadFile(m.consolePath); err == nil {
+	if buf, err := os.ReadFile(m.consolePath); err == nil {
 		m.console = string(buf)
 	} else {
 		plog.Errorf("Error reading console for instance %v: %v", m.ID(), err)

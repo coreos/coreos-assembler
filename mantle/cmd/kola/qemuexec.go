@@ -19,7 +19,7 @@ package main
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -216,7 +216,7 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 
 	var config *conf.Conf
 	if butane != "" {
-		buf, err := ioutil.ReadFile(butane)
+		buf, err := os.ReadFile(butane)
 		if err != nil {
 			return err
 		}
@@ -225,7 +225,7 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 			return errors.Wrapf(err, "parsing %s", butane)
 		}
 	} else if !directIgnition && ignition != "" {
-		buf, err := ioutil.ReadFile(ignition)
+		buf, err := os.ReadFile(ignition)
 		if err != nil {
 			return err
 		}

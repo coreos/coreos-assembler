@@ -16,7 +16,7 @@ package system
 
 import (
 	"bytes"
-	"io/ioutil"
+	"io"
 	"os"
 	"path/filepath"
 	"testing"
@@ -37,7 +37,7 @@ func checkFile(t *testing.T, path string, data []byte, mode os.FileMode) {
 		t.Fatalf("Unexpected mode: %s != %s %s", info.Mode(), mode, path)
 	}
 
-	newData, err := ioutil.ReadAll(file)
+	newData, err := io.ReadAll(file)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -51,7 +51,7 @@ func TestCopyRegularFile(t *testing.T) {
 	tmp := t.TempDir()
 
 	src := filepath.Join(tmp, "src")
-	if err := ioutil.WriteFile(src, data, 0600); err != nil {
+	if err := os.WriteFile(src, data, 0600); err != nil {
 		t.Fatal(err)
 	}
 	checkFile(t, src, data, 0600)

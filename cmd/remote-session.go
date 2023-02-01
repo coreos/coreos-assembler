@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/spf13/cobra"
-	"io/ioutil"
+	"io"
 	"os"
 	"os/exec"
 	"strings"
@@ -80,8 +80,8 @@ var (
 func isatty() bool {
 	cmd := exec.Command("tty")
 	cmd.Stdin = os.Stdin
-	cmd.Stdout = ioutil.Discard
-	cmd.Stderr = ioutil.Discard
+	cmd.Stdout = io.Discard
+	cmd.Stderr = io.Discard
 	err := cmd.Run()
 	return err == nil
 }

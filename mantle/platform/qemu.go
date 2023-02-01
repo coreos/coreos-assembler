@@ -34,7 +34,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math/rand"
 	"net"
 	"os"
@@ -512,7 +511,7 @@ func (builder *QemuBuilder) ensureTempdir() error {
 	if builder.tempdir != "" {
 		return nil
 	}
-	tempdir, err := ioutil.TempDir("/var/tmp", "mantle-qemu")
+	tempdir, err := os.MkdirTemp("/var/tmp", "mantle-qemu")
 	if err != nil {
 		return err
 	}
@@ -532,13 +531,13 @@ func (builder *QemuBuilder) SetConfig(config *conf.Conf) {
 	builder.ignitionSet = true
 }
 
-// Small wrapper around ioutil.Tempfile() to avoid leaking our tempdir to
+// Small wrapper around os.CreateTemp() to avoid leaking our tempdir to
 // others.
 func (builder *QemuBuilder) TempFile(pattern string) (*os.File, error) {
 	if err := builder.ensureTempdir(); err != nil {
 		return nil, err
 	}
-	return ioutil.TempFile(builder.tempdir, pattern)
+	return os.CreateTemp(builder.tempdir, pattern)
 }
 
 // renderIgnition lazily renders a parsed config if one is set
@@ -747,7 +746,7 @@ func newGuestfish(arch, diskImagePath string, diskSectorSize int) (*coreosGuestf
 	if err := cmd.Start(); err != nil {
 		return nil, errors.Wrapf(err, "running guestfish")
 	}
-	buf, err := ioutil.ReadAll(stdout)
+	buf, err := io.ReadAll(stdout)
 	if err != nil {
 		return nil, errors.Wrapf(err, "reading guestfish output")
 	}
@@ -874,7 +873,7 @@ func (disk *Disk) prepare(builder *QemuBuilder) error {
 	if err := builder.ensureTempdir(); err != nil {
 		return err
 	}
-	tmpf, err := ioutil.TempFile(builder.tempdir, "disk")
+	tmpf, err := os.CreateTemp(builder.tempdir, "disk")
 	if err != nil {
 		return err
 	}
@@ -1202,7 +1201,7 @@ func (builder *QemuBuilder) setupUefi(secureBoot bool) error {
 			return err
 		}
 		defer varsSrc.Close()
-		vars, err := ioutil.TempFile("", "mantle-qemu")
+		vars, err := os.CreateTemp("", "mantle-qemu")
 		if err != nil {
 			return err
 		}
@@ -1222,7 +1221,7 @@ func (builder *QemuBuilder) setupUefi(secureBoot bool) error {
 		if secureBoot {
 			return fmt.Errorf("architecture %s doesn't have support for secure boot in kola", coreosarch.CurrentRpmArch())
 		}
-		vars, err := ioutil.TempFile("", "mantle-qemu")
+		vars, err := os.CreateTemp("", "mantle-qemu")
 		if err != nil {
 			return err
 		}

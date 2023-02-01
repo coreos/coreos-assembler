@@ -21,7 +21,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -72,7 +71,7 @@ func runDevShellSSH(ctx context.Context, builder *platform.QemuBuilder, conf *co
 		termMaxWidth = 100
 	}
 
-	tmpd, err := ioutil.TempDir("", "kola-devshell")
+	tmpd, err := os.MkdirTemp("", "kola-devshell")
 	if err != nil {
 		return err
 	}
@@ -109,7 +108,7 @@ func runDevShellSSH(ctx context.Context, builder *platform.QemuBuilder, conf *co
 	if err != nil {
 		return err
 	}
-	serialLog, err := ioutil.TempFile(tmpd, "cosa-run-serial")
+	serialLog, err := os.CreateTemp(tmpd, "cosa-run-serial")
 	if err != nil {
 		return err
 	}

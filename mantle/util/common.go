@@ -16,7 +16,6 @@ package util
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -86,7 +85,7 @@ func CreateSSHAuthorizedKey(tmpd string) ([]byte, string, error) {
 	if err != nil {
 		return nil, "", errors.Wrapf(err, "running ssh-keygen")
 	}
-	sshPubKeyBuf, err := ioutil.ReadFile(sshPubKeyPath)
+	sshPubKeyBuf, err := os.ReadFile(sshPubKeyPath)
 	if err != nil {
 		return nil, "", errors.Wrapf(err, "reading pubkey")
 	}

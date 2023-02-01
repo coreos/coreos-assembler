@@ -11,7 +11,6 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"time"
@@ -82,7 +81,7 @@ func buildExtensionContainer() error {
 		return err
 	}
 	extensions_container_meta_path := filepath.Join(buildPath, "meta.extensions-container.json")
-	err = ioutil.WriteFile(extensions_container_meta_path, newBytes, 0644)
+	err = os.WriteFile(extensions_container_meta_path, newBytes, 0644)
 	if err != nil {
 		return errors.Wrapf(err, "writing %s", extensions_container_meta_path)
 	}

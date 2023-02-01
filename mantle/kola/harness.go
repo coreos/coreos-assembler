@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"hash/fnv"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -364,7 +363,7 @@ func parseDenyListYaml(pltfrm string) error {
 
 	// Parse kola-denylist into structs
 	pathToDenyList := filepath.Join(Options.CosaWorkdir, "src/config/kola-denylist.yaml")
-	denyListFile, err := ioutil.ReadFile(pathToDenyList)
+	denyListFile, err := os.ReadFile(pathToDenyList)
 	if os.IsNotExist(err) {
 		return nil
 	} else if err != nil {
@@ -383,7 +382,7 @@ func parseDenyListYaml(pltfrm string) error {
 	var manifest ManifestData
 	var pathToManifest string
 	pathToInitConfig := filepath.Join(Options.CosaWorkdir, "src/config.json")
-	initConfigFile, err := ioutil.ReadFile(pathToInitConfig)
+	initConfigFile, err := os.ReadFile(pathToInitConfig)
 	if os.IsNotExist(err) {
 		// No variant config found. Let's read the default manifest
 		pathToManifest = filepath.Join(Options.CosaWorkdir, "src/config/manifest.yaml")
@@ -399,7 +398,7 @@ func parseDenyListYaml(pltfrm string) error {
 		}
 		pathToManifest = filepath.Join(Options.CosaWorkdir, fmt.Sprintf("src/config/manifest-%s.yaml", initConfig.ConfigVariant))
 	}
-	manifestFile, err := ioutil.ReadFile(pathToManifest)
+	manifestFile, err := os.ReadFile(pathToManifest)
 	if err != nil {
 		return err
 	}
@@ -1167,13 +1166,16 @@ func testIsDenyListed(testname string) (bool, error) {
 }
 
 // registerTestDir parses one test directory and registers it as a test
-func registerTestDir(dir, testprefix string, children []os.FileInfo) error {
+func registerTestDir(dir, testprefix string, children []os.DirEntry) error {
 	var dependencydir string
 	var meta externalTestMeta
-	var err error
 	userdata := conf.EmptyIgnition()
 	executables := []string{}
-	for _, c := range children {
+	for _, e := range children {
+		c, err := e.Info()
+		if err != nil {
+			return fmt.Errorf("getting info for %q: %w", e.Name(), err)
+		}
 		fpath := filepath.Join(dir, c.Name())
 		// follow symlinks; oddly, there's no IsSymlink()
 		if c.Mode()&os.ModeSymlink != 0 {
@@ -1186,7 +1188,7 @@ func registerTestDir(dir, testprefix string, children []os.FileInfo) error {
 		if isreg && (c.Mode().Perm()&0001) > 0 {
 			executables = append(executables, filepath.Join(dir, c.Name()))
 		} else if isreg && c.Name() == "config.ign" {
-			v, err := ioutil.ReadFile(filepath.Join(dir, c.Name()))
+			v, err := os.ReadFile(filepath.Join(dir, c.Name()))
 			if err != nil {
 				return errors.Wrapf(err, "reading %s", c.Name())
 			}
@@ -1194,7 +1196,7 @@ func registerTestDir(dir, testprefix string, children []os.FileInfo) error {
 		} else if isreg && c.Name() == "config.fcc" {
 			return errors.Wrapf(err, "%s is not supported anymore; rename it to config.bu", c.Name())
 		} else if isreg && (c.Name() == "config.bu") {
-			v, err := ioutil.ReadFile(filepath.Join(dir, c.Name()))
+			v, err := os.ReadFile(filepath.Join(dir, c.Name()))
 			if err != nil {
 				return errors.Wrapf(err, "reading %s", c.Name())
 			}
@@ -1220,7 +1222,7 @@ func registerTestDir(dir, testprefix string, children []os.FileInfo) error {
 			dependencydir = target
 		} else if c.IsDir() {
 			subdir := filepath.Join(dir, c.Name())
-			subchildren, err := ioutil.ReadDir(subdir)
+			subchildren, err := os.ReadDir(subdir)
 			if err != nil {
 				return err
 			}
@@ -1267,7 +1269,7 @@ func registerTestDir(dir, testprefix string, children []os.FileInfo) error {
 
 func RegisterExternalTestsWithPrefix(dir, prefix string) error {
 	testsdir := filepath.Join(dir, "tests/kola")
-	children, err := ioutil.ReadDir(testsdir)
+	children, err := os.ReadDir(testsdir)
 	if err != nil {
 		if os.IsNotExist(err) {
 			// The directory doesn't exist.. Skip registering tests

@@ -18,7 +18,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -140,7 +140,7 @@ func getReleaseMetadata(api *aws.API) release.Release {
 	}
 	defer releaseFile.Close()
 
-	releaseData, err := ioutil.ReadAll(releaseFile)
+	releaseData, err := io.ReadAll(releaseFile)
 	if err != nil {
 		plog.Fatalf("reading release metadata: %v", err)
 	}
@@ -222,7 +222,7 @@ func modifyReleaseMetadataIndex(api *aws.API, rel release.Release) {
 			return []byte{}, fmt.Errorf("downloading release metadata index: %v", err)
 		}
 		defer f.Close()
-		d, err := ioutil.ReadAll(f)
+		d, err := io.ReadAll(f)
 		if err != nil {
 			return []byte{}, fmt.Errorf("reading release metadata index: %v", err)
 		}

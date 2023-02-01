@@ -19,7 +19,6 @@ import (
 	"archive/tar"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path"
 
@@ -46,7 +45,7 @@ func (t *archive) readOvf(fpath string) ([]byte, error) {
 	}
 	defer r.Close()
 
-	return ioutil.ReadAll(r)
+	return io.ReadAll(r)
 }
 
 func (t *archive) readEnvelope(fpath string) (*ovf.Envelope, error) {

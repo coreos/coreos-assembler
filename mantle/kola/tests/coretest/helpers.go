@@ -2,7 +2,7 @@ package coretest
 
 import (
 	"bufio"
-	"io/ioutil"
+	"io"
 	"net"
 	"os"
 	"strings"
@@ -52,7 +52,7 @@ func MachineID() string {
 
 	defer f.Close()
 
-	buf, err := ioutil.ReadAll(f)
+	buf, err := io.ReadAll(f)
 	if err != nil {
 		panic(err)
 	}

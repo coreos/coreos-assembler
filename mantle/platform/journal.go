@@ -19,7 +19,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"time"
@@ -134,7 +133,7 @@ func (j *Journal) Read() ([]byte, error) {
 		return nil, errors.Wrapf(err, "reading journal")
 	}
 	defer f.Close()
-	return ioutil.ReadAll(f)
+	return io.ReadAll(f)
 }
 
 func (j *Journal) Destroy() {

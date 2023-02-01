@@ -18,7 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 	"os/exec"
@@ -262,10 +262,10 @@ func initiateReboot(mark string) error {
 func runExtUnit(cmd *cobra.Command, args []string) error {
 	rebootOff, _ := cmd.Flags().GetBool("deny-reboots")
 	// Write the autopkgtest wrappers
-	if err := ioutil.WriteFile(autopkgTestRebootPath, []byte(autopkgtestRebootScript), 0755); err != nil {
+	if err := os.WriteFile(autopkgTestRebootPath, []byte(autopkgtestRebootScript), 0755); err != nil {
 		return err
 	}
-	if err := ioutil.WriteFile(autopkgTestRebootPreparePath, []byte(autopkgtestRebootPrepareScript), 0755); err != nil {
+	if err := os.WriteFile(autopkgTestRebootPreparePath, []byte(autopkgtestRebootPrepareScript), 0755); err != nil {
 		return err
 	}
 
@@ -287,7 +287,7 @@ func runExtUnit(cmd *cobra.Command, args []string) error {
 				return
 			}
 			defer rebootReader.Close()
-			buf, err := ioutil.ReadAll(rebootReader)
+			buf, err := io.ReadAll(rebootReader)
 			if err != nil {
 				errChan <- err
 			}
@@ -370,7 +370,7 @@ func runReboot(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	err = ioutil.WriteFile(rebootRequestFifo, []byte(mark), 0644)
+	err = os.WriteFile(rebootRequestFifo, []byte(mark), 0644)
 	if err != nil {
 		return err
 	}

@@ -17,7 +17,7 @@ package crio
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"path"
 	"strings"
 	"time"
@@ -220,7 +220,7 @@ func crioBaseTests(c cluster.TestCluster) {
 func generateCrioConfig(podName, imageName string, command []string) (string, string, error) {
 	fileContentsPod := fmt.Sprintf(crioPodTemplate, podName, imageName)
 
-	tmpFilePod, err := ioutil.TempFile("", podName+"Pod")
+	tmpFilePod, err := os.CreateTemp("", podName+"Pod")
 	if err != nil {
 		return "", "", err
 	}
@@ -231,7 +231,7 @@ func generateCrioConfig(podName, imageName string, command []string) (string, st
 	cmd := strings.Join(command, " ")
 	fileContentsContainer := fmt.Sprintf(crioContainerTemplate, imageName, imageName, cmd)
 
-	tmpFileContainer, err := ioutil.TempFile("", imageName+"Container")
+	tmpFileContainer, err := os.CreateTemp("", imageName+"Container")
 	if err != nil {
 		return "", "", err
 	}
