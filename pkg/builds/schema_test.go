@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -167,7 +166,7 @@ func TestMergeMeta(t *testing.T) {
 	if err := os.MkdirAll(fakeBuildDir, 0777); err != nil {
 		t.Fatalf("failed to create test meta structure")
 	}
-	if err := ioutil.WriteFile(filepath.Join(tmpd, "builds", "builds.json"), bjson, 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(tmpd, "builds", "builds.json"), bjson, 0644); err != nil {
 		t.Fatalf("error creating builds.json")
 	}
 	if err := b.WriteMeta(filepath.Join(fakeBuildDir, "meta.json"), false); err != nil {

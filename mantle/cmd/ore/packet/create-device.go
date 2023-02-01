@@ -17,7 +17,6 @@ package packet
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -55,7 +54,7 @@ func runCreateDevice(cmd *cobra.Command, args []string) error {
 
 	userdata := conf.Empty()
 	if userDataPath != "" {
-		data, err := ioutil.ReadFile(userDataPath)
+		data, err := os.ReadFile(userDataPath)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Couldn't read userdata file %v: %v\n", userDataPath, err)
 			os.Exit(1)

@@ -3,7 +3,7 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"os/exec"
 	"sort"
@@ -165,8 +165,8 @@ func initializeGlobalState(argv []string) error {
 	// This was taken from 'Support Arbitrary User IDs' section of:
 	//   https://docs.openshift.com/container-platform/3.10/creating_images/guidelines.html
 	c := exec.Command("whoami")
-	c.Stdout = ioutil.Discard
-	c.Stderr = ioutil.Discard
+	c.Stdout = io.Discard
+	c.Stderr = io.Discard
 	if err := c.Run(); err != nil {
 		fmt.Fprintln(os.Stderr, "notice: failed to look up uid in /etc/passwd; enabling workaround")
 		home := fmt.Sprintf("/var/tmp/%s", user)

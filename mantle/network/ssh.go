@@ -18,7 +18,6 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"os"
 	"strings"
@@ -77,7 +76,7 @@ func NewSSHAgent(dialer Dialer) (*SSHAgent, error) {
 	var ok, sockdirOwned bool
 	if sockDir, ok = os.LookupEnv("MANTLE_SSH_DIR"); !ok {
 		if DefaultSSHDir == "" {
-			sockDir, err = ioutil.TempDir("", "mantle-ssh-")
+			sockDir, err = os.MkdirTemp("", "mantle-ssh-")
 			sockdirOwned = true
 			if err != nil {
 				return nil, err

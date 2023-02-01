@@ -21,7 +21,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strings"
 
@@ -455,7 +454,7 @@ func (c *Conf) ValidConfig() bool {
 
 // WriteFile writes the userdata in Conf to a local file.
 func (c *Conf) WriteFile(name string) error {
-	return ioutil.WriteFile(name, []byte(c.String()), 0666)
+	return os.WriteFile(name, []byte(c.String()), 0666)
 }
 
 // Bytes returns the serialized userdata in Conf.

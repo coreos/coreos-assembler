@@ -19,7 +19,6 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -196,7 +195,7 @@ func StartMachine(m Machine, j *Journal) error {
 			msg := fmt.Sprintf("machine %s entered emergency.target in initramfs", m.ID())
 			plog.Info(msg)
 			path := filepath.Join(filepath.Dir(j.journalPath), "ignition-virtio-dump.txt")
-			if err := ioutil.WriteFile(path, []byte(err.Error()), 0644); err != nil {
+			if err := os.WriteFile(path, []byte(err.Error()), 0644); err != nil {
 				plog.Errorf("Failed to write journal: %v", err)
 			}
 			errchan <- errors.New(msg)

@@ -17,7 +17,6 @@ package gcloud
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"net/url"
 	"os"
 	"strings"
@@ -200,7 +199,7 @@ func runUpload(cmd *cobra.Command, args []string) {
 	}
 
 	if uploadWriteUrl != "" {
-		err = ioutil.WriteFile(uploadWriteUrl, []byte(imageStorageURL), 0644)
+		err = os.WriteFile(uploadWriteUrl, []byte(imageStorageURL), 0644)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Writing file (%v) failed: %v\n", uploadWriteUrl, err)
 			os.Exit(1)

@@ -20,7 +20,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net"
 	"net/url"
 	"path"
@@ -275,7 +275,7 @@ func (a *API) GetConsoleOutput(name string) (string, error) {
 	}
 	defer f.Close()
 
-	buf, err := ioutil.ReadAll(f)
+	buf, err := io.ReadAll(f)
 	if err != nil {
 		return "", fmt.Errorf("couldn't read serial output: %v", err)
 	}

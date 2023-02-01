@@ -17,7 +17,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -131,7 +130,7 @@ func runStreamMirror(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("Must specify --dest-file with --url")
 	}
 	var srcStream stream.Stream
-	buf, err := ioutil.ReadFile(srcFile)
+	buf, err := os.ReadFile(srcFile)
 	if err != nil {
 		return err
 	}
@@ -174,7 +173,7 @@ func runStreamMirror(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		err = ioutil.WriteFile(destFile, buf, 0644)
+		err = os.WriteFile(destFile, buf, 0644)
 		if err != nil {
 			return err
 		}

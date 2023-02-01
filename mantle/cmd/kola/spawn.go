@@ -17,7 +17,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"os"
 	"os/user"
@@ -99,7 +98,7 @@ func runSpawn(cmd *cobra.Command, args []string) error {
 
 	var userdata *conf.UserData
 	if spawnUserData != "" {
-		userbytes, err := ioutil.ReadFile(spawnUserData)
+		userbytes, err := os.ReadFile(spawnUserData)
 		if err != nil {
 			return errors.Wrapf(err, "Reading userdata failed")
 		}
@@ -167,7 +166,7 @@ func runSpawn(cmd *cobra.Command, args []string) error {
 				DisablePDeathSig: !spawnRemove,
 			}
 			if spawnMachineOptions != "" {
-				b, err := ioutil.ReadFile(spawnMachineOptions)
+				b, err := os.ReadFile(spawnMachineOptions)
 				if err != nil {
 					return errors.Wrapf(err, "Could not read machine options")
 				}
@@ -272,7 +271,7 @@ func addSSHKeys(userdata *conf.UserData) (*conf.UserData, error) {
 
 	// read key files, failing if any are missing
 	for _, path := range spawnSSHKeys {
-		keybytes, err := ioutil.ReadFile(path)
+		keybytes, err := os.ReadFile(path)
 		if err != nil {
 			return nil, err
 		}

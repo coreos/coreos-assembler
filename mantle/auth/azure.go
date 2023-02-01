@@ -17,7 +17,7 @@ package auth
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -150,5 +150,5 @@ func decodeBOMFile(path string) ([]byte, error) {
 	defer f.Close()
 	decoder := unicode.UTF8.NewDecoder()
 	reader := transform.NewReader(f, unicode.BOMOverride(decoder))
-	return ioutil.ReadAll(reader)
+	return io.ReadAll(reader)
 }

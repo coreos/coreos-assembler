@@ -19,7 +19,6 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math"
 	"math/big"
 	"regexp"
@@ -252,5 +251,5 @@ func (a *API) GetConsoleOutput(name, resourceGroup, storageAccount string) ([]by
 		return nil, err
 	}
 
-	return ioutil.ReadAll(data)
+	return io.ReadAll(data)
 }

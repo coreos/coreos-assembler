@@ -16,7 +16,6 @@ package openstack
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strings"
 	"time"
@@ -90,7 +89,7 @@ func (opts Options) LoadCloudsYAML() (map[string]clientconfig.Cloud, error) {
 	// If provided a path to a config file then we load it here.
 	if opts.ConfigPath != "" {
 		var clouds clientconfig.Clouds
-		if content, err := ioutil.ReadFile(opts.ConfigPath); err != nil {
+		if content, err := os.ReadFile(opts.ConfigPath); err != nil {
 			return nil, err
 		} else if err := yaml.Unmarshal(content, &clouds); err != nil {
 			return nil, fmt.Errorf("failed to unmarshal yaml %s: %v", opts.ConfigPath, err)

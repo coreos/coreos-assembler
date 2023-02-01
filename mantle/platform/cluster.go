@@ -18,7 +18,6 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"os"
 	"path/filepath"
@@ -210,7 +209,7 @@ func (bc *BaseCluster) RenderUserData(userdata *platformConf.UserData, ignitionV
 
 	// If butane is specified, parse and add that.
 	if bc.bf.baseopts.AppendButane != "" {
-		buf, err := ioutil.ReadFile(bc.bf.baseopts.AppendButane)
+		buf, err := os.ReadFile(bc.bf.baseopts.AppendButane)
 		if err != nil {
 			return nil, err
 		}
@@ -224,7 +223,7 @@ func (bc *BaseCluster) RenderUserData(userdata *platformConf.UserData, ignitionV
 
 	// If Ignition is specified, parse and add that.
 	if bc.bf.baseopts.AppendIgnition != "" {
-		buf, err := ioutil.ReadFile(bc.bf.baseopts.AppendIgnition)
+		buf, err := os.ReadFile(bc.bf.baseopts.AppendIgnition)
 		if err != nil {
 			return nil, err
 		}

@@ -21,7 +21,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -437,7 +436,7 @@ func (h *H) TempDir(prefix string) string {
 		h.log(err.Error())
 		h.FailNow()
 	}
-	tmp, err := ioutil.TempDir(dir, prefix)
+	tmp, err := os.MkdirTemp(dir, prefix)
 	if err != nil {
 		h.log(fmt.Sprintf("Failed to create temp dir: %v", err))
 		h.FailNow()
@@ -453,7 +452,7 @@ func (h *H) TempFile(prefix string) *os.File {
 		h.log(err.Error())
 		h.FailNow()
 	}
-	tmp, err := ioutil.TempFile(dir, prefix)
+	tmp, err := os.CreateTemp(dir, prefix)
 	if err != nil {
 		h.log(fmt.Sprintf("Failed to create temp file: %v", err))
 		h.FailNow()

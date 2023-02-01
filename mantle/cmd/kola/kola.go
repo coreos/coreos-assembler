@@ -17,7 +17,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"math/rand"
 	"net/http"
 	"os"
@@ -585,7 +584,7 @@ func syncFindParentImageOptions() error {
 	switch kolaPlatform {
 	case "qemu-unpriv":
 		if qemuImageDir == "" {
-			if qemuImageDir, err = ioutil.TempDir("/var/tmp", "kola-run-upgrade"); err != nil {
+			if qemuImageDir, err = os.MkdirTemp("/var/tmp", "kola-run-upgrade"); err != nil {
 				return err
 			}
 			qemuImageDirIsTemp = true

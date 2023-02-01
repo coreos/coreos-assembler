@@ -16,7 +16,6 @@ package util
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -67,7 +66,7 @@ func GetLocalFastBuildQemu() (string, error) {
 		}
 		return "", err
 	}
-	ents, err := ioutil.ReadDir(fastBuildCosaDir)
+	ents, err := os.ReadDir(fastBuildCosaDir)
 	if err != nil {
 		return "", err
 	}

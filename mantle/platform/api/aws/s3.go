@@ -17,7 +17,6 @@ package aws
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/url"
 	"os"
 
@@ -204,7 +203,7 @@ func (a *API) UpdateBucketObjectsACL(srcBucket, prefix, policy string) error {
 
 // Downloads a file from S3 to a temporary file. This file must be closed by the caller.
 func (a *API) DownloadFile(srcBucket, srcPath string) (*os.File, error) {
-	f, err := ioutil.TempFile("", "mantle-file")
+	f, err := os.CreateTemp("", "mantle-file")
 	if err != nil {
 		return nil, err
 	}

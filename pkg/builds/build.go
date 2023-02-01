@@ -18,7 +18,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -189,7 +188,7 @@ func (build *Build) WriteMeta(path string, validate bool) error {
 	if err != nil {
 		return err
 	}
-	return ioutil.WriteFile(path, out, 0644)
+	return os.WriteFile(path, out, 0644)
 }
 
 // GetArtifact returns an artifact by JSON tag

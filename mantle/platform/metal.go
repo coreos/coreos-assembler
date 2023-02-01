@@ -18,7 +18,6 @@ import (
 	"bufio"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
@@ -211,7 +210,7 @@ func (inst *Install) setup(kern *kernelSetup) (*installerRun, error) {
 
 	builder := inst.Builder
 
-	tempdir, err := ioutil.TempDir("/var/tmp", "mantle-pxe")
+	tempdir, err := os.MkdirTemp("/var/tmp", "mantle-pxe")
 	if err != nil {
 		return nil, err
 	}
@@ -383,7 +382,7 @@ func (t *installerRun) completePxeSetup(kargs []string) error {
 			pxeconfig = []byte(kargsStr)
 		}
 		pxeconfig_path := filepath.Join(pxeconfigdir, "default")
-		if err := ioutil.WriteFile(pxeconfig_path, pxeconfig, 0777); err != nil {
+		if err := os.WriteFile(pxeconfig_path, pxeconfig, 0777); err != nil {
 			return errors.Wrapf(err, "writing file %s", pxeconfig_path)
 		}
 
@@ -422,7 +421,7 @@ func (t *installerRun) completePxeSetup(kargs []string) error {
 				return errors.Wrapf(err, "running cp-reflink %s %s", t.pxe.pxeimagepath, dstpath)
 			}
 		}
-		if err := ioutil.WriteFile(filepath.Join(t.tftpdir, "boot/grub2/grub.cfg"), []byte(fmt.Sprintf(`
+		if err := os.WriteFile(filepath.Join(t.tftpdir, "boot/grub2/grub.cfg"), []byte(fmt.Sprintf(`
 			default=0
 			timeout=1
 			menuentry "CoreOS (BIOS/UEFI)" {
@@ -605,7 +604,7 @@ func (inst *Install) InstallViaISOEmbed(kargs []string, liveIgnition, targetIgni
 	inst.ignition = targetIgnition
 	inst.liveIgnition = liveIgnition
 
-	tempdir, err := ioutil.TempDir("/var/tmp", "mantle-metal")
+	tempdir, err := os.MkdirTemp("/var/tmp", "mantle-metal")
 	if err != nil {
 		return nil, err
 	}
@@ -707,7 +706,7 @@ func (inst *Install) InstallViaISOEmbed(kargs []string, liveIgnition, targetIgni
 	var keyfileArgs []string
 	for nmName, nmContents := range inst.NmKeyfiles {
 		path := filepath.Join(tempdir, nmName)
-		if err := ioutil.WriteFile(path, []byte(nmContents), 0600); err != nil {
+		if err := os.WriteFile(path, []byte(nmContents), 0600); err != nil {
 			return nil, err
 		}
 		keyfileArgs = append(keyfileArgs, "--keyfile", path)
