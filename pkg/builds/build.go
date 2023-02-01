@@ -27,9 +27,9 @@ import (
 	"sort"
 	"strings"
 
+	coreosarch "github.com/coreos/stream-metadata-go/arch"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
-	coreosarch "github.com/coreos/stream-metadata-go/arch"
 )
 
 var (
