@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package unprivqemu
+package qemu
 
 import (
 	"fmt"
@@ -102,7 +102,7 @@ func (qc *Cluster) NewMachineWithQemuOptions(userdata *conf.UserData, options pl
 		}
 	} else if conf.IsEmpty() {
 	} else {
-		return nil, fmt.Errorf("unprivileged qemu only supports Ignition or empty configs")
+		return nil, fmt.Errorf("qemu only supports Ignition or empty configs")
 	}
 
 	builder.ConfigFile = confPath

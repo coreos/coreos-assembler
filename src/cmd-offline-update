@@ -10,7 +10,7 @@
 # cd /path/to/rhcos-4.8
 # cp --reflink=auto /path/to/rhcos-4.6.0-x86_64-qemu.qcow2 tmp/
 # cosa offline-update tmp/rhcos-4.6.0-x86_64-qemu.qcow2
-# kola run -p qemu-unpriv -b rhcos --qemu-image tmp/rhcos-4.6.0-x86_64-qemu.qcow2 basic
+# kola run -p qemu -b rhcos --qemu-image tmp/rhcos-4.6.0-x86_64-qemu.qcow2 basic
 
 set -euo pipefail
 

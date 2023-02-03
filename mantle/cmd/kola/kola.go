@@ -617,7 +617,7 @@ func syncFindParentImageOptions() error {
 	// Here we handle the --fetch-parent-image --> platform-specific options
 	// based on its cosa build metadata
 	switch kolaPlatform {
-	case "qemu-unpriv":
+	case "qemu":
 		if qemuImageDir == "" {
 			if qemuImageDir, err = os.MkdirTemp("/var/tmp", "kola-run-upgrade"); err != nil {
 				return err

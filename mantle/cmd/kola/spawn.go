@@ -32,7 +32,7 @@ import (
 	"github.com/coreos/coreos-assembler/mantle/kola"
 	"github.com/coreos/coreos-assembler/mantle/platform"
 	"github.com/coreos/coreos-assembler/mantle/platform/conf"
-	"github.com/coreos/coreos-assembler/mantle/platform/machine/unprivqemu"
+	"github.com/coreos/coreos-assembler/mantle/platform/machine/qemu"
 )
 
 var (
@@ -178,7 +178,7 @@ func runSpawn(cmd *cobra.Command, args []string) error {
 			}
 
 			switch qc := cluster.(type) {
-			case *unprivqemu.Cluster:
+			case *qemu.Cluster:
 				mach, err = qc.NewMachineWithQemuOptions(userdata, machineOpts)
 			default:
 				plog.Fatalf("unreachable: qemu cluster %v unknown type", qc)

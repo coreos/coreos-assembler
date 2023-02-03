@@ -26,7 +26,7 @@ import (
 	"github.com/coreos/coreos-assembler/mantle/kola/tests/util"
 	"github.com/coreos/coreos-assembler/mantle/platform"
 	"github.com/coreos/coreos-assembler/mantle/platform/conf"
-	"github.com/coreos/coreos-assembler/mantle/platform/machine/unprivqemu"
+	"github.com/coreos/coreos-assembler/mantle/platform/machine/qemu"
 	ut "github.com/coreos/coreos-assembler/mantle/util"
 )
 
@@ -103,7 +103,7 @@ func runBootMirrorTest(c cluster.TestCluster) {
 	// FIXME: for QEMU tests kola currently assumes the host CPU architecture
 	// matches the one under test
 	userdata := bootmirror.Subst("LAYOUT", coreosarch.CurrentRpmArch())
-	m, err = c.Cluster.(*unprivqemu.Cluster).NewMachineWithQemuOptions(userdata, options)
+	m, err = c.Cluster.(*qemu.Cluster).NewMachineWithQemuOptions(userdata, options)
 	if err != nil {
 		c.Fatal(err)
 	}
@@ -150,7 +150,7 @@ func runBootMirrorLUKSTest(c cluster.TestCluster) {
 	// FIXME: for QEMU tests kola currently assumes the host CPU architecture
 	// matches the one under test
 	userdata := bootmirrorluks.Subst("LAYOUT", coreosarch.CurrentRpmArch())
-	m, err = c.Cluster.(*unprivqemu.Cluster).NewMachineWithQemuOptions(userdata, options)
+	m, err = c.Cluster.(*qemu.Cluster).NewMachineWithQemuOptions(userdata, options)
 	if err != nil {
 		c.Fatal(err)
 	}
