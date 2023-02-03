@@ -26,7 +26,7 @@ import (
 	"github.com/coreos/coreos-assembler/mantle/kola/register"
 	"github.com/coreos/coreos-assembler/mantle/platform"
 	"github.com/coreos/coreos-assembler/mantle/platform/conf"
-	"github.com/coreos/coreos-assembler/mantle/platform/machine/unprivqemu"
+	"github.com/coreos/coreos-assembler/mantle/platform/machine/qemu"
 	"github.com/coreos/coreos-assembler/mantle/util"
 )
 
@@ -488,7 +488,7 @@ func setupMultipleNetworkTest(c cluster.TestCluster, primaryMac, secondaryMac st
 	// the golang compiler no longer checks that the individual types in the case have the
 	// NewMachineWithQemuOptions function, but rather whether platform.Cluster
 	// does which fails
-	case *unprivqemu.Cluster:
+	case *qemu.Cluster:
 		m, err = pc.NewMachineWithQemuOptions(userdata, options)
 	default:
 		panic("unreachable")
@@ -553,7 +553,7 @@ func setupWithInterfacesTest(c cluster.TestCluster, primaryMac, secondaryMac str
 	// the golang compiler no longer checks that the individual types in the case have the
 	// NewMachineWithQemuOptions function, but rather whether platform.Cluster
 	// does which fails
-	case *unprivqemu.Cluster:
+	case *qemu.Cluster:
 		m, err = pc.NewMachineWithQemuOptions(userdata, options)
 	default:
 		panic("unreachable")

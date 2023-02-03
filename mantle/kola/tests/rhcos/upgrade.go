@@ -34,7 +34,7 @@ import (
 	"github.com/coreos/coreos-assembler/mantle/kola/tests/util"
 	"github.com/coreos/coreos-assembler/mantle/platform"
 	"github.com/coreos/coreos-assembler/mantle/platform/conf"
-	"github.com/coreos/coreos-assembler/mantle/platform/machine/unprivqemu"
+	"github.com/coreos/coreos-assembler/mantle/platform/machine/qemu"
 	installer "github.com/coreos/coreos-assembler/mantle/util"
 	"github.com/coreos/go-semver/semver"
 )
@@ -213,7 +213,7 @@ func rhcosUpgradeFromOcpRhcos(c cluster.TestCluster) {
 	}`)
 
 	switch pc := c.Cluster.(type) {
-	case *unprivqemu.Cluster:
+	case *qemu.Cluster:
 		ostreeCommit := kola.CosaBuild.Meta.OstreeCommit
 		temp := os.TempDir()
 		rhcosQcow2, err := downloadLatestReleasedRHCOS(temp)

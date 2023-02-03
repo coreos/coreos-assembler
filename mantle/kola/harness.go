@@ -54,8 +54,8 @@ import (
 	"github.com/coreos/coreos-assembler/mantle/platform/machine/gcloud"
 	"github.com/coreos/coreos-assembler/mantle/platform/machine/openstack"
 	"github.com/coreos/coreos-assembler/mantle/platform/machine/packet"
+	"github.com/coreos/coreos-assembler/mantle/platform/machine/qemu"
 	"github.com/coreos/coreos-assembler/mantle/platform/machine/qemuiso"
-	"github.com/coreos/coreos-assembler/mantle/platform/machine/unprivqemu"
 	"github.com/coreos/coreos-assembler/mantle/system"
 	"github.com/coreos/coreos-assembler/mantle/util"
 	coreosarch "github.com/coreos/stream-metadata-go/arch"
@@ -114,7 +114,7 @@ var (
 	GCPOptions       = gcloudapi.Options{Options: &Options}    // glue to set platform options from main
 	OpenStackOptions = openstackapi.Options{Options: &Options} // glue to set platform options from main
 	PacketOptions    = packetapi.Options{Options: &Options}    // glue to set platform options from main
-	QEMUOptions      = unprivqemu.Options{Options: &Options}   // glue to set platform options from main
+	QEMUOptions      = qemu.Options{Options: &Options}         // glue to set platform options from main
 	QEMUIsoOptions   = qemuiso.Options{Options: &Options}      // glue to set platform options from main
 
 	CosaBuild *util.LocalBuild // this is a parsed cosa build
@@ -299,8 +299,8 @@ func NewFlight(pltfrm string) (flight platform.Flight, err error) {
 		flight, err = openstack.NewFlight(&OpenStackOptions)
 	case "packet":
 		flight, err = packet.NewFlight(&PacketOptions)
-	case "qemu-unpriv":
-		flight, err = unprivqemu.NewFlight(&QEMUOptions)
+	case "qemu":
+		flight, err = qemu.NewFlight(&QEMUOptions)
 	case "qemu-iso":
 		flight, err = qemuiso.NewFlight(&QEMUIsoOptions)
 	default:
@@ -480,11 +480,6 @@ func filterTests(tests map[string]*register.Test, patterns []string, pltfrm stri
 
 	checkPlatforms := []string{pltfrm}
 
-	// qemu-unpriv has the same restrictions as QEMU but might also want additional restrictions due to the lack of a Local cluster
-	if pltfrm == "qemu-unpriv" {
-		checkPlatforms = append(checkPlatforms, "qemu")
-	}
-
 	// sort tags into include/exclude
 	positiveTags := []string{}
 	negativeTags := []string{}
@@ -638,7 +633,7 @@ func filterTests(tests map[string]*register.Test, patterns []string, pltfrm stri
 		if allowed, excluded := isAllowed(Options.Distribution, t.Distros, t.ExcludeDistros); !allowed || excluded {
 			continue
 		}
-		if pltfrm == "qemu-unpriv" {
+		if pltfrm == "qemu" {
 			if allowed, excluded := isAllowed(QEMUOptions.Firmware, t.Firmwares, t.ExcludeFirmwares); !allowed || excluded {
 				continue
 			}
