@@ -372,12 +372,9 @@ The json file should have the following fields at the minimum with the api key b
 ```
 
 ### qemu
-`qemu` is run locally and needs no credentials, but does need to be run as root.
-
-### qemu-unpriv
-`qemu-unpriv` is run locally and needs no credentials. It has a restricted set of functionality compared to the `qemu` platform, such as:
+`qemu` is run locally and needs no credentials. It has a few restrictions:
 
 - No [Local cluster](platform/local/)
-- Usermode networking instead of namespaced networks
+- Usermode networking (no namespaced networks):
   * Single node only, no machine to machine networking
-  * Machines have internet access
+  * Machines have internet access by default
