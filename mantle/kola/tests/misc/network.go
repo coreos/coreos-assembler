@@ -56,7 +56,7 @@ func init() {
 		Description: "Verify configuring networking with multiple NICs work.",
 		Timeout:     20 * time.Minute,
 		Distros:     []string{"rhcos"},
-		Platforms:   []string{"qemu-unpriv"},
+		Platforms:   []string{"qemu"},
 	})
 	// This test follows the same network configuration used on https://github.com/RHsyseng/rhcos-slb
 	// with a slight change, where the script originally run by MCO is run from
@@ -68,7 +68,7 @@ func init() {
 		Description: "Verify init-interfaces script works in both fresh setup and reboot.",
 		Timeout:     40 * time.Minute,
 		Distros:     []string{"rhcos"},
-		Platforms:   []string{"qemu-unpriv"},
+		Platforms:   []string{"qemu"},
 	})
 }
 

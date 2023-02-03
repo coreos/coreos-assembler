@@ -34,7 +34,7 @@ func init() {
 		Description: "Verify ignition will fail with unsupported action.",
 		Run:         runIgnitionFailure,
 		ClusterSize: 0,
-		Platforms:   []string{"qemu-unpriv"},
+		Platforms:   []string{"qemu"},
 		Tags:        []string{"ignition"},
 	})
 }

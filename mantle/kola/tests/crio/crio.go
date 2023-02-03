@@ -205,8 +205,8 @@ func init() {
 		UserData:    enableCrioIgn,
 		// this test requires net connections outside the host
 		Tags: []string{"crio", kola.NeedsInternetTag},
-		// qemu-unpriv machines cannot communicate between each other
-		ExcludePlatforms: []string{"qemu-unpriv"},
+		// qemu machines cannot communicate between each other
+		ExcludePlatforms: []string{"qemu"},
 	})
 }
 

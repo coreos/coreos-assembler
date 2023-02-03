@@ -100,7 +100,7 @@ func init() {
 		Description:   "Verify that multipath can be configured day 1 through Ignition.",
 		Run:           runMultipathDay1,
 		ClusterSize:   1,
-		Platforms:     []string{"qemu-unpriv"},
+		Platforms:     []string{"qemu"},
 		UserData:      mpath_on_boot_day1,
 		MultiPathDisk: true,
 	})
@@ -109,7 +109,7 @@ func init() {
 		Description:   "Verify that multipath can be configured day 2 through Ignition.",
 		Run:           runMultipathDay2,
 		ClusterSize:   1,
-		Platforms:     []string{"qemu-unpriv"},
+		Platforms:     []string{"qemu"},
 		MultiPathDisk: true,
 	})
 	register.RegisterTest(&register.Test{
@@ -117,7 +117,7 @@ func init() {
 		Description:     "Verify that multipath can be configured for a partition.",
 		Run:             runMultipathPartition,
 		ClusterSize:     1,
-		Platforms:       []string{"qemu-unpriv"},
+		Platforms:       []string{"qemu"},
 		UserData:        mpath_on_var_lib_containers,
 		AdditionalDisks: []string{"1G:mpath"},
 	})
