@@ -25,9 +25,8 @@ inspection.
 Kola is still under heavy development and it is expected that its
 interface will continue to change.
 
-By default, kola uses the `qemu-unprivileged` platform with the most recently
-built image (assuming it is run from within a CoreOS Assembler working
-directory).
+By default, kola uses the `qemu` platform with the most recently built image
+(assuming it is run from within a CoreOS Assembler working directory).
 
 1. TOC
 {:toc}
@@ -215,7 +214,7 @@ After you run the kola test, you can find more information in `tmp/kola/<test-na
 Example output:
 
 ```
-kola -p qemu-unpriv --output-dir tmp/kola testiso -P --qemu-native-4k
+kola -p qemu --output-dir tmp/kola testiso -P --qemu-native-4k
 Testing scenarios: [iso-offline-install iso-live-login iso-as-disk miniso-install miniso-install-nm]
 Detected development build; disabling signature verification
 Successfully tested scenario iso-offline-install for 35.20220217.dev.0 on uefi (metal4k)
