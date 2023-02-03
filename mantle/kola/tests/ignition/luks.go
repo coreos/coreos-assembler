@@ -35,7 +35,7 @@ func init() {
 		Description:          "Verify that the rootfs is encrypted with SSS with t=1.",
 		Flags:                []register.Flag{},
 		Distros:              []string{"rhcos"},
-		Platforms:            []string{"qemu-unpriv"},
+		Platforms:            []string{"qemu"},
 		ExcludeArchitectures: []string{"s390x"}, // no TPM backend support for s390x
 		Tags:                 []string{"luks", "tpm", "tang", "sss", kola.NeedsInternetTag, "reprovision"},
 	})
@@ -46,7 +46,7 @@ func init() {
 		Description:          "Verify that the rootfs is encrypted with SSS with t=2.",
 		Flags:                []register.Flag{},
 		Distros:              []string{"rhcos"},
-		Platforms:            []string{"qemu-unpriv"},
+		Platforms:            []string{"qemu"},
 		ExcludeArchitectures: []string{"s390x"}, // no TPM backend support for s390x
 		Tags:                 []string{"luks", "tpm", "tang", "sss", kola.NeedsInternetTag, "reprovision"},
 	})

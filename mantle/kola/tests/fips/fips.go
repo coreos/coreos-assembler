@@ -63,7 +63,7 @@ func init() {
 		Description: "Verify that fips enabled works if custom partitions are present.",
 		Flags:       []register.Flag{},
 		Distros:     []string{"rhcos"},
-		Platforms:   []string{"qemu", "qemu-unpriv"},
+		Platforms:   []string{"qemu"},
 		UserData: conf.Ignition(`{
 			"ignition": {
 				"config": {
