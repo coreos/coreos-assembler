@@ -239,6 +239,7 @@ func (a *API) ImportImage(format, bucket, object, image_size, device, name, desc
 // Wait for the import image task and return the image id. See also similar
 // code in AWS' finishSnapshotTask.
 func (a *API) finishImportImageTask(importImageResponse *ecs.ImportImageResponse) (string, error) {
+	lastStatus := ""
 	importDone := func(taskId string) (bool, error) {
 		request := ecs.CreateDescribeTasksRequest()
 		request.SetConnectTimeout(defaultConnectTimeout)
@@ -253,7 +254,13 @@ func (a *API) finishImportImageTask(importImageResponse *ecs.ImportImageResponse
 			return false, fmt.Errorf("expected result about one task, got %v", res.TaskSet.Task)
 		}
 
-		switch res.TaskSet.Task[0].TaskStatus {
+		currentStatus := res.TaskSet.Task[0].TaskStatus
+		if currentStatus != lastStatus {
+			plog.Infof("task %v transitioned to status: %v", taskId, currentStatus)
+			lastStatus = currentStatus
+		}
+
+		switch currentStatus {
 		case "Finished":
 			return true, nil
 		case "Processing":
@@ -267,7 +274,7 @@ func (a *API) finishImportImageTask(importImageResponse *ecs.ImportImageResponse
 		case "Failed":
 			return false, fmt.Errorf("task %v failed", taskId)
 		default:
-			return false, fmt.Errorf("unexpected status for task %v: %v", taskId, res.TaskSet.Task[0].TaskStatus)
+			return false, fmt.Errorf("unexpected status for task %v: %v", taskId, currentStatus)
 		}
 	}
 
