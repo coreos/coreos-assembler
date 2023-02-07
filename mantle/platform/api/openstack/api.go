@@ -328,6 +328,9 @@ func (a *API) CreateServer(name, sshKeyID, userdata string) (*Server, error) {
 		if err != nil {
 			return false, err
 		}
+		if server.Status == "ERROR" {
+			return false, fmt.Errorf("Server reported ERROR status: %v", server.Fault)
+		}
 		return server.Status == "ACTIVE", nil
 	})
 	if err != nil {
