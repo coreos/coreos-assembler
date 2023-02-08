@@ -1,3 +1,4 @@
+// Copyright 2023 Red Hat
 // Copyright 2015 CoreOS, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -82,8 +83,7 @@ func init() {
 	sv(&kola.AWSOptions.IAMInstanceProfile, "aws-iam-profile", "kola", "AWS IAM instance profile name")
 
 	// azure-specific options
-	sv(&kola.AzureOptions.AzureProfile, "azure-profile", "", "Azure profile (default \"~/"+auth.AzureProfilePath+"\")")
-	sv(&kola.AzureOptions.AzureAuthLocation, "azure-auth", "", "Azure auth location (default \"~/"+auth.AzureAuthPath+"\")")
+	sv(&kola.AzureOptions.AzureCredentials, "azure-credentials", "", "Azure credentials file location (default \"~/"+auth.AzureCredentialsPath+"\")")
 	sv(&kola.AzureOptions.DiskURI, "azure-disk-uri", "", "Azure disk uri (custom images)")
 	sv(&kola.AzureOptions.Publisher, "azure-publisher", "CoreOS", "Azure image publisher (default \"CoreOS\"")
 	sv(&kola.AzureOptions.Offer, "azure-offer", "CoreOS", "Azure image offer (default \"CoreOS\"")
