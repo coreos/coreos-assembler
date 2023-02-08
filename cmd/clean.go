@@ -48,7 +48,9 @@ Delete all build artifacts.  Use --all to also clean the cache/ directory.
 		if priv {
 			cmd = fmt.Sprintf("sudo %s", cmd)
 		}
-		bashexec.Run("cleanup cache", cmd)
+		if err := bashexec.Run("cleanup cache", cmd); err != nil {
+			return err
+		}
 	} else {
 		fmt.Println("Note: retaining cache/")
 	}
