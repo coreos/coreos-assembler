@@ -1,3 +1,4 @@
+// Copyright 2023 Red Hat
 // Copyright 2016 CoreOS, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,11 +28,11 @@ import (
 	"github.com/Azure/azure-sdk-for-go/arm/network"
 	"github.com/Azure/azure-sdk-for-go/arm/resources/resources"
 	armStorage "github.com/Azure/azure-sdk-for-go/arm/storage"
+	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/azure-sdk-for-go/storage"
-	"github.com/Azure/go-autorest/autorest/azure/auth"
 	"github.com/coreos/pkg/capnslog"
 
-	internalAuth "github.com/coreos/coreos-assembler/mantle/auth"
+	"github.com/coreos/coreos-assembler/mantle/auth"
 )
 
 var (
@@ -39,6 +40,7 @@ var (
 )
 
 type API struct {
+	azIdCred   *azidentity.DefaultAzureCredential
 	rgClient   resources.GroupsClient
 	imgClient  compute.ImagesClient
 	compClient compute.VirtualMachinesClient
@@ -53,43 +55,15 @@ type API struct {
 // New creates a new Azure client. If no publish settings file is provided or
 // can't be parsed, an anonymous client is created.
 func New(opts *Options) (*API, error) {
-	if opts.StorageEndpointSuffix == "" {
-		opts.StorageEndpointSuffix = storage.DefaultBaseURL
-	}
-
-	profiles, err := internalAuth.ReadAzureProfile(opts.AzureProfile)
+	azCreds, err := auth.ReadAzureCredentials(opts.AzureCredentials)
 	if err != nil {
-		return nil, fmt.Errorf("couldn't read Azure profile: %v", err)
+		return nil, fmt.Errorf("couldn't read Azure Credentials file: %v", err)
 	}
 
-	subOpts := profiles.SubscriptionOptions(opts.AzureSubscription)
-	if subOpts == nil {
-		return nil, fmt.Errorf("Azure subscription named %q doesn't exist in %q", opts.AzureSubscription, opts.AzureProfile)
-	}
-
-	if os.Getenv("AZURE_AUTH_LOCATION") == "" {
-		if opts.AzureAuthLocation == "" {
-			user, err := user.Current()
-			if err != nil {
-				return nil, err
-			}
-			opts.AzureAuthLocation = filepath.Join(user.HomeDir, internalAuth.AzureAuthPath)
-		}
-		// TODO: Move to Flight once built to allow proper unsetting
-		os.Setenv("AZURE_AUTH_LOCATION", opts.AzureAuthLocation)
-	}
-
-	if opts.SubscriptionID == "" {
-		opts.SubscriptionID = subOpts.SubscriptionID
-	}
-
-	if opts.SubscriptionName == "" {
-		opts.SubscriptionName = subOpts.SubscriptionName
-	}
-
-	if opts.StorageEndpointSuffix == "" {
-		opts.StorageEndpointSuffix = subOpts.StorageEndpointSuffix
-	}
+	opts.SubscriptionID = azCreds.SubscriptionID
+	os.Setenv("AZURE_CLIENT_ID", azCreds.ClientID)
+	os.Setenv("AZURE_TENANT_ID", azCreds.TenantID)
+	os.Setenv("AZURE_CLIENT_SECRET", azCreds.ClientSecret)
 
 	api := &API{
 		opts: opts,
@@ -103,14 +77,8 @@ func New(opts *Options) (*API, error) {
 }
 
 func (a *API) SetupClients() error {
-	auther, err := auth.GetClientSetup(resources.DefaultBaseURI)
-	if err != nil {
-		return err
-	}
-	a.rgClient = resources.NewGroupsClientWithBaseURI(auther.BaseURI, auther.SubscriptionID)
-	a.rgClient.Authorizer = auther
-
-	auther, err = auth.GetClientSetup(compute.DefaultBaseURI)
+	var err error
+	a.azIdCred, err = azidentity.NewDefaultAzureCredential(nil)
 	if err != nil {
 		return err
 	}
