@@ -1,3 +1,4 @@
+// Copyright 2023 Red Hat
 // Copyright 2016 CoreOS, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,11 +16,10 @@
 package azure
 
 import (
+	"encoding/json"
 	"fmt"
 	"math/rand"
 	"os"
-	"os/user"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -50,6 +50,19 @@ type API struct {
 	opts       *Options
 }
 
+var azureAuthLocationFile = &auth.File{
+	ClientID:                "",
+	ClientSecret:            "",
+	SubscriptionID:          "",
+	TenantID:                "",
+	ActiveDirectoryEndpoint: "https://login.microsoftonline.com",
+	ResourceManagerEndpoint: "https://management.azure.com/",
+	GraphResourceID:         "https://graph.windows.net/",
+	SQLManagementEndpoint:   "https://management.core.windows.net:8443/",
+	GalleryEndpoint:         "https://gallery.azure.com/",
+	ManagementEndpoint:      "https://management.core.windows.net/",
+}
+
 // New creates a new Azure client. If no publish settings file is provided or
 // can't be parsed, an anonymous client is created.
 func New(opts *Options) (*API, error) {
@@ -57,40 +70,19 @@ func New(opts *Options) (*API, error) {
 		opts.StorageEndpointSuffix = storage.DefaultBaseURL
 	}
 
-	profiles, err := internalAuth.ReadAzureProfile(opts.AzureProfile)
+	azCreds, err := internalAuth.ReadAzureCredentials(opts.AzureCredentials)
 	if err != nil {
-		return nil, fmt.Errorf("couldn't read Azure profile: %v", err)
+		return nil, fmt.Errorf("couldn't read Azure Credentials file: %v", err)
 	}
 
-	subOpts := profiles.SubscriptionOptions(opts.AzureSubscription)
-	if subOpts == nil {
-		return nil, fmt.Errorf("Azure subscription named %q doesn't exist in %q", opts.AzureSubscription, opts.AzureProfile)
-	}
+	// Populate the mssing info in the azureAuthLocationFile struct,
+	// this will be used in the SetupClients() function below.
+	azureAuthLocationFile.ClientID = azCreds.ClientID
+	azureAuthLocationFile.ClientSecret = azCreds.ClientSecret
+	azureAuthLocationFile.SubscriptionID = azCreds.SubscriptionID
+	azureAuthLocationFile.TenantID = azCreds.TenantID
 
-	if os.Getenv("AZURE_AUTH_LOCATION") == "" {
-		if opts.AzureAuthLocation == "" {
-			user, err := user.Current()
-			if err != nil {
-				return nil, err
-			}
-			opts.AzureAuthLocation = filepath.Join(user.HomeDir, internalAuth.AzureAuthPath)
-		}
-		// TODO: Move to Flight once built to allow proper unsetting
-		os.Setenv("AZURE_AUTH_LOCATION", opts.AzureAuthLocation)
-	}
-
-	if opts.SubscriptionID == "" {
-		opts.SubscriptionID = subOpts.SubscriptionID
-	}
-
-	if opts.SubscriptionName == "" {
-		opts.SubscriptionName = subOpts.SubscriptionName
-	}
-
-	if opts.StorageEndpointSuffix == "" {
-		opts.StorageEndpointSuffix = subOpts.StorageEndpointSuffix
-	}
-
+	opts.SubscriptionID = azCreds.SubscriptionID
 	api := &API{
 		opts: opts,
 	}
@@ -103,6 +95,26 @@ func New(opts *Options) (*API, error) {
 }
 
 func (a *API) SetupClients() error {
+	// First write out a AZURE_AUTH_LOCATION tmp file with the necessary
+	// data since GetClientSetup requires it to be read in from a file
+	// pointed to by the $AZURE_AUTH_LOCATION env var.
+	tmpf, err := os.CreateTemp("", "azureAuth.json")
+	if err != nil {
+		return fmt.Errorf("couldn't create temporary file: %v", err)
+	}
+	defer os.Remove(tmpf.Name()) // clean up tmp file
+	buf, err := json.Marshal(azureAuthLocationFile)
+	if err != nil {
+		return fmt.Errorf("couldn't marshal AzureAuth data to JSON: %v", err)
+	}
+	if _, err = tmpf.Write(buf); err != nil {
+		return fmt.Errorf("couldn't write JSON to temporary file: %v", err)
+	}
+	if err = tmpf.Close(); err != nil {
+		return fmt.Errorf("couldn't close temporary file: %v", err)
+	}
+	os.Setenv("AZURE_AUTH_LOCATION", tmpf.Name())
+
 	auther, err := auth.GetClientSetup(resources.DefaultBaseURI)
 	if err != nil {
 		return err
