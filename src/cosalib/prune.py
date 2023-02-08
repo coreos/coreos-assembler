@@ -110,11 +110,10 @@ def delete_build(build, bucket, prefix, cloud_config, force=False):
     if azure:
         image = azure.get('image')
         resource_group = cloud_config.get('azure', {}).get('resource-group')
-        auth = cloud_config.get('azure', {}).get('auth')
-        profile = cloud_config.get('azure', {}).get('profile')
-        if image and resource_group and auth and profile:
+        credentials = cloud_config.get('azure', {}).get('credentials')
+        if image and resource_group and credentials:
             try:
-                remove_azure_image(image, resource_group, auth, profile)
+                remove_azure_image(image, resource_group, credentials)
             except Exception as e:
                 errors.append(e)
 
