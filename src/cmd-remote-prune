@@ -15,10 +15,8 @@ parser = argparse.ArgumentParser(prog="coreos-assembler remote-prune")
 parser.add_argument("--workdir", default='.', help="Path to workdir")
 parser.add_argument("--dry-run", help="Don't actually delete anything",
                     action='store_true')
-parser.add_argument('--azure-auth', help='Path to Azure auth file',
-                    default=os.environ.get("AZURE_AUTH"))
-parser.add_argument('--azure-profile', help='Path to Azure profile',
-                    default=os.environ.get('AZURE_PROFILE'))
+parser.add_argument('--azure-credentials', help='Path to Azure credentials file',
+                    default=os.environ.get("AZURE_CREDENTIALS"))
 parser.add_argument('--azure-resource-group', help='Resource group',
                     default=os.environ.get('AZURE_RESOURCE_GROUP'))
 parser.add_argument("--gcp-json-key", help="GCP Service Account JSON Auth",
@@ -59,8 +57,7 @@ if args.dry_run:
 
 cloud_config = {
     'azure': {
-        'auth': args.azure_auth,
-        'profile': args.azure_profile,
+        'credentials': args.azure_credentials,
         'resource-group': args.azure_resource_group,
     },
     'gcp': {

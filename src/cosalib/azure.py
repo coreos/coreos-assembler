@@ -8,13 +8,12 @@ from tenacity import (
 
 
 @retry(reraise=True, stop=stop_after_attempt(3))
-def remove_azure_image(image, resource_group, auth, profile):
+def remove_azure_image(image, resource_group, credentials):
     print(f"Azure: removing image {image}")
     try:
         runcmd([
             'ore', 'azure',
-            '--azure-auth', auth,
-            '--azure-profile', profile,
+            '--azure-credentials', credentials,
             'delete-image',
             '--image-name', image,
             '--resource-group', resource_group
@@ -40,9 +39,8 @@ def azure_run_ore(build, args):
         'ore',
         '--log-level', args.log_level,
         'azure', 'upload-blob',
-        '--azure-auth', args.auth,
+        '--azure-credentials', args.credentials,
         '--azure-location', args.location,
-        '--azure-profile', args.profile,
         '--blob-name', azure_vhd_name,
         '--file', f"{build.image_path}",
         '--container', args.container,
@@ -77,9 +75,9 @@ def azure_cli(parser):
     Common Azure CLI
     """
     parser.add_argument(
-        '--auth',
-        help='Path to Azure auth file',
-        default=os.environ.get("AZURE_AUTH"))
+        '--credentials',
+        help='Path to Azure credentials file',
+        default=os.environ.get("AZURE_CREDENTIALS"))
     parser.add_argument(
         '--container',
         help='Storage location to write to',
@@ -89,11 +87,6 @@ def azure_cli(parser):
         '--location',
         help='Azure location (default westus)',
         default=os.environ.get("AZURE_LOCATION", "westus")
-    )
-    parser.add_argument(
-        '--profile',
-        help='Path to Azure profile',
-        default=os.environ.get('AZURE_PROFILE')
     )
     parser.add_argument(
         '--resource-group',
