@@ -1,3 +1,4 @@
+// Copyright 2023 Red Hat
 // Copyright 2016 CoreOS, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,32 +16,45 @@
 package azure
 
 import (
-	"github.com/Azure/azure-sdk-for-go/arm/compute"
+	"context"
+
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute"
 )
 
-func (a *API) CreateImage(name, resourceGroup, blobURI string) (compute.Image, error) {
-	_, err := a.imgClient.CreateOrUpdate(resourceGroup, name, compute.Image{
+func (a *API) CreateImage(name, resourceGroup, blobURI string) (armcompute.Image, error) {
+	ctx := context.Background()
+	poller, err := a.imgClient.BeginCreateOrUpdate(ctx, resourceGroup, name, armcompute.Image{
 		Name:     &name,
 		Location: &a.opts.Location,
-		ImageProperties: &compute.ImageProperties{
-			StorageProfile: &compute.ImageStorageProfile{
-				OsDisk: &compute.ImageOSDisk{
-					OsType:  compute.Linux,
-					OsState: compute.Generalized,
+		Properties: &armcompute.ImageProperties{
+			HyperVGeneration: to.Ptr(armcompute.HyperVGenerationTypesV1),
+			StorageProfile: &armcompute.ImageStorageProfile{
+				OSDisk: &armcompute.ImageOSDisk{
+					OSType:  to.Ptr(armcompute.OperatingSystemTypesLinux),
+					OSState: to.Ptr(armcompute.OperatingSystemStateTypesGeneralized),
 					BlobURI: &blobURI,
 				},
 			},
 		},
 	}, nil)
 	if err != nil {
-		return compute.Image{}, err
+		return armcompute.Image{}, err
 	}
-
-	return a.imgClient.Get(resourceGroup, name, "")
+	resp, err := poller.PollUntilDone(context.Background(), nil)
+	if err != nil {
+		return armcompute.Image{}, err
+	}
+	return resp.Image, nil
 }
 
 // DeleteImage removes Azure image
 func (a *API) DeleteImage(name, resourceGroup string) error {
-	_, err := a.imgClient.Delete(resourceGroup, name, nil)
+	ctx := context.Background()
+	poller, err := a.imgClient.BeginDelete(ctx, resourceGroup, name, nil)
+	if err != nil {
+		return err
+	}
+	_, err = poller.PollUntilDone(ctx, nil)
 	return err
 }

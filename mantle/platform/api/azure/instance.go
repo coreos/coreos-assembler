@@ -1,3 +1,4 @@
+// Copyright 2023 Red Hat
 // Copyright 2018 CoreOS, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,6 +16,7 @@
 package azure
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
@@ -24,8 +26,9 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/Azure/azure-sdk-for-go/arm/compute"
-	"github.com/Azure/azure-sdk-for-go/arm/network"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork"
 
 	"github.com/coreos/coreos-assembler/mantle/util"
 )
@@ -38,7 +41,15 @@ type Machine struct {
 	PublicIPName     string
 }
 
-func (a *API) getVMParameters(name, userdata, sshkey, storageAccountURI string, ip *network.PublicIPAddress, nic *network.Interface) compute.VirtualMachine {
+func (a *API) getInstance(name, resourceGroup string) (armcompute.VirtualMachine, error) {
+	resp, err := a.compClient.Get(context.Background(), resourceGroup, name, &armcompute.VirtualMachinesClientGetOptions{Expand: to.Ptr(armcompute.InstanceViewTypesInstanceView)})
+	if err != nil {
+		return armcompute.VirtualMachine{}, err
+	}
+	return resp.VirtualMachine, nil
+}
+
+func (a *API) getVMParameters(name, userdata, sshkey, storageAccountURI string, ip armnetwork.PublicIPAddress, nic armnetwork.Interface) armcompute.VirtualMachine {
 
 	// Azure requires that either a username/password be set or an SSH key.
 	//
@@ -60,17 +71,17 @@ func (a *API) getVMParameters(name, userdata, sshkey, storageAccountURI string, 
 		panic(fmt.Sprintf("calling crypto/rand.Int() failed and that shouldn't happen: %v", err))
 	}
 	password := fmt.Sprintf("%s%s%s", "ABC&", n, "xyz")
-	osProfile := compute.OSProfile{
-		AdminUsername: util.StrToPtr("core"),   // unused
-		AdminPassword: util.StrToPtr(password), // unused
+	osProfile := armcompute.OSProfile{
+		AdminUsername: to.Ptr("core"),   // unused
+		AdminPassword: to.Ptr(password), // unused
 		ComputerName:  &name,
 	}
 	if sshkey != "" {
-		osProfile.LinuxConfiguration = &compute.LinuxConfiguration{
-			SSH: &compute.SSHConfiguration{
-				PublicKeys: &[]compute.SSHPublicKey{
+		osProfile.LinuxConfiguration = &armcompute.LinuxConfiguration{
+			SSH: &armcompute.SSHConfiguration{
+				PublicKeys: []*armcompute.SSHPublicKey{
 					{
-						Path:    util.StrToPtr("/home/core/.ssh/authorized_keys"),
+						Path:    to.Ptr("/home/core/.ssh/authorized_keys"),
 						KeyData: &sshkey,
 					},
 				},
@@ -81,49 +92,49 @@ func (a *API) getVMParameters(name, userdata, sshkey, storageAccountURI string, 
 		ud := base64.StdEncoding.EncodeToString([]byte(userdata))
 		osProfile.CustomData = &ud
 	}
-	var imgRef *compute.ImageReference
+	var imgRef *armcompute.ImageReference
 	if a.opts.DiskURI != "" {
-		imgRef = &compute.ImageReference{
+		imgRef = &armcompute.ImageReference{
 			ID: &a.opts.DiskURI,
 		}
 	} else {
-		imgRef = &compute.ImageReference{
+		imgRef = &armcompute.ImageReference{
 			Publisher: &a.opts.Publisher,
 			Offer:     &a.opts.Offer,
-			Sku:       &a.opts.Sku,
+			SKU:       &a.opts.Sku,
 			Version:   &a.opts.Version,
 		}
 	}
-	return compute.VirtualMachine{
+	return armcompute.VirtualMachine{
 		Name:     &name,
 		Location: &a.opts.Location,
-		Tags: &map[string]*string{
-			"createdBy": util.StrToPtr("mantle"),
+		Tags: map[string]*string{
+			"createdBy": to.Ptr("mantle"),
 		},
-		VirtualMachineProperties: &compute.VirtualMachineProperties{
-			HardwareProfile: &compute.HardwareProfile{
-				VMSize: compute.VirtualMachineSizeTypes(a.opts.Size),
+		Properties: &armcompute.VirtualMachineProperties{
+			HardwareProfile: &armcompute.HardwareProfile{
+				VMSize: to.Ptr(armcompute.VirtualMachineSizeTypes(a.opts.Size)),
 			},
-			StorageProfile: &compute.StorageProfile{
+			StorageProfile: &armcompute.StorageProfile{
 				ImageReference: imgRef,
-				OsDisk: &compute.OSDisk{
-					CreateOption: compute.FromImage,
+				OSDisk: &armcompute.OSDisk{
+					CreateOption: to.Ptr(armcompute.DiskCreateOptionTypesFromImage),
 				},
 			},
-			OsProfile: &osProfile,
-			NetworkProfile: &compute.NetworkProfile{
-				NetworkInterfaces: &[]compute.NetworkInterfaceReference{
+			OSProfile: &osProfile,
+			NetworkProfile: &armcompute.NetworkProfile{
+				NetworkInterfaces: []*armcompute.NetworkInterfaceReference{
 					{
 						ID: nic.ID,
-						NetworkInterfaceReferenceProperties: &compute.NetworkInterfaceReferenceProperties{
-							Primary: util.BoolToPtr(true),
+						Properties: &armcompute.NetworkInterfaceReferenceProperties{
+							Primary: to.Ptr(true),
 						},
 					},
 				},
 			},
-			DiagnosticsProfile: &compute.DiagnosticsProfile{
-				BootDiagnostics: &compute.BootDiagnostics{
-					Enabled:    util.BoolToPtr(true),
+			DiagnosticsProfile: &armcompute.DiagnosticsProfile{
+				BootDiagnostics: &armcompute.BootDiagnostics{
+					Enabled:    to.Ptr(true),
 					StorageURI: &storageAccountURI,
 				},
 			},
@@ -155,22 +166,25 @@ func (a *API) CreateInstance(name, userdata, sshkey, resourceGroup, storageAccou
 
 	vmParams := a.getVMParameters(name, userdata, sshkey, fmt.Sprintf("https://%s.blob.core.windows.net/", storageAccount), ip, nic)
 
-	cancel := make(chan struct{})
-	time.AfterFunc(8*time.Minute, func() {
-		close(cancel)
-	})
-	_, err = a.compClient.CreateOrUpdate(resourceGroup, name, vmParams, cancel)
+	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Minute)
+	defer cancel()
+	poller, err := a.compClient.BeginCreateOrUpdate(ctx, resourceGroup, name, vmParams, nil)
 	if err != nil {
 		return nil, fmt.Errorf("creating instance failed: %w", err)
 	}
+	_, err = poller.PollUntilDone(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
 
 	err = util.WaitUntilReady(5*time.Minute, 10*time.Second, func() (bool, error) {
-		vm, err := a.compClient.Get(resourceGroup, name, "")
+		resp, err := a.compClient.Get(context.Background(), resourceGroup, name, &armcompute.VirtualMachinesClientGetOptions{Expand: nil})
 		if err != nil {
 			return false, err
 		}
 
-		if vm.VirtualMachineProperties.ProvisioningState != nil && *vm.VirtualMachineProperties.ProvisioningState != "Succeeded" {
+		state := resp.VirtualMachine.Properties.ProvisioningState
+		if state != nil && *state != "Succeeded" {
 			return false, nil
 		}
 
@@ -183,7 +197,7 @@ func (a *API) CreateInstance(name, userdata, sshkey, resourceGroup, storageAccou
 		return nil, fmt.Errorf("waiting for machine to become active: %v", err)
 	}
 
-	vm, err := a.compClient.Get(resourceGroup, name, "")
+	vm, err := a.getInstance(name, resourceGroup)
 	if err != nil {
 		return nil, err
 	}
@@ -207,7 +221,12 @@ func (a *API) CreateInstance(name, userdata, sshkey, resourceGroup, storageAccou
 }
 
 func (a *API) TerminateInstance(name, resourceGroup string) error {
-	_, err := a.compClient.Delete(resourceGroup, name, nil)
+	ctx := context.Background()
+	poller, err := a.compClient.BeginDelete(ctx, resourceGroup, name, &armcompute.VirtualMachinesClientBeginDeleteOptions{ForceDeletion: to.Ptr(true)})
+	if err != nil {
+		return err
+	}
+	_, err = poller.PollUntilDone(ctx, nil)
 	return err
 }
 
@@ -220,15 +239,15 @@ func (a *API) GetConsoleOutput(name, resourceGroup, storageAccount string) ([]by
 	if kr.Keys == nil {
 		return nil, fmt.Errorf("no storage service keys found")
 	}
-	k := *kr.Keys
-	key := *k[0].Value
+	k := kr.Keys
+	key := k[0].Value
 
-	vm, err := a.compClient.Get(resourceGroup, name, compute.InstanceView)
+	vm, err := a.getInstance(name, resourceGroup)
 	if err != nil {
 		return nil, err
 	}
 
-	consoleURI := vm.VirtualMachineProperties.InstanceView.BootDiagnostics.SerialConsoleLogBlobURI
+	consoleURI := vm.Properties.InstanceView.BootDiagnostics.SerialConsoleLogBlobURI
 	if consoleURI == nil {
 		return nil, fmt.Errorf("serial console URI is nil")
 	}
@@ -244,7 +263,7 @@ func (a *API) GetConsoleOutput(name, resourceGroup, storageAccount string) ([]by
 
 	var data io.ReadCloser
 	err = util.Retry(6, 10*time.Second, func() error {
-		data, err = a.GetBlockBlob(storageAccount, key, container, blobname)
+		data, err = a.GetBlockBlob(storageAccount, *key, container, blobname)
 		return err
 	})
 	if err != nil {

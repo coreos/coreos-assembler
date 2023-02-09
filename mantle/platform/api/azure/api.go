@@ -128,23 +128,22 @@ func randomName(prefix string) string {
 func (a *API) GC(gracePeriod time.Duration) error {
 	durationAgo := time.Now().Add(-1 * gracePeriod)
 
-	listGroups, err := a.ListResourceGroups("")
+	resourceGroups, err := a.ListResourceGroups()
 	if err != nil {
 		return fmt.Errorf("listing resource groups: %v", err)
 	}
 
-	for _, l := range *listGroups.Value {
+	for _, l := range resourceGroups {
 		if strings.HasPrefix(*l.Name, "kola-cluster") {
 			terminate := false
-			if l.Tags == nil || (*l.Tags)["createdAt"] == nil {
+			if l.Tags == nil || l.Tags["createdAt"] == nil {
 				// If the group name starts with kola-cluster and has
 				// no tags OR no createdAt then it failed to properly
 				// get created and we should clean it up.
 				// https://github.com/coreos/coreos-assembler/issues/3057
 				terminate = true
 			} else {
-				createdAt := *(*l.Tags)["createdAt"]
-				timeCreated, err := time.Parse(time.RFC3339, createdAt)
+				timeCreated, err := time.Parse(time.RFC3339, *l.Tags["createdAt"])
 				if err != nil {
 					return fmt.Errorf("error parsing time: %v", err)
 				}
