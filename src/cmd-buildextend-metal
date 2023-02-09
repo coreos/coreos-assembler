@@ -289,13 +289,27 @@ j['images']['${image_type}${image_suffix}'] = {
 json.dump(j, sys.stdout, indent=4)
 " | jq -s add > "meta.json.new"
 
+# one more artifact for Secure Execution
+if [[ -n "${ignition_pubkey}" ]]; then
+    gpg_key=${name}-${build}-ignition-secex-key.gpg.pub
+    python3 -c "
+import sys, json
+j = json.load(sys.stdin)
+j['images']['ignition-gpg-key'] = {
+    'path': '${gpg_key}',
+    'sha256': '$(sha256sum_str < "${ignition_pubkey}")',
+    'size': $(stat -c '%s' "${ignition_pubkey}")
+}
+json.dump(j, sys.stdout, indent=4)
+" < "meta.json.new" | jq -s add > "key.json"
+    mv key.json meta.json.new
+    /usr/lib/coreos-assembler/finalize-artifact "${ignition_pubkey}" "${builddir}/${gpg_key}"
+fi
+
 # and now the crucial bits
 cosa meta --workdir "${workdir}" --build "${build}" --artifact "${image_type}" --artifact-json "$(readlink -f meta.json.new)"
 /usr/lib/coreos-assembler/finalize-artifact "${img}" "${builddir}/${img}"
 
-if [[ -n "${ignition_pubkey}" ]]; then
-    /usr/lib/coreos-assembler/finalize-artifact "${ignition_pubkey}" "${builddir}/ignition.gpg.pub"
-fi
 # Quiet for the rest of this so the last thing we see is a success message
 set +x
 # clean up the tmpild
