@@ -1,3 +1,4 @@
+// Copyright 2023 Red Hat
 // Copyright 2018 CoreOS, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,24 +16,24 @@
 package azure
 
 import (
+	"context"
 	"time"
 
-	"github.com/Azure/azure-sdk-for-go/arm/resources/resources"
-
-	"github.com/coreos/coreos-assembler/mantle/util"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 )
 
 func (a *API) CreateResourceGroup(prefix string) (string, error) {
 	name := randomName(prefix)
 	tags := map[string]*string{
-		"createdAt": util.StrToPtr(time.Now().Format(time.RFC3339)),
-		"createdBy": util.StrToPtr("mantle"),
+		"createdAt": to.Ptr(time.Now().Format(time.RFC3339)),
+		"createdBy": to.Ptr("mantle"),
 	}
 
-	_, err := a.rgClient.CreateOrUpdate(name, resources.Group{
-		Location: &a.opts.Location,
-		Tags:     &tags,
-	})
+	_, err := a.rgClient.CreateOrUpdate(context.Background(), name, armresources.ResourceGroup{
+		Location: to.Ptr(a.opts.Location),
+		Tags:     tags,
+	}, nil)
 	if err != nil {
 		return "", err
 	}
@@ -41,18 +42,37 @@ func (a *API) CreateResourceGroup(prefix string) (string, error) {
 }
 
 func (a *API) TerminateResourceGroup(name string) error {
-	resp, err := a.rgClient.CheckExistence(name)
+	resp, err := a.rgClient.CheckExistence(context.Background(), name, nil)
 	if err != nil {
 		return err
 	}
-	if resp.StatusCode != 204 {
+	if !resp.Success {
 		return nil
 	}
 
-	_, err = a.rgClient.Delete(name, nil)
+	// Request the delete, but return without waiting for it to complete
+	// as the caller likely doesn't want to wait for the resource group
+	// to be cleaned up.
+	_, err = a.rgClient.BeginDelete(context.Background(), name, nil)
+	if err != nil {
+		return err
+	}
+
 	return err
 }
 
-func (a *API) ListResourceGroups(filter string) (resources.GroupListResult, error) {
-	return a.rgClient.List(filter, nil)
+func (a *API) ListResourceGroups() ([]*armresources.ResourceGroup, error) {
+	ctx := context.Background()
+
+	resultPager := a.rgClient.NewListPager(nil)
+
+	resourceGroups := make([]*armresources.ResourceGroup, 0)
+	for resultPager.More() {
+		pageResp, err := resultPager.NextPage(ctx)
+		if err != nil {
+			return nil, err
+		}
+		resourceGroups = append(resourceGroups, pageResp.ResourceGroupListResult.Value...)
+	}
+	return resourceGroups, nil
 }

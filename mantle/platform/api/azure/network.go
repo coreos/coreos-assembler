@@ -1,3 +1,4 @@
+// Copyright 2023 Red Hat
 // Copyright 2018 CoreOS, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,85 +16,99 @@
 package azure
 
 import (
+	"context"
 	"fmt"
 
-	"github.com/Azure/azure-sdk-for-go/arm/network"
-
-	"github.com/coreos/coreos-assembler/mantle/util"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork"
 )
 
 var (
-	virtualNetworkPrefix = []string{"10.0.0.0/16"}
+	virtualNetworkPrefix = "10.0.0.0/16"
 	subnetPrefix         = "10.0.0.0/24"
 )
 
-func (a *API) PrepareNetworkResources(resourceGroup string) (network.Subnet, error) {
+func (a *API) PrepareNetworkResources(resourceGroup string) (armnetwork.Subnet, error) {
 	if err := a.createVirtualNetwork(resourceGroup); err != nil {
-		return network.Subnet{}, err
+		return armnetwork.Subnet{}, err
 	}
 
 	return a.createSubnet(resourceGroup)
 }
 
 func (a *API) createVirtualNetwork(resourceGroup string) error {
-	_, err := a.netClient.CreateOrUpdate(resourceGroup, "kola-vn", network.VirtualNetwork{
-		Location: &a.opts.Location,
-		VirtualNetworkPropertiesFormat: &network.VirtualNetworkPropertiesFormat{
-			AddressSpace: &network.AddressSpace{
-				AddressPrefixes: &virtualNetworkPrefix,
+	ctx := context.Background()
+	poller, err := a.netClient.BeginCreateOrUpdate(ctx, resourceGroup, "kola-vn", armnetwork.VirtualNetwork{
+		Location: to.Ptr(a.opts.Location),
+		Properties: &armnetwork.VirtualNetworkPropertiesFormat{
+			AddressSpace: &armnetwork.AddressSpace{
+				AddressPrefixes: []*string{to.Ptr(virtualNetworkPrefix)},
 			},
 		},
 	}, nil)
-
+	if err != nil {
+		return err
+	}
+	_, err = poller.PollUntilDone(ctx, nil)
 	return err
 }
 
-func (a *API) createSubnet(resourceGroup string) (network.Subnet, error) {
-	_, err := a.subClient.CreateOrUpdate(resourceGroup, "kola-vn", "kola-subnet", network.Subnet{
-		SubnetPropertiesFormat: &network.SubnetPropertiesFormat{
-			AddressPrefix: &subnetPrefix,
+func (a *API) createSubnet(resourceGroup string) (armnetwork.Subnet, error) {
+	ctx := context.Background()
+	poller, err := a.subClient.BeginCreateOrUpdate(ctx, resourceGroup, "kola-vn", "kola-subnet", armnetwork.Subnet{
+		Properties: &armnetwork.SubnetPropertiesFormat{
+			AddressPrefix: to.Ptr(subnetPrefix),
 		},
 	}, nil)
 	if err != nil {
-		return network.Subnet{}, err
+		return armnetwork.Subnet{}, err
 	}
-
-	return a.getSubnet(resourceGroup)
+	resp, err := poller.PollUntilDone(ctx, nil)
+	if err != nil {
+		return armnetwork.Subnet{}, err
+	}
+	return resp.Subnet, nil
 }
 
-func (a *API) getSubnet(resourceGroup string) (network.Subnet, error) {
-	return a.subClient.Get(resourceGroup, "kola-vn", "kola-subnet", "")
+func (a *API) getSubnet(resourceGroup string) (armnetwork.Subnet, error) {
+	resp, err := a.subClient.Get(context.Background(), resourceGroup, "kola-vn", "kola-subnet", &armnetwork.SubnetsClientGetOptions{Expand: nil})
+	if err != nil {
+		return armnetwork.Subnet{}, err
+	}
+	return resp.Subnet, nil
 }
 
-func (a *API) createPublicIP(resourceGroup string) (*network.PublicIPAddress, error) {
+func (a *API) createPublicIP(resourceGroup string) (armnetwork.PublicIPAddress, error) {
 	name := randomName("ip")
+	ctx := context.Background()
 
-	_, err := a.ipClient.CreateOrUpdate(resourceGroup, name, network.PublicIPAddress{
-		Location: &a.opts.Location,
+	poller, err := a.ipClient.BeginCreateOrUpdate(ctx, resourceGroup, name, armnetwork.PublicIPAddress{
+		Location: to.Ptr(a.opts.Location),
 	}, nil)
 	if err != nil {
-		return nil, err
+		return armnetwork.PublicIPAddress{}, err
 	}
 
-	ip, err := a.ipClient.Get(resourceGroup, name, "")
+	resp, err := poller.PollUntilDone(ctx, nil)
 	if err != nil {
-		return nil, err
+		return armnetwork.PublicIPAddress{}, err
 	}
 
-	return &ip, nil
+	return resp.PublicIPAddress, nil
 }
 
 func (a *API) GetPublicIP(name, resourceGroup string) (string, error) {
-	ip, err := a.ipClient.Get(resourceGroup, name, "")
+	resp, err := a.ipClient.Get(context.Background(), resourceGroup, name, &armnetwork.PublicIPAddressesClientGetOptions{Expand: nil})
 	if err != nil {
 		return "", err
 	}
 
-	if ip.PublicIPAddressPropertiesFormat.IPAddress == nil {
+	ip := resp.PublicIPAddress
+	if ip.Properties.IPAddress == nil {
 		return "", fmt.Errorf("IP Address is nil")
 	}
 
-	return *ip.PublicIPAddressPropertiesFormat.IPAddress, nil
+	return *ip.Properties.IPAddress, nil
 }
 
 // returns PublicIP, PrivateIP, error
@@ -102,62 +117,62 @@ func (a *API) GetIPAddresses(name, publicIPName, resourceGroup string) (string, 
 	if err != nil {
 		return "", "", err
 	}
-
-	nic, err := a.intClient.Get(resourceGroup, name, "")
+	privateIP, err := a.GetPrivateIP(name, resourceGroup)
 	if err != nil {
-		return "", "", err
+		return publicIP, "", err
 	}
-
-	configs := *nic.InterfacePropertiesFormat.IPConfigurations
-
-	for _, conf := range configs {
-		if conf.PrivateIPAddress == nil {
-			return "", "", fmt.Errorf("PrivateIPAddress is nil")
-		} else {
-			return publicIP, *conf.PrivateIPAddress, nil
-		}
-	}
-	return "", "", fmt.Errorf("no ip configurations found")
+	return publicIP, privateIP, nil
 }
 
-func (a *API) GetPrivateIP(name, resourceGroup string) (string, error) {
-	nic, err := a.intClient.Get(resourceGroup, name, "")
+func (a *API) GetPrivateIP(interfaceName, resourceGroup string) (string, error) {
+	resp, err := a.intClient.Get(context.Background(), resourceGroup, interfaceName, &armnetwork.InterfacesClientGetOptions{Expand: nil})
 	if err != nil {
 		return "", err
 	}
+	nic := resp.Interface
 
-	configs := *nic.InterfacePropertiesFormat.IPConfigurations
-	return *configs[0].PrivateIPAddress, nil
+	configs := nic.Properties.IPConfigurations
+
+	for _, conf := range configs {
+		if conf.Properties.PrivateIPAddress == nil {
+			return "", fmt.Errorf("PrivateIPAddress is nil")
+		} else {
+			return *conf.Properties.PrivateIPAddress, nil
+		}
+	}
+	return "", fmt.Errorf("no private configurations found")
 }
 
-func (a *API) createNIC(ip *network.PublicIPAddress, subnet *network.Subnet, resourceGroup string) (*network.Interface, error) {
+func (a *API) createNIC(ip armnetwork.PublicIPAddress, subnet *armnetwork.Subnet, resourceGroup string) (armnetwork.Interface, error) {
 	name := randomName("nic")
 	ipconf := randomName("nic-ipconf")
+	ctx := context.Background()
 
-	_, err := a.intClient.CreateOrUpdate(resourceGroup, name, network.Interface{
-		Location: &a.opts.Location,
-		InterfacePropertiesFormat: &network.InterfacePropertiesFormat{
-			IPConfigurations: &[]network.InterfaceIPConfiguration{
+	poller, err := a.intClient.BeginCreateOrUpdate(ctx, resourceGroup, name, armnetwork.Interface{
+		Location: to.Ptr(a.opts.Location),
+		Properties: &armnetwork.InterfacePropertiesFormat{
+			IPConfigurations: []*armnetwork.InterfaceIPConfiguration{
 				{
-					Name: &ipconf,
-					InterfaceIPConfigurationPropertiesFormat: &network.InterfaceIPConfigurationPropertiesFormat{
-						PublicIPAddress:           ip,
-						PrivateIPAllocationMethod: network.Dynamic,
+					Name: to.Ptr(ipconf),
+					Properties: &armnetwork.InterfaceIPConfigurationPropertiesFormat{
+						PublicIPAddress:           to.Ptr(ip),
+						PrivateIPAllocationMethod: to.Ptr(armnetwork.IPAllocationMethodDynamic),
 						Subnet:                    subnet,
 					},
 				},
 			},
-			EnableAcceleratedNetworking: util.BoolToPtr(true),
+			EnableAcceleratedNetworking: to.Ptr(true),
 		},
 	}, nil)
 	if err != nil {
-		return nil, err
+		return armnetwork.Interface{}, err
 	}
 
-	nic, err := a.intClient.Get(resourceGroup, name, "")
+	resp, err := poller.PollUntilDone(ctx, nil)
 	if err != nil {
-		return nil, err
+		return armnetwork.Interface{}, err
 	}
+	nic := resp.Interface
 
-	return &nic, nil
+	return nic, nil
 }
