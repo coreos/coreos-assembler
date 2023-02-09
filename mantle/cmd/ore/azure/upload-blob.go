@@ -1,4 +1,4 @@
-// Copyright 2022 Red Hat
+// Copyright 2023 Red Hat
 // Copyright 2018 CoreOS, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,7 +21,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/Microsoft/azure-vhd-utils/vhdcore/validator"
 	"github.com/spf13/cobra"
 )
 
@@ -81,29 +80,28 @@ func runUploadBlob(cmd *cobra.Command, args []string) {
 		if !strings.HasSuffix(strings.ToLower(ubo.vhd), ".vhd") {
 			plog.Fatalf("Image should end with .vhd")
 		}
-
-		if err := validator.ValidateVhd(ubo.vhd); err != nil {
-			plog.Fatal(err)
-		}
-
-		if err := validator.ValidateVhdSize(ubo.vhd); err != nil {
-			plog.Fatal(err)
-		}
 	}
 
 	kr, err := api.GetStorageServiceKeys(ubo.storageacct, resourceGroup)
 	if err != nil {
 		plog.Fatalf("Fetching storage service keys failed: %v", err)
 	}
-
-	if kr.Keys == nil || len(*kr.Keys) == 0 {
+	if kr.Keys == nil || len(kr.Keys) == 0 {
 		plog.Fatalf("No storage service keys found")
 	}
+	k := kr.Keys
+	key := k[0].Value
 
-	//only use the first service key to avoid uploading twice
-	//see https://github.com/coreos/coreos-assembler/pull/1849
-	k := (*kr.Keys)[0]
-	if err := api.UploadBlob(ubo.storageacct, *k.Value, ubo.vhd, ubo.container, ubo.blob, ubo.overwrite); err != nil {
+	exists, err := api.PageBlobExists(ubo.storageacct, *key, ubo.container, ubo.blob)
+	if err != nil {
+		plog.Fatalf("Detecting if blob exists failed: %v", err)
+	}
+	if exists && !ubo.overwrite {
+		plog.Fatalf("The blob exists. Pass --overwrite to force upload.")
+	}
+
+	err = api.UploadPageBlob(ubo.storageacct, *key, ubo.vhd, ubo.container, ubo.blob)
+	if err != nil {
 		plog.Fatalf("Uploading blob failed: %v", err)
 	}
 

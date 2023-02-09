@@ -234,7 +234,7 @@ func (a *API) GetConsoleOutput(name, resourceGroup, storageAccount string) ([]by
 	}
 
 	// Only the full URI to the logs are present in the virtual machine
-	// properties. Parse out the container & file name to use the GetBlob
+	// properties. Parse out the container & file name to use the GetBlockBlob
 	// API call directly.
 	uri := []byte(*consoleURI)
 	containerPat := regexp.MustCompile(`bootdiagnostics-kola[a-z0-9\-]+`)
@@ -244,7 +244,7 @@ func (a *API) GetConsoleOutput(name, resourceGroup, storageAccount string) ([]by
 
 	var data io.ReadCloser
 	err = util.Retry(6, 10*time.Second, func() error {
-		data, err = a.GetBlob(storageAccount, key, container, blobname)
+		data, err = a.GetBlockBlob(storageAccount, key, container, blobname)
 		return err
 	})
 	if err != nil {
