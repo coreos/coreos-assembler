@@ -19,17 +19,14 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
-	"os/user"
-	"path/filepath"
 	"strings"
 	"time"
 
-	"github.com/Azure/azure-sdk-for-go/arm/compute"
-	"github.com/Azure/azure-sdk-for-go/arm/network"
-	"github.com/Azure/azure-sdk-for-go/arm/resources/resources"
-	armStorage "github.com/Azure/azure-sdk-for-go/arm/storage"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
-	"github.com/Azure/azure-sdk-for-go/storage"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/storage/armstorage"
 	"github.com/coreos/pkg/capnslog"
 
 	"github.com/coreos/coreos-assembler/mantle/auth"
@@ -41,14 +38,14 @@ var (
 
 type API struct {
 	azIdCred   *azidentity.DefaultAzureCredential
-	rgClient   resources.GroupsClient
-	imgClient  compute.ImagesClient
-	compClient compute.VirtualMachinesClient
-	netClient  network.VirtualNetworksClient
-	subClient  network.SubnetsClient
-	ipClient   network.PublicIPAddressesClient
-	intClient  network.InterfacesClient
-	accClient  armStorage.AccountsClient
+	rgClient   *armresources.ResourceGroupsClient
+	imgClient  *armcompute.ImagesClient
+	compClient *armcompute.VirtualMachinesClient
+	netClient  *armnetwork.VirtualNetworksClient
+	subClient  *armnetwork.SubnetsClient
+	ipClient   *armnetwork.PublicIPAddressesClient
+	intClient  *armnetwork.InterfacesClient
+	accClient  *armstorage.AccountsClient
 	opts       *Options
 }
 
@@ -82,32 +79,44 @@ func (a *API) SetupClients() error {
 	if err != nil {
 		return err
 	}
-	a.imgClient = compute.NewImagesClientWithBaseURI(auther.BaseURI, auther.SubscriptionID)
-	a.imgClient.Authorizer = auther
-	a.compClient = compute.NewVirtualMachinesClientWithBaseURI(auther.BaseURI, auther.SubscriptionID)
-	a.compClient.Authorizer = auther
 
-	auther, err = auth.GetClientSetup(network.DefaultBaseURI)
+	a.rgClient, err = armresources.NewResourceGroupsClient(a.opts.SubscriptionID, a.azIdCred, nil)
 	if err != nil {
 		return err
 	}
-	a.netClient = network.NewVirtualNetworksClientWithBaseURI(auther.BaseURI, auther.SubscriptionID)
-	a.netClient.Authorizer = auther
-	a.subClient = network.NewSubnetsClientWithBaseURI(auther.BaseURI, auther.SubscriptionID)
-	a.subClient.Authorizer = auther
-	a.ipClient = network.NewPublicIPAddressesClientWithBaseURI(auther.BaseURI, auther.SubscriptionID)
-	a.ipClient.Authorizer = auther
-	a.intClient = network.NewInterfacesClientWithBaseURI(auther.BaseURI, auther.SubscriptionID)
-	a.intClient.Authorizer = auther
 
-	auther, err = auth.GetClientSetup(armStorage.DefaultBaseURI)
+	a.imgClient, err = armcompute.NewImagesClient(a.opts.SubscriptionID, a.azIdCred, nil)
 	if err != nil {
 		return err
 	}
-	a.accClient = armStorage.NewAccountsClientWithBaseURI(auther.BaseURI, auther.SubscriptionID)
-	a.accClient.Authorizer = auther
 
-	return nil
+	a.compClient, err = armcompute.NewVirtualMachinesClient(a.opts.SubscriptionID, a.azIdCred, nil)
+	if err != nil {
+		return err
+	}
+
+	a.netClient, err = armnetwork.NewVirtualNetworksClient(a.opts.SubscriptionID, a.azIdCred, nil)
+	if err != nil {
+		return err
+	}
+
+	a.subClient, err = armnetwork.NewSubnetsClient(a.opts.SubscriptionID, a.azIdCred, nil)
+	if err != nil {
+		return err
+	}
+
+	a.ipClient, err = armnetwork.NewPublicIPAddressesClient(a.opts.SubscriptionID, a.azIdCred, nil)
+	if err != nil {
+		return err
+	}
+
+	a.intClient, err = armnetwork.NewInterfacesClient(a.opts.SubscriptionID, a.azIdCred, nil)
+	if err != nil {
+		return err
+	}
+
+	a.accClient, err = armstorage.NewAccountsClient(a.opts.SubscriptionID, a.azIdCred, nil)
+	return err
 }
 
 func randomName(prefix string) string {
