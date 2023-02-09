@@ -1,4 +1,4 @@
-// Copyright 2022 Red Hat
+// Copyright 2023 Red Hat
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -52,13 +52,13 @@ func runDeleteBlob(cmd *cobra.Command, args []string) {
 	if err != nil {
 		plog.Fatalf("Fetching storage service keys failed: %v", err)
 	}
-
-	if kr.Keys == nil || len(*kr.Keys) == 0 {
+	if kr.Keys == nil || len(kr.Keys) == 0 {
 		plog.Fatalf("No storage service keys found")
 	}
+	k := kr.Keys
+	key := k[0].Value
 
-	k := (*kr.Keys)[0]
-	exists, err := api.BlobExists(dbo.storageacct, *k.Value, dbo.container, dbo.blob)
+	exists, err := api.PageBlobExists(dbo.storageacct, *key, dbo.container, dbo.blob)
 	if err != nil {
 		plog.Fatalf("Checking if blob exists failed: %v", err)
 	}
@@ -67,7 +67,7 @@ func runDeleteBlob(cmd *cobra.Command, args []string) {
 		plog.Infof("Blob doesn't exist. No need to delete.")
 	} else {
 		plog.Infof("Deleting blob.")
-		err = api.DeleteBlob(dbo.storageacct, *k.Value, dbo.container, dbo.blob)
+		err = api.DeletePageBlob(dbo.storageacct, *key, dbo.container, dbo.blob)
 		if err != nil {
 			plog.Fatalf("Deleting blob failed: %v", err)
 		}
