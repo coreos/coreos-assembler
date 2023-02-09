@@ -472,7 +472,8 @@
         "virtualbox",
         "vmware",
         "vultr",
-        "qemu-secex"
+        "qemu-secex",
+        "ignition-gpg-key"
       ],
       "properties": {
         "ostree": {
@@ -515,6 +516,12 @@
           "$id": "#/properties/images/properties/secex",
           "type": "object",
           "title": "Secure Execution Qemu",
+          "$ref": "#/definitions/artifact"
+        },
+	"ignition-gpg-key": {
+          "$id": "#/properties/images/properties/ignition-gpg-key",
+          "type": "object",
+          "title": "Secure Execution Ignition PubKey",
           "$ref": "#/definitions/artifact"
         },
         "metal": {
