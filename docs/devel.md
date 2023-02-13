@@ -37,6 +37,9 @@ $ make
 $ sudo make install
 ```
 
+In the local developer case, you usually don't care about building kolet for
+other arches. You can skip building them using e.g. `make KOLET_ARCHES=x86_64`.
+
 From that point on, you only need to run `make && sudo make install` if you're
 hacking on cosa itself (unless there are new RPM requirements added).
 
