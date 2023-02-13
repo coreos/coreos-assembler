@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"os/exec"
 
+	cosamodel "github.com/coreos/coreos-assembler/internal/pkg/cosa"
 	"github.com/coreos/coreos-assembler/internal/pkg/cosash"
 	cosa "github.com/coreos/coreos-assembler/pkg/builds"
 	"github.com/pkg/errors"
+	"gopkg.in/yaml.v2"
 
 	"crypto/sha256"
 	"encoding/json"
@@ -16,6 +18,108 @@ import (
 	"time"
 )
 
+// hotfix is an element in hotfixes.yaml which is a repo-locked RPM set.
+type hotfix struct {
+	// URL for associated bug
+	Link string `json:"link"`
+	// The operating system major version (e.g. 8 or 9)
+	OsMajor string `json:"osmajor"`
+	// Repo used to download packages
+	Repo string `json:"repo"`
+	// Names of associated packages
+	Packages []string `json:"packages"`
+}
+
+type hotfixData struct {
+	Hotfixes []hotfix `json:"hotfixes"`
+}
+
+// downloadHotfixes basically just accepts as input a declarative JSON file
+// format describing hotfixes, which are repo-locked RPM packages we want to download
+// but without any dependencies.
+func downloadHotfixes(srcdir, configpath, destdir string) error {
+	contents, err := os.ReadFile(configpath)
+	if err != nil {
+		return err
+	}
+
+	var h hotfixData
+	if err := yaml.Unmarshal(contents, &h); err != nil {
+		return fmt.Errorf("failed to deserialize hotfixes: %w", err)
+	}
+
+	fmt.Println("Downloading hotfixes")
+
+	for _, fix := range h.Hotfixes {
+		fmt.Printf("Downloading content for hotfix: %s\n", fix.Link)
+		// Only enable the repos required for download
+		reposdir := filepath.Join(srcdir, "yumrepos")
+		argv := []string{"--disablerepo=*", fmt.Sprintf("--enablerepo=%s", fix.Repo), "--setopt=reposdir=" + reposdir, "download"}
+		argv = append(argv, fix.Packages...)
+		cmd := exec.Command("dnf", argv...)
+		cmd.Dir = destdir
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("failed to invoke dnf download: %w", err)
+		}
+	}
+
+	serializedHotfixes, err := json.Marshal(h)
+	if err != nil {
+		return err
+	}
+	err = os.WriteFile(filepath.Join(destdir, "hotfixes.json"), serializedHotfixes, 0o644)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func generateHotfixes() (string, error) {
+	hotfixesTmpdir, err := os.MkdirTemp("", "")
+	if err != nil {
+		return "", err
+	}
+	defer os.RemoveAll(hotfixesTmpdir)
+
+	variant, err := cosamodel.GetVariant()
+	if err != nil {
+		return "", err
+	}
+
+	wd, err := os.Getwd()
+	if err != nil {
+		return "", err
+	}
+
+	srcdir := filepath.Join(wd, "src")
+	p := fmt.Sprintf("%s/config/hotfixes-%s.yaml", srcdir, variant)
+	if _, err := os.Stat(p); err == nil {
+		err := downloadHotfixes(srcdir, p, hotfixesTmpdir)
+		if err != nil {
+			return "", fmt.Errorf("failed to download hotfixes: %w", err)
+		}
+	} else {
+		fmt.Printf("No %s found\n", p)
+	}
+
+	out := filepath.Join(wd, "tmp/hotfixes.tar")
+
+	// Serialize the hotfix RPMs into a tarball which we can pass via a virtio
+	// device to the qemu process.
+	cmd := exec.Command("tar", "-c", "-C", hotfixesTmpdir, "-f", out, ".")
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	err = cmd.Run()
+	if err != nil {
+		return "", err
+	}
+
+	return out, nil
+}
+
 func buildExtensionContainer() error {
 	cosaBuild, buildPath, err := cosa.ReadBuild("builds", "", "")
 	if err != nil {
@@ -23,6 +127,11 @@ func buildExtensionContainer() error {
 	}
 	buildID := cosaBuild.BuildID
 	fmt.Printf("Generating extensions container for build: %s\n", buildID)
+
+	hotfixPath, err := generateHotfixes()
+	if err != nil {
+		return fmt.Errorf("generating hotfixes failed: %w", err)
+	}
 
 	arch := cosa.BuilderArch()
 	sh, err := cosash.NewCosaSh()
@@ -35,6 +144,8 @@ func buildExtensionContainer() error {
 	targetname := cosaBuild.Name + "-" + buildID + "-extensions-container" + "." + arch + ".ociarchive"
 	process := "runvm -chardev \"file,id=ociarchiveout,path=${tmp_builddir}/\"" + targetname +
 		" -device \"virtserialport,chardev=ociarchiveout,name=ociarchiveout\"" +
+		" -drive file=" + hotfixPath + ",if=none,id=hotfixes,format=raw,media=disk,read-only=on" +
+		" -device virtio-blk,serial=hotfixes,drive=hotfixes" +
 		" -- /usr/lib/coreos-assembler/build-extensions-container.sh " + arch +
 		" /dev/virtio-ports/ociarchiveout " + buildID
 	if err := sh.Process(process); err != nil {

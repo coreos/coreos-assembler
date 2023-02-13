@@ -23,6 +23,9 @@ if [[ -f "${workdir}/src/config.json" ]]; then
     variant="$(jq --raw-output '."coreos-assembler.config-variant"' "${workdir}/src/config.json")"
 fi
 
+mkdir "${ctx_dir}/hotfixes"
+tar -xC "${ctx_dir}/hotfixes" -f /dev/disk/by-id/virtio-hotfixes
+
 # Build the image, replacing the FROM directive with the local image we have.
 # The `variant` variable is explicitely unquoted to be skipped when empty.
 img=localhost/extensions-container
