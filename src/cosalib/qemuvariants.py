@@ -91,6 +91,11 @@ VARIANTS = {
             "--format=oldgnu"
         ]
     },
+    "hyperv": {
+        "image_format": "vhdx",
+        "image_suffix": "vhdx",
+        "platform": "hyperv",
+    },
     "kubevirt": {
         "image_format": "qcow2",
         "platform": "kubevirt",

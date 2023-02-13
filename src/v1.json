@@ -454,6 +454,7 @@
         "legacy-oscontainer",
         "gcp",
         "kubevirt",
+        "hyperv",
         "ibmcloud",
         "powervs",
         "initramfs",
@@ -652,6 +653,12 @@
           "$id": "#/properties/images/properties/kubevirt",
           "type": "object",
           "title": "KubeVirt",
+          "$ref": "#/definitions/artifact"
+        },
+        "hyperv": {
+          "$id": "#/properties/images/properties/hyperv",
+          "type": "object",
+          "title": "HyperV",
           "$ref": "#/definitions/artifact"
         }
       }
