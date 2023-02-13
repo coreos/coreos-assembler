@@ -50,9 +50,8 @@ Similarly, if you are only working on kola, ore or plume, you can build, test
 and use them directly with:
 
 ```
-$ cd mantle
-$ ./build kola ore plume
-$ ./test
+$ make kola ore plume
+$ make mantle-check
 $ ./bin/kola ...
 ```
 
