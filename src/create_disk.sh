@@ -338,8 +338,13 @@ if test -n "${deploy_via_container}"; then
     deploy_commit=$(cat /tmp/commit.txt)
     rm /tmp/commit.txt
 else
-    # Pull the commit
-    time ostree container unencapsulate --repo=$rootfs/ostree/repo "${ostree_container}"
+    # Pull the container image...
+    time ostree container image pull $rootfs/ostree/repo "${ostree_container}"
+    # But we default to not leaving a ref for the image around, so the
+    # layers will get GC'd on the first update if the
+    # user doesn't switch to a container image.
+    ostree --repo=$rootfs/ostree/repo refs --delete ostree/container/image
+    ostree --repo=$rootfs/ostree/repo prune --refs-only --depth=0
     # Deploy it, using an optional remote prefix
     if test -n "${remote_name}"; then
         deploy_ref="${remote_name}:${ref}"
