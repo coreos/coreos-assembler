@@ -184,7 +184,7 @@ def oscontainer_build(containers_storage, tmpdir, src, ref, image_name_and_tag,
             tarball = os.path.abspath(os.path.join(builddir, meta['extensions']['path']))
             dest_dir = os.path.join(mnt, 'extensions')
             os.makedirs(dest_dir, exist_ok=True)
-            runcmd(["tar", "-xf", tarball], cwd=dest_dir)
+            runcmd(["tar", "-xf", tarball, "--no-same-owner"], cwd=dest_dir)
 
             with open(os.path.join(dest_dir, 'extensions.json')) as f:
                 extensions = json.load(f)
