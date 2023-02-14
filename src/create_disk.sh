@@ -452,11 +452,13 @@ chroot_run() {
 }
 
 generate_gpgkeys() {
+    local pkey
+    pkey="${1}"
     local tmp_home
     tmp_home=$(mktemp -d /tmp/gpg-XXXXXX)
     gpg --homedir "${tmp_home}" --batch --passphrase '' --yes --quick-gen-key secex default
     gpg --homedir "${tmp_home}" --armor --export secex > "${ignition_pubkey}"
-    gpg --homedir "${tmp_home}" --armor --export-secret-key secex > "/tmp/ignition.asc"
+    gpg --homedir "${tmp_home}" --armor --export-secret-key secex > "${pkey}"
     rm -rf "${tmp_home}"
 }
 
@@ -496,8 +498,6 @@ s390x)
         # in case builder itself runs with SecureExecution
         rdcore_zipl_args+=("--secex-mode=disable")
         chroot_run /usr/lib/dracut/modules.d/50rdcore/rdcore zipl "${rdcore_zipl_args[@]}"
-    else
-        generate_gpgkeys
     fi
     ;;
 esac
@@ -508,6 +508,12 @@ if [ "$arch" != s390x ]; then
     ostree config --repo $rootfs/ostree/repo set sysroot.bls-append-except-default 'grub_users=""'
 fi
 
+# For local secex build we create an empty file and later mount-bind real private key to it,
+# so rdcore could append it to initrd. Best approach is to teach rdcore how to append file
+# with different source and dest- paths.
+if [[ ${secure_execution} -eq 1 ]] && [[ ! -e /dev/disk/by-id/virtio-genprotimg ]]; then
+    touch "${deploy_root}/usr/lib/coreos/ignition.asc"
+fi
 touch $rootfs/boot/ignition.firstboot
 
 # Finally, add the immutable bit to the physical root; we don't
@@ -568,6 +574,10 @@ rdcore_replacement() {
     se_kernel="${se_tmp_boot}/vmlinuz"
     se_parmfile="${se_tmp_boot}/parmfile"
 
+    # Ignition GPG private key
+    mkdir -p "${se_tmp_boot}/usr/lib/coreos"
+    generate_gpgkeys "${se_tmp_boot}/usr/lib/coreos/ignition.asc"
+
     blsfile=$(find "${rootfs}"/boot/loader/entries/*.conf)
     echo "$(grep options "${blsfile}" | cut -d' ' -f2-)" "${se_kargs_append[@]}" > "${se_parmfile}"
     kernel="${rootfs}/boot/$(grep linux "${blsfile}" | cut -d' ' -f2)"
@@ -590,11 +600,13 @@ if [[ ${secure_execution} -eq 1 ]]; then
     # We need to run the genprotimg step in a separate step for rhcos release images
     if [ ! -e /dev/disk/by-id/virtio-genprotimg ]; then
         echo "Building local Secure Execution Image, running zipl and genprotimg"
+        generate_gpgkeys "/tmp/ignition.asc"
+        mount --rbind "/tmp/ignition.asc" "${deploy_root}/usr/lib/coreos/ignition.asc"
         # run zipl with root hashes as kargs
         rdcore_zipl_args+=("--secex-mode=enforce" "--hostkey=/dev/disk/by-id/virtio-hostkey")
         rdcore_zipl_args+=("--append-karg=rootfs.roothash=$(cat /tmp/root-roothash)")
         rdcore_zipl_args+=("--append-karg=bootfs.roothash=$(cat /tmp/boot-roothash)")
-        rdcore_zipl_args+=("--append-file=/tmp/ignition.asc")
+        rdcore_zipl_args+=("--append-file=/usr/lib/coreos/ignition.asc")
         chroot_run /usr/lib/dracut/modules.d/50rdcore/rdcore zipl "${rdcore_zipl_args[@]}"
     else
         echo "Building release Secure Execution Image, zipl and genprotimg will be run later"
