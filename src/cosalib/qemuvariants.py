@@ -72,14 +72,14 @@ VARIANTS = {
         "image_format": "qcow2",
         "image_suffix": "qcow2.gz",
         "platform": "digitalocean",
-        "gzip": True
+        "compression": "gzip"
     },
     "gcp": {
         # See https://cloud.google.com/compute/docs/import/import-existing-image#requirements_for_the_image_file
         "image_format": "raw",
         "platform": "gcp",
         "image_suffix": "tar.gz",
-        "gzip": True,
+        "compression": "gzip",
         "convert_options": {
             '-o': 'preallocation=off'
         },
@@ -93,8 +93,9 @@ VARIANTS = {
     },
     "hyperv": {
         "image_format": "vhdx",
-        "image_suffix": "vhdx",
+        "image_suffix": "vhdx.zip",
         "platform": "hyperv",
+        "compression": "zip"
     },
     "kubevirt": {
         "image_format": "qcow2",
@@ -109,7 +110,7 @@ VARIANTS = {
     "nutanix": {
         "image_format": "qcow2",
         "platform": "nutanix",
-        "skip_compression": True,
+        "compression": "skip",
         "convert_options": {
             '-c': None
         }
@@ -183,10 +184,9 @@ class QemuVariantImage(_Build):
         self.compress = kwargs.get("compress", False)
         self.tar_members = kwargs.pop("tar_members", None)
         self.tar_flags = kwargs.pop("tar_flags", [DEFAULT_TAR_FLAGS])
-        self.gzip = kwargs.pop("gzip", False)
+        self.compression = kwargs.pop("compression", None)
         self.virtual_size = kwargs.pop("virtual_size", None)
         self.mutate_callback_creates_final_image = False
-        self.skip_compression = kwargs.pop("skip_compression", False)
 
         # this is used in case the image has a different disk
         # name than the platform
@@ -305,24 +305,30 @@ class QemuVariantImage(_Build):
             log.info(f"Moving {work_img} to {final_img}")
             shutil.move(work_img, final_img)
 
-        if self.gzip:
+        if self.compression == "skip":
+            meta_patch.update({
+                'skip-compression': True
+            })
+        elif self.compression is not None:
             sha256 = sha256sum_file(final_img)
             size = os.stat(final_img).st_size
             temp_path = f"{final_img}.tmp"
+
+            match self.compression:
+                case "gzip":
+                    rc = ['gzip', '-9c', final_img]
+                case "zip":
+                    rc = ['zip', '-9', "-", final_img]
+                case _:
+                    raise ImageError(f"unsupported compression type: {self.compression}")
             with open(temp_path, "wb") as fh:
-                runcmd(['gzip', '-9c', final_img], stdout=fh)
+                runcmd(rc, stdout=fh)
             shutil.move(temp_path, final_img)
             meta_patch.update({
                 'skip-compression': True,
                 'uncompressed-sha256': sha256,
                 'uncompressed-size': size,
             })
-
-        if self.skip_compression:
-            meta_patch.update({
-                'skip-compression': True
-            })
-
         return meta_patch
 
     def _build_artifacts(self, *args, **kwargs):

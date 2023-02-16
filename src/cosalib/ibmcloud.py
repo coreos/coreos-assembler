@@ -37,7 +37,7 @@ VARIANTS = {
         "image_format": "raw",
         "image_suffix": "ova.gz",
         "platform": "powervs",
-        "gzip": True,
+        "compression": "gzip",
         "tar_members": [
             "disk.raw"
         ]
