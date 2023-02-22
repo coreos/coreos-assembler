@@ -456,7 +456,7 @@ generate_gpgkeys() {
     pkey="${1}"
     local tmp_home
     tmp_home=$(mktemp -d /tmp/gpg-XXXXXX)
-    gpg --homedir "${tmp_home}" --batch --passphrase '' --yes --quick-gen-key "Secure Execution (secex) $buildid" default default none
+    gpg --homedir "${tmp_home}" --batch --passphrase '' --yes --quick-gen-key "Secure Execution (secex) $buildid" rsa4096 encr none
     gpg --homedir "${tmp_home}" --armor --export secex > "${ignition_pubkey}"
     gpg --homedir "${tmp_home}" --armor --export-secret-key secex > "${pkey}"
     rm -rf "${tmp_home}"
