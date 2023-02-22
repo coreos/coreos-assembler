@@ -23,7 +23,9 @@ LANG=C /sbin/load_policy  -i
 
 # we want /dev/disk symlinks for coreos-installer
 /usr/lib/systemd/systemd-udevd --daemon
-/usr/sbin/udevadm trigger --settle
+# We've seen this hang before, so add a timeout. This is best-effort anyway, so
+# let's not fail on it.
+timeout 30s /usr/sbin/udevadm trigger --settle || :
 
 # set up networking
 if [ -z "${RUNVM_NONET:-}" ]; then
