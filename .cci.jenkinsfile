@@ -4,6 +4,14 @@
 // an imageStream for it
 def cpuCount = 6
 def cpuCount_s = cpuCount.toString()
+
+openshift.withCluster() {
+    openshift.withProject() {
+        def scmVars = checkout scm
+        println(scmVars)
+    }
+}
+
 def imageName = "coreos-ci-coreos-assembler-8726567b-a19e-48de-ad68-2ceff2b47bd5"
 
 def memory = (cpuCount * 1536) as Integer
