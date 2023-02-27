@@ -5,8 +5,8 @@
 def cpuCount = 6
 def cpuCount_s = cpuCount.toString()
 
-buildImageCustom(env: [ENABLE_GO_RACE_DETECTOR: "1", GOMAXPROCS: cpuCount_s], cpu: cpuCount_s)
-def imageName = "coreos-ci-coreos-assembler-fec68d40-36f4-4f39-852e-cdd821074322"
+def imageName = buildImageCustom(env: [ENABLE_GO_RACE_DETECTOR: "1", GOMAXPROCS: cpuCount_s], cpu: cpuCount_s)
+// def imageName = "coreos-ci-coreos-assembler-fec68d40-36f4-4f39-852e-cdd821074322"
 
 def memory = (cpuCount * 1536) as Integer
 pod(image: imageName + ":latest", kvm: true, cpu: "${cpuCount}", memory: "${memory}Mi") {
@@ -87,30 +87,29 @@ def buildImageCustom(params = [:]) {
                 openshift.create(openshift.process(bcObj))
             }
             stage('Build') {
-                echo "built"
-                // shwrap("""
-                //     touch dir.tar # pre-create it so the directory doesn't change when tar scans it
-                //     tar --exclude dir.tar --exclude=./pod* -zcf dir.tar .
-                // """)
-                // def build = openshift.selector('bc', imageName).startBuild("--from-archive=dir.tar")
-                // shwrap("rm dir.tar")
+                shwrap("""
+                    touch dir.tar # pre-create it so the directory doesn't change when tar scans it
+                    tar --exclude dir.tar --exclude=./pod* -zcf dir.tar .
+                """)
+                def build = openshift.selector('bc', imageName).startBuild("--from-archive=dir.tar")
+                shwrap("rm dir.tar")
 
-                // // Showing logs in Jenkins is also a way
-                // // to wait for the build to finsih
-                // build.logs('-f')
-                // // Wait up to 2h for the build to finish
-                // timeout(60*2) {
-                //     build.untilEach(1) {
-                //         def phase = it.object().status.phase
-                //         if (phase in ["New", "Pending", "Running"]) {
-                //             return false
-                //         }
-                //         if (phase != "Complete") {
-                //             error("Error build image: status phase ${phase}")
-                //         }
-                //         return true
-                //     }
-                // }
+                // Showing logs in Jenkins is also a way
+                // to wait for the build to finsih
+                build.logs('-f')
+                // Wait up to 2h for the build to finish
+                timeout(60*2) {
+                    build.untilEach(1) {
+                        def phase = it.object().status.phase
+                        if (phase in ["New", "Pending", "Running"]) {
+                            return false
+                        }
+                        if (phase != "Complete") {
+                            error("Error build image: status phase ${phase}")
+                        }
+                        return true
+                    }
+                }
            }
         }
     }
