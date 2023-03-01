@@ -484,6 +484,10 @@ type QemuBuilder struct {
 	virtioSerialID uint
 	// fds is file descriptors we own to pass to qemu
 	fds []*os.File
+
+	// IBM Secure Execution
+	secureExecution bool
+	ignitionPubKey  string
 }
 
 // NewQemuBuilder creates a new build for QEMU with default settings.
@@ -650,6 +654,56 @@ func (builder *QemuBuilder) SetArchitecture(arch string) error {
 	return fmt.Errorf("architecture %s not supported by coreos-assembler qemu", arch)
 }
 
+// SetSecureExecution enables qemu confidential guest support and adds hostkey to ignition config.
+func (builder *QemuBuilder) SetSecureExecution(gpgkey string, hostkey string, config *conf.Conf) error {
+	if supports, err := builder.supportsSecureExecution(); err != nil {
+		return err
+	} else if !supports {
+		return fmt.Errorf("Secure Execution was requested but isn't supported/enabled")
+	}
+	if gpgkey == "" {
+		return fmt.Errorf("Secure Execution was requested, but we don't have a GPG Public Key to encrypt the config")
+	}
+
+	if config != nil {
+		if hostkey == "" {
+			// dummy hostkey; this is good enough at least for the first boot (to prevent genprotimg from failing)
+			dummy, err := builder.TempFile("hostkey.*")
+			if err != nil {
+				return fmt.Errorf("creating hostkey: %v", err)
+			}
+			c := exec.Command("openssl", "req", "-x509", "-sha512", "-nodes", "-days", "1", "-subj", "/C=US/O=IBM/CN=secex",
+				"-newkey", "ec", "-pkeyopt", "ec_paramgen_curve:secp521r1", "-out", dummy.Name())
+			if err := c.Run(); err != nil {
+				return fmt.Errorf("generating hostkey: %v", err)
+			}
+			hostkey = dummy.Name()
+		}
+		if contents, err := os.ReadFile(hostkey); err != nil {
+			return fmt.Errorf("reading hostkey: %v", err)
+		} else {
+			config.AddFile("/etc/se-hostkeys/ibm-z-hostkey-1", string(contents), 0644)
+		}
+	}
+	builder.secureExecution = true
+	builder.ignitionPubKey = gpgkey
+	builder.Append("-object", "s390-pv-guest,id=pv0", "-machine", "confidential-guest-support=pv0")
+	return nil
+}
+
+func (builder *QemuBuilder) encryptIgnitionConfig() error {
+	crypted, err := builder.TempFile("ignition_crypted.*")
+	if err != nil {
+		return fmt.Errorf("creating crypted config: %v", err)
+	}
+	c := exec.Command("gpg", "--recipient-file", builder.ignitionPubKey, "--yes", "--output", crypted.Name(), "--armor", "--encrypt", builder.ConfigFile)
+	if err := c.Run(); err != nil {
+		return fmt.Errorf("encrypting %s: %v", crypted.Name(), err)
+	}
+	builder.ConfigFile = crypted.Name()
+	return nil
+}
+
 // Mount9p sets up a mount point from the host to guest.  To be replaced
 // with https://virtio-fs.gitlab.io/ once it lands everywhere.
 func (builder *QemuBuilder) Mount9p(source, destHint string, readonly bool) {
@@ -670,6 +724,25 @@ func (builder *QemuBuilder) supportsFwCfg() bool {
 		return false
 	}
 	return true
+}
+
+// supportsSecureExecution if s390x host (zKVM/LPAR) has "Secure Execution for Linux" feature enabled
+func (builder *QemuBuilder) supportsSecureExecution() (bool, error) {
+	if builder.architecture != "s390x" {
+		return false, nil
+	}
+	content, err := os.ReadFile("/sys/firmware/uv/prot_virt_host")
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false, nil
+		}
+		return false, fmt.Errorf("reading protvirt flag: %v", err)
+	}
+	if len(content) < 1 {
+		return false, nil
+	}
+	enabled := content[0] == '1'
+	return enabled, nil
 }
 
 // supportsSwtpm if the target system supports a virtual TPM device
@@ -1527,16 +1600,24 @@ func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 			argv = append(argv, "-boot", "order=c,strict=on")
 		}
 	}
-
 	// Handle Ignition if it wasn't already injected above
 	if builder.ConfigFile != "" && !builder.configInjected {
 		if builder.supportsFwCfg() {
 			builder.Append("-fw_cfg", "name=opt/com.coreos/config,file="+builder.ConfigFile)
 		} else {
+			serial := "ignition"
+			if builder.secureExecution {
+				// SE case: we have to encrypt the config and attach it with 'serial=ignition_crypted'
+				if err := builder.encryptIgnitionConfig(); err != nil {
+					return nil, err
+				}
+				serial = "ignition_crypted"
+			}
 			// Alternative to fw_cfg, should be generally usable on all arches,
 			// especially those without fw_cfg support.
 			// See https://github.com/coreos/ignition/pull/905
-			builder.Append("-drive", fmt.Sprintf("if=none,id=ignition,format=raw,file=%s,readonly=on", builder.ConfigFile), "-device", "virtio-blk,serial=ignition,drive=ignition")
+			builder.Append("-drive", fmt.Sprintf("if=none,id=ignition,format=raw,file=%s,readonly=on", builder.ConfigFile),
+				"-device", fmt.Sprintf("virtio-blk,serial=%s,drive=ignition", serial))
 		}
 	}
 
