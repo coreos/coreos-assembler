@@ -2,3 +2,5 @@
 time
 # Used by mantle
 golang
+# Use tmux for developer multi-arch builder access UX
+tmux
