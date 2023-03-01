@@ -77,7 +77,7 @@ var (
 		"pxe-offline-install.bios",
 		"pxe-offline-install.4k.uefi",
 		"pxe-online-install.bios",
-		"pxe-online-install.4k.bios",
+		"pxe-online-install.4k.uefi",
 	}
 	tests_s390x = []string{
 		"pxe-online-install.s390fw",
