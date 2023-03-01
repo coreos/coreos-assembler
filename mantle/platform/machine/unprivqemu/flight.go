@@ -46,6 +46,11 @@ type Options struct {
 	//Option to create a temporary software TPM - true by default
 	Swtpm bool
 
+	//IBM Secure Execution
+	SecureExecution               bool
+	SecureExecutionIgnitionPubKey string
+	SecureExecutionHostKey        string
+
 	*platform.Options
 }
 
