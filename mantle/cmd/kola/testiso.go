@@ -81,7 +81,7 @@ var (
 		"iso-offline-install.mpath.bios",
 		"iso-offline-install.4k.uefi",
 		"miniso-install.bios",
-		"miniso-install.nm.bios.",
+		"miniso-install.nm.bios",
 		"miniso-install.4k.uefi",
 		"miniso-install.4k.nm.uefi",
 		"pxe-offline-install.bios",
