@@ -159,6 +159,10 @@ func init() {
 
 	sv(&kola.QEMUIsoOptions.IsoPath, "qemu-iso", "", "path to CoreOS ISO image")
 	bv(&kola.QEMUIsoOptions.AsDisk, "qemu-iso-as-disk", false, "attach ISO image as regular disk")
+	// s390x secex specific options
+	bv(&kola.QEMUOptions.SecureExecution, "qemu-secex", false, "Run IBM Secure Execution Image")
+	sv(&kola.QEMUOptions.SecureExecutionIgnitionPubKey, "qemu-secex-ignition-pubkey", "", "Path to Ignition GPG Public Key")
+	sv(&kola.QEMUOptions.SecureExecutionHostKey, "qemu-secex-hostkey", "", "Path to Secure Execution HKD certificate")
 }
 
 // Sync up the command line options if there is dependency
@@ -335,6 +339,12 @@ func syncOptions() error {
 func syncCosaOptions() error {
 	switch kolaPlatform {
 	case "qemu-unpriv", "qemu":
+		if kola.QEMUOptions.SecureExecution && kola.QEMUOptions.DiskImage == "" && kola.CosaBuild.Meta.BuildArtifacts.SecureExecutionQemu != nil {
+			kola.QEMUOptions.DiskImage = filepath.Join(kola.CosaBuild.Dir, kola.CosaBuild.Meta.BuildArtifacts.SecureExecutionQemu.Path)
+		}
+		if kola.QEMUOptions.SecureExecutionIgnitionPubKey == "" && kola.CosaBuild.Meta.BuildArtifacts.SecureExecutionIgnitionPubKey != nil {
+			kola.QEMUOptions.SecureExecutionIgnitionPubKey = filepath.Join(kola.CosaBuild.Dir, kola.CosaBuild.Meta.BuildArtifacts.SecureExecutionIgnitionPubKey.Path)
+		}
 		if kola.QEMUOptions.DiskImage == "" && kola.CosaBuild.Meta.BuildArtifacts.Qemu != nil {
 			kola.QEMUOptions.DiskImage = filepath.Join(kola.CosaBuild.Dir, kola.CosaBuild.Meta.BuildArtifacts.Qemu.Path)
 		}
