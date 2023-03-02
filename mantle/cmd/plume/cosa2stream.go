@@ -117,7 +117,10 @@ func runCosaBuildToStream(cmd *cobra.Command, args []string) error {
 			ver := parts[1]
 			// Convert e.g. 48.82.<timestamp> to 4.8
 			verSplit := strings.Split(ver, ".")
-			streamName = fmt.Sprintf("%s.%s", verSplit[0][0:1], verSplit[0][1:])
+			if streamName == "" {
+				streamName = fmt.Sprintf("%s.%s", verSplit[0][0:1], verSplit[0][1:])
+			}
+
 			endpoint := rhcosCosaEndpoint
 			if streamBaseURL != "" {
 				endpoint = streamBaseURL
