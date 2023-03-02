@@ -162,6 +162,8 @@ you can paste in. This will populate the `.boto` file.
 See [Google Cloud Platform's Documentation](https://cloud.google.com/storage/docs/boto-gsutil)
 for more information about the `.boto` file.
 
+If you want to create a service account's JSON key for authentication, refer to [create service account keys](https://cloud.google.com/iam/docs/).
+
 ## openstack
 
 `openstack` uses `~/.config/openstack.json`. This can be configured manually:
