@@ -38,8 +38,10 @@ import (
 	v32types "github.com/coreos/ignition/v2/config/v3_2/types"
 	v33 "github.com/coreos/ignition/v2/config/v3_3"
 	v33types "github.com/coreos/ignition/v2/config/v3_3/types"
-	v34exp "github.com/coreos/ignition/v2/config/v3_4_experimental"
-	v34exptypes "github.com/coreos/ignition/v2/config/v3_4_experimental/types"
+	v34 "github.com/coreos/ignition/v2/config/v3_4"
+	v34types "github.com/coreos/ignition/v2/config/v3_4/types"
+	v35exp "github.com/coreos/ignition/v2/config/v3_5_experimental"
+	v35exptypes "github.com/coreos/ignition/v2/config/v3_5_experimental/types"
 	"github.com/coreos/ignition/v2/config/validate"
 	"github.com/coreos/pkg/capnslog"
 	"github.com/coreos/vcontext/report"
@@ -88,8 +90,9 @@ type Conf struct {
 	ignitionV31 *v31types.Config
 	ignitionV32 *v32types.Config
 	ignitionV33 *v33types.Config
+	ignitionV34 *v34types.Config
 
-	ignitionV34exp *v34exptypes.Config
+	ignitionV35exp *v35exptypes.Config
 }
 
 // Empty creates a completely empty configuration. Any configuration addition
@@ -232,13 +235,20 @@ func (u *UserData) Render(warnings WarningsAction) (*Conf, error) {
 				return err
 			}
 			c.ignitionV33 = &ignc
-		case semver.Version{Major: 3, Minor: 4, PreRelease: "experimental"}:
-			ignc, report, err := v34exp.Parse(data)
+		case semver.Version{Major: 3, Minor: 4}:
+			ignc, report, err := v34.Parse(data)
 			if err != nil {
 				plog.Errorf("invalid userdata: %v", report)
 				return err
 			}
-			c.ignitionV34exp = &ignc
+			c.ignitionV34 = &ignc
+		case semver.Version{Major: 3, Minor: 5, PreRelease: "experimental"}:
+			ignc, report, err := v35exp.Parse(data)
+			if err != nil {
+				plog.Errorf("invalid userdata: %v", report)
+				return err
+			}
+			c.ignitionV35exp = &ignc
 		// Special case for the next stable version: wrap it in a
 		// config of the current stable version, so we can still add
 		// our config fragments without understanding the specified
@@ -247,17 +257,17 @@ func (u *UserData) Render(warnings WarningsAction) (*Conf, error) {
 		// tests using the experimental spec, since CI only needs to
 		// ensure that the installed Ignition can parse the config,
 		// not that Mantle can also parse it.
-		case semver.Version{Major: 3, Minor: 4}:
+		case semver.Version{Major: 3, Minor: 5}:
 			plog.Warningf("Generating wrapper for unsupported config spec")
 			url, err := makeGzipDataUrl(data)
 			if err != nil {
 				return fmt.Errorf("generating data URL: %w", err)
 			}
-			c.ignitionV33 = &v33types.Config{
-				Ignition: v33types.Ignition{
-					Version: "3.3.0",
-					Config: v33types.IgnitionConfig{
-						Merge: []v33types.Resource{
+			c.ignitionV34 = &v34types.Config{
+				Ignition: v34types.Ignition{
+					Version: "3.4.0",
+					Config: v34types.IgnitionConfig{
+						Merge: []v34types.Resource{
 							{
 								Source:      ignutil.StrToPtr(url),
 								Compression: ignutil.StrToPtr("gzip"),
@@ -322,8 +332,11 @@ func (c *Conf) String() string {
 	} else if c.ignitionV33 != nil {
 		buf, _ := json.Marshal(c.ignitionV33)
 		return string(buf)
-	} else if c.ignitionV34exp != nil {
-		buf, _ := json.Marshal(c.ignitionV34exp)
+	} else if c.ignitionV34 != nil {
+		buf, _ := json.Marshal(c.ignitionV34)
+		return string(buf)
+	} else if c.ignitionV35exp != nil {
+		buf, _ := json.Marshal(c.ignitionV35exp)
 		return string(buf)
 	}
 
@@ -355,9 +368,15 @@ func (c *Conf) MergeV33(newConfig v33types.Config) {
 }
 
 // MergeV34exp merges a config with the ignitionV34exp config via Ignition's merging function.
-func (c *Conf) MergeV34exp(newConfig v34exptypes.Config) {
-	mergeConfig := v34exp.Merge(*c.ignitionV34exp, newConfig)
-	c.ignitionV34exp = &mergeConfig
+func (c *Conf) MergeV34(newConfig v34types.Config) {
+	mergeConfig := v34.Merge(*c.ignitionV34, newConfig)
+	c.ignitionV34 = &mergeConfig
+}
+
+// MergeV35exp merges a config with the ignitionV35exp config via Ignition's merging function.
+func (c *Conf) MergeV35exp(newConfig v35exptypes.Config) {
+	mergeConfig := v35exp.Merge(*c.ignitionV35exp, newConfig)
+	c.ignitionV35exp = &mergeConfig
 }
 
 // Merge all configs into a V3.3 config
@@ -444,8 +463,11 @@ func (c *Conf) ValidConfig() bool {
 	} else if c.ignitionV33 != nil {
 		rpt := validate.ValidateWithContext(c.ignitionV33, nil)
 		return !rpt.IsFatal()
-	} else if c.ignitionV34exp != nil {
-		rpt := validate.ValidateWithContext(c.ignitionV34exp, nil)
+	} else if c.ignitionV34 != nil {
+		rpt := validate.ValidateWithContext(c.ignitionV34, nil)
+		return !rpt.IsFatal()
+	} else if c.ignitionV35exp != nil {
+		rpt := validate.ValidateWithContext(c.ignitionV35exp, nil)
 		return !rpt.IsFatal()
 	} else {
 		return false
@@ -562,20 +584,20 @@ func (c *Conf) addFileV33(path, contents string, mode int) {
 	c.MergeV33(newConfig)
 }
 
-func (c *Conf) addFileV34exp(path, contents string, mode int) {
+func (c *Conf) addFileV34(path, contents string, mode int) {
 	source := dataurl.EncodeBytes([]byte(contents))
-	newConfig := v34exptypes.Config{
-		Ignition: v34exptypes.Ignition{
-			Version: "3.4.0-experimental",
+	newConfig := v34types.Config{
+		Ignition: v34types.Ignition{
+			Version: "3.4.0",
 		},
-		Storage: v34exptypes.Storage{
-			Files: []v34exptypes.File{
+		Storage: v34types.Storage{
+			Files: []v34types.File{
 				{
-					Node: v34exptypes.Node{
+					Node: v34types.Node{
 						Path: path,
 					},
-					FileEmbedded1: v34exptypes.FileEmbedded1{
-						Contents: v34exptypes.Resource{
+					FileEmbedded1: v34types.FileEmbedded1{
+						Contents: v34types.Resource{
 							Source: &source,
 						},
 						Mode: &mode,
@@ -584,7 +606,32 @@ func (c *Conf) addFileV34exp(path, contents string, mode int) {
 			},
 		},
 	}
-	c.MergeV34exp(newConfig)
+	c.MergeV34(newConfig)
+}
+
+func (c *Conf) addFileV35exp(path, contents string, mode int) {
+	source := dataurl.EncodeBytes([]byte(contents))
+	newConfig := v35exptypes.Config{
+		Ignition: v35exptypes.Ignition{
+			Version: "3.5.0-experimental",
+		},
+		Storage: v35exptypes.Storage{
+			Files: []v35exptypes.File{
+				{
+					Node: v35exptypes.Node{
+						Path: path,
+					},
+					FileEmbedded1: v35exptypes.FileEmbedded1{
+						Contents: v35exptypes.Resource{
+							Source: &source,
+						},
+						Mode: &mode,
+					},
+				},
+			},
+		},
+	}
+	c.MergeV35exp(newConfig)
 }
 
 func (c *Conf) AddFile(path, contents string, mode int) {
@@ -596,8 +643,10 @@ func (c *Conf) AddFile(path, contents string, mode int) {
 		c.addFileV32(path, contents, mode)
 	} else if c.ignitionV33 != nil {
 		c.addFileV33(path, contents, mode)
-	} else if c.ignitionV34exp != nil {
-		c.addFileV34exp(path, contents, mode)
+	} else if c.ignitionV34 != nil {
+		c.addFileV34(path, contents, mode)
+	} else if c.ignitionV35exp != nil {
+		c.addFileV35exp(path, contents, mode)
 	}
 }
 
@@ -677,13 +726,13 @@ func (c *Conf) addSystemdUnitV33(name, contents string, enable, mask bool) {
 	c.MergeV33(newConfig)
 }
 
-func (c *Conf) addSystemdUnitV34exp(name, contents string, enable, mask bool) {
-	newConfig := v34exptypes.Config{
-		Ignition: v34exptypes.Ignition{
-			Version: "3.4.0-experimental",
+func (c *Conf) addSystemdUnitV34(name, contents string, enable, mask bool) {
+	newConfig := v34types.Config{
+		Ignition: v34types.Ignition{
+			Version: "3.4.0",
 		},
-		Systemd: v34exptypes.Systemd{
-			Units: []v34exptypes.Unit{
+		Systemd: v34types.Systemd{
+			Units: []v34types.Unit{
 				{
 					Name:     name,
 					Contents: &contents,
@@ -693,7 +742,26 @@ func (c *Conf) addSystemdUnitV34exp(name, contents string, enable, mask bool) {
 			},
 		},
 	}
-	c.MergeV34exp(newConfig)
+	c.MergeV34(newConfig)
+}
+
+func (c *Conf) addSystemdUnitV35exp(name, contents string, enable, mask bool) {
+	newConfig := v35exptypes.Config{
+		Ignition: v35exptypes.Ignition{
+			Version: "3.5.0-experimental",
+		},
+		Systemd: v35exptypes.Systemd{
+			Units: []v35exptypes.Unit{
+				{
+					Name:     name,
+					Contents: &contents,
+					Enabled:  &enable,
+					Mask:     &mask,
+				},
+			},
+		},
+	}
+	c.MergeV35exp(newConfig)
 }
 
 func (c *Conf) AddSystemdUnit(name, contents string, state systemdUnitState) {
@@ -712,8 +780,10 @@ func (c *Conf) AddSystemdUnit(name, contents string, state systemdUnitState) {
 		c.addSystemdUnitV32(name, contents, enable, mask)
 	} else if c.ignitionV33 != nil {
 		c.addSystemdUnitV33(name, contents, enable, mask)
-	} else if c.ignitionV34exp != nil {
-		c.addSystemdUnitV34exp(name, contents, enable, mask)
+	} else if c.ignitionV34 != nil {
+		c.addSystemdUnitV34(name, contents, enable, mask)
+	} else if c.ignitionV35exp != nil {
+		c.addSystemdUnitV35exp(name, contents, enable, mask)
 	}
 }
 
@@ -805,16 +875,16 @@ func (c *Conf) addSystemdDropinV33(service, name, contents string) {
 	c.MergeV33(newConfig)
 }
 
-func (c *Conf) addSystemdDropinV34exp(service, name, contents string) {
-	newConfig := v34exptypes.Config{
-		Ignition: v34exptypes.Ignition{
-			Version: "3.4.0-experimental",
+func (c *Conf) addSystemdDropinV34(service, name, contents string) {
+	newConfig := v34types.Config{
+		Ignition: v34types.Ignition{
+			Version: "3.4.0",
 		},
-		Systemd: v34exptypes.Systemd{
-			Units: []v34exptypes.Unit{
+		Systemd: v34types.Systemd{
+			Units: []v34types.Unit{
 				{
 					Name: service,
-					Dropins: []v34exptypes.Dropin{
+					Dropins: []v34types.Dropin{
 						{
 							Name:     name,
 							Contents: &contents,
@@ -824,7 +894,29 @@ func (c *Conf) addSystemdDropinV34exp(service, name, contents string) {
 			},
 		},
 	}
-	c.MergeV34exp(newConfig)
+	c.MergeV34(newConfig)
+}
+
+func (c *Conf) addSystemdDropinV35exp(service, name, contents string) {
+	newConfig := v35exptypes.Config{
+		Ignition: v35exptypes.Ignition{
+			Version: "3.5.0-experimental",
+		},
+		Systemd: v35exptypes.Systemd{
+			Units: []v35exptypes.Unit{
+				{
+					Name: service,
+					Dropins: []v35exptypes.Dropin{
+						{
+							Name:     name,
+							Contents: &contents,
+						},
+					},
+				},
+			},
+		},
+	}
+	c.MergeV35exp(newConfig)
 }
 
 func (c *Conf) AddSystemdUnitDropin(service, name, contents string) {
@@ -836,8 +928,10 @@ func (c *Conf) AddSystemdUnitDropin(service, name, contents string) {
 		c.addSystemdDropinV32(service, name, contents)
 	} else if c.ignitionV33 != nil {
 		c.addSystemdDropinV33(service, name, contents)
-	} else if c.ignitionV34exp != nil {
-		c.addSystemdDropinV34exp(service, name, contents)
+	} else if c.ignitionV34 != nil {
+		c.addSystemdDropinV34(service, name, contents)
+	} else if c.ignitionV35exp != nil {
+		c.addSystemdDropinV35exp(service, name, contents)
 	}
 }
 
@@ -925,17 +1019,17 @@ func (c *Conf) addAuthorizedKeysV33(username string, keys map[string]struct{}) {
 	c.MergeV33(newConfig)
 }
 
-func (c *Conf) addAuthorizedKeysV34exp(username string, keys map[string]struct{}) {
-	var keyObjs []v34exptypes.SSHAuthorizedKey
+func (c *Conf) addAuthorizedKeysV34(username string, keys map[string]struct{}) {
+	var keyObjs []v34types.SSHAuthorizedKey
 	for key := range keys {
-		keyObjs = append(keyObjs, v34exptypes.SSHAuthorizedKey(key))
+		keyObjs = append(keyObjs, v34types.SSHAuthorizedKey(key))
 	}
-	newConfig := v34exptypes.Config{
-		Ignition: v34exptypes.Ignition{
-			Version: "3.4.0-experimental",
+	newConfig := v34types.Config{
+		Ignition: v34types.Ignition{
+			Version: "3.4.0",
 		},
-		Passwd: v34exptypes.Passwd{
-			Users: []v34exptypes.PasswdUser{
+		Passwd: v34types.Passwd{
+			Users: []v34types.PasswdUser{
 				{
 					Name:              username,
 					SSHAuthorizedKeys: keyObjs,
@@ -943,7 +1037,28 @@ func (c *Conf) addAuthorizedKeysV34exp(username string, keys map[string]struct{}
 			},
 		},
 	}
-	c.MergeV34exp(newConfig)
+	c.MergeV34(newConfig)
+}
+
+func (c *Conf) addAuthorizedKeysV35exp(username string, keys map[string]struct{}) {
+	var keyObjs []v35exptypes.SSHAuthorizedKey
+	for key := range keys {
+		keyObjs = append(keyObjs, v35exptypes.SSHAuthorizedKey(key))
+	}
+	newConfig := v35exptypes.Config{
+		Ignition: v35exptypes.Ignition{
+			Version: "3.5.0-experimental",
+		},
+		Passwd: v35exptypes.Passwd{
+			Users: []v35exptypes.PasswdUser{
+				{
+					Name:              username,
+					SSHAuthorizedKeys: keyObjs,
+				},
+			},
+		},
+	}
+	c.MergeV35exp(newConfig)
 }
 
 // AddAuthorizedKeys adds an Ignition config to add the given keys to the SSH
@@ -962,8 +1077,10 @@ func (c *Conf) AddAuthorizedKeys(user string, keys []string) {
 		c.addAuthorizedKeysV32(user, keysSet)
 	} else if c.ignitionV33 != nil {
 		c.addAuthorizedKeysV33(user, keysSet)
-	} else if c.ignitionV34exp != nil {
-		c.addAuthorizedKeysV34exp(user, keysSet)
+	} else if c.ignitionV34 != nil {
+		c.addAuthorizedKeysV34(user, keysSet)
+	} else if c.ignitionV35exp != nil {
+		c.addAuthorizedKeysV35exp(user, keysSet)
 	}
 }
 
@@ -1059,26 +1176,48 @@ func (c *Conf) addConfigSourceV33(source string) {
 	c.MergeV33(newConfig)
 }
 
-func (c *Conf) addConfigSourceV34exp(source string) {
-	var resources []v34exptypes.Resource
-	var headers []v34exptypes.HTTPHeader
-	resources = append(resources, v34exptypes.Resource{
+func (c *Conf) addConfigSourceV34(source string) {
+	var resources []v34types.Resource
+	var headers []v34types.HTTPHeader
+	resources = append(resources, v34types.Resource{
 		Compression: nil,
 		HTTPHeaders: headers,
 		Source:      &source,
-		Verification: v34exptypes.Verification{
+		Verification: v34types.Verification{
 			Hash: nil,
 		},
 	})
-	newConfig := v34exptypes.Config{
-		Ignition: v34exptypes.Ignition{
-			Version: "3.4.0-experimental",
-			Config: v34exptypes.IgnitionConfig{
+	newConfig := v34types.Config{
+		Ignition: v34types.Ignition{
+			Version: "3.4.0",
+			Config: v34types.IgnitionConfig{
 				Merge: resources,
 			},
 		},
 	}
-	c.MergeV34exp(newConfig)
+	c.MergeV34(newConfig)
+}
+
+func (c *Conf) addConfigSourceV35exp(source string) {
+	var resources []v35exptypes.Resource
+	var headers []v35exptypes.HTTPHeader
+	resources = append(resources, v35exptypes.Resource{
+		Compression: nil,
+		HTTPHeaders: headers,
+		Source:      &source,
+		Verification: v35exptypes.Verification{
+			Hash: nil,
+		},
+	})
+	newConfig := v35exptypes.Config{
+		Ignition: v35exptypes.Ignition{
+			Version: "3.5.0-experimental",
+			Config: v35exptypes.IgnitionConfig{
+				Merge: resources,
+			},
+		},
+	}
+	c.MergeV35exp(newConfig)
 }
 
 // AddConfigSource adds an Ignition config to merge (v3) the
@@ -1092,15 +1231,17 @@ func (c *Conf) AddConfigSource(source string) {
 		c.addConfigSourceV32(source)
 	} else if c.ignitionV33 != nil {
 		c.addConfigSourceV33(source)
-	} else if c.ignitionV34exp != nil {
-		c.addConfigSourceV34exp(source)
+	} else if c.ignitionV34 != nil {
+		c.addConfigSourceV34(source)
+	} else if c.ignitionV35exp != nil {
+		c.addConfigSourceV35exp(source)
 	}
 }
 
 // IsIgnition returns true if the config is for Ignition.
 // Returns false in the case of empty configs
 func (c *Conf) IsIgnition() bool {
-	return c.ignitionV3 != nil || c.ignitionV31 != nil || c.ignitionV32 != nil || c.ignitionV33 != nil || c.ignitionV34exp != nil
+	return c.ignitionV3 != nil || c.ignitionV31 != nil || c.ignitionV32 != nil || c.ignitionV33 != nil || c.ignitionV34 != nil || c.ignitionV35exp != nil
 }
 
 func (c *Conf) IsEmpty() bool {
