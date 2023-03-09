@@ -30,7 +30,7 @@ func EnsurePathWithinFilesDir(path, filesDir string) error {
 	if err != nil {
 		return err
 	}
-	if !strings.HasPrefix(absPath, absBase+string(filepath.Separator)) {
+	if absPath != absBase && !strings.HasPrefix(absPath, absBase+string(filepath.Separator)) {
 		return common.ErrFilesDirEscape
 	}
 	return nil
