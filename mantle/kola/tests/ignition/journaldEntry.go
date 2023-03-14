@@ -29,8 +29,6 @@ func init() {
 		Name:        "coreos.ignition.journald-log",
 		Run:         sendJournaldLog,
 		ClusterSize: 1,
-		// Since RHCOS uses the 2x spec and not 3x.
-		ExcludeDistros: []string{"rhcos"},
 	})
 }
 
