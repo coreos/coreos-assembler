@@ -124,6 +124,7 @@ domname = f"{args.name}-{args.instid}"
 qemu_args = " ".join(['-fw_cfg', f'name=opt/com.coreos/config,file={poolpath}/{ignvol}'])
 basevinstall_args = ['virt-install', f"--connect={args.connect}",
                      '--import', f'--disk=source.pool={args.pool},source.volume={volname}',
+                     '--tpm', 'emulator',
                      f'--name={domname}', '--os-variant=rhel8-unknown',
                      f'--qemu-commandline={qemu_args}',
                      '--noautoconsole']
