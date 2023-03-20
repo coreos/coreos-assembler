@@ -106,7 +106,7 @@ var (
 	AzureOptions     = azureapi.Options{Options: &Options}     // glue to set platform options from main
 	DOOptions        = doapi.Options{Options: &Options}        // glue to set platform options from main
 	ESXOptions       = esxapi.Options{Options: &Options}       // glue to set platform options from main
-	GCEOptions       = gcloudapi.Options{Options: &Options}    // glue to set platform options from main
+	GCPOptions       = gcloudapi.Options{Options: &Options}    // glue to set platform options from main
 	OpenStackOptions = openstackapi.Options{Options: &Options} // glue to set platform options from main
 	PacketOptions    = packetapi.Options{Options: &Options}    // glue to set platform options from main
 	QEMUOptions      = unprivqemu.Options{Options: &Options}   // glue to set platform options from main
@@ -274,7 +274,7 @@ func NewFlight(pltfrm string) (flight platform.Flight, err error) {
 	case "esx":
 		flight, err = esx.NewFlight(&ESXOptions)
 	case "gce":
-		flight, err = gcloud.NewFlight(&GCEOptions)
+		flight, err = gcloud.NewFlight(&GCPOptions)
 	case "openstack":
 		flight, err = openstack.NewFlight(&OpenStackOptions)
 	case "packet":

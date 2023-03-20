@@ -38,19 +38,19 @@ func (gc *cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error)
 
 func (gc *cluster) NewMachineWithOptions(userdata *conf.UserData, options platform.MachineOptions) (platform.Machine, error) {
 	if len(options.AdditionalDisks) > 0 {
-		return nil, errors.New("platform gce does not yet support additional disks")
+		return nil, errors.New("platform gcp does not yet support additional disks")
 	}
 	if options.MultiPathDisk {
-		return nil, errors.New("platform gce does not support multipathed disks")
+		return nil, errors.New("platform gcp does not support multipathed disks")
 	}
 	if options.AdditionalNics > 0 {
-		return nil, errors.New("platform gce does not support additional nics")
+		return nil, errors.New("platform gcp does not support additional nics")
 	}
 	if options.AppendKernelArgs != "" {
-		return nil, errors.New("platform gce does not support appending kernel arguments")
+		return nil, errors.New("platform gcp does not support appending kernel arguments")
 	}
 	if options.AppendFirstbootKernelArgs != "" {
-		return nil, errors.New("platform gce does not support appending firstboot kernel arguments")
+		return nil, errors.New("platform gcp does not support appending firstboot kernel arguments")
 	}
 
 	conf, err := gc.RenderUserData(userdata, map[string]string{

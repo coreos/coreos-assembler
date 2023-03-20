@@ -291,7 +291,7 @@ func writeProps() error {
 		Server     string `json:"server"`
 		BaseVMName string `json:"base_vm_name"`
 	}
-	type GCE struct {
+	type GCP struct {
 		Image       string `json:"image"`
 		MachineType string `json:"type"`
 	}
@@ -323,7 +323,7 @@ func writeProps() error {
 		Azure       Azure     `json:"azure"`
 		DO          DO        `json:"do"`
 		ESX         ESX       `json:"esx"`
-		GCE         GCE       `json:"gce"`
+		GCP         GCP       `json:"gcp"`
 		OpenStack   OpenStack `json:"openstack"`
 		Packet      Packet    `json:"packet"`
 		QEMU        QEMU      `json:"qemu"`
@@ -355,9 +355,9 @@ func writeProps() error {
 			Server:     kola.ESXOptions.Server,
 			BaseVMName: kola.ESXOptions.BaseVMName,
 		},
-		GCE: GCE{
-			Image:       kola.GCEOptions.Image,
-			MachineType: kola.GCEOptions.MachineType,
+		GCP: GCP{
+			Image:       kola.GCPOptions.Image,
+			MachineType: kola.GCPOptions.MachineType,
 		},
 		OpenStack: OpenStack{
 			Region: kola.OpenStackOptions.Region,
@@ -605,7 +605,7 @@ func syncFindParentImageOptions() error {
 			return err
 		}
 	case "gce":
-		kola.GCEOptions.Image, err = parentCosaBuild.FindGCPImage()
+		kola.GCPOptions.Image, err = parentCosaBuild.FindGCPImage()
 		if err != nil {
 			return err
 		}

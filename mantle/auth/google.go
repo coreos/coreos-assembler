@@ -26,7 +26,7 @@ import (
 	"golang.org/x/oauth2/google"
 )
 
-const GCEConfigPath = ".config/gce.json"
+const GCPConfigPath = ".config/gce.json"
 
 var scopes = []string{
 	"https://www.googleapis.com/auth/devstorage.full_control",
@@ -34,7 +34,7 @@ var scopes = []string{
 }
 
 // GoogleServiceClient fetchs a token from Google Compute Engine's
-// metadata service. This should be used on GCE vms. The Default account
+// metadata service. This should be used on GCP vms. The Default account
 // is used.
 func GoogleServiceClient() *http.Client {
 	return &http.Client{
@@ -56,7 +56,7 @@ func GoogleClientFromKeyFile(path string, scope ...string) (*http.Client, error)
 		if err != nil {
 			return nil, err
 		}
-		path = filepath.Join(user.HomeDir, GCEConfigPath)
+		path = filepath.Join(user.HomeDir, GCPConfigPath)
 	}
 	b, err := os.ReadFile(path)
 	if err != nil {

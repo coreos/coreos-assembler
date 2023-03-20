@@ -26,7 +26,7 @@ import (
 var (
 	cmdList = &cobra.Command{
 		Use:   "list-instances --prefix=<prefix>",
-		Short: "List instances on GCE",
+		Short: "List instances on GCP",
 		Run:   runList,
 	}
 )

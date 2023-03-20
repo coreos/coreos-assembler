@@ -23,7 +23,7 @@ the Container Linux SDK for testing software that has landed in the OS image.
 Ideally, all software needed for a test should be included by building
 it into the image from the SDK.
 
-Kola supports running tests on multiple platforms, currently QEMU, GCE,
+Kola supports running tests on multiple platforms, currently QEMU, GCP,
 AWS, VMware VSphere, Packet, and OpenStack. In the future systemd-nspawn and other
 platforms may be added.
 Local platforms do not rely on access to the Internet as a design
@@ -167,7 +167,7 @@ each with their own command: pre-release and release. Both of these commands are
 
 #### plume pre-release
 The pre-release command does as much of the release process as possible without making anything public.
-This includes uploading images to cloud providers (except those like gce which don't allow us to upload
+This includes uploading images to cloud providers (except those like gcp which don't allow us to upload
 images without making them public).
 
 ### plume release
@@ -312,8 +312,8 @@ The JSON file exported to the variable `AZURE_AUTH_LOCATION` should be generated
 }
 ```
 
-### gce
-`gce` uses `~/.config/gce.json`, which contains a JSON-formatted service
+### gcp
+`gcp` uses `~/.config/gce.json`, which contains a JSON-formatted service
 account key. This can be downloaded from the Google Cloud console under
 IAM > Service Accounts > [account] > Keys.
 

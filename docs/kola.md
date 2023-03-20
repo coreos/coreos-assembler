@@ -10,7 +10,7 @@ Kola is a framework for testing software integration in CoreOS systems
 across multiple platforms. It is primarily designed to operate within
 the CoreOS Assembler for testing software that has landed in the OS image.
 
-Kola supports running tests on multiple platforms, currently QEMU, GCE,
+Kola supports running tests on multiple platforms, currently QEMU, GCP,
 AWS, VMware VSphere, Packet, and OpenStack. In the future systemd-nspawn and
 other platforms may be added.
 Local platforms do not rely on access to the Internet as a design
@@ -241,5 +241,5 @@ In order to see the logs for these tests you must enter the `tmp/kola/name_of_th
 
 `kola run -p=gce --gce-image=projects/fedora-coreos-cloud/global/images/fedora-coreos-37-20230227-20-2-gcp-x86-64 --gce-json-key=/data/gce.json --gce-project=fedora-coreos-testing basic` This will run the basic tests on GCP using default machine type `n1-standard-1`.
 - `gce-image` is in the format of `projects/<GCP Image Project>/global/images/<GCP Image Name>`, to find related info refer to https://builds.coreos.fedoraproject.org/browser?stream=testing-devel&arch=x86_64.
-- `gce-json-key` is using a service account's JSON key for authentication, how to create service account keys refer to https://github.com/coreos/coreos-assembler/blob/main/docs/mantle/credentials.md#gce.
+- `gce-json-key` is using a service account's JSON key for authentication, how to create service account keys refer to https://github.com/coreos/coreos-assembler/blob/main/docs/mantle/credentials.md#gcp.
 - `gce-project` is meant for testing in the specified project, or it will use the same as `<GCP Image Project>`.

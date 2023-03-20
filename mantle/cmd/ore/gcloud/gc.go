@@ -25,7 +25,7 @@ import (
 var (
 	cmdGC = &cobra.Command{
 		Use:   "gc",
-		Short: "GC resources in GCE",
+		Short: "GC resources in GCP",
 		Long:  `Delete instances created over the given duration ago.`,
 		RunE:  runGC,
 

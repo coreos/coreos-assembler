@@ -153,7 +153,7 @@ via the `--azure-credentials` option on the command line.
 }
 ```
 
-## gce
+## gcp
 
 If you want to create a service account's JSON key for authentication, refer to [create service account keys](https://cloud.google.com/iam/docs/).
 

@@ -105,11 +105,11 @@ Like Azure, but not.
  - Userdata is passed to the instances via the `ovfenv`. When a machine is created the API updates the `config.vAppConfig.property.guestinfo.coreos.config.data` field to be a base64 encoded userdata config.
  - The general workflow for running tests on ESX is to run the `ore esx create-base` to upload an OVF image and then the resulting image name is specified to `kola` via the `esx-base-vm` parameter. This is done to only require kola to perform a clone operation rather than a full re-upload of the image.
 
-## GCE
+## GCP
 
- - The GCE/gcloud platform wraps [this SDK](google.golang.org/api).
- - By default SSH keys will be passed via both the GCE metadata AND the userdata.
- - UserData is passed to the instances via the GCE metadata service.
+ - The GCP/gcloud platform wraps [this SDK](google.golang.org/api).
+ - By default SSH keys will be passed via both the GCP metadata AND the userdata.
+ - UserData is passed to the instances via the GCP metadata service.
  - Instances are tagged with `created-by:mantle` which is used when filtering instances for `GC`.
 
 ## OpenStack
