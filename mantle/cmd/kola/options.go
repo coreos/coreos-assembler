@@ -113,16 +113,16 @@ func init() {
 	sv(&kola.ESXOptions.Profile, "esx-profile", "", "ESX profile (default \"default\")")
 	sv(&kola.ESXOptions.BaseVMName, "esx-base-vm", "", "ESX base VM name")
 
-	// gce-specific options
-	sv(&kola.GCEOptions.Image, "gce-image", "", "GCE image, full api endpoints names are accepted if resource is in a different project")
-	sv(&kola.GCEOptions.Project, "gce-project", "fedora-coreos-devel", "GCE project name")
-	sv(&kola.GCEOptions.Zone, "gce-zone", "us-central1-a", "GCE zone name")
-	sv(&kola.GCEOptions.MachineType, "gce-machinetype", "n1-standard-1", "GCE machine type")
-	sv(&kola.GCEOptions.DiskType, "gce-disktype", "pd-ssd", "GCE disk type")
-	sv(&kola.GCEOptions.Network, "gce-network", "default", "GCE network")
-	sv(&kola.GCEOptions.ServiceAcct, "gce-service-account", "", "GCE service account to attach to instance (default project default)")
-	bv(&kola.GCEOptions.ServiceAuth, "gce-service-auth", false, "for non-interactive auth when running within GCE")
-	sv(&kola.GCEOptions.JSONKeyFile, "gce-json-key", "", "use a service account's JSON key for authentication (default \"~/"+auth.GCEConfigPath+"\")")
+	// gcp-specific options
+	sv(&kola.GCPOptions.Image, "gce-image", "", "GCP image, full api endpoints names are accepted if resource is in a different project")
+	sv(&kola.GCPOptions.Project, "gce-project", "fedora-coreos-devel", "GCP project name")
+	sv(&kola.GCPOptions.Zone, "gce-zone", "us-central1-a", "GCP zone name")
+	sv(&kola.GCPOptions.MachineType, "gce-machinetype", "n1-standard-1", "GCP machine type")
+	sv(&kola.GCPOptions.DiskType, "gce-disktype", "pd-ssd", "GCP disk type")
+	sv(&kola.GCPOptions.Network, "gce-network", "default", "GCP network")
+	sv(&kola.GCPOptions.ServiceAcct, "gce-service-account", "", "GCP service account to attach to instance (default project default)")
+	bv(&kola.GCPOptions.ServiceAuth, "gce-service-auth", false, "for non-interactive auth when running within GCP")
+	sv(&kola.GCPOptions.JSONKeyFile, "gce-json-key", "", "use a service account's JSON key for authentication (default \"~/"+auth.GCPConfigPath+"\")")
 
 	// openstack-specific options
 	sv(&kola.OpenStackOptions.ConfigPath, "openstack-config-file", "", "Path to a clouds.yaml formatted OpenStack config file. The underlying library defaults to ./clouds.yaml")
@@ -364,13 +364,13 @@ func syncCosaOptions() error {
 		}
 	case "gce":
 		// Pick up the GCP image from the build metadata
-		if kola.GCEOptions.Image == "" && kola.CosaBuild.Meta.Gcp != nil {
-			kola.GCEOptions.Image =
+		if kola.GCPOptions.Image == "" && kola.CosaBuild.Meta.Gcp != nil {
+			kola.GCPOptions.Image =
 				fmt.Sprintf("projects/%s/global/images/%s",
 					kola.CosaBuild.Meta.Gcp.ImageProject,
 					kola.CosaBuild.Meta.Gcp.ImageName)
 
-			fmt.Printf("Using GCP image %s\n", kola.GCEOptions.Image)
+			fmt.Printf("Using GCP image %s\n", kola.GCPOptions.Image)
 		}
 	}
 

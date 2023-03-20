@@ -37,7 +37,7 @@ There are various public cloud options that provide either bare metal or nested
 virt, such as:
 
 - [Packet](https://www.packet.com/)
-- [GCE nested virt](https://cloud.google.com/compute/docs/instances/enable-nested-virtualization-vm-instances)
+- [GCP nested virt](https://cloud.google.com/compute/docs/instances/enable-nested-virtualization-vm-instances)
 - EC2 `i3.metal` instances
 - [IBM Bare Metal](https://www.ibm.com/cloud/bare-metal-servers)
 - etc.

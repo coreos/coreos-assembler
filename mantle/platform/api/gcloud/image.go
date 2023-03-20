@@ -65,7 +65,7 @@ func getImageAPIEndpoint(image, project string) (string, error) {
 		" begin with 'projects/', or use the short name")
 }
 
-// CreateImage creates an image on GCE and returns operation details and
+// CreateImage creates an image on GCP and returns operation details and
 // a Pending. If overwrite is true, an existing image will be overwritten
 // if it exists.
 func (a *API) CreateImage(spec *ImageSpec, overwrite bool) (*compute.Operation, *Pending, error) {
@@ -78,7 +78,7 @@ func (a *API) CreateImage(spec *ImageSpec, overwrite bool) (*compute.Operation, 
 			// If not in URI format then query GCP for that info
 			license, err := a.compute.Licenses.Get(a.options.Project, l).Do()
 			if err != nil {
-				return nil, nil, fmt.Errorf("Invalid GCE license %s: %v", l, err)
+				return nil, nil, fmt.Errorf("Invalid GCP license %s: %v", l, err)
 			}
 			licenses[i] = license.SelfLink
 		}
@@ -156,7 +156,7 @@ func (a *API) ListImages(ctx context.Context, prefix string, family string) ([]*
 		return nil
 	})
 	if err != nil {
-		return nil, fmt.Errorf("Listing GCE images failed: %v", err)
+		return nil, fmt.Errorf("Listing GCP images failed: %v", err)
 	}
 	return images, nil
 }

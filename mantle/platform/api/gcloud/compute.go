@@ -125,7 +125,7 @@ func (a *API) CreateInstance(userdata string, keys []*agent.Key, useServiceAcct 
 
 	op, err := a.compute.Instances.Insert(a.options.Project, a.options.Zone, inst).Do()
 	if err != nil {
-		return nil, fmt.Errorf("failed to request new GCE instance: %v\n", err)
+		return nil, fmt.Errorf("failed to request new GCP instance: %v\n", err)
 	}
 
 	doable := a.compute.ZoneOperations.Get(a.options.Project, a.options.Zone, op.Name)

@@ -26,7 +26,7 @@ import (
 var (
 	cmdDeleteImage = &cobra.Command{
 		Use:   "delete-images <name>...",
-		Short: "Delete GCE images",
+		Short: "Delete GCP images",
 		Run:   runDeleteImage,
 	}
 )
