@@ -54,19 +54,23 @@ if os.getuid() != 0 and len(platformargs) == 0:
 if args.build is not None:
     kolaargs.extend(['--build', args.build])
 outputdir = args.output_dir or default_output_dir
-kolaargs.extend(['--output-dir', outputdir])
 subargs = args.subargs or [default_cmd]
 kolaargs.extend(subargs)
 kolaargs.extend(unknown_args)
 
 if args.basic_qemu_scenarios:
     if arch == "x86_64":
+        os.mkdir(outputdir)  # Create the toplevel output dir
         for scenario in BASIC_SCENARIOS:
+            kolaargs.extend(['--output-dir',
+                             os.path.join(outputdir, scenario.replace('=', '-'))])
             subargs = kolaargs + ['--qemu-' + scenario, 'basic']
             print(subprocess.list2cmdline(subargs), flush=True)
             subprocess.check_call(subargs)
         if not args.skip_secure_boot:
             for scenario in BASIC_SCENARIOS_SECURE_BOOT:
+                kolaargs.extend(['--output-dir',
+                                 os.path.join(outputdir, scenario.replace('=', '-'))])
                 # See https://issues.redhat.com/browse/COS-2000 - there's
                 # some bug with shim/grub2 that fails with secure boot on < ~1300MiB of RAM.
                 # But we're not going to block on that; real world OCP worker nodes are at least 16GiB etc.
@@ -76,10 +80,12 @@ if args.basic_qemu_scenarios:
     else:
         # Basic qemu scenarios using nvme and uefi
         # are not supported on multi-arch
+        kolaargs.extend(['--output-dir', outputdir])
         subargs = kolaargs + ['basic']
         print(subprocess.list2cmdline(subargs), flush=True)
         subprocess.check_call(subargs)
 elif args.upgrades:
+    kolaargs.extend(['--output-dir', outputdir])
     if '--qemu-image-dir' not in unknown_args:
         os.makedirs('tmp/kola-qemu-cache', exist_ok=True)
         kolaargs.extend(['--qemu-image-dir', 'tmp/kola-qemu-cache'])
@@ -87,6 +93,7 @@ elif args.upgrades:
     print(subprocess.list2cmdline(kolaargs), flush=True)
     os.execvp('kola', kolaargs)
 else:
+    kolaargs.extend(['--output-dir', outputdir])
     # flush before exec; see https://docs.python.org/3.7/library/os.html#os.execvpe
     print(subprocess.list2cmdline(kolaargs), flush=True)
     os.execvp('kola', kolaargs)
