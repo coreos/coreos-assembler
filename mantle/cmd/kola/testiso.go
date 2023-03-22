@@ -250,6 +250,19 @@ wait-device-timeout=20000
 method=auto
 `, nmConnectionId)
 
+var nmstateConfigFile = "/etc/nmstate/br-ex.yml"
+var nmstateConfig = `interfaces:
+ - name: br-ex
+   type: linux-bridge
+   state: up
+   ipv4:
+     enabled: false
+   ipv6:
+     enabled: false
+   bridge:
+     port: []
+`
+
 // This is used to verify *both* the live and the target system in the `--add-nm-keyfile` path.
 var verifyNmKeyfile = fmt.Sprintf(`[Unit]
 Description=TestISO Verify NM Keyfile Propagation
@@ -265,6 +278,8 @@ RemainAfterExit=yes
 ExecStart=/usr/bin/journalctl -u nm-initrd --no-pager --grep "policy: set '%[1]s' (.*) as default .* routing and DNS"
 ExecStart=/usr/bin/journalctl -u NetworkManager --no-pager --grep "policy: set '%[1]s' (.*) as default .* routing and DNS"
 ExecStart=/usr/bin/grep "%[1]s" /etc/NetworkManager/system-connections/%[2]s
+# Also verify nmstate config
+ExecStart=/usr/bin/nmcli c show br-ex
 [Install]
 # for live system
 RequiredBy=coreos-installer.target
@@ -713,7 +728,11 @@ func testLiveIso(ctx context.Context, inst platform.Install, outdir string, mini
 	if addNmKeyfile {
 		liveConfig.AddSystemdUnit("coreos-test-nm-keyfile.service", verifyNmKeyfile, conf.Enable)
 		targetConfig.AddSystemdUnit("coreos-test-nm-keyfile.service", verifyNmKeyfile, conf.Enable)
+		// NM keyfile via `iso network embed`
 		inst.NmKeyfiles[nmConnectionFile] = nmConnection
+		// nmstate config via live Ignition config, propagated via
+		// --copy-network, which is enabled by inst.NmKeyfiles
+		liveConfig.AddFile(nmstateConfigFile, nmstateConfig, 0644)
 	}
 
 	mach, err := inst.InstallViaISOEmbed(nil, liveConfig, targetConfig, outdir, isOffline, minimal)
