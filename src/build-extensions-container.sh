@@ -28,9 +28,11 @@ tar -xC "${ctx_dir}/hotfixes" -f /dev/disk/by-id/virtio-hotfixes
 
 # Build the image, replacing the FROM directive with the local image we have.
 # The `variant` variable is explicitely unquoted to be skipped when empty.
+# Mount in /etc/pki/ca-trust to match the CA roots used by the rest of cosa.
 img=localhost/extensions-container
 (set -x; podman build --from oci-archive:"$ostree_ociarchive" --network=host \
     --build-arg COSA=true --build-arg VARIANT="${variant}" --label version="$buildid" \
+    --volume /etc/pki/ca-trust:/etc/pki/ca-trust:ro \
     -t "${img}" -f extensions/Dockerfile "${ctx_dir}")
 
 # Call skopeo to export it from the container storage to an oci-archive.
