@@ -50,13 +50,14 @@ func (a *API) TerminateResourceGroup(name string) error {
 		return nil
 	}
 
-	// Request the delete, but return without waiting for it to complete
-	// as the caller likely doesn't want to wait for the resource group
-	// to be cleaned up.
-	_, err = a.rgClient.BeginDelete(context.Background(), name, nil)
+	// Request the delete and wait until the resource group is cleaned up.
+	ctx := context.Background()
+	poller, err := a.rgClient.BeginDelete(ctx, name, nil)
 	if err != nil {
 		return err
 	}
+
+	_, err = poller.PollUntilDone(ctx, nil)
 
 	return err
 }
