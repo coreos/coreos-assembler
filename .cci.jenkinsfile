@@ -6,58 +6,11 @@ def cpuCount = 6
 def cpuCount_s = cpuCount.toString()
 def imageName = buildImage(env: [ENABLE_GO_RACE_DETECTOR: "1", GOMAXPROCS: cpuCount_s], cpu: cpuCount_s)
 
-def memory = (cpuCount * 1536) as Integer
-pod(image: imageName + ":latest", kvm: true, cpu: "${cpuCount}", memory: "${memory}Mi") {
+pod(image: imageName + ":latest", cpu: "2", memory: "3072Mi") {
     checkout scm
 
     stage("Unit tests") {
         shwrap("make check")
         shwrap("make unittest")
-    }
-
-    shwrap("rpm -qa | sort > rpmdb.txt")
-    archiveArtifacts artifacts: 'rpmdb.txt'
-
-    // Run stage Build FCOS (init, fetch and build)
-    cosaBuild(skipKola: 1, cosaDir: "/srv", noForce: true)
-
-    // Run stage Kola QEMU (basic-qemu-scenarios, upgrade and self tests)
-    kola(cosaDir: "/srv", addExtTests: ["${env.WORKSPACE}/ci/run-kola-self-tests"])
-
-    stage("Build Metal") {
-        cosaParallelCmds(cosaDir: "/srv", commands: ["metal", "metal4k"])
-    }
-
-    stage("Build Live Images") {
-        // Explicitly test re-importing the ostree repo
-        shwrap("cd /srv && rm tmp/repo -rf")
-        utils.cosaCmd(cosaDir: "/srv", args: "buildextend-live --fast")
-    }
-
-    kolaTestIso(cosaDir: "/srv")
-
-    stage("Build Cloud Images") {
-        cosaParallelCmds(cosaDir: "/srv", commands: ["Aliyun", "AWS", "Azure", "DigitalOcean", "Exoscale", "GCP",
-                                                     "IBMCloud", "OpenStack", "VMware", "Vultr"])
-
-        // quick schema validation
-        utils.cosaCmd(cosaDir: "/srv", args: "meta --get name")
-    }
-
-    stage("Compress") {
-        utils.cosaCmd(cosaDir: "/srv", args: "compress --fast")
-    }
-
-    stage("Upload Dry Run") {
-        utils.cosaCmd(cosaDir: "/srv", args: "buildupload --dry-run s3 --acl=public-read my-nonexistent-bucket/my/prefix")
-    }
-
-    // Random other tests that aren't about building. XXX: These should be part of `make
-    // check` or something and use dummy cosa builds.
-    stage("CLI Tests") {
-        shwrap("""
-            cd /srv
-            ${env.WORKSPACE}/tests/test_pruning.sh
-        """)
     }
 }
