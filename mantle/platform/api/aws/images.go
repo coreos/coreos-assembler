@@ -331,14 +331,17 @@ func (a *API) CreateImportRole(bucket string) error {
 
 func (a *API) CreateHVMImage(snapshotID string, diskSizeGiB uint, name string, description string, architecture string) (string, error) {
 	var awsArch string
+	var bootmode string
 	if architecture == "" {
 		architecture = runtime.GOARCH
 	}
 	switch architecture {
 	case "amd64", "x86_64":
 		awsArch = ec2.ArchitectureTypeX8664
+		bootmode = "uefi-preferred"
 	case "arm64", "aarch64":
 		awsArch = ec2.ArchitectureTypeArm64
+		bootmode = "uefi"
 	default:
 		return "", fmt.Errorf("unsupported ec2 architecture %q", architecture)
 	}
@@ -366,6 +369,7 @@ func (a *API) CreateHVMImage(snapshotID string, diskSizeGiB uint, name string, d
 		},
 		EnaSupport:      aws.Bool(true),
 		SriovNetSupport: aws.String("simple"),
+		BootMode:        aws.String(bootmode),
 	})
 }
 
