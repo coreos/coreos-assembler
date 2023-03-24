@@ -322,6 +322,8 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 			return errors.Wrapf(err, "parsing memory option")
 		}
 		builder.Memory = int(parsedMem)
+	} else if kola.QEMUOptions.SecureExecution {
+		builder.Memory = 4096 // SE needs at least 4GB
 	}
 	if err = builder.AddDisksFromSpecs(addDisks); err != nil {
 		return err
@@ -344,6 +346,14 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 	builder.InheritConsole = true
 	builder.ConsoleFile = consoleFile
 	builder.Append(args...)
+
+	// IBM Secure Execution
+	if kola.QEMUOptions.SecureExecution {
+		err := builder.SetSecureExecution(kola.QEMUOptions.SecureExecutionIgnitionPubKey, kola.QEMUOptions.SecureExecutionHostKey, config)
+		if err != nil {
+			return err
+		}
+	}
 
 	if devshell && !devshellConsole {
 		return runDevShellSSH(ctx, builder, config, sshCommand)

@@ -28,7 +28,7 @@ import (
 
 	"github.com/coreos/go-systemd/v22/unit"
 	"github.com/coreos/ignition/v2/config/util"
-	"github.com/coreos/ignition/v2/config/v3_4_experimental/types"
+	"github.com/coreos/ignition/v2/config/v3_4/types"
 	"github.com/coreos/vcontext/path"
 	"github.com/coreos/vcontext/report"
 )
@@ -36,12 +36,13 @@ import (
 var (
 	mountUnitTemplate = template.Must(template.New("unit").Parse(`
 {{- define "options" }}
-  {{- if .MountOptions }}
+  {{- if or .MountOptions .Remote }}
 Options=
     {{- range $i, $opt := .MountOptions }}
       {{- if $i }},{{ end }}
       {{- $opt }}
     {{- end }}
+    {{- if .Remote }}{{ if .MountOptions }},{{ end }}_netdev{{ end }}
   {{- end }}
 {{- end -}}
 
@@ -55,12 +56,6 @@ What={{.Device}}
 RequiredBy=swap.target
 {{- else }}
 [Unit]
-{{- if .Remote }}
-Before=remote-fs.target
-DefaultDependencies=no
-{{- else }}
-Before=local-fs.target
-{{- end }}
 Requires=systemd-fsck@{{.EscapedDevice}}.service
 After=systemd-fsck@{{.EscapedDevice}}.service
 

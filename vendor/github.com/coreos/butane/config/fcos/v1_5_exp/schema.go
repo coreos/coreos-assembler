@@ -20,9 +20,8 @@ import (
 
 type Config struct {
 	base.Config `yaml:",inline"`
-	BootDevice  BootDevice  `yaml:"boot_device"`
-	Extensions  []Extension `yaml:"extensions"`
-	Grub        Grub        `yaml:"grub"`
+	BootDevice  BootDevice `yaml:"boot_device"`
+	Grub        Grub       `yaml:"grub"`
 }
 
 type BootDevice struct {
@@ -32,6 +31,7 @@ type BootDevice struct {
 }
 
 type BootDeviceLuks struct {
+	Discard   *bool       `yaml:"discard"`
 	Tang      []base.Tang `yaml:"tang"`
 	Threshold *int        `yaml:"threshold"`
 	Tpm2      *bool       `yaml:"tpm2"`
@@ -39,10 +39,6 @@ type BootDeviceLuks struct {
 
 type BootDeviceMirror struct {
 	Devices []string `yaml:"devices"`
-}
-
-type Extension struct {
-	Name string `yaml:"name"`
 }
 
 type Grub struct {

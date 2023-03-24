@@ -155,12 +155,7 @@ via the `--azure-credentials` option on the command line.
 
 ## gce
 
-`gce` uses the `~/.boto` file. When the `gce` platform is first used, it will print
-a link that can be used to log into your account with gce and get a verification code
-you can paste in. This will populate the `.boto` file.
-
-See [Google Cloud Platform's Documentation](https://cloud.google.com/storage/docs/boto-gsutil)
-for more information about the `.boto` file.
+If you want to create a service account's JSON key for authentication, refer to [create service account keys](https://cloud.google.com/iam/docs/).
 
 ## openstack
 

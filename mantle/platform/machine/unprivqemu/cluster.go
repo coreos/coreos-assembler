@@ -71,17 +71,6 @@ func (qc *Cluster) NewMachineWithQemuOptions(userdata *conf.UserData, options pl
 	}
 	qc.mu.Unlock()
 
-	var confPath string
-	if conf.IsIgnition() {
-		confPath = filepath.Join(dir, "ignition.json")
-		if err := conf.WriteFile(confPath); err != nil {
-			return nil, err
-		}
-	} else if conf.IsEmpty() {
-	} else {
-		return nil, fmt.Errorf("unprivileged qemu only supports Ignition or empty configs")
-	}
-
 	journal, err := platform.NewJournal(dir)
 	if err != nil {
 		return nil, err
@@ -98,6 +87,24 @@ func (qc *Cluster) NewMachineWithQemuOptions(userdata *conf.UserData, options pl
 	if options.DisablePDeathSig {
 		builder.Pdeathsig = false
 	}
+
+	if qc.flight.opts.SecureExecution {
+		if err := builder.SetSecureExecution(qc.flight.opts.SecureExecutionIgnitionPubKey, qc.flight.opts.SecureExecutionHostKey, conf); err != nil {
+			return nil, err
+		}
+	}
+
+	var confPath string
+	if conf.IsIgnition() {
+		confPath = filepath.Join(dir, "ignition.json")
+		if err := conf.WriteFile(confPath); err != nil {
+			return nil, err
+		}
+	} else if conf.IsEmpty() {
+	} else {
+		return nil, fmt.Errorf("unprivileged qemu only supports Ignition or empty configs")
+	}
+
 	builder.ConfigFile = confPath
 	defer builder.Close()
 	builder.UUID = qm.id
@@ -121,6 +128,8 @@ func (qc *Cluster) NewMachineWithQemuOptions(userdata *conf.UserData, options pl
 		builder.Memory = int(memory)
 	} else if options.MinMemory != 0 {
 		builder.Memory = options.MinMemory
+	} else if qc.flight.opts.SecureExecution {
+		builder.Memory = 4096 // SE needs at least 4GB
 	}
 
 	channel := "virtio"

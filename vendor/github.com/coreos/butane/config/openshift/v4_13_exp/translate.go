@@ -25,7 +25,7 @@ import (
 	"github.com/coreos/butane/translate"
 
 	"github.com/coreos/ignition/v2/config/util"
-	"github.com/coreos/ignition/v2/config/v3_4_experimental/types"
+	"github.com/coreos/ignition/v2/config/v3_4/types"
 	"github.com/coreos/vcontext/path"
 	"github.com/coreos/vcontext/report"
 )
@@ -264,14 +264,14 @@ func validateMCOSupport(mc result.MachineConfig, ts translate.TranslationSet) re
 	}
 	for i, user := range mc.Spec.Config.Passwd.Users {
 		if user.Name == "core" {
-			// SSHAuthorizedKeys is managed; other fields are not
+			// PasswordHash and SSHAuthorizedKeys are managed; other fields are not
 			v := reflect.ValueOf(user)
 			t := v.Type()
 			for j := 0; j < v.NumField(); j++ {
 				fv := v.Field(j)
 				ft := t.Field(j)
 				switch ft.Name {
-				case "Name", "SSHAuthorizedKeys":
+				case "Name", "PasswordHash", "SSHAuthorizedKeys":
 					continue
 				default:
 					if fv.IsValid() && !fv.IsZero() {

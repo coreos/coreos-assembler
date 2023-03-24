@@ -81,7 +81,7 @@ var (
 		"iso-offline-install.mpath.bios",
 		"iso-offline-install.4k.uefi",
 		"miniso-install.bios",
-		"miniso-install.nm.bios.",
+		"miniso-install.nm.bios",
 		"miniso-install.4k.uefi",
 		"miniso-install.4k.nm.uefi",
 		"pxe-offline-install.bios",
@@ -90,6 +90,12 @@ var (
 		"pxe-online-install.4k.uefi",
 	}
 	tests_s390x = []string{
+		"iso-live-login.s390fw",
+		"iso-offline-install.s390fw",
+		// https://github.com/coreos/fedora-coreos-tracker/issues/1434
+		// "iso-offline-install.mpath.s390fw",
+		// https://github.com/coreos/fedora-coreos-tracker/issues/1261
+		// "iso-offline-install.4k.s390fw",
 		"pxe-online-install.s390fw",
 		"pxe-offline-install.s390fw",
 	}
