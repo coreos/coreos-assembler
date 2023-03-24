@@ -31,13 +31,14 @@ go install -mod=vendor $pkgs
 echo "Running tests..."
 go test -mod=vendor -cover "$@" $pkgs
 
-echo "Checking gofmt..."
-res=$(gofmt -d -e $src)
-if [ -n "${res}" ]; then
-    echo "${res}"
-    echo "gofmt check failed" >&2
-    exit 1
-fi
+# Disabled on older branches.
+# echo "Checking gofmt..."
+# res=$(gofmt -d -e $src)
+# if [ -n "${res}" ]; then
+#     echo "${res}"
+#     echo "gofmt check failed" >&2
+#     exit 1
+# fi
 
 echo "Checking govet..."
 go vet -mod=vendor $pkgs
