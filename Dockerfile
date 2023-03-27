@@ -12,6 +12,7 @@ COPY ./build.sh /root/containerbuild/
 RUN ./build.sh configure_yum_repos
 RUN ./build.sh install_rpms
 RUN ./build.sh install_ocp_tools
+RUN ./build.sh trust_redhat_gpg_keys
 
 # This allows Prow jobs for other projects to use our cosa image as their
 # buildroot image (so clonerefs can copy the repo into `/go`). For cosa itself,
