@@ -728,6 +728,9 @@ runvm() {
     # include COSA in the image
     find /usr/lib/coreos-assembler/ -type f > "${vmpreparedir}/hostfiles"
 
+    # and include all GPG keys
+    find /etc/pki/rpm-gpg/ -type f >> "${vmpreparedir}/hostfiles"
+
     # the reason we do a heredoc here is so that the var substition takes
     # place immediately instead of having to proxy them through to the VM
     cat > "${vmpreparedir}/init" <<EOF
