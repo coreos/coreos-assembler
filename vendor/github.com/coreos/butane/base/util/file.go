@@ -15,6 +15,7 @@
 package util
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -34,6 +35,19 @@ func EnsurePathWithinFilesDir(path, filesDir string) error {
 		return common.ErrFilesDirEscape
 	}
 	return nil
+}
+
+func ReadLocalFile(configPath, filesDir string) ([]byte, error) {
+	if filesDir == "" {
+		// a files dir isn't configured; refuse to read anything
+		return nil, common.ErrNoFilesDir
+	}
+	// calculate file path within FilesDir and check for path traversal
+	filePath := filepath.Join(filesDir, filepath.FromSlash(configPath))
+	if err := EnsurePathWithinFilesDir(filePath, filesDir); err != nil {
+		return nil, err
+	}
+	return os.ReadFile(filePath)
 }
 
 // CheckForDecimalMode fails if the specified mode appears to have been

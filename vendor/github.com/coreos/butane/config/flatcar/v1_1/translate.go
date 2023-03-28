@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.)
 
-package v1_1_exp
+package v1_1
 
 import (
 	"github.com/coreos/butane/config/common"
@@ -52,7 +52,7 @@ func (c Config) ToIgn3_4(options common.TranslateOptions) (types.Config, report.
 	return cfg.(types.Config), r, err
 }
 
-// ToIgn3_4Bytes translates from a v1.4 Butane config to a v3.3.0 Ignition config. It returns a report of any errors or
+// ToIgn3_4Bytes translates from a v1.1 Butane config to a v3.4.0 Ignition config. It returns a report of any errors or
 // warnings in the source and resultant config. If the report has fatal errors or it encounters other problems
 // translating, an error is returned.
 func ToIgn3_4Bytes(input []byte, options common.TranslateBytesOptions) ([]byte, report.Report, error) {

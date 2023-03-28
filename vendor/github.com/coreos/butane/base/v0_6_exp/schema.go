@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.)
 
-package v0_5_exp
+package v0_6_exp
 
 type Clevis struct {
 	Custom    ClevisCustom `yaml:"custom"`
@@ -54,8 +54,9 @@ type Disk struct {
 }
 
 type Dropin struct {
-	Contents *string `yaml:"contents"`
-	Name     string  `yaml:"name"`
+	Contents      *string `yaml:"contents"`
+	ContentsLocal *string `yaml:"contents_local"`
+	Name          string  `yaml:"name"`
 }
 
 type File struct {
@@ -166,20 +167,21 @@ type PasswdGroup struct {
 }
 
 type PasswdUser struct {
-	Gecos             *string            `yaml:"gecos"`
-	Groups            []Group            `yaml:"groups"`
-	HomeDir           *string            `yaml:"home_dir"`
-	Name              string             `yaml:"name"`
-	NoCreateHome      *bool              `yaml:"no_create_home"`
-	NoLogInit         *bool              `yaml:"no_log_init"`
-	NoUserGroup       *bool              `yaml:"no_user_group"`
-	PasswordHash      *string            `yaml:"password_hash"`
-	PrimaryGroup      *string            `yaml:"primary_group"`
-	ShouldExist       *bool              `yaml:"should_exist"`
-	SSHAuthorizedKeys []SSHAuthorizedKey `yaml:"ssh_authorized_keys"`
-	Shell             *string            `yaml:"shell"`
-	System            *bool              `yaml:"system"`
-	UID               *int               `yaml:"uid"`
+	Gecos                  *string            `yaml:"gecos"`
+	Groups                 []Group            `yaml:"groups"`
+	HomeDir                *string            `yaml:"home_dir"`
+	Name                   string             `yaml:"name"`
+	NoCreateHome           *bool              `yaml:"no_create_home"`
+	NoLogInit              *bool              `yaml:"no_log_init"`
+	NoUserGroup            *bool              `yaml:"no_user_group"`
+	PasswordHash           *string            `yaml:"password_hash"`
+	PrimaryGroup           *string            `yaml:"primary_group"`
+	ShouldExist            *bool              `yaml:"should_exist"`
+	SSHAuthorizedKeys      []SSHAuthorizedKey `yaml:"ssh_authorized_keys"`
+	SSHAuthorizedKeysLocal []string           `yaml:"ssh_authorized_keys_local"`
+	Shell                  *string            `yaml:"shell"`
+	System                 *bool              `yaml:"system"`
+	UID                    *int               `yaml:"uid"`
 }
 
 type Proxy struct {
@@ -247,11 +249,12 @@ type Tree struct {
 }
 
 type Unit struct {
-	Contents *string  `yaml:"contents"`
-	Dropins  []Dropin `yaml:"dropins"`
-	Enabled  *bool    `yaml:"enabled"`
-	Mask     *bool    `yaml:"mask"`
-	Name     string   `yaml:"name"`
+	Contents      *string  `yaml:"contents"`
+	ContentsLocal *string  `yaml:"contents_local"`
+	Dropins       []Dropin `yaml:"dropins"`
+	Enabled       *bool    `yaml:"enabled"`
+	Mask          *bool    `yaml:"mask"`
+	Name          string   `yaml:"name"`
 }
 
 type Verification struct {
