@@ -223,14 +223,15 @@ github.com/aws/aws-sdk-go/service/sts/stsiface
 # github.com/clarketm/json v1.17.1
 ## explicit
 github.com/clarketm/json
-# github.com/coreos/butane v0.17.1-0.20230309182032-fac76883d698
+# github.com/coreos/butane v0.18.0
 ## explicit; go 1.18
 github.com/coreos/butane/base/util
 github.com/coreos/butane/base/v0_1
 github.com/coreos/butane/base/v0_2
 github.com/coreos/butane/base/v0_3
 github.com/coreos/butane/base/v0_4
-github.com/coreos/butane/base/v0_5_exp
+github.com/coreos/butane/base/v0_5
+github.com/coreos/butane/base/v0_6_exp
 github.com/coreos/butane/config
 github.com/coreos/butane/config/common
 github.com/coreos/butane/config/fcos/v1_0
@@ -238,23 +239,28 @@ github.com/coreos/butane/config/fcos/v1_1
 github.com/coreos/butane/config/fcos/v1_2
 github.com/coreos/butane/config/fcos/v1_3
 github.com/coreos/butane/config/fcos/v1_4
-github.com/coreos/butane/config/fcos/v1_5_exp
+github.com/coreos/butane/config/fcos/v1_5
+github.com/coreos/butane/config/fcos/v1_6_exp
 github.com/coreos/butane/config/flatcar/v1_0
-github.com/coreos/butane/config/flatcar/v1_1_exp
+github.com/coreos/butane/config/flatcar/v1_1
+github.com/coreos/butane/config/flatcar/v1_2_exp
 github.com/coreos/butane/config/openshift/v4_10
 github.com/coreos/butane/config/openshift/v4_10/result
 github.com/coreos/butane/config/openshift/v4_11
 github.com/coreos/butane/config/openshift/v4_11/result
 github.com/coreos/butane/config/openshift/v4_12
 github.com/coreos/butane/config/openshift/v4_12/result
-github.com/coreos/butane/config/openshift/v4_13_exp
-github.com/coreos/butane/config/openshift/v4_13_exp/result
+github.com/coreos/butane/config/openshift/v4_13
+github.com/coreos/butane/config/openshift/v4_13/result
+github.com/coreos/butane/config/openshift/v4_14_exp
+github.com/coreos/butane/config/openshift/v4_14_exp/result
 github.com/coreos/butane/config/openshift/v4_8
 github.com/coreos/butane/config/openshift/v4_8/result
 github.com/coreos/butane/config/openshift/v4_9
 github.com/coreos/butane/config/openshift/v4_9/result
 github.com/coreos/butane/config/r4e/v1_0
-github.com/coreos/butane/config/r4e/v1_1_exp
+github.com/coreos/butane/config/r4e/v1_1
+github.com/coreos/butane/config/r4e/v1_2_exp
 github.com/coreos/butane/config/util
 github.com/coreos/butane/translate
 # github.com/coreos/go-json v0.0.0-20230131223807-18775e0fb4fb

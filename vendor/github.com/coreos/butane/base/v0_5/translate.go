@@ -12,13 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.)
 
-package v0_5_exp
+package v0_5
 
 import (
 	"fmt"
 	"os"
 	slashpath "path"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"text/template"
 
@@ -86,6 +87,8 @@ func (c Config) ToIgn3_4Unvalidated(options common.TranslateOptions) (types.Conf
 	tr.AddCustomTranslator(translateDirectory)
 	tr.AddCustomTranslator(translateLink)
 	tr.AddCustomTranslator(translateResource)
+	tr.AddCustomTranslator(translatePasswdUser)
+	tr.AddCustomTranslator(translateUnit)
 
 	tm, r := translate.Prefixed(tr, "ignition", &c.Ignition, &ret.Ignition)
 	tm.AddTranslation(path.New("yaml", "version"), path.New("json", "ignition", "version"))
@@ -140,26 +143,11 @@ func translateResource(from Resource, options common.TranslateOptions) (to types
 
 	if from.Local != nil {
 		c := path.New("yaml", "local")
-
-		if options.FilesDir == "" {
-			r.AddOnError(c, common.ErrNoFilesDir)
-			return
-		}
-
-		// calculate file path within FilesDir and check for
-		// path traversal
-		filePath := filepath.Join(options.FilesDir, filepath.FromSlash(*from.Local))
-		if err := baseutil.EnsurePathWithinFilesDir(filePath, options.FilesDir); err != nil {
-			r.AddOnError(c, err)
-			return
-		}
-
-		contents, err := os.ReadFile(filePath)
+		contents, err := baseutil.ReadLocalFile(*from.Local, options.FilesDir)
 		if err != nil {
 			r.AddOnError(c, err)
 			return
 		}
-
 		src, compression, err := baseutil.MakeDataURL(contents, to.Compression, !options.NoResourceAutoCompression)
 		if err != nil {
 			r.AddOnError(c, err)
@@ -209,6 +197,93 @@ func translateLink(from Link, options common.TranslateOptions) (to types.Link, t
 	translate.MergeP(tr, tm, &r, "hard", &from.Hard, &to.Hard)
 	translate.MergeP(tr, tm, &r, "overwrite", &from.Overwrite, &to.Overwrite)
 	translate.MergeP(tr, tm, &r, "path", &from.Path, &to.Path)
+	return
+}
+
+func translatePasswdUser(from PasswdUser, options common.TranslateOptions) (to types.PasswdUser, tm translate.TranslationSet, r report.Report) {
+	tr := translate.NewTranslator("yaml", "json", options)
+	tm, r = translate.Prefixed(tr, "gecos", &from.Gecos, &to.Gecos)
+	translate.MergeP(tr, tm, &r, "groups", &from.Groups, &to.Groups)
+	translate.MergeP2(tr, tm, &r, "home_dir", &from.HomeDir, "homeDir", &to.HomeDir)
+	translate.MergeP(tr, tm, &r, "name", &from.Name, &to.Name)
+	translate.MergeP2(tr, tm, &r, "no_create_home", &from.NoCreateHome, "noCreateHome", &to.NoCreateHome)
+	translate.MergeP2(tr, tm, &r, "no_log_init", &from.NoLogInit, "noLogInit", &to.NoLogInit)
+	translate.MergeP2(tr, tm, &r, "no_user_group", &from.NoUserGroup, "noUserGroup", &to.NoUserGroup)
+	translate.MergeP2(tr, tm, &r, "password_hash", &from.PasswordHash, "passwordHash", &to.PasswordHash)
+	translate.MergeP2(tr, tm, &r, "primary_group", &from.PrimaryGroup, "primaryGroup", &to.PrimaryGroup)
+	translate.MergeP(tr, tm, &r, "shell", &from.Shell, &to.Shell)
+	translate.MergeP2(tr, tm, &r, "should_exist", &from.ShouldExist, "shouldExist", &to.ShouldExist)
+	translate.MergeP2(tr, tm, &r, "ssh_authorized_keys", &from.SSHAuthorizedKeys, "sshAuthorizedKeys", &to.SSHAuthorizedKeys)
+	translate.MergeP(tr, tm, &r, "system", &from.System, &to.System)
+	translate.MergeP(tr, tm, &r, "uid", &from.UID, &to.UID)
+
+	if len(from.SSHAuthorizedKeysLocal) > 0 {
+		c := path.New("yaml", "ssh_authorized_keys_local")
+		tm.AddTranslation(c, path.New("json", "sshAuthorizedKeys"))
+
+		if options.FilesDir == "" {
+			r.AddOnError(c, common.ErrNoFilesDir)
+			return
+		}
+
+		for keyFileIndex, sshKeyFile := range from.SSHAuthorizedKeysLocal {
+			sshKeys, err := baseutil.ReadLocalFile(sshKeyFile, options.FilesDir)
+			if err != nil {
+				r.AddOnError(c.Append(keyFileIndex), err)
+				continue
+			}
+			for _, line := range regexp.MustCompile("\r?\n").Split(string(sshKeys), -1) {
+				if line == "" {
+					continue
+				}
+				tm.AddTranslation(c.Append(keyFileIndex), path.New("json", "sshAuthorizedKeys", len(to.SSHAuthorizedKeys)))
+				to.SSHAuthorizedKeys = append(to.SSHAuthorizedKeys, types.SSHAuthorizedKey(line))
+			}
+		}
+	}
+
+	return
+}
+
+func translateUnit(from Unit, options common.TranslateOptions) (to types.Unit, tm translate.TranslationSet, r report.Report) {
+	tr := translate.NewTranslator("yaml", "json", options)
+	tr.AddCustomTranslator(translateDropin)
+	tm, r = translate.Prefixed(tr, "contents", &from.Contents, &to.Contents)
+	translate.MergeP(tr, tm, &r, "dropins", &from.Dropins, &to.Dropins)
+	translate.MergeP(tr, tm, &r, "enabled", &from.Enabled, &to.Enabled)
+	translate.MergeP(tr, tm, &r, "mask", &from.Mask, &to.Mask)
+	translate.MergeP(tr, tm, &r, "name", &from.Name, &to.Name)
+
+	if util.NotEmpty(from.ContentsLocal) {
+		c := path.New("yaml", "contents_local")
+		contents, err := baseutil.ReadLocalFile(*from.ContentsLocal, options.FilesDir)
+		if err != nil {
+			r.AddOnError(c, err)
+			return
+		}
+		tm.AddTranslation(c, path.New("json", "contents"))
+		to.Contents = util.StrToPtr(string(contents))
+	}
+
+	return
+}
+
+func translateDropin(from Dropin, options common.TranslateOptions) (to types.Dropin, tm translate.TranslationSet, r report.Report) {
+	tr := translate.NewTranslator("yaml", "json", options)
+	tm, r = translate.Prefixed(tr, "contents", &from.Contents, &to.Contents)
+	translate.MergeP(tr, tm, &r, "name", &from.Name, &to.Name)
+
+	if util.NotEmpty(from.ContentsLocal) {
+		c := path.New("yaml", "contents_local")
+		contents, err := baseutil.ReadLocalFile(*from.ContentsLocal, options.FilesDir)
+		if err != nil {
+			r.AddOnError(c, err)
+			return
+		}
+		tm.AddTranslation(c, path.New("json", "contents"))
+		to.Contents = util.StrToPtr(string(contents))
+	}
+
 	return
 }
 
