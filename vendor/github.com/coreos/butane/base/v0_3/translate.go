@@ -125,26 +125,11 @@ func translateResource(from Resource, options common.TranslateOptions) (to types
 
 	if from.Local != nil {
 		c := path.New("yaml", "local")
-
-		if options.FilesDir == "" {
-			r.AddOnError(c, common.ErrNoFilesDir)
-			return
-		}
-
-		// calculate file path within FilesDir and check for
-		// path traversal
-		filePath := filepath.Join(options.FilesDir, filepath.FromSlash(*from.Local))
-		if err := baseutil.EnsurePathWithinFilesDir(filePath, options.FilesDir); err != nil {
-			r.AddOnError(c, err)
-			return
-		}
-
-		contents, err := os.ReadFile(filePath)
+		contents, err := baseutil.ReadLocalFile(*from.Local, options.FilesDir)
 		if err != nil {
 			r.AddOnError(c, err)
 			return
 		}
-
 		src, compression, err := baseutil.MakeDataURL(contents, to.Compression, !options.NoResourceAutoCompression)
 		if err != nil {
 			r.AddOnError(c, err)

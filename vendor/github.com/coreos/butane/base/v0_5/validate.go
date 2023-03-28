@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.)
 
-package v0_5_exp
+package v0_5
 
 import (
 	baseutil "github.com/coreos/butane/base/util"
@@ -73,6 +73,20 @@ func (f File) Validate(c path.ContextPath) (r report.Report) {
 func (t Tree) Validate(c path.ContextPath) (r report.Report) {
 	if t.Local == "" {
 		r.AddOnError(c, common.ErrTreeNoLocal)
+	}
+	return
+}
+
+func (rs Unit) Validate(c path.ContextPath) (r report.Report) {
+	if rs.ContentsLocal != nil && rs.Contents != nil {
+		r.AddOnError(c.Append("contents_local"), common.ErrTooManySystemdSources)
+	}
+	return
+}
+
+func (rs Dropin) Validate(c path.ContextPath) (r report.Report) {
+	if rs.ContentsLocal != nil && rs.Contents != nil {
+		r.AddOnError(c.Append("contents_local"), common.ErrTooManySystemdSources)
 	}
 	return
 }

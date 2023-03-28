@@ -23,17 +23,21 @@ import (
 	fcos1_2 "github.com/coreos/butane/config/fcos/v1_2"
 	fcos1_3 "github.com/coreos/butane/config/fcos/v1_3"
 	fcos1_4 "github.com/coreos/butane/config/fcos/v1_4"
-	fcos1_5_exp "github.com/coreos/butane/config/fcos/v1_5_exp"
+	fcos1_5 "github.com/coreos/butane/config/fcos/v1_5"
+	fcos1_6_exp "github.com/coreos/butane/config/fcos/v1_6_exp"
 	flatcar1_0 "github.com/coreos/butane/config/flatcar/v1_0"
-	flatcar1_1_exp "github.com/coreos/butane/config/flatcar/v1_1_exp"
+	flatcar1_1 "github.com/coreos/butane/config/flatcar/v1_1"
+	flatcar1_2_exp "github.com/coreos/butane/config/flatcar/v1_2_exp"
 	openshift4_10 "github.com/coreos/butane/config/openshift/v4_10"
 	openshift4_11 "github.com/coreos/butane/config/openshift/v4_11"
 	openshift4_12 "github.com/coreos/butane/config/openshift/v4_12"
-	openshift4_13_exp "github.com/coreos/butane/config/openshift/v4_13_exp"
+	openshift4_13 "github.com/coreos/butane/config/openshift/v4_13"
+	openshift4_14_exp "github.com/coreos/butane/config/openshift/v4_14_exp"
 	openshift4_8 "github.com/coreos/butane/config/openshift/v4_8"
 	openshift4_9 "github.com/coreos/butane/config/openshift/v4_9"
 	r4e1_0 "github.com/coreos/butane/config/r4e/v1_0"
-	r4e1_1_exp "github.com/coreos/butane/config/r4e/v1_1_exp"
+	r4e1_1 "github.com/coreos/butane/config/r4e/v1_1"
+	r4e1_2_exp "github.com/coreos/butane/config/r4e/v1_2_exp"
 
 	"github.com/coreos/go-semver/semver"
 	"github.com/coreos/vcontext/report"
@@ -56,17 +60,21 @@ func init() {
 	RegisterTranslator("fcos", "1.2.0", fcos1_2.ToIgn3_2Bytes)
 	RegisterTranslator("fcos", "1.3.0", fcos1_3.ToIgn3_2Bytes)
 	RegisterTranslator("fcos", "1.4.0", fcos1_4.ToIgn3_3Bytes)
-	RegisterTranslator("fcos", "1.5.0-experimental", fcos1_5_exp.ToIgn3_4Bytes)
+	RegisterTranslator("fcos", "1.5.0", fcos1_5.ToIgn3_4Bytes)
+	RegisterTranslator("fcos", "1.6.0-experimental", fcos1_6_exp.ToIgn3_5Bytes)
 	RegisterTranslator("flatcar", "1.0.0", flatcar1_0.ToIgn3_3Bytes)
-	RegisterTranslator("flatcar", "1.1.0-experimental", flatcar1_1_exp.ToIgn3_4Bytes)
+	RegisterTranslator("flatcar", "1.1.0", flatcar1_1.ToIgn3_4Bytes)
+	RegisterTranslator("flatcar", "1.2.0-experimental", flatcar1_2_exp.ToIgn3_5Bytes)
 	RegisterTranslator("openshift", "4.8.0", openshift4_8.ToConfigBytes)
 	RegisterTranslator("openshift", "4.9.0", openshift4_9.ToConfigBytes)
 	RegisterTranslator("openshift", "4.10.0", openshift4_10.ToConfigBytes)
 	RegisterTranslator("openshift", "4.11.0", openshift4_11.ToConfigBytes)
 	RegisterTranslator("openshift", "4.12.0", openshift4_12.ToConfigBytes)
-	RegisterTranslator("openshift", "4.13.0-experimental", openshift4_13_exp.ToConfigBytes)
+	RegisterTranslator("openshift", "4.13.0", openshift4_13.ToConfigBytes)
+	RegisterTranslator("openshift", "4.14.0-experimental", openshift4_14_exp.ToConfigBytes)
 	RegisterTranslator("r4e", "1.0.0", r4e1_0.ToIgn3_3Bytes)
-	RegisterTranslator("r4e", "1.1.0-experimental", r4e1_1_exp.ToIgn3_4Bytes)
+	RegisterTranslator("r4e", "1.1.0", r4e1_1.ToIgn3_4Bytes)
+	RegisterTranslator("r4e", "1.2.0-experimental", r4e1_2_exp.ToIgn3_5Bytes)
 	RegisterTranslator("rhcos", "0.1.0", unsupportedRhcosVariant)
 }
 

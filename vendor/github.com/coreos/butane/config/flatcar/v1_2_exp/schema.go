@@ -1,4 +1,4 @@
-// Copyright 2022 Red Hat, Inc
+// Copyright 2020 Red Hat, Inc
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.)
 
-package v1_1_exp
+package v1_2_exp
 
 import (
-	base "github.com/coreos/butane/base/v0_5_exp"
+	base "github.com/coreos/butane/base/v0_6_exp"
 )
 
 type Config struct {
