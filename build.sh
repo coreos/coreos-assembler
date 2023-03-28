@@ -113,8 +113,9 @@ trust_redhat_gpg_keys() {
         local base
         base=$(basename "$f")
         if [ ! -e "/etc/pki/rpm-gpg/$base" ]; then
-            # libdnf at least ignores symlinks, so copy it
-            cp -vt /etc/pki/rpm-gpg "$f"
+            # libdnf at least ignores symlinks, so we need to copy.
+            # but might as well keep symlinks as symlinks.
+            cp -vPt /etc/pki/rpm-gpg "$f"
         fi
     done
 }
