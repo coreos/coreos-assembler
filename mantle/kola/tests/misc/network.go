@@ -47,7 +47,6 @@ func init() {
 		ExcludeDistros: []string{"fcos", "rhcos"},
 	})
 	// This test follows the same network configuration used on https://github.com/RHsyseng/rhcos-slb
-	// with a slight change, where the MCO script is run from ignition: https://github.com/RHsyseng/rhcos-slb/blob/main/setup-ovs.sh.
 	register.RegisterTest(&register.Test{
 		Run:         NetworkAdditionalNics,
 		ClusterSize: 0,
@@ -187,153 +186,46 @@ func NetworkInitramfsSecondBoot(c cluster.TestCluster) {
 }
 
 var (
+	// copied from https://github.com/RHsyseng/rhcos-slb/blob/31788956cc663d8375d7b8c09df015e623c7afb3/capture-macs.sh
 	captureMacsScript = `#!/usr/bin/env bash
-          set -ex
-          echo "Processing MAC addresses"
-          cmdline=( $(</proc/cmdline) )
-          karg() {
-              local name="$1" value="${2:-}"
-              for arg in "${cmdline[@]}"; do
-                  if [[ "${arg%%=*}" == "${name}" ]]; then
-                      value="${arg#*=}"
-                  fi
-              done
-              echo "${value}"
-          }
-          udevadm settle
-          macs="$(karg macAddressList)"
-          if [[ -z $macs ]]; then
-            echo "No MAC addresses specified."
-            exit 1
-          fi
-          export PRIMARY_MAC=$(echo $macs | awk -F, '{print $1}')
-          export SECONDARY_MAC=$(echo $macs | awk -F, '{print $2}')
-          mount -o rw,remount /boot
-          echo -e "PRIMARY_MAC=${PRIMARY_MAC}\nSECONDARY_MAC=${SECONDARY_MAC}" > /boot/mac_addresses
+	set -ex
+	echo "Processing MAC addresses"
+	cmdline=( $(</proc/cmdline) )
+	karg() {
+		local name="$1" value="${2:-}"
+		for arg in "${cmdline[@]}"; do
+			if [[ "${arg%%=*}" == "${name}" ]]; then
+				value="${arg#*=}"
+			fi
+		done
+		echo "${value}"
+	}
+	# Wait for device nodes
+	udevadm settle
+
+	macs="$(karg macAddressList)"
+	if [[ -z $macs ]]; then
+		echo "No MAC addresses specified."
+		exit 0
+	fi
+
+	export PRIMARY_MAC=$(echo $macs | awk -F, '{print $1}')
+	export SECONDARY_MAC=$(echo $macs | awk -F, '{print $2}')
+	mount -o rw,remount /boot
+	echo -e "PRIMARY_MAC=${PRIMARY_MAC}\nSECONDARY_MAC=${SECONDARY_MAC}" > /boot/mac_addresses
 	`
-
-	setupOvsScript = `#!/usr/bin/env bash
-          set -ex
-
-          rm -rf /etc/NetworkManager/system-connections/*
-
-          # Get the location of the NetworkManager config files
-          NMPATH=$(NetworkManager --print-config | sed -nr "/^\[keyfile\]/ { :l /^path[ ]*/ { s/.*=[ ]*//; p; q;}; n; b l;}")
-
-          if [[ ! -f /boot/mac_addresses ]] ; then
-            echo "no mac address configuration file found .. exiting"
-            exit 1
-          fi
-
-          # Store the location of the NM config files
-          if [[ ! -d $NMPATH ]]; then
-           NMPATH=/etc/NetworkManager/system-connections
-          fi
-          
-          # Copy the config files from stored location to NM settings folder
-          if [[ -d /var/ovsbond ]]; then
-            echo "Loading OVS old profile"
-            cp -r /var/ovsbond/*  $NMPATH
-            systemctl restart NetworkManager
-          fi
-
-          if [[ $(nmcli conn | grep -c ovs) -eq 0 ]]; then
-            echo "configure ovs bonding"
-            ovs-vsctl --if-exists del-br brcnv
-            primary_mac=$(cat /boot/mac_addresses | awk -F= '/PRIMARY_MAC/ {print $2}')
-            secondary_mac=$(cat /boot/mac_addresses | awk -F= '/SECONDARY_MAC/ {print $2}')
-
-            default_device=""
-            secondary_device=""
-            profile_name=""
-            secondary_profile_name=""
-
-            for dev in $(nmcli device status | awk '/ethernet/ {print $1}'); do
-          	dev_mac=$(nmcli -g GENERAL.HWADDR dev show $dev | sed -e 's/\\//g' | tr '[A-Z]' '[a-z]')
-          	case $dev_mac in
-          	  $primary_mac)
-                    default_device=$dev
-                    profile_name=$(nmcli -g GENERAL.CONNECTION dev show $dev)
-                    ;;
-          	  $secondary_mac)
-                    secondary_device=$dev
-                    secondary_profile_name=$(nmcli -g GENERAL.CONNECTION dev show $dev)
-                    ;;
-          	  *)
-                    ;;
-          	 esac
-            done
-            echo -e "default dev: $default_device ($profile_name)\nsecondary dev: $secondary_device ($secondary_profile_name)"
-
-            mac=$(sudo nmcli -g GENERAL.HWADDR dev show $default_device | sed -e 's/\\//g')
-
-            # make bridge
-            nmcli conn add type ovs-bridge conn.interface brcnv con-name ovs-bridge-brcnv
-            nmcli conn add type ovs-port conn.interface brcnv-port master brcnv
-            nmcli conn add type ovs-interface con-name ovs-brcnv-iface conn.interface brcnv master brcnv-port ipv4.method auto ipv4.dhcp-client-id "mac" connection.autoconnect no 802-3-ethernet.cloned-mac-address $mac
-
-            # make bond
-            nmcli conn add type ovs-port conn.interface bond0 master brcnv ovs-port.bond-mode balance-slb con-name ovs-slave-bond0
-            nmcli conn add type ethernet conn.interface $default_device master bond0 con-name ovs-slave-1
-            nmcli conn add type ethernet conn.interface $secondary_device master bond0 con-name ovs-slave-2
-            nmcli conn down "$profile_name" || true
-            nmcli conn mod "$profile_name" connection.autoconnect no || true
-            nmcli conn down "$secondary_profile_name" || true
-            nmcli conn mod "$secondary_profile_name" connection.autoconnect no || true
-            if ! nmcli conn up ovs-brcnv-iface; then
-          	  nmcli conn up "$profile_name" || true
-          	  nmcli conn mod "$profile_name" connection.autoconnect yes
-          	  nmcli conn up "$secondary_profile_name" || true
-          	  nmcli conn mod "$secondary_profile_name" connection.autoconnect yes
-          	  nmcli conn delete $(nmcli c show |grep ovs-cnv |awk '{print $1}') || true
-            else
-          	  nmcli conn mod ovs-brcnv-iface connection.autoconnect yes
-          	  nmcli conn up ovs-slave-2
-          	  # Remove Old NM config files and copy the new-ones
-          	  rm -rf /var/ovsbond
-          	  cp -r $NMPATH /var/ovsbond || true
-            fi
-          else
-          	echo "ovs bridge already present"
-          	for c in ovs-bridge-brcnv ovs-slave-bond0 ovs-slave-brcnv-port ovs-slave-1 ovs-slave-2 ovs-brcnv-iface; do nmcli c up $c; done
-          fi
-`
 )
 
 // NetworkAdditionalNics verifies that additional NICs are created on the node
 func NetworkAdditionalNics(c cluster.TestCluster) {
 	primaryMac := "52:55:00:d1:56:00"
 	secondaryMac := "52:55:00:d1:56:01"
-	ovsBridgeInterface := "ovs-brcnv-iface"
 
 	setupMultipleNetworkTest(c, primaryMac, secondaryMac)
 
 	m := c.Machines()[0]
-	checkExpectedMAC(c, m, ovsBridgeInterface, primaryMac)
-}
-
-func checkExpectedMAC(c cluster.TestCluster, m platform.Machine, interfaceName, expectedMac string) {
-	interfaceMACAddress, err := getInterfaceMAC(c, m, interfaceName)
-	if err != nil {
-		c.Fatalf("failed to fetch interface %s MAC Address: %v", interfaceName, err)
-	}
-
-	if interfaceMACAddress != expectedMac {
-		c.Fatalf("interface %s MAC %s does not match expected MAC %s", interfaceName, interfaceMACAddress, expectedMac)
-	}
-}
-
-func getInterfaceMAC(c cluster.TestCluster, m platform.Machine, interfaceName string) (string, error) {
-	output := string(c.MustSSH(m, fmt.Sprintf("nmcli -g 802-3-ethernet.cloned-mac-address connection show %s", interfaceName)))
-	output = strings.Replace(output, "\\:", ":", -1)
-
-	var macAddress net.HardwareAddr
-	var err error
-	if macAddress, err = net.ParseMAC(output); err != nil {
-		return "", fmt.Errorf("failed to parse MAC address %v for interface Name %s: %v", output, interfaceName, err)
-	}
-
-	return macAddress.String(), nil
+	expectedMacsList := []string{primaryMac, secondaryMac}
+	checkExpectedMACs(c, m, expectedMacsList)
 }
 
 func addKernelArgs(c cluster.TestCluster, m platform.Machine, args []string) {
@@ -364,46 +256,29 @@ func setupMultipleNetworkTest(c cluster.TestCluster, primaryMac, secondaryMac st
 		},
 	}
 
-	var userdata *conf.UserData = conf.Ignition(fmt.Sprintf(`{
+	var userdata = conf.Ignition(fmt.Sprintf(`{
 		"ignition": {
 			"version": "3.2.0"
 		},
 		"storage": {
 			"files": [
-				{
-					"path": "/usr/local/bin/capture-macs",
-					"contents": { "source": "data:text/plain;base64,%s" },
-					"mode": 755
-				},
-				{
-					"path": "/usr/local/bin/setup-ovs",
-					"contents": { "source": "data:text/plain;base64,%s" },
-					"mode": 755
-				}
+			  {
+				"path": "/usr/local/bin/capture-macs",
+				"contents": { "source": "data:text/plain;base64,%s" },
+				"mode": 755
+			  }
 			]
 		},
 		"systemd": {
 			"units": [
-				{
-					"enabled": true,
-					"name": "openvswitch.service"
-				},
-				{
-					"contents": "[Unit]\nDescription=Capture MAC address from kargs\nBefore=coreos-installer.target\nAfter=coreos-installer.service\n\nConditionKernelCommandLine=macAddressList\nRequiresMountsFor=/boot\n\n[Service]\nType=oneshot\nMountFlags=slave\nExecStart=/usr/local/bin/capture-macs\n\n[Install]\nRequiredBy=multi-user.target\n",
-					"enabled": true,
-					"name": "capture-macs.service"
-				},
-				{
-					"contents": "[Unit]\nDescription=Setup OVS bonding\nBefore=ovs-configuration.service\nAfter=NetworkManager.service\nAfter=openvswitch.service\nAfter=capture-macs.service\nConditionKernelCommandLine=macAddressList\n\n[Service]\nType=oneshot\nExecStart=/usr/local/bin/setup-ovs\n\n[Install]\nRequiredBy=multi-user.target\n",
-					"enabled": true,
-					"name": "setup-ovs.service"
-				}
-
+			  {
+				"contents": "[Unit]\nRequiresMountsFor=/boot\nDescription=Capture MAC address from kargs\nAfter=create-datastore.service\nBefore=coreos-installer.target\n\n\n[Service]\nType=oneshot\nMountFlags=slave\nExecStart=/usr/local/bin/capture-macs\n\n[Install]\nRequiredBy=multi-user.target\n",
+				"enabled": true,
+				"name": "capture-macs.service"
+			  }
 			]
 		}
-	}`,
-		base64.StdEncoding.EncodeToString([]byte(captureMacsScript)),
-		base64.StdEncoding.EncodeToString([]byte(setupOvsScript))))
+	}`, base64.StdEncoding.EncodeToString([]byte(captureMacsScript))))
 
 	switch pc := c.Cluster.(type) {
 	// These cases have to be separated because when put together to the same case statement
@@ -421,4 +296,64 @@ func setupMultipleNetworkTest(c cluster.TestCluster, primaryMac, secondaryMac st
 
 	// Add karg needed for the ignition to configure the network properly.
 	addKernelArgs(c, m, []string{fmt.Sprintf("macAddressList=%s,%s", primaryMac, secondaryMac)})
+}
+
+func checkExpectedMACs(c cluster.TestCluster, m platform.Machine, expectedMacsList []string) {
+	macConnectionMap, err := getMacConnectionMap(c, m)
+	if err != nil {
+		c.Fatalf(fmt.Sprintf("failed to get macConnectionMap: %v", err))
+	}
+
+	for _, expectedMac := range expectedMacsList {
+		if _, exists := macConnectionMap[expectedMac]; !exists {
+			c.Fatalf(fmt.Sprintf("expected Mac %s does not appear in macConnectionMap %v", expectedMac, macConnectionMap))
+		}
+	}
+}
+
+func getMacConnectionMap(c cluster.TestCluster, m platform.Machine) (map[string]string, error) {
+	connectionNamesList := getConnectionsList(c, m)
+	connectionDeviceMap, err := getConnectionDeviceMap(c, m, connectionNamesList)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get connectionDeviceMap: %v", err)
+	}
+
+	macConnectionMap := map[string]string{}
+	for _, connection := range connectionNamesList {
+		interfaceMACAddress, err := getDeviceMAC(c, m, connectionDeviceMap[connection])
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch connection %s MAC Address: %v", connection, err)
+		}
+		macConnectionMap[interfaceMACAddress] = connection
+	}
+	return macConnectionMap, nil
+}
+
+func getConnectionsList(c cluster.TestCluster, m platform.Machine) []string {
+	output := string(c.MustSSH(m, "nmcli -t -f NAME con show"))
+	connectionNames := strings.Split(output, "\n")
+	return connectionNames
+}
+
+func getConnectionDeviceMap(c cluster.TestCluster, m platform.Machine, connectionNamesList []string) (map[string]string, error) {
+	connectionDeviceMap := map[string]string{}
+
+	for _, connection := range connectionNamesList {
+		deviceName := string(c.MustSSH(m, fmt.Sprintf("nmcli -g connection.interface-name con show '%s'", connection)))
+		connectionDeviceMap[connection] = deviceName
+	}
+	return connectionDeviceMap, nil
+}
+
+func getDeviceMAC(c cluster.TestCluster, m platform.Machine, deviceName string) (string, error) {
+	output := string(c.MustSSH(m, fmt.Sprintf("nmcli -g GENERAL.HWADDR device show '%s'", deviceName)))
+	output = strings.Replace(output, "\\:", ":", -1)
+
+	var macAddress net.HardwareAddr
+	var err error
+	if macAddress, err = net.ParseMAC(output); err != nil {
+		return "", fmt.Errorf("failed to parse MAC address %v for device Name %s: %v", output, deviceName, err)
+	}
+
+	return macAddress.String(), nil
 }
