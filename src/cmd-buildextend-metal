@@ -298,7 +298,8 @@ j = json.load(sys.stdin)
 j['images']['ignition-gpg-key'] = {
     'path': '${gpg_key}',
     'sha256': '$(sha256sum_str < "${ignition_pubkey}")',
-    'size': $(stat -c '%s' "${ignition_pubkey}")
+    'size': $(stat -c '%s' "${ignition_pubkey}"),
+    'skip-compression': True
 }
 json.dump(j, sys.stdout, indent=4)
 " < "meta.json.new" | jq -s add > "key.json"
