@@ -6,7 +6,7 @@ def cpuCount = 6
 def cpuCount_s = cpuCount.toString()
 def imageName = buildImage(env: [ENABLE_GO_RACE_DETECTOR: "1", GOMAXPROCS: cpuCount_s], cpu: cpuCount_s)
 
-pod(image: imageName + ":latest", cpu: "2", memory: "2048Mi") {
+pod(image: imageName + ":latest", cpu: "2", memory: "3072Mi") {
     checkout scm
 
     stage("Unit tests") {
