@@ -28,7 +28,7 @@ var (
 	ErrInvalidGeneratedConfig = errors.New("config generated was invalid")
 
 	// deprecated variant/version
-	ErrRhcosVariantDeprecated = errors.New("this variant is deprecated and will be removed in a future release; use openshift variant instead")
+	ErrRhcosVariantUnsupported = errors.New("rhcos variant has been removed; use openshift variant instead: https://coreos.github.io/butane/upgrading-openshift/")
 
 	// resources and trees
 	ErrTooManyResourceSources = errors.New("only one of the following can be set: inline, local, source")
@@ -41,6 +41,9 @@ var (
 
 	// filesystem nodes
 	ErrDecimalMode = errors.New("unreasonable mode would be reasonable if specified in octal; remember to add a leading zero")
+
+	// systemd
+	ErrTooManySystemdSources = errors.New("only one of the following can be set: contents, contents_local")
 
 	// mount units
 	ErrMountUnitNoPath   = errors.New("path is required if with_mount_unit is true and format is not swap")
@@ -65,7 +68,7 @@ var (
 	ErrFileCompressionSupport = errors.New("file compression is not supported in this spec version")
 	ErrFileSpecialModeSupport = errors.New("special mode bits are not supported in this spec version")
 	ErrGroupSupport           = errors.New("groups are not supported in this spec version")
-	ErrUserFieldSupport       = errors.New("fields other than \"name\" and \"ssh_authorized_keys\" are not supported in this spec version")
+	ErrUserFieldSupport       = errors.New("fields other than \"name\", \"ssh_authorized_keys\", and \"password_hash\" (4.13.0+) are not supported in this spec version")
 	ErrUserNameSupport        = errors.New("users other than \"core\" are not supported in this spec version")
 	ErrKernelArgumentSupport  = errors.New("this field cannot be used for kernel arguments in this spec version; use openshift.kernel_arguments instead")
 
@@ -77,9 +80,6 @@ var (
 	ErrLinkSupport       = errors.New("links are not supported in this spec version")
 	ErrLuksSupport       = errors.New("luks is not supported in this spec version")
 	ErrRaidSupport       = errors.New("raid is not supported in this spec version")
-
-	// Extensions
-	ErrExtensionNameRequired = errors.New("field \"name\" is required")
 
 	// Grub
 	ErrGrubUserNameNotSpecified = errors.New("field \"name\" is required")
