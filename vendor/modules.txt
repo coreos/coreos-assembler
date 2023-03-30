@@ -1,5 +1,8 @@
-# cloud.google.com/go v0.65.0
-## explicit; go 1.11
+# cloud.google.com/go/compute v1.18.0
+## explicit; go 1.19
+cloud.google.com/go/compute/internal
+# cloud.google.com/go/compute/metadata v0.2.3
+## explicit; go 1.19
 cloud.google.com/go/compute/metadata
 # github.com/Azure/azure-sdk-for-go/sdk/azcore v1.3.0
 ## explicit; go 1.18
@@ -159,7 +162,7 @@ github.com/aliyun/alibaba-cloud-sdk-go/services/ecs
 # github.com/aliyun/aliyun-oss-go-sdk v2.0.3+incompatible
 ## explicit
 github.com/aliyun/aliyun-oss-go-sdk/oss
-# github.com/aws/aws-sdk-go v1.34.28
+# github.com/aws/aws-sdk-go v1.44.204
 ## explicit; go 1.11
 github.com/aws/aws-sdk-go/aws
 github.com/aws/aws-sdk-go/aws/arn
@@ -172,6 +175,7 @@ github.com/aws/aws-sdk-go/aws/credentials
 github.com/aws/aws-sdk-go/aws/credentials/ec2rolecreds
 github.com/aws/aws-sdk-go/aws/credentials/endpointcreds
 github.com/aws/aws-sdk-go/aws/credentials/processcreds
+github.com/aws/aws-sdk-go/aws/credentials/ssocreds
 github.com/aws/aws-sdk-go/aws/credentials/stscreds
 github.com/aws/aws-sdk-go/aws/csm
 github.com/aws/aws-sdk-go/aws/defaults
@@ -182,7 +186,9 @@ github.com/aws/aws-sdk-go/aws/session
 github.com/aws/aws-sdk-go/aws/signer/v4
 github.com/aws/aws-sdk-go/internal/context
 github.com/aws/aws-sdk-go/internal/ini
-github.com/aws/aws-sdk-go/internal/s3err
+github.com/aws/aws-sdk-go/internal/s3shared
+github.com/aws/aws-sdk-go/internal/s3shared/arn
+github.com/aws/aws-sdk-go/internal/s3shared/s3err
 github.com/aws/aws-sdk-go/internal/sdkio
 github.com/aws/aws-sdk-go/internal/sdkmath
 github.com/aws/aws-sdk-go/internal/sdkrand
@@ -196,17 +202,20 @@ github.com/aws/aws-sdk-go/private/protocol/ec2query
 github.com/aws/aws-sdk-go/private/protocol/eventstream
 github.com/aws/aws-sdk-go/private/protocol/eventstream/eventstreamapi
 github.com/aws/aws-sdk-go/private/protocol/json/jsonutil
+github.com/aws/aws-sdk-go/private/protocol/jsonrpc
 github.com/aws/aws-sdk-go/private/protocol/query
 github.com/aws/aws-sdk-go/private/protocol/query/queryutil
 github.com/aws/aws-sdk-go/private/protocol/rest
+github.com/aws/aws-sdk-go/private/protocol/restjson
 github.com/aws/aws-sdk-go/private/protocol/restxml
 github.com/aws/aws-sdk-go/private/protocol/xml/xmlutil
 github.com/aws/aws-sdk-go/service/ec2
 github.com/aws/aws-sdk-go/service/iam
 github.com/aws/aws-sdk-go/service/s3
-github.com/aws/aws-sdk-go/service/s3/internal/arn
 github.com/aws/aws-sdk-go/service/s3/s3iface
 github.com/aws/aws-sdk-go/service/s3/s3manager
+github.com/aws/aws-sdk-go/service/sso
+github.com/aws/aws-sdk-go/service/sso/ssoiface
 github.com/aws/aws-sdk-go/service/sts
 github.com/aws/aws-sdk-go/service/sts/stsiface
 # github.com/baiyubin/aliyun-sts-go-sdk v0.0.0-20180326062324-cfa1a18b161f
@@ -214,14 +223,15 @@ github.com/aws/aws-sdk-go/service/sts/stsiface
 # github.com/clarketm/json v1.17.1
 ## explicit
 github.com/clarketm/json
-# github.com/coreos/butane v0.17.0
-## explicit; go 1.17
+# github.com/coreos/butane v0.18.0
+## explicit; go 1.18
 github.com/coreos/butane/base/util
 github.com/coreos/butane/base/v0_1
 github.com/coreos/butane/base/v0_2
 github.com/coreos/butane/base/v0_3
 github.com/coreos/butane/base/v0_4
-github.com/coreos/butane/base/v0_5_exp
+github.com/coreos/butane/base/v0_5
+github.com/coreos/butane/base/v0_6_exp
 github.com/coreos/butane/config
 github.com/coreos/butane/config/common
 github.com/coreos/butane/config/fcos/v1_0
@@ -229,31 +239,35 @@ github.com/coreos/butane/config/fcos/v1_1
 github.com/coreos/butane/config/fcos/v1_2
 github.com/coreos/butane/config/fcos/v1_3
 github.com/coreos/butane/config/fcos/v1_4
-github.com/coreos/butane/config/fcos/v1_5_exp
+github.com/coreos/butane/config/fcos/v1_5
+github.com/coreos/butane/config/fcos/v1_6_exp
 github.com/coreos/butane/config/flatcar/v1_0
-github.com/coreos/butane/config/flatcar/v1_1_exp
+github.com/coreos/butane/config/flatcar/v1_1
+github.com/coreos/butane/config/flatcar/v1_2_exp
 github.com/coreos/butane/config/openshift/v4_10
 github.com/coreos/butane/config/openshift/v4_10/result
 github.com/coreos/butane/config/openshift/v4_11
 github.com/coreos/butane/config/openshift/v4_11/result
 github.com/coreos/butane/config/openshift/v4_12
 github.com/coreos/butane/config/openshift/v4_12/result
-github.com/coreos/butane/config/openshift/v4_13_exp
-github.com/coreos/butane/config/openshift/v4_13_exp/result
+github.com/coreos/butane/config/openshift/v4_13
+github.com/coreos/butane/config/openshift/v4_13/result
+github.com/coreos/butane/config/openshift/v4_14_exp
+github.com/coreos/butane/config/openshift/v4_14_exp/result
 github.com/coreos/butane/config/openshift/v4_8
 github.com/coreos/butane/config/openshift/v4_8/result
 github.com/coreos/butane/config/openshift/v4_9
 github.com/coreos/butane/config/openshift/v4_9/result
 github.com/coreos/butane/config/r4e/v1_0
-github.com/coreos/butane/config/r4e/v1_1_exp
-github.com/coreos/butane/config/rhcos/v0_1
+github.com/coreos/butane/config/r4e/v1_1
+github.com/coreos/butane/config/r4e/v1_2_exp
 github.com/coreos/butane/config/util
 github.com/coreos/butane/translate
-# github.com/coreos/go-json v0.0.0-20220810161552-7cce03887f34
-## explicit; go 1.17
+# github.com/coreos/go-json v0.0.0-20230131223807-18775e0fb4fb
+## explicit; go 1.18
 github.com/coreos/go-json
-# github.com/coreos/go-semver v0.3.0
-## explicit
+# github.com/coreos/go-semver v0.3.1
+## explicit; go 1.8
 github.com/coreos/go-semver/semver
 # github.com/coreos/go-systemd v0.0.0-20190321100706-95778dfbb74e
 ## explicit
@@ -264,10 +278,11 @@ github.com/coreos/go-systemd/unit
 github.com/coreos/go-systemd/v22/dbus
 github.com/coreos/go-systemd/v22/journal
 github.com/coreos/go-systemd/v22/unit
-# github.com/coreos/ignition/v2 v2.14.0
-## explicit; go 1.15
+# github.com/coreos/ignition/v2 v2.15.0
+## explicit; go 1.18
 github.com/coreos/ignition/v2/config/merge
 github.com/coreos/ignition/v2/config/shared/errors
+github.com/coreos/ignition/v2/config/shared/parse
 github.com/coreos/ignition/v2/config/shared/validations
 github.com/coreos/ignition/v2/config/translate
 github.com/coreos/ignition/v2/config/util
@@ -282,9 +297,12 @@ github.com/coreos/ignition/v2/config/v3_2/types
 github.com/coreos/ignition/v2/config/v3_3
 github.com/coreos/ignition/v2/config/v3_3/translate
 github.com/coreos/ignition/v2/config/v3_3/types
-github.com/coreos/ignition/v2/config/v3_4_experimental
-github.com/coreos/ignition/v2/config/v3_4_experimental/translate
-github.com/coreos/ignition/v2/config/v3_4_experimental/types
+github.com/coreos/ignition/v2/config/v3_4
+github.com/coreos/ignition/v2/config/v3_4/translate
+github.com/coreos/ignition/v2/config/v3_4/types
+github.com/coreos/ignition/v2/config/v3_5_experimental
+github.com/coreos/ignition/v2/config/v3_5_experimental/translate
+github.com/coreos/ignition/v2/config/v3_5_experimental/types
 github.com/coreos/ignition/v2/config/validate
 # github.com/coreos/pkg v0.0.0-20180928190104-399ea9e2e55f
 ## explicit
@@ -299,8 +317,8 @@ github.com/coreos/stream-metadata-go/release
 github.com/coreos/stream-metadata-go/release/rhcos
 github.com/coreos/stream-metadata-go/stream
 github.com/coreos/stream-metadata-go/stream/rhcos
-# github.com/coreos/vcontext v0.0.0-20220810162454-88bd546c634c
-## explicit; go 1.17
+# github.com/coreos/vcontext v0.0.0-20230201181013-d72178a18687
+## explicit; go 1.18
 github.com/coreos/vcontext/json
 github.com/coreos/vcontext/path
 github.com/coreos/vcontext/report
@@ -335,6 +353,7 @@ github.com/golang-jwt/jwt/v4
 github.com/golang/groupcache/lru
 # github.com/golang/protobuf v1.5.2
 ## explicit; go 1.9
+github.com/golang/protobuf/jsonpb
 github.com/golang/protobuf/proto
 github.com/golang/protobuf/ptypes
 github.com/golang/protobuf/ptypes/any
@@ -343,12 +362,19 @@ github.com/golang/protobuf/ptypes/timestamp
 # github.com/google/go-querystring v1.0.0
 ## explicit
 github.com/google/go-querystring/query
-# github.com/google/uuid v1.1.1
+# github.com/google/uuid v1.3.0
 ## explicit
 github.com/google/uuid
-# github.com/googleapis/gax-go/v2 v2.0.5
-## explicit
+# github.com/googleapis/enterprise-certificate-proxy v0.2.3
+## explicit; go 1.19
+github.com/googleapis/enterprise-certificate-proxy/client
+github.com/googleapis/enterprise-certificate-proxy/client/util
+# github.com/googleapis/gax-go/v2 v2.7.0
+## explicit; go 1.19
 github.com/googleapis/gax-go/v2
+github.com/googleapis/gax-go/v2/apierror
+github.com/googleapis/gax-go/v2/apierror/internal/proto
+github.com/googleapis/gax-go/v2/internal
 # github.com/gophercloud/gophercloud v0.22.0
 ## explicit; go 1.13
 github.com/gophercloud/gophercloud
@@ -434,7 +460,7 @@ github.com/spf13/cobra
 # github.com/spf13/pflag v1.0.6-0.20210604193023-d5e0c0615ace
 ## explicit; go 1.12
 github.com/spf13/pflag
-# github.com/stretchr/testify v1.8.1
+# github.com/stretchr/testify v1.8.2
 ## explicit; go 1.13
 github.com/stretchr/testify/assert
 # github.com/vincent-petithory/dataurl v1.0.0
@@ -474,7 +500,7 @@ github.com/xeipuuv/gojsonreference
 # github.com/xeipuuv/gojsonschema v1.2.0
 ## explicit
 github.com/xeipuuv/gojsonschema
-# go.opencensus.io v0.22.5
+# go.opencensus.io v0.24.0
 ## explicit; go 1.13
 go.opencensus.io
 go.opencensus.io/internal
@@ -548,8 +574,8 @@ golang.org/x/text/unicode/norm
 # golang.org/x/time v0.3.0
 ## explicit
 golang.org/x/time/rate
-# google.golang.org/api v0.34.0
-## explicit; go 1.11
+# google.golang.org/api v0.110.0
+## explicit; go 1.19
 google.golang.org/api/compute/v1
 google.golang.org/api/googleapi
 google.golang.org/api/googleapi/transport
@@ -576,11 +602,13 @@ google.golang.org/appengine/internal/modules
 google.golang.org/appengine/internal/remote_api
 google.golang.org/appengine/internal/urlfetch
 google.golang.org/appengine/urlfetch
-# google.golang.org/genproto v0.0.0-20200904004341-0bd0a958aa1d
-## explicit; go 1.11
+# google.golang.org/genproto v0.0.0-20230209215440-0dfe4f8abfcc
+## explicit; go 1.19
+google.golang.org/genproto/googleapis/rpc/code
+google.golang.org/genproto/googleapis/rpc/errdetails
 google.golang.org/genproto/googleapis/rpc/status
-# google.golang.org/grpc v1.31.1
-## explicit; go 1.11
+# google.golang.org/grpc v1.53.0
+## explicit; go 1.17
 google.golang.org/grpc
 google.golang.org/grpc/attributes
 google.golang.org/grpc/backoff
@@ -589,15 +617,17 @@ google.golang.org/grpc/balancer/base
 google.golang.org/grpc/balancer/grpclb/state
 google.golang.org/grpc/balancer/roundrobin
 google.golang.org/grpc/binarylog/grpc_binarylog_v1
+google.golang.org/grpc/channelz
 google.golang.org/grpc/codes
 google.golang.org/grpc/connectivity
 google.golang.org/grpc/credentials
-google.golang.org/grpc/credentials/internal
+google.golang.org/grpc/credentials/insecure
 google.golang.org/grpc/encoding
 google.golang.org/grpc/encoding/proto
 google.golang.org/grpc/grpclog
 google.golang.org/grpc/internal
 google.golang.org/grpc/internal/backoff
+google.golang.org/grpc/internal/balancer/gracefulswitch
 google.golang.org/grpc/internal/balancerload
 google.golang.org/grpc/internal/binarylog
 google.golang.org/grpc/internal/buffer
@@ -608,12 +638,17 @@ google.golang.org/grpc/internal/grpclog
 google.golang.org/grpc/internal/grpcrand
 google.golang.org/grpc/internal/grpcsync
 google.golang.org/grpc/internal/grpcutil
+google.golang.org/grpc/internal/metadata
+google.golang.org/grpc/internal/pretty
+google.golang.org/grpc/internal/resolver
 google.golang.org/grpc/internal/resolver/dns
 google.golang.org/grpc/internal/resolver/passthrough
+google.golang.org/grpc/internal/resolver/unix
 google.golang.org/grpc/internal/serviceconfig
 google.golang.org/grpc/internal/status
 google.golang.org/grpc/internal/syscall
 google.golang.org/grpc/internal/transport
+google.golang.org/grpc/internal/transport/networktype
 google.golang.org/grpc/keepalive
 google.golang.org/grpc/metadata
 google.golang.org/grpc/peer
@@ -622,14 +657,16 @@ google.golang.org/grpc/serviceconfig
 google.golang.org/grpc/stats
 google.golang.org/grpc/status
 google.golang.org/grpc/tap
-# google.golang.org/protobuf v1.28.0
+# google.golang.org/protobuf v1.28.1
 ## explicit; go 1.11
+google.golang.org/protobuf/encoding/protojson
 google.golang.org/protobuf/encoding/prototext
 google.golang.org/protobuf/encoding/protowire
 google.golang.org/protobuf/internal/descfmt
 google.golang.org/protobuf/internal/descopts
 google.golang.org/protobuf/internal/detrand
 google.golang.org/protobuf/internal/encoding/defval
+google.golang.org/protobuf/internal/encoding/json
 google.golang.org/protobuf/internal/encoding/messageset
 google.golang.org/protobuf/internal/encoding/tag
 google.golang.org/protobuf/internal/encoding/text
