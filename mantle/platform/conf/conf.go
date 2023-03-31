@@ -379,20 +379,20 @@ func (c *Conf) MergeV35exp(newConfig v35exptypes.Config) {
 	c.ignitionV35exp = &mergeConfig
 }
 
-// Merge all configs into a V3.3 config
+// Merge all configs into a V3.1 config
 func MergeAllConfigs(confObjs []*Conf) (*UserData, error) {
 	config := Conf{
-		ignitionV33: &v33types.Config{
-			Ignition: v33types.Ignition{
-				Version: "3.3.0",
+		ignitionV31: &v31types.Config{
+			Ignition: v31types.Ignition{
+				Version: "3.1.0",
 			},
 		},
 	}
-	objectsToMerge := &config.ignitionV33.Ignition.Config.Merge
+	objectsToMerge := &config.ignitionV31.Ignition.Config.Merge
 	for _, conf := range confObjs {
 		ud := conf.String()
 		url := dataurl.EncodeBytes([]byte(ud))
-		obj := v33types.Resource{
+		obj := v31types.Resource{
 			Source: &url,
 		}
 		*objectsToMerge = append(*objectsToMerge, obj)
