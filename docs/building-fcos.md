@@ -102,6 +102,7 @@ cosa() {
               --tmpfs /tmp -v /var/tmp:/var/tmp --name cosa                                         \
               ${COREOS_ASSEMBLER_CONFIG_GIT:+-v $COREOS_ASSEMBLER_CONFIG_GIT:/srv/src/config/:ro}   \
               ${COREOS_ASSEMBLER_GIT:+-v $COREOS_ASSEMBLER_GIT/src/:/usr/lib/coreos-assembler/:ro}  \
+              ${COREOS_ASSEMBLER_ADD_CERTS:+-v /etc/pki/ca-trust:/etc/pki/ca-trust:ro}              \
               ${COREOS_ASSEMBLER_CONTAINER_RUNTIME_ARGS}                                            \
               ${COREOS_ASSEMBLER_CONTAINER:-$COREOS_ASSEMBLER_CONTAINER_LATEST} "$@"
    rc=$?; set +x; return $rc
@@ -135,6 +136,11 @@ The environment variables are special purpose:
 - `COREOS_ASSEMBLER_CONTAINER`: Allows for overriding the default assembler
   container which is currently
   `quay.io/coreos-assembler/coreos-assembler:latest`.
+- `COREOS_ASSEMBLER_ADD_CERTS`: Set this variable to mount in the CA bundle
+  from the host. This is necessary if cosa needs to fetch HTTPS resources
+  signed by an authority outside the default bundle already trusted by the
+  host. Alternatively, one can use `cosa shell` as described below to have a
+  persistent container in which you can set up the root CA once.
 
 See the [Working on CoreOS Assembler](devel.md) page for examples of how
 to use these variables.
