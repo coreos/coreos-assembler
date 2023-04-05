@@ -106,6 +106,7 @@ type Disk struct {
 func ParseDiskSpec(spec string) (*Disk, error) {
 	split := strings.Split(spec, ":")
 	var size string
+	var channel string
 	multipathed := false
 	sectorSize := 0
 	serial_opt := []string{}
@@ -118,6 +119,11 @@ func ParseDiskSpec(spec string) (*Disk, error) {
 				multipathed = true
 			} else if opt == "4k" {
 				sectorSize = 4096
+			} else if strings.HasPrefix(opt, "channel=") {
+				channel = strings.TrimPrefix(opt, "channel=")
+				if channel == "" {
+					return nil, fmt.Errorf("invalid channel opt %s", opt)
+				}
 			} else if strings.HasPrefix(opt, "serial=") {
 				serial := strings.TrimPrefix(opt, "serial=")
 				if serial == "" {
@@ -133,6 +139,7 @@ func ParseDiskSpec(spec string) (*Disk, error) {
 	}
 	return &Disk{
 		Size:          size,
+		Channel:       channel,
 		DeviceOpts:    serial_opt,
 		SectorSize:    sectorSize,
 		MultiPathDisk: multipathed,
