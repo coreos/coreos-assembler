@@ -87,6 +87,7 @@ Additional disks CLI arguments support optional flags using the `--add-disk
 
 - `mpath`: enables multipathing for the disk (see below for details).
 - `4k`: sets the disk as 4Kn (4096 physical sector size)
+- `channel=CHANNEL`: set the channel type (e.g. `virtio`, `nvme`)
 - `serial=NAME`: sets the disk serial; this can then be used to customize the
   default `diskN` naming documented above (e.g. `serial=foobar` will make the
   device show up as `/dev/disk/by-id/virtio-foobar`)
