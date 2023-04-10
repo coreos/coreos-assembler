@@ -80,7 +80,7 @@ func init() {
 	cmdQemuExec.Flags().StringVarP(&firstbootkargs, "firstbootkargs", "", "", "Additional first boot kernel arguments")
 	cmdQemuExec.Flags().StringArrayVar(&kargs, "kargs", nil, "Additional kernel arguments applied")
 	cmdQemuExec.Flags().BoolVarP(&usernet, "usernet", "U", false, "Enable usermode networking")
-	cmdQemuExec.Flags().StringSliceVar(&ignitionFragments, "add-ignition", nil, "Append well-known Ignition fragment: [\"autologin\", \"autoresize\"]")
+	cmdQemuExec.Flags().StringSliceVar(&ignitionFragments, "add-ignition", nil, "Append well-known Ignition fragment: [\"autologin\", \"autoresize\", \"noautoupdate\"]")
 	cmdQemuExec.Flags().StringVarP(&hostname, "hostname", "", "", "Set hostname via DHCP")
 	cmdQemuExec.Flags().IntVarP(&memory, "memory", "m", 0, "Memory in MB")
 	cmdQemuExec.Flags().StringVar(&architecture, "arch", "", "Use full emulation for target architecture (e.g. aarch64, x86_64, s390x, ppc64le)")
@@ -108,6 +108,8 @@ func renderFragments(fragments []string, c *conf.Conf) error {
 			c.AddAutoLogin()
 		case "autoresize":
 			c.AddAutoResize()
+		case "noautoupdate":
+			c.DisableAutomaticUpdates()
 		default:
 			return fmt.Errorf("Unknown fragment: %s", fragtype)
 		}
