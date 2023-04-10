@@ -1261,6 +1261,12 @@ func (c *Conf) AddAutoLogin() {
 	c.AddSystemdUnitDropin("serial-getty@.service", "10-autologin.conf", getAutologinUnit("serial-getty@.service", "--keep-baud 115200,38400,9600"))
 }
 
+// DisableAutomaticUpdates turns off zincati
+func (c *Conf) DisableAutomaticUpdates() {
+	c.AddFile("/etc/zincati/config.d/90-disable-auto-updates.toml", `[updates]
+	enabled = false`, 0644)
+}
+
 // AddAutoResize adds an Ignition config for a `resize` function to resize serial consoles
 func (c *Conf) AddAutoResize() {
 	c.AddFile("/etc/profile.d/autoresize.sh", `
