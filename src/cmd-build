@@ -23,15 +23,16 @@ Usage: coreos-assembler build --help
 
   The following options are supported:
 
-  --delay-meta-merge  Set 'coreos-assembler.delayed-meta-merge' in build metadata (default: false)
-  --force             Always create a new OSTree commit, even if nothing appears to have changed
-  --force-image       Force an image rebuild even if there were no changes to image input
-  --skip-prune        Skip prunning previous builds
-  -F | --fetch        Also perform a fetch
-  --strict            Only allow installing locked packages when using lockfiles
-  --prepare-only      Do not actually build, only set things up so that `rpm-ostree compose image` works.
-  --tag TAG           Set the given tag in the build metadata
-  --version VERSION   Use the given version instead of generating one based on current time
+  --delay-meta-merge    Set 'coreos-assembler.delayed-meta-merge' in build metadata (default: false)
+  --force               Always create a new OSTree commit, even if nothing appears to have changed
+  --force-image         Force an image rebuild even if there were no changes to image input
+  --skip-prune          Skip prunning previous builds
+  -F | --fetch          Also perform a fetch
+  --strict              Only allow installing locked packages when using lockfiles
+  --prepare-only        Do not actually build, only set things up so that `rpm-ostree compose image` works.
+  --tag TAG             Set the given tag in the build metadata
+  --version VERSION     Use the given version instead of generating one based on current time
+  --skip-config-archive Disable creating a tar.gz archive of the config repo.
 
   Additional environment variables supported:
 
@@ -53,8 +54,9 @@ PARENT=
 PARENT_BUILD=
 TAG=
 STRICT=
+CONFIG_ARCHIVE=1
 rc=0
-options=$(getopt --options hfFt: --longoptions tag:,help,fetch,force,version:,parent:,parent-build:,delay-meta-merge,force-nocache,force-image,skip-prune,prepare-only,strict -- "$@") || rc=$?
+options=$(getopt --options hfFt: --longoptions tag:,help,fetch,force,version:,parent:,parent-build:,delay-meta-merge,force-nocache,force-image,skip-prune,prepare-only,strict,skip-config-archive -- "$@") || rc=$?
 [ $rc -eq 0 ] || {
     print_help
     exit 1
@@ -74,6 +76,9 @@ while true; do
             ;;
         --delay-meta-merge)
             DELAY_META_MERGE=true
+            ;;
+        --skip-config-archive)
+            CONFIG_ARCHIVE=0
             ;;
         --force-image)
             FORCE_IMAGE=1
@@ -254,7 +259,15 @@ EOF
 if [ -d "${workdir}/src/yumrepos" ]; then
     prepare_git_artifacts "${workdir}/src/yumrepos" "${PWD}/coreos-assembler-yumrepos-git.json"
 fi
-prepare_git_artifacts "${configdir_gitrepo}" "${PWD}/coreos-assembler-config-git.json" "${PWD}/coreos-assembler-config.tar.gz"
+
+# set the config repo archive file name
+config_archive="${PWD}/coreos-assembler-config.tar.gz"
+if [ "${CONFIG_ARCHIVE}"  == 0 ]; then
+    # archiving the config is disabled by the command-line. Blank file name disables its generation.
+    config_archive=""
+fi
+
+prepare_git_artifacts "${configdir_gitrepo}" "${PWD}/coreos-assembler-config-git.json" "${config_archive}"
 
 extra_compose_args=()
 
