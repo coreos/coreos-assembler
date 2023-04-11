@@ -47,6 +47,7 @@ import (
 	"github.com/coreos/vcontext/report"
 	"github.com/vincent-petithory/dataurl"
 	"golang.org/x/crypto/ssh/agent"
+	"gopkg.in/yaml.v3"
 )
 
 type kind int
@@ -291,10 +292,7 @@ func (u *UserData) Render(warnings WarningsAction) (*Conf, error) {
 			return nil, err
 		}
 	case kindButane:
-		ignc, report, err := butane.TranslateBytes([]byte(u.data), butaneCommon.TranslateBytesOptions{
-			// allow variant: openshift but don't generate a MachineConfig
-			Raw: true,
-		})
+		ignc, report, err := u.translateButane()
 		if err != nil {
 			return nil, err
 		}
@@ -316,6 +314,87 @@ func (u *UserData) Render(warnings WarningsAction) (*Conf, error) {
 	}
 
 	return c, nil
+}
+
+// wrapper function to translate a Butane config to an Ignition config
+func (u *UserData) translateButane() ([]byte, report.Report, error) {
+	if u.kind != kindButane {
+		panic("translateButane() called on non-Butane UserData")
+	}
+
+	// First, try a normal translation
+	ignc, report, err := butane.TranslateBytes([]byte(u.data), butaneCommon.TranslateBytesOptions{
+		// allow variant: openshift but don't generate a MachineConfig
+		Raw: true,
+	})
+	butaneVersion, ok := err.(butaneCommon.ErrUnknownVersion)
+	if !ok {
+		// succeeded, or failed for reasons other than the
+		// config version
+		return ignc, report, err
+	}
+
+	// This is an unrecognized spec version.  Possibly the tests have
+	// been updated to stabilize a new version, but mantle hasn't been
+	// updated to parse it yet.  Staple "-experimental" onto the config
+	// version and see if it parses.
+	if butaneVersion.Version.PreRelease != "" {
+		return ignc, report, fmt.Errorf("Butane config has unrecognized spec version and prerelease is already set to %q; cannot work around", butaneVersion.Version.PreRelease)
+	}
+	var parsed map[string]interface{}
+	if err := yaml.Unmarshal([]byte(u.data), &parsed); err != nil {
+		return ignc, report, err
+	}
+	version := butaneVersion.Version
+	version.PreRelease = "experimental"
+	parsed["version"] = version.String()
+	buc, err := yaml.Marshal(parsed)
+	if err != nil {
+		return ignc, report, err
+	}
+	ignc, report, err = butane.TranslateBytes(buc, butaneCommon.TranslateBytesOptions{
+		Raw: true,
+	})
+	if err != nil {
+		return ignc, report, fmt.Errorf("Butane config has unrecognized spec version and workaround didn't help: %w", err)
+	}
+
+	// Stapling on "-experimental" worked.  Now we need to check whether
+	// the resulting Ignition config has an -experimental version.
+	version, _, err = ignutil.GetConfigVersion(ignc)
+	if err != nil {
+		return ignc, report, err
+	}
+	if version.PreRelease == "" {
+		// no -experimental; we're done
+		plog.Warningf("mantle's vendored Butane has not been updated for %s spec %s; applying workaround", butaneVersion.Variant, butaneVersion.Version)
+		return ignc, report, nil
+	}
+
+	// The Ignition config version has an -experimental suffix.  Since
+	// we're going through a spec stabilization, Ignition in the image
+	// will probably not accept this config any longer.  Remove the
+	// -experimental suffix and reserialize.
+	parsed = nil
+	if err := json.Unmarshal(ignc, &parsed); err != nil {
+		return ignc, report, err
+	}
+	ignitionSection, ok := parsed["ignition"]
+	if !ok {
+		return ignc, report, fmt.Errorf("no ignition section in Butane output")
+	}
+	ignitionSectionMap, ok := ignitionSection.(map[string]interface{})
+	if !ok {
+		return ignc, report, fmt.Errorf("ignition section is not a map")
+	}
+	version.PreRelease = ""
+	ignitionSectionMap["version"] = version.String()
+	ignc, err = json.Marshal(parsed)
+	if err != nil {
+		return ignc, report, err
+	}
+	plog.Warningf("mantle's vendored Butane has not been updated for %s spec %s or Ignition spec %s; applying workaround", butaneVersion.Variant, butaneVersion.Version, version)
+	return ignc, report, nil
 }
 
 // String returns the string representation of the userdata in Conf.
