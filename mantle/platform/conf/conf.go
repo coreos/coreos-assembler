@@ -259,7 +259,7 @@ func (u *UserData) Render(warnings WarningsAction) (*Conf, error) {
 		// ensure that the installed Ignition can parse the config,
 		// not that Mantle can also parse it.
 		case semver.Version{Major: 3, Minor: 5}:
-			plog.Warningf("Generating wrapper for unsupported config spec")
+			plog.Warningf("mantle has not been updated for Ignition spec %s; applying workaround", ver)
 			url, err := makeGzipDataUrl(data)
 			if err != nil {
 				return fmt.Errorf("generating data URL: %w", err)
