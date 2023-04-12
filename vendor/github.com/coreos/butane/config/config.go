@@ -92,7 +92,10 @@ func RegisterTranslator(variant, version string, trans translator) {
 func getTranslator(variant string, version semver.Version) (translator, error) {
 	t, ok := registry[fmt.Sprintf("%s+%s", variant, version.String())]
 	if !ok {
-		return nil, fmt.Errorf("No translator exists for variant %s with version %s", variant, version.String())
+		return nil, common.ErrUnknownVersion{
+			Variant: variant,
+			Version: version,
+		}
 	}
 	return t, nil
 }
@@ -108,7 +111,9 @@ func TranslateBytes(input []byte, options common.TranslateBytesOptions) ([]byte,
 	// first determine version; this will ignore most fields
 	ver := commonFields{}
 	if err := yaml.Unmarshal(input, &ver); err != nil {
-		return nil, report.Report{}, fmt.Errorf("Error unmarshaling yaml: %v", err)
+		return nil, report.Report{}, common.ErrUnmarshal{
+			Detail: err.Error(),
+		}
 	}
 
 	if ver.Variant == "" {

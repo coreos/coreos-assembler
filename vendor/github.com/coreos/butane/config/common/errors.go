@@ -16,6 +16,9 @@ package common
 
 import (
 	"errors"
+	"fmt"
+
+	"github.com/coreos/go-semver/semver"
 )
 
 var (
@@ -88,3 +91,22 @@ var (
 	// Kernel arguments
 	ErrGeneralKernelArgumentSupport = errors.New("kernel argument customization is not supported in this spec version")
 )
+
+type ErrUnmarshal struct {
+	// don't wrap the underlying error object because we don't want to
+	// commit to its API
+	Detail string
+}
+
+func (e ErrUnmarshal) Error() string {
+	return fmt.Sprintf("Error unmarshaling yaml: %v", e.Detail)
+}
+
+type ErrUnknownVersion struct {
+	Variant string
+	Version semver.Version
+}
+
+func (e ErrUnknownVersion) Error() string {
+	return fmt.Sprintf("No translator exists for variant %s with version %s", e.Variant, e.Version)
+}

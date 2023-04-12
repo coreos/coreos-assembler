@@ -223,7 +223,7 @@ github.com/aws/aws-sdk-go/service/sts/stsiface
 # github.com/clarketm/json v1.17.1
 ## explicit
 github.com/clarketm/json
-# github.com/coreos/butane v0.18.0
+# github.com/coreos/butane v0.18.1-0.20230412230143-79c207705ee4
 ## explicit; go 1.18
 github.com/coreos/butane/base/util
 github.com/coreos/butane/base/v0_1
