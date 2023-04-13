@@ -658,7 +658,7 @@ func filterTests(tests map[string]*register.Test, patterns []string, pltfrm stri
 // register tests in their init() function.  outputDir is where various test
 // logs and data will be written for analysis after the test run. If it already
 // exists it will be erased!
-func runProvidedTests(testsBank map[string]*register.Test, patterns []string, multiply int, rerun bool, allowRerunSuccess bool, pltfrm, outputDir string, propagateTestErrors bool) error {
+func runProvidedTests(testsBank map[string]*register.Test, patterns []string, multiply int, rerun bool, rerunSuccessTags []string, pltfrm, outputDir string, propagateTestErrors bool) error {
 	var versionStr string
 
 	// Avoid incurring cost of starting machine in getClusterSemver when
@@ -804,14 +804,46 @@ func runProvidedTests(testsBank map[string]*register.Test, patterns []string, mu
 	if len(testsToRerun) > 0 && rerun {
 		newOutputDir := filepath.Join(outputDir, "rerun")
 		fmt.Printf("\n\n======== Re-running failed tests (flake detection) ========\n\n")
-		reRunErr := runProvidedTests(testsBank, testsToRerun, multiply, false, allowRerunSuccess, pltfrm, newOutputDir, propagateTestErrors)
-		if allowRerunSuccess {
+		reRunErr := runProvidedTests(testsBank, testsToRerun, multiply, false, rerunSuccessTags, pltfrm, newOutputDir, propagateTestErrors)
+
+		// Return the results from the rerun if rerun success allowed
+		if allTestsAllowRerunSuccess(testsBank, testsToRerun, rerunSuccessTags) {
 			return reRunErr
 		}
 	}
-
 	// If the intial run failed and the rerun passed, we still return an error
 	return firstRunErr
+}
+
+func allTestsAllowRerunSuccess(testsBank map[string]*register.Test, testsToRerun, rerunSuccessTags []string) bool {
+	// No tags, we can return early
+	if len(rerunSuccessTags) == 0 {
+		return false
+	}
+	// Build up a map of rerunSuccessTags so that we can easily check
+	// if a given tag is in the map.
+	rerunSuccessTagMap := make(map[string]bool)
+	for _, tag := range rerunSuccessTags {
+		if tag == "all" || tag == "*" {
+			// If `all` or `*` is in rerunSuccessTags then we can return early
+			return true
+		}
+		rerunSuccessTagMap[tag] = true
+	}
+	// Iterate over the tests that were re-ran. If any of them don't
+	// allow rerun success then just exit early.
+	for _, test := range testsToRerun {
+		testAllowsRerunSuccess := false
+		for _, tag := range testsBank[test].Tags {
+			if rerunSuccessTagMap[tag] {
+				testAllowsRerunSuccess = true
+			}
+		}
+		if !testAllowsRerunSuccess {
+			return false
+		}
+	}
+	return true
 }
 
 func GetRerunnableTestName(testName string) (string, bool) {
@@ -859,12 +891,12 @@ func getRerunnable(tests []*harness.H) []string {
 	return testsToRerun
 }
 
-func RunTests(patterns []string, multiply int, rerun bool, allowRerunSuccess bool, pltfrm, outputDir string, propagateTestErrors bool) error {
-	return runProvidedTests(register.Tests, patterns, multiply, rerun, allowRerunSuccess, pltfrm, outputDir, propagateTestErrors)
+func RunTests(patterns []string, multiply int, rerun bool, rerunSuccessTags []string, pltfrm, outputDir string, propagateTestErrors bool) error {
+	return runProvidedTests(register.Tests, patterns, multiply, rerun, rerunSuccessTags, pltfrm, outputDir, propagateTestErrors)
 }
 
 func RunUpgradeTests(patterns []string, rerun bool, pltfrm, outputDir string, propagateTestErrors bool) error {
-	return runProvidedTests(register.UpgradeTests, patterns, 0, rerun, false, pltfrm, outputDir, propagateTestErrors)
+	return runProvidedTests(register.UpgradeTests, patterns, 0, rerun, nil, pltfrm, outputDir, propagateTestErrors)
 }
 
 // externalTestMeta is parsed from kola.json in external tests
