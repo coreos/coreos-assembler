@@ -23,6 +23,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strings"
 	"text/tabwriter"
 
 	"github.com/coreos/pkg/capnslog"
@@ -116,7 +117,7 @@ This can be useful for e.g. serving locally built OSTree repos to qemu.
 	runExternals      []string
 	runMultiply       int
 	runRerunFlag      bool
-	allowRerunSuccess bool
+	allowRerunSuccess string
 
 	nonexclusiveWrapperMatch = regexp.MustCompile(`^non-exclusive-test-bucket-[0-9]$`)
 )
@@ -126,7 +127,7 @@ func init() {
 	cmdRun.Flags().StringArrayVarP(&runExternals, "exttest", "E", nil, "Externally defined tests (will be found in DIR/tests/kola)")
 	cmdRun.Flags().IntVar(&runMultiply, "multiply", 0, "Run the provided tests N times (useful to find race conditions)")
 	cmdRun.Flags().BoolVar(&runRerunFlag, "rerun", false, "re-run failed tests once")
-	cmdRun.Flags().BoolVar(&allowRerunSuccess, "allow-rerun-success", false, "Allow kola test run to be successful when tests pass during re-run")
+	cmdRun.Flags().StringVar(&allowRerunSuccess, "allow-rerun-success", "", "Allow kola test run to be successful when tests with given 'tags=...[,...]' pass during re-run")
 
 	root.AddCommand(cmdList)
 	cmdList.Flags().StringArrayVarP(&runExternals, "exttest", "E", nil, "Externally defined tests in directory")
@@ -223,6 +224,27 @@ func runRerun(cmd *cobra.Command, args []string) error {
 	return kolaRunPatterns(patterns, false)
 }
 
+// parseRerunSuccess converts rerun specification into a tags
+func parseRerunSuccess() ([]string, error) {
+	// In the future we may extend format to something like: <SELECTOR>[:<OPTIONS>]
+	//   SELECTOR
+	//     tags=...,...,...
+	//     tests=...,...,...
+	//   OPTIONS
+	//     n=...
+	//     allow-single=..
+	tags := []string{}
+	if len(allowRerunSuccess) == 0 {
+		return tags, nil
+	}
+	if !strings.HasPrefix(allowRerunSuccess, "tags=") {
+		return nil, fmt.Errorf("invalid rerun spec %s", allowRerunSuccess)
+	}
+	split := strings.TrimPrefix(allowRerunSuccess, "tags=")
+	tags = append(tags, strings.Split(split, ",")...)
+	return tags, nil
+}
+
 func kolaRunPatterns(patterns []string, rerun bool) error {
 	var err error
 	outputDir, err = kola.SetupOutputDir(outputDir, kolaPlatform)
@@ -234,7 +256,12 @@ func kolaRunPatterns(patterns []string, rerun bool) error {
 		return err
 	}
 
-	runErr := kola.RunTests(patterns, runMultiply, rerun, allowRerunSuccess, kolaPlatform, outputDir, !kola.Options.NoTestExitError)
+	rerunSuccessTags, err := parseRerunSuccess()
+	if err != nil {
+		return err
+	}
+
+	runErr := kola.RunTests(patterns, runMultiply, rerun, rerunSuccessTags, kolaPlatform, outputDir, !kola.Options.NoTestExitError)
 
 	// needs to be after RunTests() because harness empties the directory
 	if err := writeProps(); err != nil {
