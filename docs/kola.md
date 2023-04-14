@@ -236,3 +236,4 @@ In order to see the logs for these tests you must enter the `tmp/kola/name_of_th
 
 `cosa run -i ignition_path` You can run it passing your Ignition, or the Ignition used in the the test that failed for troubleshooting reasons.
 
+`kola list --json | jq -r '.[] | [.Name,.Description]| @tsv'` This will list all tests name and the description.

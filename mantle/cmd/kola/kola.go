@@ -420,7 +420,8 @@ func runList(cmd *cobra.Command, args []string) error {
 			test.ExcludeArchitectures,
 			test.Distros,
 			test.ExcludeDistros,
-			test.Tags}
+			test.Tags,
+			test.Description}
 		item.updateValues()
 		testlist = append(testlist, item)
 	}
@@ -480,6 +481,7 @@ type item struct {
 	Distros              []string
 	ExcludeDistros       []string `json:"-"`
 	Tags                 []string
+	Description          string
 }
 
 func (i *item) updateValues() {
