@@ -433,7 +433,7 @@ EOF
         # the same RPMs: the `dnf repoquery` below is to pick the latest one
         dnf repoquery  --repofrompath=tmp,"file://${overridesdir}/rpm" \
             --disablerepo '*' --enablerepo tmp --refresh --latest-limit 1 \
-            --exclude '*.src' --qf '%{NAME}\t%{EVR}\t%{ARCH}' \
+            --exclude '*.src' --qf '%{name}\t%{evr}\t%{arch}' \
             --quiet > "${tmp_overridesdir}/pkgs.txt"
 
         # shellcheck disable=SC2002
