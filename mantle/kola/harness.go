@@ -918,6 +918,7 @@ type externalTestMeta struct {
 	Conflicts                 []string `json:"conflicts"                           yaml:"conflicts"`
 	AllowConfigWarnings       bool     `json:"allowConfigWarnings"                 yaml:"allowConfigWarnings"`
 	NoInstanceCreds           bool     `json:"noInstanceCreds"                     yaml:"noInstanceCreds"`
+	Description               string   `json:"description"                         yaml:"description"`
 }
 
 // metadataFromTestBinary extracts JSON-in-comment like:
@@ -1111,6 +1112,7 @@ ExecStart=%s
 
 	t := &register.Test{
 		Name:          testname,
+		Description:   targetMeta.Description,
 		ClusterSize:   1, // Hardcoded for now
 		ExternalTest:  executable,
 		DependencyDir: destDirs,

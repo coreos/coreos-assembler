@@ -69,6 +69,7 @@ type Test struct {
 	Tags                 []string      // list of tags that can be matched against -- defaults to none
 	Timeout              time.Duration // the duration for which a test will be allowed to run
 	RequiredTag          string        // if specified, test is filtered by default unless tag is provided -- defaults to none
+	Description          string        // test description
 
 	// Whether the primary disk is multipathed.
 	MultiPathDisk bool
