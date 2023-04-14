@@ -676,7 +676,7 @@ meta_key() {
 }
 
 # runvm generates and runs a minimal VM which we use to "bootstrap" our build
-# process.  It mounts the workdir via 9p.  If you need to add new packages into
+# process.  It mounts the workdir via virtiofs.  If you need to add new packages into
 # the vm, update `vmdeps.txt`.
 # If you need to debug it, one trick is to change the `-serial file` below
 # into `-serial stdio`, drop the <&- and virtio-serial stuff and then e.g. add
@@ -790,25 +790,23 @@ EOF
     esac
 
     kola_args=(kola qemuexec -m "${COSA_SUPERMIN_MEMORY:-${memory_default}}" --auto-cpus -U --workdir none \
-               --console-to-file "${runvm_console}")
+               --console-to-file "${runvm_console}" --bind-rw "${workdir},workdir")
 
     base_qemu_args=(-drive 'if=none,id=root,format=raw,snapshot=on,file='"${vmbuilddir}"'/root,index=1' \
                     -device 'virtio-blk,drive=root' \
                     -kernel "${vmbuilddir}/kernel" -initrd "${vmbuilddir}/initrd" \
                     -no-reboot -nodefaults \
                     -device virtio-serial \
-                    -virtfs 'local,id=workdir,path='"${workdir}"',security_model=none,mount_tag=workdir' \
                     -append "root=UUID=${superminrootfsuuid} console=${DEFAULT_TERMINAL} selinux=1 enforcing=0 autorelabel=1" \
                    )
 
     # support local dev cases where src/config is a symlink.  Note if you change or extend to this set,
     # you also need to update supermin-init-prelude.sh to mount it inside the VM.
-    for maybe_symlink in "${workdir}"/{src/config,src/yumrepos,builds}; do
+    for maybe_symlink in "${workdir}"/{src/config,src/yumrepos}; do
         if [ -L "${maybe_symlink}" ]; then
-            # qemu follows symlinks
             local bn
             bn=$(basename "${maybe_symlink}")
-            base_qemu_args+=("-virtfs" "local,id=${bn},path=${maybe_symlink},security_model=none,mount_tag=${bn}")
+            kola_args+=("--bind-ro" "${maybe_symlink},/cosa/src/${bn}")
         fi
     done
 

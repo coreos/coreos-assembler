@@ -171,7 +171,7 @@ if jq -re '.["deploy-via-container"]' < "${image_json}"; then
     deploy_via_container="true"
 fi
 container_imgref=$(jq -r '.["container-imgref"]//""' < "${image_json}")
-# Nowadays we pull the container across 9p rather than accessing the repo, see
+# Nowadays we pull the container across virtiofs rather than accessing the repo, see
 # https://github.com/openshift/os/issues/594
 ostree_container=ostree-unverified-image:oci-archive:$builddir/$(meta_key images.ostree.path)
 
