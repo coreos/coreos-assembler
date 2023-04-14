@@ -9,7 +9,7 @@ set -euo pipefail
 # You can exit via either exiting the login session cleanly
 # in SSH (ctrl-d/exit in bash), or via `poweroff`.
 #
-# If 9p is available and this is started from a coreos-assembler
+# If this is started from a coreos-assembler
 # working directory, the build directory will be mounted readonly
 # at /var/mnt/workdir, and the tmp/ directory will be read *write*
 # at /var/mnt/workdir-tmp.  This allows you to easily exchange

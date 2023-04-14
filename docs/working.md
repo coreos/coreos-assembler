@@ -164,9 +164,6 @@ allowing you to directly execute binaries from there.  You can also use e.g.
 `rpm-ostree usroverlay` and then copy binaries from your host `/run/workdir` into
 the VM's rootfs.
 
-(This currently only works on Fedora CoreOS which ships `9p`, not RHCOS.  A future version
- will use https://virtio-fs.gitlab.io/ )
-
 ## Using host binaries
 
 Another related trick is:

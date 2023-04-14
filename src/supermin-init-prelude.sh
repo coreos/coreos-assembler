@@ -15,8 +15,6 @@ mount -t tmpfs tmpfs /dev/shm
 # load selinux policy
 LANG=C /sbin/load_policy  -i
 
-# load kernel module for 9pnet_virtio for 9pfs mount
-/sbin/modprobe 9pnet_virtio
 
 # need fuse module for rofiles-fuse/bwrap during post scripts run
 /sbin/modprobe fuse
@@ -36,17 +34,16 @@ fi
 umask 002
 
 # set up workdir
-# For 9p mounts set msize to 100MiB
 # https://github.com/coreos/coreos-assembler/issues/2171
 mkdir -p "${workdir:?}"
-mount -t 9p -o rw,trans=virtio,version=9p2000.L,msize=10485760 workdir "${workdir}"
+mount -t virtiofs -o rw workdir "${workdir}"
 
 # This loop pairs with virtfs setups for qemu in cmdlib.sh.  Keep them in sync.
-for maybe_symlink in "${workdir}"/{src/config,src/yumrepos,builds}; do
+for maybe_symlink in "${workdir}"/{src/config,src/yumrepos}; do
     if [ -L "${maybe_symlink}" ]; then
         bn=$(basename "${maybe_symlink}")
         mkdir -p "$(readlink "${maybe_symlink}")"
-        mount -t 9p -o rw,trans=virtio,version=9p2000.L,msize=10485760 "${bn}" "${maybe_symlink}"
+        mount -t virtiofs -o ro "/cosa/src/${bn}" "${maybe_symlink}"
     fi
 done
 

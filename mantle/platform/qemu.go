@@ -510,14 +510,14 @@ func NewQemuBuilder() *QemuBuilder {
 	default:
 		defaultFirmware = ""
 	}
-	_, useVirtiofs := os.LookupEnv("COSA_VIRTIOFS")
+	_, use9P := os.LookupEnv("COSA_9P_FALLBACK")
 	ret := QemuBuilder{
 		Firmware:     defaultFirmware,
 		Swtpm:        true,
 		Pdeathsig:    true,
 		Argv:         []string{},
 		architecture: coreosarch.CurrentRpmArch(),
-		UseVirtiofs:  useVirtiofs,
+		UseVirtiofs:  !use9P,
 	}
 	return &ret
 }
@@ -715,8 +715,9 @@ func (builder *QemuBuilder) encryptIgnitionConfig() error {
 	return nil
 }
 
-// MountVirtiofs sets up a mount point from the host to guest.
-// Note that virtiofs does not currently support read-only mounts (which is really surprising!)
+// MountHost sets up a mount point from the host to guest.
+// Note that virtiofs does not currently support read-only mounts (which is really surprising!).
+// We do mount it read-only by default in the guest, however.
 func (builder *QemuBuilder) MountHost(source, dest string, readonly bool) {
 	builder.hostMounts = append(builder.hostMounts, HostMount{src: source, dest: dest, readonly: readonly})
 }

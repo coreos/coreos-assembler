@@ -77,7 +77,7 @@ if [ -z "$platforms_json" ]; then
     echo "Missing --platforms-json" >&2
     exit 1
 fi
-# just copy it over to /tmp and work from there to minimize 9p I/O
+# just copy it over to /tmp and work from there to minimize virtiofs I/O
 cp "${platforms_json}" /tmp/platforms.json
 platforms_json=/tmp/platforms.json
 platform_grub_cmds=$(jq -r ".${arch}.${platform}.grub_commands // [] | join(\"\\\\n\")" < "${platforms_json}")
