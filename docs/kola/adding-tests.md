@@ -49,6 +49,7 @@ func init() {
         ClusterSize: 1,
         Name:        `podman.noop`,
         Distros:     []string{"rhcos"},
+        Description: "Simple NOOP test for podman",
     })
 <snip/>
 $ popd
@@ -84,6 +85,7 @@ Continuing with the look at the `podman` package we can see that `podman.base` i
             ClusterSize: 1,
             Name:        `podman.base`,
             Distros:     []string{"rhcos"},
+            Description: "Verifies podman info and running with various options",
     })
 ```
 
@@ -161,6 +163,7 @@ func init() {
             Flags:       []register.Flag{}, // See: https://godoc.org/github.com/coreos/coreos-assembler/mantle/kola/register#Flag
             Distros:     []string{"rhcos"},
             FailFast:    true,
+            Description: "Example test group",
     })
 }
 

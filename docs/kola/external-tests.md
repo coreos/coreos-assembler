@@ -199,7 +199,8 @@ Here's an example `kola.json`:
     "appendFirstbootKernelArgs": "ip=bond0:dhcp bond=bond0:ens5,ens6:mode=active-backup,miimon=100"
     "timeoutMin": 8,
     "exclusive": true,
-    "conflicts": ["ext.config.some-test", "podman.some-other-test"]
+    "conflicts": ["ext.config.some-test", "podman.some-other-test"],
+    "description": "test description"
 }
 ```
 
@@ -276,7 +277,7 @@ inline per test, like this:
 ```sh
 #!/bin/bash
 set -xeuo pipefail
-# kola: { "architectures": "x86_64", "platforms": "aws gce", "tags": "needs-internet" }
+# kola: { "architectures": "x86_64", "platforms": "aws gce", "tags": "needs-internet", "description": "test" }
 test code here
 ```
 
@@ -293,6 +294,7 @@ set -xeuo pipefail
 ##   architectures: x86_64
 ##   platforms: "aws gce"  # azure support is pending
 ##   tags: needs-internet
+##   description: test description
 test code here
 ```
 
@@ -321,7 +323,7 @@ $ cd my-project/tests/kola
 $ $EDITOR basic/noop # Add the `noop` test
 #!/bin/bash
 set -xeuo pipefail
-# kola: { "architectures": "x86_64", "platforms": "qemu", "tags": "needs-internet" }
+# kola: { "architectures": "x86_64", "platforms": "qemu", "tags": "needs-internet", "description": "test" }
 # Test: I'm a NOOP!
 test 2 -gt 1
 $ chmod a+x basic/noop # Make sure the test is executable
