@@ -1,14 +1,7 @@
 import os
 import logging as log
 
-from cosalib.cmdlib import (
-    runcmd,
-)
-
-from cosalib.buildah import (
-    buildah_base_args
-)
-
+from cosalib.cmdlib import runcmd
 from cosalib.qemuvariants import QemuVariantImage
 
 
@@ -25,19 +18,26 @@ class KubeVirtImage(QemuVariantImage):
         self.mutate_callback = self.write_oci
         self.mutate_callback_creates_final_image = True
 
-    def write_oci(self, image_name):
+    def write_oci(self, _):
         """
         Take the qcow2 base image and convert it to an oci-archive.
         """
-        buildah_base_argv = buildah_base_args()
-        final_img = os.path.join(os.path.abspath(self.build_dir),
-                                 self.image_name)
-        cmd = buildah_base_argv + ["from", "scratch"]
-        buildah_img = runcmd(cmd, capture_output=True).stdout.decode("utf-8").strip()
-        runcmd(buildah_base_argv + ["add", "--chmod", "0555", buildah_img, image_name, "/disk/coreos.img"])
-        cmd = buildah_base_argv + ["commit", buildah_img]
-        digest = runcmd(cmd, capture_output=True).stdout.decode("utf-8").strip()
-        runcmd(buildah_base_argv + ["push", "--format", "oci", digest, f"oci-archive:{final_img}"])
+        ctxdir = self._tmpdir
+        final_img = os.path.join(os.path.abspath(self.build_dir), self.image_name)
+        # Create the Containerfile to use for the build
+        with open(os.path.join(ctxdir, "Containerfile"), "w") as f:
+            f.write(f"FROM scratch\nADD {self.image_name_base}.{self.image_format} /disk/\n")
+        # Run the build inside a supermin VM because in OpenShift things are extremely
+        # locked down. Here we are doing two things that are interesting. We are using
+        # a virtio-serial device to write the output file to because we've seen 9p
+        # issues in our pipeline. We're also using an undocumented feature of podman-build,
+        # which is to write directly to an oci-archive via --tag=oci-archive:file.ociarchive
+        # https://github.com/containers/buildah/issues/4740.
+        runcmd(['/usr/lib/coreos-assembler/runvm.sh',
+                '-chardev', f'file,id=ociarchiveout,path={final_img}',
+                '-device', 'virtserialport,chardev=ociarchiveout,name=ociarchiveout',
+                '--', 'podman', 'build', '--disable-compression=false',
+                '--tag=oci-archive:/dev/virtio-ports/ociarchiveout', ctxdir])
 
 
 def kubevirt_run_ore(build, args):
