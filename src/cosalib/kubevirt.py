@@ -1,5 +1,4 @@
 import os
-import subprocess
 import logging as log
 
 from cosalib.cmdlib import (
@@ -42,41 +41,22 @@ class KubeVirtImage(QemuVariantImage):
 
 
 def kubevirt_run_ore(build, args):
-    if not args.repository:
-        raise Exception("--repository must not be empty")
-
-    name = f"{build.build_name}"
-    if args.name is not None:
-        name = args.name
-    tags = [f"{build.build_id}-{build.basearch}"]
-    if args.tag is not None:
-        tags.extend(args.tag)
-    full_name = os.path.join(args.repository, name)
-
-    digest = runcmd(["skopeo", "inspect", f"oci-archive:{build.image_path}", "-f", "{{.Digest}}"],
-                    stdout=subprocess.PIPE).stdout.decode("utf-8").strip()
-    for tag in tags:
-        log.info(f"pushing {full_name}:{tag} with digest {digest}")
-        runcmd(["skopeo", "copy", f"oci-archive:{build.image_path}", f"docker://{full_name}:{tag}"])
-
-    build.meta['kubevirt'] = {
-        'image': f"{full_name}@{digest}",
-    }
-    build.meta_write()
+    """
+    This function is not necessary for Kubevirt. We'll push the ociarchive
+    files using cosa push-container-manifest in the release job.
+    """
+    raise Exception("not implemented")
 
 
 def kubevirt_run_ore_replicate(*args, **kwargs):
-    print("""
-KubeVirt does not require regional replication. This command is a
-placeholder.
-""")
+    """
+    This function is not necessary for Kubevirt. We'll push the ociarchive
+    files using cosa push-container-manifest in the release job.
+    """
+    raise Exception("not implemented")
 
 
 def kubevirt_cli(parser):
-    parser.add_argument("--name",
-                        help="Name to append to the repository (e.g. fedora-coreos). Defaults to the build name.")
-    parser.add_argument("--repository", help="Repository to push to (e.g. quay.io or quay.io/myorg)")
-    parser.add_argument("--tag", action="append", help="Additional image tag. Can be provided multiple times.")
     return parser
 
 
