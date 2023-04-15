@@ -100,6 +100,7 @@ VARIANTS = {
         "image_format": "qcow2",
         "platform": "kubevirt",
         "image_suffix": "ociarchive",
+        "skip_compression": True,
     },
     "openstack": {
         "image_format": "qcow2",
