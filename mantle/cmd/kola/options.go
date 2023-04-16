@@ -40,7 +40,7 @@ var (
 	kolaPlatform      string
 	kolaParallelArg   string
 	kolaArchitectures = []string{"amd64"}
-	kolaPlatforms     = []string{"aws", "azure", "do", "esx", "gce", "openstack", "packet", "qemu", "qemu-unpriv", "qemu-iso"}
+	kolaPlatforms     = []string{"aws", "azure", "do", "esx", "gcp", "openstack", "packet", "qemu", "qemu-unpriv", "qemu-iso"}
 	kolaDistros       = []string{"fcos", "rhcos", "scos"}
 )
 
@@ -362,7 +362,7 @@ func syncCosaOptions() error {
 				}
 			}
 		}
-	case "gce":
+	case "gcp":
 		// Pick up the GCP image from the build metadata
 		if kola.GCPOptions.Image == "" && kola.CosaBuild.Meta.Gcp != nil {
 			kola.GCPOptions.Image =

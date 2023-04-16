@@ -606,7 +606,7 @@ func syncFindParentImageOptions() error {
 		if err != nil {
 			return err
 		}
-	case "gce":
+	case "gcp":
 		kola.GCPOptions.Image, err = parentCosaBuild.FindGCPImage()
 		if err != nil {
 			return err

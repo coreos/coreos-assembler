@@ -273,7 +273,7 @@ func NewFlight(pltfrm string) (flight platform.Flight, err error) {
 		flight, err = do.NewFlight(&DOOptions)
 	case "esx":
 		flight, err = esx.NewFlight(&ESXOptions)
-	case "gce":
+	case "gcp":
 		flight, err = gcloud.NewFlight(&GCPOptions)
 	case "openstack":
 		flight, err = openstack.NewFlight(&OpenStackOptions)

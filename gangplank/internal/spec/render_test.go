@@ -27,7 +27,7 @@ clouds_cfgs:
   gcp:
     enabled: true
     bucket: mockOS-devel/devel
-    platform_id: gce
+    platform_id: gcp
     project: openshift-mockOS-devel
     secret_name: mockOS-gce-service-account
     secret_payload: gcp.json

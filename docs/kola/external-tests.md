@@ -277,7 +277,7 @@ inline per test, like this:
 ```sh
 #!/bin/bash
 set -xeuo pipefail
-# kola: { "architectures": "x86_64", "platforms": "aws gce", "tags": "needs-internet", "description": "test" }
+# kola: { "architectures": "x86_64", "platforms": "aws gcp", "tags": "needs-internet", "description": "test" }
 test code here
 ```
 
@@ -292,7 +292,7 @@ For example:
 set -xeuo pipefail
 ## kola:
 ##   architectures: x86_64
-##   platforms: "aws gce"  # azure support is pending
+##   platforms: "aws gcp"  # azure support is pending
 ##   tags: needs-internet
 ##   description: test description
 test code here
