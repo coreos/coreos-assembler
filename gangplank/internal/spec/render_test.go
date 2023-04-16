@@ -30,7 +30,7 @@ clouds_cfgs:
     platform_id: gce
     project: openshift-mockOS-devel
     secret_name: mockOS-gce-service-account
-    secret_payload: gce.json
+    secret_payload: gcp.json
   aliyun:
     enabled: false
     bucket: mockOS-images
