@@ -24,7 +24,7 @@ import (
 )
 
 var (
-	plog = capnslog.NewPackageLogger("github.com/coreos/coreos-assembler/mantle", "ore/gce")
+	plog = capnslog.NewPackageLogger("github.com/coreos/coreos-assembler/mantle", "ore/gcp")
 
 	GCloud = &cobra.Command{
 		Use:   "gcloud [command]",
