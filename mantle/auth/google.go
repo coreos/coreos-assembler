@@ -26,7 +26,7 @@ import (
 	"golang.org/x/oauth2/google"
 )
 
-const GCPConfigPath = ".config/gce.json"
+const GCPConfigPath = ".config/gcp.json"
 
 var scopes = []string{
 	"https://www.googleapis.com/auth/devstorage.full_control",

@@ -313,7 +313,7 @@ The JSON file exported to the variable `AZURE_AUTH_LOCATION` should be generated
 ```
 
 ### gcp
-`gcp` uses `~/.config/gce.json`, which contains a JSON-formatted service
+`gcp` uses `~/.config/gcp.json`, which contains a JSON-formatted service
 account key. This can be downloaded from the Google Cloud console under
 IAM > Service Accounts > [account] > Keys.
 

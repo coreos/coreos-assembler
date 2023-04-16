@@ -241,7 +241,7 @@ In order to see the logs for these tests you must enter the `tmp/kola/name_of_th
 ## Run tests on cloud platforms
 `cosa kola run -p aws --aws-ami ami-0431766f2498820b8 --aws-region us-east-1 basic` This will run the basic tests on AWS using `ami-0431766f2498820b8` (fedora-coreos-37.20230227.20.2) with default instance type `m5.large`. Add `--aws-type <t3.micro>` if you want to use custom type. How to create the credentials refer to https://github.com/coreos/coreos-assembler/blob/main/docs/mantle/credentials.md#aws
 
-`kola run -p=gce --gcp-image=projects/fedora-coreos-cloud/global/images/fedora-coreos-37-20230227-20-2-gcp-x86-64 --gcp-json-key=/data/gce.json --gcp-project=fedora-coreos-testing basic` This will run the basic tests on GCP using default machine type `n1-standard-1`.
+`kola run -p=gce --gcp-image=projects/fedora-coreos-cloud/global/images/fedora-coreos-37-20230227-20-2-gcp-x86-64 --gcp-json-key=/data/gcp.json --gcp-project=fedora-coreos-testing basic` This will run the basic tests on GCP using default machine type `n1-standard-1`.
 - `gcp-image` is in the format of `projects/<GCP Image Project>/global/images/<GCP Image Name>`, to find related info refer to https://builds.coreos.fedoraproject.org/browser?stream=testing-devel&arch=x86_64.
 - `gcp-json-key` is using a service account's JSON key for authentication, how to create service account keys refer to https://github.com/coreos/coreos-assembler/blob/main/docs/mantle/credentials.md#gcp.
 - `gcp-project` is meant for testing in the specified project, or it will use the same as `<GCP Image Project>`.
