@@ -129,12 +129,6 @@ def gcp_cli(parser):
     parser.add_argument("--bucket",
                         help="Storage account to write image to",
                         default=os.environ.get("GCP_BUCKET"))
-    parser.add_argument("--gce",
-                        help="Use GCE as the platform ID instead of GCP",
-                        action="store_true",
-                        default=bool(
-                            os.environ.get("GCP_GCE_PLATFORM_ID", False))
-                        )
     parser.add_argument("--json-key",
                         help="GCP Service Account JSON Auth",
                         default=os.environ.get("GCP_JSON_AUTH"))
