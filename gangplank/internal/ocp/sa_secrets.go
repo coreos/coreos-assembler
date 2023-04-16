@@ -106,8 +106,6 @@ var (
 		{
 			label: "gcp",
 			fileVarMap: varMap{
-				// gce is the legacy name for GCP
-				"gce.json": "GCP_IMAGE_UPLOAD_CONFIG",
 				"gcp.json": "GCP_IMAGE_UPLOAD_CONFIG",
 			},
 		},
