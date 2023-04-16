@@ -25,7 +25,7 @@ func init() {
 	register.RegisterTest(&register.Test{
 		Run:              CheckUserShells,
 		ClusterSize:      1,
-		ExcludePlatforms: []string{"gce"},
+		ExcludePlatforms: []string{"gcp"},
 		Name:             "fcos.users.shells",
 		Distros:          []string{"fcos"},
 	})
