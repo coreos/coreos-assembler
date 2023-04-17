@@ -3,6 +3,7 @@
 import argparse
 import logging
 import os
+import subprocess
 import sys
 import tempfile
 import tenacity
@@ -90,11 +91,20 @@ def is_tag_in_registry(repo, tag):
     @param tag  str image tag
     '''
     # Podman remote doesn't allow push using digestfile. That's why the tag check is done
-    cmd = ["podman", "search", "--list-tags", repo]
-    tags = runcmd(cmd, capture_output=True).stdout.strip().decode()
-    if (tag in str(tags)):
-        return True
-    return False
+    # We're not using runcmd here because it's unnecessarily noisy since we
+    # expect failure in some cases.
+    cmd = ["skopeo", "inspect", "--raw", f"docker://{repo}:{tag}"]
+    try:
+        subprocess.check_output(cmd, stderr=subprocess.PIPE)
+    except subprocess.CalledProcessError as e:
+        # yuck; check if it's because the tag doesn't exist
+        if b'manifest unknown' in e.stderr:
+            return False
+        # any other error is unexpected; fail
+        logging.error(f" STDOUT: {e.stdout.decode()}")
+        logging.error(f" STDERR: {e.stderr.decode()}")
+        raise e
+    return True
 
 
 def main():
