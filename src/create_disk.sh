@@ -162,6 +162,7 @@ if [[ ${secure_execution} -eq 1 ]]; then
     SDPART=1
     BOOTVERITYHASHPN=5
     ROOTVERITYHASHPN=6
+    extrakargs="${extrakargs} swiotlb=262144"
 fi
 # Make the size relative
 if [ "${rootfs_size}" != "0" ]; then
