@@ -37,10 +37,10 @@ arch=$(uname -m)
 export arch
 
 case $arch in
-    "x86_64")  DEFAULT_TERMINAL="ttyS0"   ;;
-    "ppc64le") DEFAULT_TERMINAL="hvc0"    ;;
-    "aarch64") DEFAULT_TERMINAL="ttyAMA0" ;;
-    "s390x")   DEFAULT_TERMINAL="ttysclp0";;
+    "x86_64")  DEFAULT_TERMINAL="ttyS0,115200n8" ;;
+    "ppc64le") DEFAULT_TERMINAL="hvc0"           ;;
+    "aarch64") DEFAULT_TERMINAL="ttyAMA0"        ;;
+    "s390x")   DEFAULT_TERMINAL="ttysclp0"       ;;
     *)         fatal "Architecture ${arch} not supported"
 esac
 export DEFAULT_TERMINAL

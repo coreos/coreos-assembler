@@ -47,7 +47,7 @@ var baseKargs = []string{"rd.neednet=1", "ip=dhcp", "ignition.firstboot", "ignit
 var (
 	// TODO expose this as an API that can be used by cosa too
 	consoleKernelArgument = map[string]string{
-		"x86_64":  "ttyS0",
+		"x86_64":  "ttyS0,115200n8",
 		"ppc64le": "hvc0",
 		"aarch64": "ttyAMA0",
 		"s390x":   "ttysclp0",
