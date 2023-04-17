@@ -122,6 +122,17 @@ func (inst *Install) PXE(kargs []string, liveIgnition, ignition conf.Conf, offli
 		return nil, err
 	}
 
+	installerConfig := installerConfig{
+		Console: []string{consoleKernelArgument[coreosarch.CurrentRpmArch()]},
+	}
+	installerConfigData, err := yaml.Marshal(installerConfig)
+	if err != nil {
+		return nil, err
+	}
+	mode := 0644
+
+	liveIgnition.AddFile("/etc/coreos/installer.d/mantle.yaml", string(installerConfigData), mode)
+
 	inst.kargs = kargs
 	inst.ignition = ignition
 	inst.liveIgnition = liveIgnition
@@ -564,7 +575,8 @@ type installerConfig struct {
 	Insecure     bool     `yaml:",omitempty"`
 	AppendKargs  []string `yaml:"append-karg,omitempty"`
 	CopyNetwork  bool     `yaml:"copy-network,omitempty"`
-	DestDevice   string   `yaml:"dest-device"`
+	DestDevice   string   `yaml:"dest-device,omitempty"`
+	Console      []string `yaml:"console,omitempty"`
 }
 
 func (inst *Install) InstallViaISOEmbed(kargs []string, liveIgnition, targetIgnition conf.Conf, outdir string, offline, minimal bool) (*InstalledMachine, error) {
@@ -592,6 +604,7 @@ func (inst *Install) InstallViaISOEmbed(kargs []string, liveIgnition, targetIgni
 	installerConfig := installerConfig{
 		IgnitionFile: "/var/opt/pointer.ign",
 		DestDevice:   "/dev/vda",
+		Console:      []string{consoleKernelArgument[coreosarch.CurrentRpmArch()]},
 	}
 
 	if inst.MultiPathDisk {
