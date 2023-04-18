@@ -125,7 +125,6 @@ while true; do
     *)
         print_help
         fatal "init: unrecognized option: $1"
-        exit 1
         ;;
     esac
     shift
@@ -135,7 +134,6 @@ done
 if [ $# -ne 1 ]; then
     print_help
     fatal "ERROR: Missing GITCONFIG"
-    exit 1
 fi
 
 # If the current working dir is not empty then error out
