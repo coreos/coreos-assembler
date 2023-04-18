@@ -67,7 +67,6 @@ while true; do
             ;;
         *)
             fatal "$0: unrecognized option: $1"
-            exit 1
             ;;
     esac
     shift
@@ -76,7 +75,6 @@ done
 if [ $# -ne 0 ]; then
     print_help
     fatal "ERROR: Too many arguments"
-    exit 1
 fi
 
 prepare_build
