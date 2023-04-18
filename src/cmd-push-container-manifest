@@ -21,6 +21,7 @@ def main():
     map_arch = {}
     map_arch['arm64'] = 'aarch64'
     map_arch['amd64'] = 'x86_64'
+    allow_missing_arches = False
 
     if args.authfile:
         os.environ["REGISTRY_AUTH_FILE"] = args.authfile
@@ -36,7 +37,13 @@ def main():
         print(f"Targeting build: {args.build}")
         build_arches = builds.get_build_arches(args.build)
         if not args.arches:
+            # If the user didn't specify which arches to push then we'll default
+            # to all available and we won't error if some are missing. This can
+            # happen if there is an artifact that is only built for a subset of
+            # arches (i.e. kubevirt).
             args.arches = build_arches
+            allow_missing_arches = True
+
         # Iterate over the requested architectures and:
         #   - Make sure the container images exist and are on disk
         #   - Store the buildmeta for the build/arch in the buildmetas dict
@@ -62,10 +69,13 @@ def main():
             builddir = builds.get_build_dir(build_id=args.build, basearch=arch)
             buildmeta = GenericBuildMeta(build=args.build, basearch=arch,
                                          workdir=os.path.abspath(os.getcwd()))
-            buildmetas[arch] = buildmeta
             if not buildmeta['images'][args.artifact]:
                 print(f"No artifact {args.artifact} in {args.build}/{arch}")
-                raise Exception
+                if allow_missing_arches:
+                    continue
+                else:
+                    raise Exception
+            buildmetas[arch] = buildmeta
 
             # Checks if the meta digest matches each arch digest in the remote.
             # If it doesn't match (or doesn't exist), we need to upload.
