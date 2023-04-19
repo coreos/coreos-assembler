@@ -947,17 +947,8 @@
     "kubevirt": {
       "$id": "#/properties/kubevirt",
       "type": "object",
-      "title": "KubeVirt",
-      "required": [
-        "image"
-      ],
-      "properties": {
-        "image": {
-          "$id": "#/properties/kubevirt/image",
-          "type": "string",
-          "title": "Image"
-        }
-      }
+      "title": "Kubevirt container",
+      "$ref": "#/definitions/image"
     },
     "ibmcloud": {
       "$id": "#/properties/ibmcloud",
