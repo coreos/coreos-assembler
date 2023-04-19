@@ -815,7 +815,7 @@
     "rpm-ostree-inputhash": {
       "$id": "#/properties/rpm-ostree-inputhash",
       "type": "string",
-      "title": "input has of the rpm-ostree",
+      "title": "input hash of the rpm-ostree",
       "default": "",
       "minLength": 64
     },
