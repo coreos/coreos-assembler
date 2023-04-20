@@ -131,7 +131,10 @@ func (inst *Install) PXE(kargs []string, liveIgnition, ignition conf.Conf, offli
 	}
 	mode := 0644
 
-	liveIgnition.AddFile("/etc/coreos/installer.d/mantle.yaml", string(installerConfigData), mode)
+	// XXX: https://github.com/coreos/coreos-installer/issues/1171
+	if coreosarch.CurrentRpmArch() != "s390x" {
+		liveIgnition.AddFile("/etc/coreos/installer.d/mantle.yaml", string(installerConfigData), mode)
+	}
 
 	inst.kargs = kargs
 	inst.ignition = ignition
@@ -604,7 +607,11 @@ func (inst *Install) InstallViaISOEmbed(kargs []string, liveIgnition, targetIgni
 	installerConfig := installerConfig{
 		IgnitionFile: "/var/opt/pointer.ign",
 		DestDevice:   "/dev/vda",
-		Console:      []string{consoleKernelArgument[coreosarch.CurrentRpmArch()]},
+	}
+
+	// XXX: https://github.com/coreos/coreos-installer/issues/1171
+	if coreosarch.CurrentRpmArch() != "s390x" {
+		installerConfig.Console = []string{consoleKernelArgument[coreosarch.CurrentRpmArch()]}
 	}
 
 	if inst.MultiPathDisk {
