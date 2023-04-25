@@ -849,12 +849,20 @@ func newGuestfish(arch, diskImagePath string, diskSectorSize int) (*coreosGuestf
 		return nil, errors.Wrapf(err, "guestfish launch failed")
 	}
 
+	rootfs, err := findLabel("root", pid)
+	if err != nil {
+		return nil, errors.Wrapf(err, "guestfish command failed to find root label")
+	}
+	if err := exec.Command("guestfish", remote, "mount", rootfs, "/").Run(); err != nil {
+		return nil, errors.Wrapf(err, "guestfish root mount failed")
+	}
+
 	bootfs, err := findLabel("boot", pid)
 	if err != nil {
 		return nil, errors.Wrapf(err, "guestfish command failed to find boot label")
 	}
 
-	if err := exec.Command("guestfish", remote, "mount", bootfs, "/").Run(); err != nil {
+	if err := exec.Command("guestfish", remote, "mount", bootfs, "/boot").Run(); err != nil {
 		return nil, errors.Wrapf(err, "guestfish boot mount failed")
 	}
 
@@ -879,11 +887,11 @@ func setupPreboot(arch, confPath, firstbootkargs, kargs string, diskImagePath st
 	defer gf.destroy()
 
 	if confPath != "" {
-		if err := exec.Command("guestfish", gf.remote, "mkdir-p", "/ignition").Run(); err != nil {
+		if err := exec.Command("guestfish", gf.remote, "mkdir-p", "/boot/ignition").Run(); err != nil {
 			return errors.Wrapf(err, "guestfish directory creation failed")
 		}
 
-		if err := exec.Command("guestfish", gf.remote, "upload", confPath, fileRemoteLocation).Run(); err != nil {
+		if err := exec.Command("guestfish", gf.remote, "upload", confPath, "/boot"+fileRemoteLocation).Run(); err != nil {
 			return errors.Wrapf(err, "guestfish upload failed")
 		}
 	}
@@ -891,13 +899,17 @@ func setupPreboot(arch, confPath, firstbootkargs, kargs string, diskImagePath st
 	// See /boot/grub2/grub.cfg
 	if firstbootkargs != "" {
 		grubStr := fmt.Sprintf("set ignition_network_kcmdline='%s'\n", firstbootkargs)
-		if err := exec.Command("guestfish", gf.remote, "write", "/ignition.firstboot", grubStr).Run(); err != nil {
+		if err := exec.Command("guestfish", gf.remote, "write", "/boot/ignition.firstboot", grubStr).Run(); err != nil {
 			return errors.Wrapf(err, "guestfish write")
 		}
 	}
-
-	if kargs != "" {
-		confpathout, err := exec.Command("guestfish", gf.remote, "glob-expand", "/loader/entries/ostree*conf").Output()
+	// Parsing BLS
+	var linux string
+	var initrd string
+	var allkargs string
+	zipl_sync := arch == "s390x" && (firstbootkargs != "" || kargs != "")
+	if kargs != "" || zipl_sync {
+		confpathout, err := exec.Command("guestfish", gf.remote, "glob-expand", "/boot/loader/entries/ostree*conf").Output()
 		if err != nil {
 			return errors.Wrapf(err, "finding bootloader config path")
 		}
@@ -906,7 +918,6 @@ func setupPreboot(arch, confPath, firstbootkargs, kargs string, diskImagePath st
 			return fmt.Errorf("Multiple values for bootloader config: %v", confpathout)
 		}
 		confpath := confs[0]
-
 		origconf, err := exec.Command("guestfish", gf.remote, "read-file", confpath).Output()
 		if err != nil {
 			return errors.Wrapf(err, "reading bootloader config")
@@ -915,17 +926,66 @@ func setupPreboot(arch, confPath, firstbootkargs, kargs string, diskImagePath st
 		for _, line := range strings.Split(string(origconf), "\n") {
 			if strings.HasPrefix(line, "options ") {
 				line += " " + kargs
+				allkargs = strings.TrimPrefix(line, "options ")
+			} else if strings.HasPrefix(line, "linux ") {
+				linux = "/boot" + strings.TrimPrefix(line, "linux ")
+			} else if strings.HasPrefix(line, "initrd ") {
+				initrd = "/boot" + strings.TrimPrefix(line, "initrd ")
 			}
 			buf.Write([]byte(line))
 			buf.Write([]byte("\n"))
 		}
-		if err := exec.Command("guestfish", gf.remote, "write", confpath, buf.String()).Run(); err != nil {
-			return errors.Wrapf(err, "writing bootloader config")
+		if kargs != "" {
+			if err := exec.Command("guestfish", gf.remote, "write", confpath, buf.String()).Run(); err != nil {
+				return errors.Wrapf(err, "writing bootloader config")
+			}
+		}
+	}
+
+	// s390x requires zipl to update low-level data on block device
+	if zipl_sync {
+		allkargs = strings.TrimSpace(allkargs + " ignition.firstboot " + firstbootkargs)
+		if err := runZipl(gf, linux, initrd, allkargs); err != nil {
+			return errors.Wrapf(err, "running zipl")
 		}
 	}
 
 	if err := exec.Command("guestfish", gf.remote, "umount-all").Run(); err != nil {
 		return errors.Wrapf(err, "guestfish umount failed")
+	}
+	return nil
+}
+
+func runZipl(gf *coreosGuestfish, linux string, initrd string, options string) error {
+	// Detecting ostree commit
+	deploy, err := exec.Command("guestfish", gf.remote, "glob-expand", "/ostree/deploy/*/deploy/*.0").Output()
+	if err != nil {
+		return errors.Wrapf(err, "finding deploy path")
+	}
+	sysroot := strings.TrimSpace(string(deploy))
+	// Saving cmdline
+	if err := exec.Command("guestfish", gf.remote, "write", "/boot/zipl.cmdline", options+"\n").Run(); err != nil {
+		return errors.Wrapf(err, "writing zipl cmdline")
+	}
+	// Bind-mounting for chroot
+	if err := exec.Command("guestfish", gf.remote, "debug", "sh", fmt.Sprintf("'mount -t devtmpfs none /sysroot/%s/dev'", sysroot)).Run(); err != nil {
+		return errors.Wrapf(err, "bind-mounting devtmpfs")
+	}
+	if err := exec.Command("guestfish", gf.remote, "debug", "sh", fmt.Sprintf("'mount -t proc none /sysroot/%s/proc'", sysroot)).Run(); err != nil {
+		return errors.Wrapf(err, "bind-mounting /proc")
+	}
+	if err := exec.Command("guestfish", gf.remote, "debug", "sh", fmt.Sprintf("'mount -o bind /sysroot/boot /sysroot/%s/boot'", sysroot)).Run(); err != nil {
+		return errors.Wrapf(err, "bind-mounting /boot")
+	}
+	// chroot zipl
+	cmd := exec.Command("guestfish", gf.remote, "debug", "sh", fmt.Sprintf("'chroot /sysroot/%s /sbin/zipl -i %s -r %s -p /boot/zipl.cmdline -t /boot'", sysroot, linux, initrd))
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		return errors.Wrapf(err, "running zipl")
+	}
+	// clean-up
+	if err := exec.Command("guestfish", gf.remote, "rm-f", "/boot/zipl.cmdline").Run(); err != nil {
+		return errors.Wrapf(err, "writing zipl cmdline")
 	}
 	return nil
 }
