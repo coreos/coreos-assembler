@@ -403,39 +403,44 @@ func runList(cmd *cobra.Command, args []string) error {
 		return testlist[i].Name < testlist[j].Name
 	})
 
+	var newtestlist []*item
+	for _, item := range testlist {
+		platformFound := (listPlatform == "all")
+		if listPlatform != "all" {
+			for _, platform := range item.Platforms {
+				if listPlatform == "all" || platform == "all" || platform == listPlatform {
+					platformFound = true
+					break
+				}
+			}
+		}
+
+		distroFound := (listDistro == "all")
+		if listDistro != "all" {
+			for _, distro := range item.Distros {
+				if listDistro == "all" || distro == "all" || distro == listDistro {
+					distroFound = true
+					break
+				}
+			}
+		}
+
+		if platformFound && distroFound {
+			newtestlist = append(newtestlist, item)
+		}
+	}
+
 	if !listJSON {
 		var w = tabwriter.NewWriter(os.Stdout, 0, 8, 0, '\t', 0)
 
 		fmt.Fprintln(w, "Test Name\tPlatforms\tArchitectures\tDistributions\tTags")
 		fmt.Fprintln(w, "\t")
-		for _, item := range testlist {
-			platformFound := (listPlatform == "all")
-			if listPlatform != "all" {
-				for _, platform := range item.Platforms {
-					if listPlatform == "all" || platform == "all" || platform == listPlatform {
-						platformFound = true
-						break
-					}
-				}
-			}
-
-			distroFound := (listDistro == "all")
-			if listDistro != "all" {
-				for _, distro := range item.Distros {
-					if listDistro == "all" || distro == "all" || distro == listDistro {
-						distroFound = true
-						break
-					}
-				}
-			}
-
-			if platformFound && distroFound {
-				fmt.Fprintf(w, "%v\n", item)
-			}
+		for _, item := range newtestlist {
+			fmt.Fprintf(w, "%v\n", item)
 		}
 		w.Flush()
 	} else {
-		out, err := json.MarshalIndent(testlist, "", "\t")
+		out, err := json.MarshalIndent(newtestlist, "", "\t")
 		if err != nil {
 			return errors.Wrapf(err, "marshalling test list")
 		}
