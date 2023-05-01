@@ -30,6 +30,9 @@ from gi.repository import GLib, Gio, OSTree
 # this is really the worst case scenario, it's usually pretty fast otherwise
 ROBOSIGNATORY_REQUEST_TIMEOUT_SEC = 60 * 60
 
+# https://pagure.io/fedora-infrastructure/issue/10899#comment-854645
+ROBOSIGNATORY_MESSAGE_PRIORITY = 4
+
 fedenv = 'prod'
 
 
@@ -123,6 +126,7 @@ def robosign_ostree(args, s3, build, gpgkey):
         request_type='ostree-sign',
         config=args.fedmsg_conf,
         request_timeout=ROBOSIGNATORY_REQUEST_TIMEOUT_SEC,
+        priority=ROBOSIGNATORY_MESSAGE_PRIORITY,
         environment=fedenv,
         body={
             'build_id': args.build,
@@ -215,6 +219,7 @@ def robosign_images(args, s3, build, gpgkey):
         request_type='artifacts-sign',
         config=args.fedmsg_conf,
         request_timeout=ROBOSIGNATORY_REQUEST_TIMEOUT_SEC,
+        priority=ROBOSIGNATORY_MESSAGE_PRIORITY,
         environment=fedenv,
         body={
             'build_id': args.build,

@@ -53,6 +53,7 @@ def send_request_and_wait_for_response(request_type,
                                        config=None,
                                        environment='prod',
                                        request_timeout=DEFAULT_REQUEST_TIMEOUT_SEC,
+                                       priority=None,
                                        body={}):
     assert environment in ['prod', 'stg']
     assert request_type in ['ostree-sign', 'artifacts-sign', 'ostree-import']
@@ -72,7 +73,8 @@ def send_request_and_wait_for_response(request_type,
     # Send the message/request
     send_message(config=config,
                  topic=get_request_topic(request_type, environment),
-                 body={**body, 'request_id': request_id})
+                 body={**body, 'request_id': request_id},
+                 priority=priority)
     # Wait for the response to come back
     return wait_for_response(cond, request_timeout)
 
@@ -93,7 +95,7 @@ def broadcast_fedmsg(broadcast_type,
     # Send the message/request
     send_message(config=config,
                  topic=get_broadcast_topic(broadcast_type, environment),
-                 body=body)
+                 body=body, priority=None)
 
 
 def get_broadcast_topic(broadcast_type, environment):
@@ -108,7 +110,7 @@ def get_request_finished_topic(request_type, environment):
     return get_request_topic(request_type, environment) + '.finished'
 
 
-def send_message(config, topic, body):
+def send_message(config, topic, body, priority):
     print(f"Sending {topic} with body {body}")
     # This is a bit hacky; we fork to publish the message here so that we can
     # load the publishing fedora-messaging config. The TL;DR is: we need auth
@@ -117,17 +119,18 @@ def send_message(config, topic, body):
     # inherit anything by default (like the Twisted state).
     ctx = mp.get_context('spawn')
     p = ctx.Process(target=send_message_impl,
-                    args=(config, topic, body))
+                    args=(config, topic, body, priority))
     p.start()
     p.join()
 
 
-def send_message_impl(config, topic, body):
+def send_message_impl(config, topic, body, priority):
     if config:
         conf.load_config(config)
-    publish(
-        message.Message(body=body, topic=topic)
-    )
+    msg = message.Message(body=body, topic=topic)
+    if priority:
+        msg.priority = priority
+    publish(msg)
 
 
 def wait_for_response(cond, request_timeout):
