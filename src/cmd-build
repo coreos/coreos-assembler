@@ -437,6 +437,13 @@ if [ "${commit}" == "${previous_commit}" ] && \
     ostree_tarfile_path=$(jq -r '.images.ostree.path' < "${previous_builddir}/meta.json")
     cp-reflink "${previous_builddir}/${previous_ostree_tarfile_path}" "${ostree_tarfile_path}"
     ostree_tarfile_sha256=$(jq -r '.images.ostree.sha256' < "${previous_builddir}/meta.json")
+    
+    ostree_oci_manifest_path="${name}-${buildid}-ostree.${basearch}-manifest.json"
+    skopeo inspect --raw oci-archive:"${ostree_tarfile_path}" > tmp/manifest.json
+    /usr/lib/coreos-assembler/finalize-artifact tmp/manifest.json "${ostree_oci_manifest_path}"
+    ostree_oci_manifest_sha256=$(sha256sum "${ostree_oci_manifest_path}" | awk '{print$1}')
+    ostree_oci_manifest_size=$(stat --format=%s "${ostree_oci_manifest_path}")
+
     # backcompat: allow older build without this field
     if [ "${ostree_tarfile_sha256}" = "null" ]; then
         ostree_tarfile_sha256=
@@ -462,6 +469,17 @@ else
                  "--label=io.openshift.build.versions=machine-os=${buildid}"
                 )
     fi
+    
+    last_build_manifest=()
+    if rpm-ostree compose container-encapsulate --help |grep -q -e "--previous-build-manifest"; then
+      # Use the last stable release if buildfetch used
+      if [ -n "${PARENT_BUILD}" ] && [ -f "${parent_builddir}/${name}-${PARENT_BUILD}-ostree.${basearch}-manifest.json" ]; then
+        last_build_manifest+=("--previous-build-manifest=${parent_builddir}/${name}-${PARENT_BUILD}-ostree.${basearch}-manifest.json")
+      # Use the previous local build
+      elif [ -n "${previous_build}" ] && [ -f "${previous_builddir}/${name}-${previous_build}-ostree.${basearch}-manifest.json" ]; then
+        last_build_manifest+=("--previous-build-manifest=${previous_builddir}/${name}-${previous_build}-ostree.${basearch}-manifest.json")
+      fi
+    fi
     runv rpm-ostree compose container-encapsulate --max-layers="$MAX_OSTREECONTAINER_LAYERS" --format-version=1 \
         --repo="${tmprepo}" \
         --label="coreos-assembler.image-config-checksum=${image_config_checksum}" \
@@ -469,11 +487,17 @@ else
         --label="org.opencontainers.image.source=${gitsrc}" \
         --label="org.opencontainers.image.revision=${config_gitrev}" \
         --copymeta-opt=fedora-coreos.stream \
+        "${last_build_manifest[@]}" \
         "${labels[@]}" \
         "${buildid}" \
         oci-archive:"${ostree_tarfile_path}".tmp:latest
     /usr/lib/coreos-assembler/finalize-artifact "${ostree_tarfile_path}"{.tmp,}
     ostree_tarfile_sha256=$(sha256sum "${ostree_tarfile_path}" | awk '{print$1}')
+    ostree_oci_manifest_path="${name}-${buildid}-ostree.${basearch}-manifest.json"
+    skopeo inspect --raw oci-archive:"${ostree_tarfile_path}" > tmp/manifest.json
+    /usr/lib/coreos-assembler/finalize-artifact tmp/manifest.json "${ostree_oci_manifest_path}"
+    ostree_oci_manifest_sha256=$(sha256sum "${ostree_oci_manifest_path}" | awk '{print$1}')
+    ostree_oci_manifest_size=$(stat --format=%s "${ostree_oci_manifest_path}")
 fi
 
 # The base metadata, plus locations for code sources.
@@ -517,6 +541,11 @@ cat > tmp/images.json <<EOF
         "sha256": "${ostree_tarfile_sha256}",
         "size": ${ostree_tarfile_size},
         "skip-compression": true
+    },
+    "oci-manifest": {
+      "path": "${ostree_oci_manifest_path}",
+      "sha256": "${ostree_oci_manifest_sha256}",
+      "size": ${ostree_oci_manifest_size}
     }
   }
 }
