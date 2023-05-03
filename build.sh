@@ -45,9 +45,9 @@ install_rpms() {
 
     # freeze grub2 for https://github.com/coreos/coreos-assembler/issues/3370
     case "${arch}" in
-        x86_64) frozendeps=$(echo grub2-{common,tools,tools-extra,tools-minimal,efi-x64,pc,pc-modules}-1:2.06-75.fc37);;
-        aarch64) frozendeps=$(echo grub2-{common,tools,tools-extra,tools-minimal,efi-aa64}-1:2.06-75.fc37);;
-        ppc64le) frozendeps=$(echo grub2-{common,tools,tools-extra,tools-minimal,ppc64le,ppc64le-modules}-1:2.06-75.fc37);;
+        x86_64) frozendeps=$(echo grub2-{common,tools,tools-extra,tools-minimal,efi-x64,pc,pc-modules}-1:2.06-76.fc38);;
+        aarch64) frozendeps=$(echo grub2-{common,tools,tools-extra,tools-minimal,efi-aa64}-1:2.06-76.fc38);;
+        ppc64le) frozendeps=$(echo grub2-{common,tools,tools-extra,tools-minimal,ppc64le,ppc64le-modules}-1:2.06-76.fc38);;
         *) ;;
     esac
 
