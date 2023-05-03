@@ -157,6 +157,10 @@ var (
 			match: regexp.MustCompile("Oops:"),
 		},
 		{
+			desc:  "kernel soft lockup",
+			match: regexp.MustCompile("watchdog: BUG: soft lockup - CPU"),
+		},
+		{
 			desc:  "kernel warning",
 			match: regexp.MustCompile(`WARNING: CPU: \d+ PID: \d+ at (.+)`),
 		},
