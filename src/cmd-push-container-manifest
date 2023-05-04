@@ -69,7 +69,7 @@ def main():
             builddir = builds.get_build_dir(build_id=args.build, basearch=arch)
             buildmeta = GenericBuildMeta(build=args.build, basearch=arch,
                                          workdir=os.path.abspath(os.getcwd()))
-            if not buildmeta['images'][args.artifact]:
+            if not buildmeta['images'].get(args.artifact):
                 print(f"No artifact {args.artifact} in {args.build}/{arch}")
                 if allow_missing_arches:
                     continue
