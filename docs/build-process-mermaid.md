@@ -13,7 +13,7 @@ this will not be updated for branches -->
 - Go to [mermaid-live-editor](https://mermaidjs.github.io/mermaid-live-editor)
 - Copy paste script:
 
-```mermaid
+```
 graph LR
  A(<div><h3>FCOS Config</h3><ul><li>rpm-ostree treefile</li><li>Repos</li><li>Misc other bits</li></ul>)  --> C[<h3>coreos-assembler container</h3><ul><li>Fedora Base</li><li>Build Script Installed</li></ul></div>];
 D[RPMS] --> C;
