@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Currently used to determine the version of `oc` we install
-OCP_VERSION=4.10
+# uncomment this if you want to control the version of `oc` that gets installed
+#OCP_VERSION=4.12
 
 # Keep this script idempotent for local development rebuild use cases:
 # any consecutive runs should produce the same result.
@@ -103,8 +103,11 @@ install_rpms() {
 # and it is very useful to have in the same place/flow as where we do builds/tests related
 # to CoreOS.
 install_ocp_tools() {
-    curl -L https://mirror.openshift.com/pub/openshift-v4/"$(arch)"/clients/ocp/latest-$OCP_VERSION/openshift-client-linux.tar.gz | tar zxf - oc \
-        && mv oc /usr/bin
+    # If $OCP_VERSION is defined we'll grab that specific version.
+    # Otherwise we'll get the latest.
+    local url="https://mirror.openshift.com/pub/openshift-v4/${arch}/clients/ocp/latest${OCP_VERSION:+-$OCP_VERSION}/openshift-client-linux.tar.gz"
+    curl -L "$url" | tar zxf - oc
+    mv oc /usr/bin
 }
 
 # By default, we trust the official Red Hat GPG keys
