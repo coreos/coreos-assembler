@@ -37,6 +37,7 @@ class KubeVirtImage(QemuVariantImage):
                 '-chardev', f'file,id=ociarchiveout,path={final_img}',
                 '-device', 'virtserialport,chardev=ociarchiveout,name=ociarchiveout',
                 '--', 'podman', 'build', '--disable-compression=false',
+                '--label', f'version={self.build_id}',
                 '--tag=oci-archive:/dev/virtio-ports/ociarchiveout', ctxdir])
 
 
