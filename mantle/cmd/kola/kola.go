@@ -152,6 +152,7 @@ func init() {
 	cmdRunUpgrade.Flags().BoolVar(&findParentImage, "find-parent-image", false, "automatically find parent image if not provided -- note on qemu, this will download the image")
 	cmdRunUpgrade.Flags().StringVar(&qemuImageDir, "qemu-image-dir", "", "directory in which to cache QEMU images if --fetch-parent-image is enabled")
 	cmdRunUpgrade.Flags().BoolVar(&runRerunFlag, "rerun", false, "re-run failed tests once")
+	cmdRunUpgrade.Flags().StringVar(&allowRerunSuccess, "allow-rerun-success", "", "Allow kola test run to be successful when tests with given 'tags=...[,...]' pass during re-run")
 
 	root.AddCommand(cmdRerun)
 
