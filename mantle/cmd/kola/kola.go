@@ -116,6 +116,7 @@ This can be useful for e.g. serving locally built OSTree repos to qemu.
 	runExternals []string
 	runMultiply  int
 	runRerunFlag bool
+	_stub        string
 )
 
 func init() {
@@ -123,6 +124,7 @@ func init() {
 	cmdRun.Flags().StringArrayVarP(&runExternals, "exttest", "E", nil, "Externally defined tests (will be found in DIR/tests/kola)")
 	cmdRun.Flags().IntVar(&runMultiply, "multiply", 0, "Run the provided tests N times (useful to find race conditions)")
 	cmdRun.Flags().BoolVar(&runRerunFlag, "rerun", false, "re-run failed tests once")
+	cmdRun.Flags().StringVar(&_stub, "allow-rerun-success", "", "stub added for compatibility with pipeline")
 
 	root.AddCommand(cmdList)
 	cmdList.Flags().StringArrayVarP(&runExternals, "exttest", "E", nil, "Externally defined tests in directory")
