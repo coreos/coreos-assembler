@@ -91,6 +91,18 @@ if os.path.exists(args.output) and os.stat(args.output).st_size > 0:
         print(f"Using existing release file {args.output}")
 
 
+def get_floating_tag(rel, tags):
+    found = ""
+    for tag in tags:
+        if rel not in tag:
+            if found != "":
+                raise f"multiple floating tags within: {tags}"
+            found = tag
+    if found == "":
+        raise f"failed to find floating tag within: {tags}"
+    return found
+
+
 # Append the coreos-assembler build json `input_` to `out`, the target release stream.
 def append_build(out, input_):
     arch = input_.get("coreos-assembler.basearch")
@@ -170,7 +182,11 @@ def append_build(out, input_):
     # KubeVirt specific additions: https://github.com/coreos/stream-metadata-go/pull/41
     if input_.get("kubevirt", None) is not None:
         arch_dict["media"].setdefault("kubevirt", {}).setdefault("image", {})
-        arch_dict["media"]["kubevirt"]["image"].update(input_.get("kubevirt", {}))
+        tag = get_floating_tag(input_["buildid"], input_["kubevirt"]["tags"])
+        arch_dict["media"]["kubevirt"]["image"] = {
+            "image": input_["kubevirt"]["image"] + f":{tag}",
+            "digest-ref": input_["kubevirt"]["image"] + "@" + input_["kubevirt"]["digest"],
+        }
 
     # Azure: https://github.com/coreos/stream-metadata-go/issues/13
     inputaz = input_.get("azure")
