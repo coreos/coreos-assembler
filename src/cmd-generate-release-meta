@@ -182,6 +182,8 @@ def append_build(out, input_):
     # KubeVirt specific additions: https://github.com/coreos/stream-metadata-go/pull/41
     if input_.get("kubevirt", None) is not None:
         arch_dict["media"].setdefault("kubevirt", {}).setdefault("image", {})
+        # The `image` field uses a floating tag and the `digest-ref` field uses
+        # a digest pullspec. See: https://github.com/coreos/stream-metadata-go/pull/46.
         tag = get_floating_tag(input_["buildid"], input_["kubevirt"]["tags"])
         arch_dict["media"]["kubevirt"]["image"] = {
             "image": input_["kubevirt"]["image"] + f":{tag}",
