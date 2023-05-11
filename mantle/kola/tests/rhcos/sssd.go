@@ -26,6 +26,7 @@ func init() {
 		Run:         verifySSSD,
 		ClusterSize: 1,
 		Name:        `rhcos.sssd`,
+		Description: "Verify nss-altfiles and pam configs are expected.",
 		Flags:       []register.Flag{},
 		Distros:     []string{"rhcos"},
 		Platforms:   []string{"qemu"},

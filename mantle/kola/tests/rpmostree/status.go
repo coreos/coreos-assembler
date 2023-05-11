@@ -30,6 +30,7 @@ func init() {
 		Run:         rpmOstreeStatus,
 		ClusterSize: 1,
 		Name:        "rpmostree.status",
+		Description: "Verify rpm-ostree status works.",
 		Tags:        []string{"rpm-ostree"},
 	})
 }

@@ -66,6 +66,7 @@ var (
 func init() {
 	register.RegisterTest(&register.Test{
 		Name:        "coreos.ignition.resource.local",
+		Description: "Verify that we can fetch Ignition files through local, http and tftp.",
 		Run:         resourceLocal,
 		ClusterSize: 1,
 		NativeFuncs: map[string]register.NativeFuncWrap{

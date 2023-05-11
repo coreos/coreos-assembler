@@ -35,6 +35,7 @@ func init() {
 		Run:         podmanBaseTest,
 		ClusterSize: 1,
 		Name:        `podman.base`,
+		Description: "Verify podman info and running with various options work.",
 	})
 	// These remaining tests use networking, and hence don't work reliably on RHCOS
 	// right now due to due to https://bugzilla.redhat.com/show_bug.cgi?id=1757572
@@ -42,6 +43,7 @@ func init() {
 		Run:         podmanWorkflow,
 		ClusterSize: 1,
 		Name:        `podman.workflow`,
+		Description: "Verify container can run with volume mount and port forwarding.",
 		Flags:       []register.Flag{register.RequiresInternetAccess}, // For pulling nginx
 		Distros:     []string{"fcos"},
 		FailFast:    true,
@@ -50,6 +52,7 @@ func init() {
 		Run:         podmanNetworksReliably,
 		ClusterSize: 1,
 		Name:        `podman.network-single`,
+		Description: "Verify basic container network connectivity.",
 		// Not really but podman blows up if there's no /etc/resolv.conf
 		Tags:    []string{kola.NeedsInternetTag},
 		Distros: []string{"fcos"},

@@ -45,6 +45,7 @@ func init() {
 	// after the machine has booted.
 	register.RegisterTest(&register.Test{
 		Name:             "coreos.ignition.sethostname",
+		Description:      "Verify that Ignition supports setting hostname.",
 		Run:              setHostname,
 		ClusterSize:      1,
 		UserData:         config,

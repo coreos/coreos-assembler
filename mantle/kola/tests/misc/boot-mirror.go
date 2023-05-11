@@ -60,6 +60,7 @@ func init() {
 		Run:         runBootMirrorTest,
 		ClusterSize: 0,
 		Name:        `coreos.boot-mirror`,
+		Description: "Verify the boot-mirror RAID1 flow works properly in both BIOS and UEFI mode.",
 		Platforms:   []string{"qemu-unpriv"},
 		// Can't mirror boot disk on s390x
 		ExcludeArchitectures: []string{"s390x"},
@@ -74,6 +75,7 @@ func init() {
 		Run:         runBootMirrorLUKSTest,
 		ClusterSize: 0,
 		Name:        `coreos.boot-mirror.luks`,
+		Description: "Verify the boot-mirror+LUKS RAID1 flow works properly in both BIOS and UEFI modes.",
 		Platforms:   []string{"qemu-unpriv"},
 		// Can't mirror boot disk on s390x, and qemu s390x doesn't
 		// support TPM

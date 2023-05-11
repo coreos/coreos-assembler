@@ -55,6 +55,7 @@ var (
 func init() {
 	register.RegisterTest(&register.Test{
 		Name:        "coreos.ignition.security.tls",
+		Description: "Verify that we can fetch ignition with https.",
 		Run:         securityTLS,
 		ClusterSize: 1,
 		NativeFuncs: map[string]register.NativeFuncWrap{

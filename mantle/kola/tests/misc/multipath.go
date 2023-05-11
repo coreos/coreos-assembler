@@ -97,6 +97,7 @@ systemd:
 func init() {
 	register.RegisterTest(&register.Test{
 		Name:          "multipath.day1",
+		Description:   "Verify that multipath can be configured day 1 through Ignition.",
 		Run:           runMultipathDay1,
 		ClusterSize:   1,
 		Platforms:     []string{"qemu-unpriv"},
@@ -105,6 +106,7 @@ func init() {
 	})
 	register.RegisterTest(&register.Test{
 		Name:          "multipath.day2",
+		Description:   "Verify that multipath can be configured day 2 through Ignition.",
 		Run:           runMultipathDay2,
 		ClusterSize:   1,
 		Platforms:     []string{"qemu-unpriv"},
@@ -112,6 +114,7 @@ func init() {
 	})
 	register.RegisterTest(&register.Test{
 		Name:            "multipath.partition",
+		Description:     "Verify that multipath can be configured for a partition.",
 		Run:             runMultipathPartition,
 		ClusterSize:     1,
 		Platforms:       []string{"qemu-unpriv"},

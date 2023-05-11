@@ -39,6 +39,7 @@ var offServices = []string{
 func init() {
 	register.RegisterTest(&register.Test{
 		Name:        "basic",
+		Description: "Verify basic functionalities like SSH, systemd services, useradd, etc.",
 		Run:         LocalTests,
 		ClusterSize: 1,
 		NativeFuncs: map[string]register.NativeFuncWrap{
@@ -57,6 +58,7 @@ func init() {
 	// https://github.com/coreos/mantle/issues/1132
 	register.RegisterTest(&register.Test{
 		Name:        "fcos.internet",
+		Description: "Verify that podman echo and get head work.",
 		Run:         InternetTests,
 		ClusterSize: 1,
 		Flags:       []register.Flag{register.RequiresInternetAccess},
@@ -68,6 +70,7 @@ func init() {
 	})
 	register.RegisterTest(&register.Test{
 		Name:        "rootfs.uuid",
+		Description: "Verify that the root disk's GUID was set to a random one on first boot.",
 		Run:         LocalTests,
 		ClusterSize: 1,
 		NativeFuncs: map[string]register.NativeFuncWrap{
@@ -78,6 +81,7 @@ func init() {
 	})
 	register.RegisterTest(&register.Test{
 		Name:        "rhcos.services-disabled",
+		Description: "Verify the specific services are disabled/inactive",
 		Run:         LocalTests,
 		ClusterSize: 1,
 		NativeFuncs: map[string]register.NativeFuncWrap{

@@ -23,6 +23,7 @@ import (
 func init() {
 	register.RegisterTest(&register.Test{
 		Name:        "coreos.ignition.symlink",
+		Description: "Verify that Ignition supports the creation of absolute symlink.",
 		Run:         writeAbsoluteSymlink,
 		ClusterSize: 1,
 		Platforms:   []string{"qemu"},

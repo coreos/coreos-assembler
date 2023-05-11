@@ -22,6 +22,7 @@ import (
 func init() {
 	register.RegisterTest(&register.Test{
 		Name:        "coreos.misc.aws.diskfriendlyname",
+		Description: "Verify invariants on AWS instances.",
 		Platforms:   []string{"aws"},
 		Run:         awsVerifyDiskFriendlyName,
 		ClusterSize: 1,

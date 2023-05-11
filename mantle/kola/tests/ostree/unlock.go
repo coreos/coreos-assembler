@@ -29,6 +29,7 @@ func init() {
 		Run:         ostreeUnlockTest,
 		ClusterSize: 1,
 		Name:        "ostree.unlock",
+		Description: "Verify installing an rpm does not persist when using `ostree admin unlock`.",
 		Flags:       []register.Flag{register.RequiresInternetAccess}, // need network to pull RPM
 		FailFast:    true,
 		Tags:        []string{"ostree"},
@@ -38,6 +39,7 @@ func init() {
 		ClusterSize: 1,
 		Flags:       []register.Flag{register.RequiresInternetAccess}, // need network to pull RPM
 		Name:        "ostree.hotfix",
+		Description: "Verify that the deployment can be put into hotfix mode where RPMs installed with persist across reboots.",
 		FailFast:    true,
 		Tags:        []string{"ostree"},
 		// enable debugging for https://github.com/coreos/fedora-coreos-tracker/issues/942

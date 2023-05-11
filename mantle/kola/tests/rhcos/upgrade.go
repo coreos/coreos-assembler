@@ -45,6 +45,7 @@ func init() {
 		ClusterSize: 1,
 		// if renaming this, also rename the command in kolet-httpd.service below
 		Name:                 "rhcos.upgrade.luks",
+		Description:          "Verify that rhcos supports upgrading with LUKS.",
 		FailFast:             true,
 		Tags:                 []string{"upgrade"},
 		Distros:              []string{"rhcos"},
@@ -72,6 +73,7 @@ func init() {
 		ClusterSize: 1,
 		// if renaming this, also rename the command in kolet-httpd.service below
 		Name:                 "rhcos.upgrade.basic",
+		Description:          "Verify that rhcos supports upgrading.",
 		FailFast:             true,
 		Tags:                 []string{"upgrade"},
 		Distros:              []string{"rhcos"},
@@ -87,6 +89,7 @@ func init() {
 		Run:                  rhcosUpgradeFromOcpRhcos,
 		ClusterSize:          0,
 		Name:                 "rhcos.upgrade.from-ocp-rhcos",
+		Description:          "Verify upgrading from the latest RHCOS released for OCP works.",
 		FailFast:             true,
 		Flags:                []register.Flag{register.RequiresInternetAccess},
 		Distros:              []string{"rhcos"},

@@ -27,6 +27,7 @@ func init() {
 		ClusterSize:      1,
 		ExcludePlatforms: []string{"gcp"},
 		Name:             "fcos.users.shells",
+		Description:      "Verify that there are no invalid users.",
 		Distros:          []string{"fcos"},
 	})
 }

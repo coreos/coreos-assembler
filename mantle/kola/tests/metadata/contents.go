@@ -39,6 +39,7 @@ func init() {
 
 	register.RegisterTest(&register.Test{
 		Name:        "fcos.metadata.aws",
+		Description: "Verify the metadata on AWS.",
 		Run:         verifyAWS,
 		ClusterSize: 1,
 		Platforms:   []string{"aws"},
@@ -48,6 +49,7 @@ func init() {
 
 	register.RegisterTest(&register.Test{
 		Name:        "fcos.metadata.azure",
+		Description: "Verify the metadata on Azure.",
 		Run:         verifyAzure,
 		ClusterSize: 1,
 		Platforms:   []string{"azure"},
@@ -57,6 +59,7 @@ func init() {
 
 	register.RegisterTest(&register.Test{
 		Name:        "fcos.metadata.packet",
+		Description: "Verify the metadata on Packet.",
 		Run:         verifyPacket,
 		ClusterSize: 1,
 		Platforms:   []string{"packet"},

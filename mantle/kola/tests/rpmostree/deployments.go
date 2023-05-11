@@ -30,6 +30,7 @@ func init() {
 		Run:         rpmOstreeUpgradeRollback,
 		ClusterSize: 1,
 		Name:        "rpmostree.upgrade-rollback",
+		Description: "Verify an upgrade and rollback with a simulated update works.",
 		FailFast:    true,
 		Tags:        []string{"rpm-ostree", "upgrade"},
 	})
@@ -37,6 +38,7 @@ func init() {
 		Run:         rpmOstreeInstallUninstall,
 		ClusterSize: 1,
 		Name:        "rpmostree.install-uninstall",
+		Description: "Verifies rpm-ostree supports installing and uninstalling rpms.",
 		Tags:        []string{"rpm-ostree"},
 		// this Ignition config lands the dummy RPM
 		UserData: conf.Ignition(`{
