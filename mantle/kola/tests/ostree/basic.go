@@ -34,6 +34,7 @@ func init() {
 		Run:         ostreeBasicTest,
 		ClusterSize: 1,
 		Name:        "ostree.basic",
+		Description: "Verify the ostree basic functions work.",
 		Distros:     []string{"rhcos"},
 		FailFast:    true,
 		Tags:        []string{"ostree"},
@@ -43,6 +44,7 @@ func init() {
 		Run:         ostreeRemoteTest,
 		ClusterSize: 1,
 		Name:        "ostree.remote",
+		Description: "Verify the ostree remote functions work.",
 		Flags:       []register.Flag{register.RequiresInternetAccess}, // need network to contact remote
 		FailFast:    true,
 		Tags:        []string{"ostree"},

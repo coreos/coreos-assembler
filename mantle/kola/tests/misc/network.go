@@ -35,6 +35,7 @@ func init() {
 		Run:         NetworkListeners,
 		ClusterSize: 1,
 		Name:        "fcos.network.listeners",
+		Description: "Verify the nework listeners are expected.",
 		Distros:     []string{"fcos"},
 		// be sure to notice listeners in the docker stack
 		UserData: conf.EmptyIgnition(),
@@ -44,6 +45,7 @@ func init() {
 		Run:            NetworkInitramfsSecondBoot,
 		ClusterSize:    1,
 		Name:           "coreos.network.initramfs.second-boot",
+		Description:    "Verify that networking is not started in the initramfs on the second boot.",
 		ExcludeDistros: []string{"fcos", "rhcos"},
 	})
 	// This test follows the same network configuration used on https://github.com/RHsyseng/rhcos-slb
@@ -51,6 +53,7 @@ func init() {
 		Run:         NetworkAdditionalNics,
 		ClusterSize: 0,
 		Name:        "rhcos.network.multiple-nics",
+		Description: "Verify configuring networking with multiple NICs work.",
 		Timeout:     20 * time.Minute,
 		Distros:     []string{"rhcos"},
 		Platforms:   []string{"qemu-unpriv"},
@@ -62,6 +65,7 @@ func init() {
 		Run:         InitInterfacesTest,
 		ClusterSize: 0,
 		Name:        "rhcos.network.init-interfaces-test",
+		Description: "Verify init-interfaces script works in both fresh setup and reboot.",
 		Timeout:     40 * time.Minute,
 		Distros:     []string{"rhcos"},
 		Platforms:   []string{"qemu-unpriv"},

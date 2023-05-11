@@ -57,6 +57,7 @@ func init() {
 		Run:            NFSv4,
 		ClusterSize:    0,
 		Name:           "linux.nfs.v4",
+		Description:    "Verify that NFSv4 works.",
 		ExcludeDistros: []string{"fcos"},
 
 		// Disabled on Azure because setting hostname

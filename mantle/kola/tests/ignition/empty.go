@@ -26,6 +26,7 @@ import (
 func init() {
 	register.RegisterTest(&register.Test{
 		Name:             "fcos.ignition.misc.empty",
+		Description:      "Verify that not inject SSH key into Ignition works on FCOS.",
 		Run:              noIgnitionSSHKey,
 		ClusterSize:      1,
 		ExcludePlatforms: []string{"qemu", "esx"},
@@ -35,6 +36,7 @@ func init() {
 	})
 	register.RegisterTest(&register.Test{
 		Name:             "fcos.ignition.v3.noop",
+		Description:      "Verify that not inject SSH key into Ignition with v3.0.0 works on FCOS.",
 		Run:              noIgnitionSSHKey,
 		ClusterSize:      1,
 		ExcludePlatforms: []string{"qemu", "esx"},

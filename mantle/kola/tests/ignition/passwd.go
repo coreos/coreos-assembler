@@ -27,6 +27,7 @@ import (
 func init() {
 	register.RegisterTest(&register.Test{
 		Name:        "coreos.ignition.groups",
+		Description: "Verify that we can create user groups through Ignition.",
 		Run:         groups,
 		ClusterSize: 1,
 		Tags:        []string{"ignition"},
@@ -55,6 +56,7 @@ func init() {
 	})
 	register.RegisterTest(&register.Test{
 		Name:        "coreos.ignition.v2.users",
+		Description: "Verify that we can create users through Ignition.",
 		Run:         users,
 		ClusterSize: 1,
 		Tags:        []string{"ignition"},

@@ -12,6 +12,7 @@ func init() {
 		Run:         fipsEnableTest,
 		ClusterSize: 1,
 		Name:        `fips.enable`,
+		Description: "Verify that fips enabled works.",
 		Flags:       []register.Flag{},
 		Distros:     []string{"rhcos"},
 		UserData: conf.Ignition(`{
@@ -59,6 +60,7 @@ func init() {
 		Run:         fipsEnableTest,
 		ClusterSize: 1,
 		Name:        `fips.enable.partitions`,
+		Description: "Verify that fips enabled works if custom partitions are present.",
 		Flags:       []register.Flag{},
 		Distros:     []string{"rhcos"},
 		Platforms:   []string{"qemu", "qemu-unpriv"},

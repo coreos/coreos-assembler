@@ -28,6 +28,7 @@ func init() {
 		Run:         Filesystem,
 		ClusterSize: 1,
 		Name:        "fcos.filesystem",
+		Description: "Verify the permissions are correct on the filesystem.",
 		Distros:     []string{"fcos"},
 	})
 }

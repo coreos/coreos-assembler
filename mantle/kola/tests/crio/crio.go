@@ -189,6 +189,7 @@ func init() {
 		Run:         crioBaseTests,
 		ClusterSize: 1,
 		Name:        `crio.base`,
+		Description: "Verify cri-o basic funcions work, include storage driver is overlay, storage root is /varlib/containers/storage, cgroup driver is systemd, and cri-o containers have reliable networking",
 		// crio pods require fetching a kubernetes pause image
 		Flags:    []register.Flag{register.RequiresInternetAccess},
 		Distros:  []string{"rhcos"},
@@ -199,6 +200,7 @@ func init() {
 		Run:         crioNetwork,
 		ClusterSize: 2,
 		Name:        "crio.network",
+		Description: "Verify crio containers can make network connections outside of the host.",
 		Flags:       []register.Flag{register.RequiresInternetAccess},
 		Distros:     []string{"rhcos"},
 		UserData:    enableCrioIgn,

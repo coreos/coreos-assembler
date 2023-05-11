@@ -35,6 +35,7 @@ func init() {
 		Run:         rhcosClusterInsecure,
 		ClusterSize: 3,
 		Name:        "rhcos.etcd.cluster.insecure",
+		Description: "Verify that an etcd cluster in podman without TLS or external discovery services works.",
 		UserData: conf.Ignition(`{
   "ignition": { "version": "3.0.0" },
   "systemd": {
@@ -60,6 +61,7 @@ func init() {
 		Run:         rhcosClusterTLS,
 		ClusterSize: 3,
 		Name:        "rhcos.etcd.cluster.tls",
+		Description: "Verify that an etcd cluster in podman with TLS without discovery services works.",
 		UserData: conf.Ignition(`{
   "ignition": { "version": "3.0.0" },
   "systemd": {

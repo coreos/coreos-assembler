@@ -31,6 +31,7 @@ import (
 func init() {
 	register.RegisterTest(&register.Test{
 		Name:        "coreos.ignition.failure",
+		Description: "Verify ignition will fail with unsupported action.",
 		Run:         runIgnitionFailure,
 		ClusterSize: 0,
 		Platforms:   []string{"qemu-unpriv"},

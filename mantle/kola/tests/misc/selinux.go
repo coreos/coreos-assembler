@@ -29,17 +29,20 @@ func init() {
 		Run:         SelinuxBoolean,
 		ClusterSize: 1,
 		Name:        "coreos.selinux.boolean",
+		Description: "Verify tweaking selinux boolean works.",
 	})
 	register.RegisterTest(&register.Test{
 		Run:         SelinuxBooleanPersist,
 		ClusterSize: 1,
 		Name:        "rhcos.selinux.boolean.persist",
+		Description: "Verify tweaking selinux boolean works and have it persistent across reboots.",
 	})
 	register.RegisterTest(&register.Test{
 		Run:         SelinuxManage,
 		ClusterSize: 1,
 		Name:        "rhcos.selinux.manage",
 		Distros:     []string{"rhcos"},
+		Description: "Verify modifying an selinux file context persists through reboots.",
 	})
 }
 

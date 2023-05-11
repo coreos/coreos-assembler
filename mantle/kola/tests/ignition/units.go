@@ -23,6 +23,7 @@ import (
 func init() {
 	register.RegisterTest(&register.Test{
 		Name:        "coreos.ignition.instantiated.enable-unit",
+		Description: "Verify that Ignition supports enabling systemd instantiated services.",
 		Run:         enableSystemdInstantiatedService,
 		ClusterSize: 1,
 		Tags:        []string{"ignition"},
