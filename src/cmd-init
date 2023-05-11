@@ -151,6 +151,7 @@ mkdir -p src
             if [ -n "${COMMIT}" ]; then
                 git -C ./config fetch origin "$COMMIT"
                 git -C ./config reset --hard "$COMMIT"
+                git -C ./config submodule update --init --recursive
             fi
             if [ -n "${subdir}" ]; then
                 mv config config-git
