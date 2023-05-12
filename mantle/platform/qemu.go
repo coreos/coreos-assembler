@@ -898,7 +898,7 @@ func setupPreboot(arch, confPath, firstbootkargs, kargs string, diskImagePath st
 
 	// See /boot/grub2/grub.cfg
 	if firstbootkargs != "" {
-		grubStr := fmt.Sprintf("set ignition_network_kcmdline='%s'\n", firstbootkargs)
+		grubStr := fmt.Sprintf("set ignition_network_kcmdline=\"%s\"\n", firstbootkargs)
 		if err := exec.Command("guestfish", gf.remote, "write", "/boot/ignition.firstboot", grubStr).Run(); err != nil {
 			return errors.Wrapf(err, "guestfish write")
 		}
