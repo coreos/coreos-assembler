@@ -111,7 +111,15 @@ func (a *API) mkinstance(userdata, name string, keys []*agent.Key, useServiceAcc
 			Value: &userdata,
 		})
 	}
-
+	// create confidential instance
+	if a.options.Confidential {
+		instance.ConfidentialInstanceConfig = &compute.ConfidentialInstanceConfig{
+			EnableConfidentialCompute: true,
+		}
+		instance.Scheduling = &compute.Scheduling{
+			OnHostMaintenance: "TERMINATE",
+		}
+	}
 	return instance
 
 }
