@@ -8,7 +8,7 @@ dn=$(dirname "$0")
 FILE=cache/pkgcache-repo
 if [ -d "${FILE}" ]
 then
-        pkgcachesize=$(du --bytes --max-depth 0 "${FILE}" \
+        pkgcachesize=$(sudo du --bytes --max-depth 0 "${FILE}" \
                        | awk '{print $1; exit}')
         pkglimit=$((1024 * 1024 * 1024 * 5))
         if [[ "${pkgcachesize}" -gt "${pkglimit}" ]]
