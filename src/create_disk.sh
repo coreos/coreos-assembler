@@ -148,6 +148,7 @@ if [[ ${secure_execution} -eq 1 ]]; then
     SDPART=1
     BOOTVERITYHASHPN=5
     ROOTVERITYHASHPN=6
+    extrakargs="${extrakargs} swiotlb=262144"
 fi
 # Make the size relative
 if [ "${rootfs_size}" != "0" ]; then
@@ -611,12 +612,11 @@ if [[ ${secure_execution} -eq 1 ]]; then
         rdcore_zipl_args+=("--secex-mode=enforce" "--hostkey=/dev/disk/by-id/virtio-hostkey")
         rdcore_zipl_args+=("--append-karg=rootfs.roothash=$(cat /tmp/root-roothash)")
         rdcore_zipl_args+=("--append-karg=bootfs.roothash=$(cat /tmp/boot-roothash)")
-        rdcore_zipl_args+=("--append-karg=swiotlb=262144")
         rdcore_zipl_args+=("--append-file=/usr/lib/coreos/ignition.asc")
         chroot_run /usr/lib/dracut/modules.d/50rdcore/rdcore zipl "${rdcore_zipl_args[@]}"
     else
         echo "Building release Secure Execution Image, zipl and genprotimg will be run later"
-        rdcore_replacement "rootfs.roothash=$(cat /tmp/root-roothash)" "bootfs.roothash=$(cat /tmp/boot-roothash)" "swiotlb=262144"
+        rdcore_replacement "rootfs.roothash=$(cat /tmp/root-roothash)" "bootfs.roothash=$(cat /tmp/boot-roothash)"
     fi
 
     # unmount and close everything
