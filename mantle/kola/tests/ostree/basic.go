@@ -20,6 +20,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/coreos/coreos-assembler/mantle/kola"
 	"github.com/coreos/coreos-assembler/mantle/kola/cluster"
 	"github.com/coreos/coreos-assembler/mantle/kola/register"
 	"github.com/coreos/coreos-assembler/mantle/kola/tests/util"
@@ -45,9 +46,8 @@ func init() {
 		ClusterSize: 1,
 		Name:        "ostree.remote",
 		Description: "Verify the ostree remote functions work.",
-		Flags:       []register.Flag{register.RequiresInternetAccess}, // need network to contact remote
 		FailFast:    true,
-		Tags:        []string{"ostree"},
+		Tags:        []string{"ostree", kola.NeedsInternetTag}, // need network to contact remote
 	})
 }
 

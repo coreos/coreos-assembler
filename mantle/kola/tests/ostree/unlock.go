@@ -17,6 +17,7 @@ package ostree
 import (
 	"fmt"
 
+	"github.com/coreos/coreos-assembler/mantle/kola"
 	"github.com/coreos/coreos-assembler/mantle/kola/cluster"
 	"github.com/coreos/coreos-assembler/mantle/kola/register"
 	"github.com/coreos/coreos-assembler/mantle/kola/tests/util"
@@ -29,18 +30,16 @@ func init() {
 		ClusterSize: 1,
 		Name:        "ostree.unlock",
 		Description: "Verify installing an rpm does not persist when using `ostree admin unlock`.",
-		Flags:       []register.Flag{register.RequiresInternetAccess}, // need network to pull RPM
 		FailFast:    true,
-		Tags:        []string{"ostree"},
+		Tags:        []string{"ostree", kola.NeedsInternetTag}, // need network to pull RPM
 	})
 	register.RegisterTest(&register.Test{
 		Run:         ostreeHotfixTest,
 		ClusterSize: 1,
-		Flags:       []register.Flag{register.RequiresInternetAccess}, // need network to pull RPM
 		Name:        "ostree.hotfix",
 		Description: "Verify that the deployment can be put into hotfix mode where RPMs installed with persist across reboots.",
 		FailFast:    true,
-		Tags:        []string{"ostree"},
+		Tags:        []string{"ostree", kola.NeedsInternetTag}, // need network to pull RPM
 	})
 }
 

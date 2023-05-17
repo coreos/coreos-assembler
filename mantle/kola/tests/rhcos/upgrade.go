@@ -91,7 +91,7 @@ func init() {
 		Name:                 "rhcos.upgrade.from-ocp-rhcos",
 		Description:          "Verify upgrading from the latest RHCOS released for OCP works.",
 		FailFast:             true,
-		Flags:                []register.Flag{register.RequiresInternetAccess},
+		Tags:                 []string{kola.NeedsInternetTag},
 		Distros:              []string{"rhcos"},
 		Platforms:            []string{"qemu"},
 		ExcludeArchitectures: []string{"s390x", "ppc64le", "aarch64"},

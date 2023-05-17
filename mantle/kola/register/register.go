@@ -25,12 +25,11 @@ import (
 type Flag int
 
 const (
-	NoSSHKeyInUserData     Flag = iota // don't inject SSH key into Ignition/cloud-config
-	NoSSHKeyInMetadata                 // don't add SSH key to platform metadata
-	NoInstanceCreds                    // don't grant credentials (AWS instance profile, GCP service account) to the instance
-	NoEmergencyShellCheck              // don't check console output for emergency shell invocation
-	RequiresInternetAccess             // run the test only if the platform supports Internet access
-	AllowConfigWarnings                // ignore Ignition and Butane warnings instead of failing
+	NoSSHKeyInUserData    Flag = iota // don't inject SSH key into Ignition/cloud-config
+	NoSSHKeyInMetadata                // don't add SSH key to platform metadata
+	NoInstanceCreds                   // don't grant credentials (AWS instance profile, GCP service account) to the instance
+	NoEmergencyShellCheck             // don't check console output for emergency shell invocation
+	AllowConfigWarnings               // ignore Ignition and Butane warnings instead of failing
 )
 
 // NativeFuncWrap is a wrapper for the NativeFunc which includes an optional string of arches and/or distributions to

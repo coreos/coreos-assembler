@@ -327,11 +327,6 @@ func testSkipBaseChecks(test *register.Test) bool {
 }
 
 func testRequiresInternet(test *register.Test) bool {
-	for _, flag := range test.Flags {
-		if flag == register.RequiresInternetAccess {
-			return true
-		}
-	}
 	// Also parse the newer tag for this
 	for _, tag := range test.Tags {
 		if tag == NeedsInternetTag {
@@ -1474,7 +1469,7 @@ func shardTests(tests map[string]*register.Test, sharding string) (map[string]*r
 func makeNonExclusiveTest(bucket int, tests []*register.Test, flight platform.Flight) register.Test {
 	// Parse test flags and gather configs
 	internetAccess := false
-	var flags []register.Flag
+	var tags []string
 	var nonExclusiveTestConfs []*conf.Conf
 	dependencyDirs := make(register.DepDirMap)
 	var subtests []string
@@ -1493,7 +1488,7 @@ func makeNonExclusiveTest(bucket int, tests []*register.Test, flight platform.Fl
 			plog.Fatalf("Non-exclusive test %v cannot have AppendKernelArgs", test.Name)
 		}
 		if !internetAccess && testRequiresInternet(test) {
-			flags = append(flags, register.RequiresInternetAccess)
+			tags = append(tags, NeedsInternetTag)
 			internetAccess = true
 		}
 
@@ -1554,10 +1549,9 @@ func makeNonExclusiveTest(bucket int, tests []*register.Test, flight platform.Fl
 		UserData: mergedConfig,
 		Subtests: subtests,
 		// This will allow runTest to copy kolet to machine
-		NativeFuncs: make(map[string]register.NativeFuncWrap),
-		ClusterSize: 1,
-		Flags:       flags,
-
+		NativeFuncs:   make(map[string]register.NativeFuncWrap),
+		ClusterSize:   1,
+		Tags:          tags,
 		DependencyDir: dependencyDirs,
 	}
 

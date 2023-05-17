@@ -19,6 +19,7 @@ import (
 	"reflect"
 	"regexp"
 
+	"github.com/coreos/coreos-assembler/mantle/kola"
 	"github.com/coreos/coreos-assembler/mantle/kola/cluster"
 	"github.com/coreos/coreos-assembler/mantle/kola/register"
 	"github.com/coreos/coreos-assembler/mantle/kola/tests/util"
@@ -39,7 +40,7 @@ func init() {
 		ClusterSize: 1,
 		Name:        "rpmostree.install-uninstall",
 		Description: "Verifies rpm-ostree supports installing and uninstalling rpms.",
-		Tags:        []string{"rpm-ostree"},
+		Tags:        []string{"rpm-ostree", kola.NeedsInternetTag}, // these need network to retrieve bits
 		// this Ignition config lands the dummy RPM
 		UserData: conf.Ignition(`{
 			"ignition": {
@@ -64,7 +65,6 @@ func init() {
 			}
 		  }
 		  `),
-		Flags: []register.Flag{register.RequiresInternetAccess}, // these need network to retrieve bits
 	})
 }
 

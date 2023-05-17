@@ -44,7 +44,7 @@ func init() {
 		ClusterSize: 1,
 		Name:        `podman.workflow`,
 		Description: "Verify container can run with volume mount and port forwarding.",
-		Flags:       []register.Flag{register.RequiresInternetAccess}, // For pulling nginx
+		Tags:        []string{kola.NeedsInternetTag}, // For pulling nginx
 		Distros:     []string{"fcos"},
 		FailFast:    true,
 	})
