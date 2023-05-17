@@ -11,6 +11,7 @@ import (
 
 	"github.com/pborman/uuid"
 
+	"github.com/coreos/coreos-assembler/mantle/kola"
 	"github.com/coreos/coreos-assembler/mantle/kola/register"
 	"github.com/coreos/coreos-assembler/mantle/util"
 )
@@ -61,7 +62,7 @@ func init() {
 		Description: "Verify that podman echo and get head work.",
 		Run:         InternetTests,
 		ClusterSize: 1,
-		Flags:       []register.Flag{register.RequiresInternetAccess},
+		Tags:        []string{kola.NeedsInternetTag},
 		NativeFuncs: map[string]register.NativeFuncWrap{
 			"PodmanEcho":     register.CreateNativeFuncWrap(TestPodmanEcho),
 			"PodmanWgetHead": register.CreateNativeFuncWrap(TestPodmanWgetHead),

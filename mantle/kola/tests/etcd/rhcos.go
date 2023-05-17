@@ -22,6 +22,7 @@ import (
 
 	"github.com/coreos/pkg/capnslog"
 
+	"github.com/coreos/coreos-assembler/mantle/kola"
 	"github.com/coreos/coreos-assembler/mantle/kola/cluster"
 	"github.com/coreos/coreos-assembler/mantle/kola/register"
 	"github.com/coreos/coreos-assembler/mantle/platform/conf"
@@ -52,7 +53,7 @@ func init() {
     ]
   }
 }`),
-		Flags:   []register.Flag{register.RequiresInternetAccess}, // fetching etcd requires networking
+		Tags:    []string{kola.NeedsInternetTag}, // fetching etcd requires networking
 		Distros: []string{"rhcos"},
 		// qemu-unpriv machines cannot communicate between each other
 		ExcludePlatforms: []string{"qemu-unpriv"},
@@ -87,7 +88,7 @@ func init() {
     ]
   }
 }`),
-		Flags:   []register.Flag{register.RequiresInternetAccess}, // fetching etcd requires networking
+		Tags:    []string{kola.NeedsInternetTag}, // fetching etcd requires networking
 		Distros: []string{"rhcos"},
 		// qemu-unpriv machines cannot communicate between each other
 		ExcludePlatforms: []string{"qemu-unpriv"},
