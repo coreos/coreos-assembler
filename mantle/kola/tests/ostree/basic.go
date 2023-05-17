@@ -197,7 +197,7 @@ func ostreeRemoteTest(c cluster.TestCluster) {
 	// TODO: if this remote ever changes, update the `refMatch` regexp
 	// in the `ostree remote summary` test below
 	remoteName := "custom"
-	remoteUrl := "https://dl.fedoraproject.org/atomic/repo/"
+	remoteUrl := "https://kojipkgs.fedoraproject.org/ostree/repo/"
 
 	// verify `ostree remote add` is successful
 	c.Run("add", func(c cluster.TestCluster) {
