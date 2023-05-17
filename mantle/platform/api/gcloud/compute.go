@@ -17,9 +17,11 @@ package gcloud
 import (
 	"crypto/rand"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
+	"github.com/coreos/coreos-assembler/mantle/platform"
 	"github.com/coreos/coreos-assembler/mantle/util"
 	"golang.org/x/crypto/ssh/agent"
 	"google.golang.org/api/compute/v1"
@@ -33,8 +35,48 @@ func (a *API) vmname() string {
 	return fmt.Sprintf("%s-%x", a.options.BaseName, b)
 }
 
+// ["5G:interface=NVME"], by default the disk type is local-ssd
+func ParseDiskSpec(spec string, zone string) (*compute.AttachedDisk, error) {
+	split := strings.Split(spec, ":")
+	var diskinterface string
+	var disksize string
+	if len(split) == 1 {
+		disksize = split[0]
+	} else if len(split) == 2 {
+		disksize = split[0]
+		for _, opt := range strings.Split(split[1], ",") {
+			if strings.HasPrefix(opt, "interface=") {
+				diskinterface = strings.TrimPrefix(opt, "interface=")
+				if diskinterface == "" || (diskinterface != "NVME" && diskinterface != "SCSI") {
+					return nil, fmt.Errorf("invalid interface opt %s", opt)
+				}
+			} else {
+				return nil, fmt.Errorf("unknown disk option %s", opt)
+			}
+		}
+	} else {
+		return nil, fmt.Errorf("invalid disk spec %s", spec)
+	}
+	disksize = strings.TrimSuffix(disksize, "G")
+	size, err := strconv.ParseInt(disksize, 10, 32)
+	if err != nil {
+		return nil, fmt.Errorf("invalid size opt %s: %w", disksize, err)
+	}
+
+	return &compute.AttachedDisk{
+		AutoDelete: true,
+		Boot:       false,
+		Type:       "SCRATCH",
+		Interface:  diskinterface,
+		InitializeParams: &compute.AttachedDiskInitializeParams{
+			DiskType:   "/zones/" + zone + "/diskTypes/local-ssd",
+			DiskSizeGb: size,
+		},
+	}, nil
+}
+
 // Taken from: https://github.com/golang/build/blob/master/buildlet/gce.go
-func (a *API) mkinstance(userdata, name string, keys []*agent.Key, useServiceAcct bool) *compute.Instance {
+func (a *API) mkinstance(userdata, name string, keys []*agent.Key, opts platform.MachineOptions, useServiceAcct bool) (*compute.Instance, error) {
 	mantle := "mantle"
 	metadataItems := []*compute.MetadataItems{
 		{
@@ -120,14 +162,27 @@ func (a *API) mkinstance(userdata, name string, keys []*agent.Key, useServiceAcc
 			OnHostMaintenance: "TERMINATE",
 		}
 	}
-	return instance
-
+	// attach aditional disk
+	if len(opts.AdditionalDisks) > 0 {
+		for _, spec := range opts.AdditionalDisks {
+			plog.Debugf("Parsing disk spec %q\n", spec)
+			disk, err := ParseDiskSpec(spec, a.options.Zone)
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse spec %s: %w", spec, err)
+			}
+			instance.Disks = append(instance.Disks, disk)
+		}
+	}
+	return instance, nil
 }
 
 // CreateInstance creates a Google Compute Engine instance.
-func (a *API) CreateInstance(userdata string, keys []*agent.Key, useServiceAcct bool) (*compute.Instance, error) {
+func (a *API) CreateInstance(userdata string, keys []*agent.Key, opts platform.MachineOptions, useServiceAcct bool) (*compute.Instance, error) {
 	name := a.vmname()
-	inst := a.mkinstance(userdata, name, keys, useServiceAcct)
+	inst, err := a.mkinstance(userdata, name, keys, opts, useServiceAcct)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create instance %q: %w", name, err)
+	}
 
 	plog.Debugf("Creating instance %q", name)
 
