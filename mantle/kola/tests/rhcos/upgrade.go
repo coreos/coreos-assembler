@@ -284,7 +284,12 @@ func getJson(url string, target interface{}) error {
 func downloadLatestReleasedRHCOS(target string) (string, error) {
 	buildID := kola.CosaBuild.Meta.BuildID
 	ocpVersion := strings.Split(buildID, ".")[0]
+	rhelVersion := strings.Split(buildID, ".")[1]
 	ocpVersionF := fmt.Sprintf("%s.%s", ocpVersion[:1], ocpVersion[1:])
+	// The stream name isn't anywhere in the build so we can only infer
+	// the RHEL version from the RHCOS version string. This will break
+	// on three digit versions like 10.1 or 9.10.
+	rhelVersionF := fmt.Sprintf("%s.%s", rhelVersion[:1], rhelVersion[1:])
 	channel := "fast-" + ocpVersionF
 
 	type Release struct {
@@ -392,16 +397,17 @@ func downloadLatestReleasedRHCOS(target string) (string, error) {
 
 	var latestOcpRhcosBuild *cosa.Build
 	rhcosVersion := ocpRelease.DisplayVersions.MachineOS.Version
-	latestBaseUrl := fmt.Sprintf("https://rhcos.mirror.openshift.com/art/storage/prod/streams/%s/builds/%s/%s",
+	latestBaseUrl := fmt.Sprintf("https://rhcos.mirror.openshift.com/art/storage/prod/streams/%s-%s/builds/%s/%s",
 		ocpVersionF,
+		rhelVersionF,
 		rhcosVersion,
 		coreosarch.CurrentRpmArch())
 	latestRhcosBuildMetaUrl := fmt.Sprintf("%s/meta.json", latestBaseUrl)
 	if err := getJson(latestRhcosBuildMetaUrl, &latestOcpRhcosBuild); err != nil {
-		// Try the old bucket layout; ideally we'd only do this if the error
+		// Try the <ocp version> stream; ideally we'd only do this if the error
 		// was 403 denied (which is really a 404), but meh this is temporary
 		// anyway.
-		latestBaseUrl = fmt.Sprintf("https://rhcos.mirror.openshift.com/art/storage/releases/rhcos-%s/%s/%s",
+		latestBaseUrl = fmt.Sprintf("https://rhcos.mirror.openshift.com/art/storage/prod/streams/%s/builds/%s/%s",
 			ocpVersionF,
 			rhcosVersion,
 			coreosarch.CurrentRpmArch())
