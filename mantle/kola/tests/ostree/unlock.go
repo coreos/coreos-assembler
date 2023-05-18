@@ -21,7 +21,6 @@ import (
 	"github.com/coreos/coreos-assembler/mantle/kola/register"
 	"github.com/coreos/coreos-assembler/mantle/kola/tests/util"
 	"github.com/coreos/coreos-assembler/mantle/platform"
-	"github.com/coreos/coreos-assembler/mantle/platform/conf"
 )
 
 func init() {
@@ -42,21 +41,7 @@ func init() {
 		Description: "Verify that the deployment can be put into hotfix mode where RPMs installed with persist across reboots.",
 		FailFast:    true,
 		Tags:        []string{"ostree"},
-		// enable debugging for https://github.com/coreos/fedora-coreos-tracker/issues/942
-		// we can drop it once we resolved it
-		UserData: conf.Butane(`
-variant: fcos
-version: 1.4.0
-systemd:
-  units:
-  - name: rpm-ostreed.service
-    dropins:
-    - name: 10-debug.conf
-      contents: |-
-        [Service]
-        Environment=G_MESSAGES_DEBUG=rpm-ostreed`),
 	})
-
 }
 
 var (
