@@ -326,6 +326,16 @@ fi
 if [ ! -f "${workdir}"/builds/builds.json ] && [ ! -f "${fetch_stamp}" ] ; then
     fatal "Must fetch before building"
 fi
+composefs="$(jq -r .composefs < "${image_json}")"
+case "${composefs}" in
+    false) 
+    ;;
+    true)
+        ostree config --repo="${tmprepo}" set ex-integrity.composefs "true"
+    ;;
+    *) fatal "Unhandled composefs setting: ${composefs}" ;;
+esac
+
 # --cache-only is here since `fetch` is a separate verb
 # shellcheck disable=SC2086
 if test -n "${previous_commit}"; then

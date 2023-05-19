@@ -118,6 +118,7 @@ esac
 rootfs_args=$(getconfig_def "rootfs-args" "")
 
 bootfs=$(getconfig "bootfs")
+composefs=$(getconfig_def "composefs" "")
 grub_script=$(getconfig "grub-script")
 ostree_container=$(getconfig "ostree-container")
 commit=$(getconfig "ostree-commit")
@@ -310,11 +311,14 @@ ostree config --repo $rootfs/ostree/repo set sysroot.bootloader none
 # Opt-in to https://github.com/ostreedev/ostree/pull/1767 AKA
 # https://github.com/ostreedev/ostree/issues/1265
 ostree config --repo $rootfs/ostree/repo set sysroot.readonly true
+if test -n "${composefs}"; then
+    ostree config --repo $rootfs/ostree/repo set ex-integrity.composefs true
+fi
 # Initialize the "stateroot"
 ostree admin os-init "$os_name" --sysroot $rootfs
 
 # Propagate flags into target repository
-if [ "${rootfs_type}" = "ext4verity" ]; then
+if [ "${rootfs_type}" = "ext4verity" ] && [ -z "${composefs}" ]; then
     ostree config --repo=$rootfs/ostree/repo set ex-fsverity.required 'true'
 fi
 
