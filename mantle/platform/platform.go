@@ -476,7 +476,10 @@ func CheckMachine(ctx context.Context, m Machine) error {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
-		out, stderr, err := m.SSH("systemctl is-system-running")
+		// By design, `systemctl is-system-running` returns nonzero codes based on its state.
+		// We want to explicitly accept some nonzero states and test instead by the string so
+		// add `|| :`.
+		out, stderr, err := m.SSH("systemctl is-system-running || :")
 		if !bytes.Contains([]byte("initializing starting running stopping"), out) {
 			return nil // stop retrying if the system went haywire
 		}
