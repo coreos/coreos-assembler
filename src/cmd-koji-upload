@@ -578,7 +578,7 @@ class Upload(_KojiBase):
         for _, value in (self.build).get_artifacts():
             file_output = self.get_file_meta(value)
             if file_output is not None:
-                if "qcow2" in value['upload_path']:
+                if "commitmeta.json" in value['upload_path']:
                     file_output["components"] = self.build.get_rpm_list()
                 outputs.append(file_output)
         self._image_files = outputs
