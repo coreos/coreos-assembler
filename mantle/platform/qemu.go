@@ -101,46 +101,37 @@ type Disk struct {
 	nbdServCmd     exec.Cmd // command to serve the disk
 }
 
-// ParseDiskSpec converts a disk specification into a Disk. The format is:
-// <size>[:<opt1>,<opt2>,...].
-func ParseDiskSpec(spec string) (*Disk, error) {
-	split := strings.Split(spec, ":")
-	var size string
+func ParseDisk(spec string) (*Disk, error) {
 	var channel string
-	multipathed := false
 	sectorSize := 0
-	serial_opt := []string{}
-	if len(split) == 1 {
-		size = split[0]
-	} else if len(split) == 2 {
-		size = split[0]
-		for _, opt := range strings.Split(split[1], ",") {
-			if opt == "mpath" {
-				multipathed = true
-			} else if opt == "4k" {
-				sectorSize = 4096
-			} else if strings.HasPrefix(opt, "channel=") {
-				channel = strings.TrimPrefix(opt, "channel=")
-				if channel == "" {
-					return nil, fmt.Errorf("invalid channel opt %s", opt)
-				}
-			} else if strings.HasPrefix(opt, "serial=") {
-				serial := strings.TrimPrefix(opt, "serial=")
-				if serial == "" {
-					return nil, fmt.Errorf("invalid serial opt %s", opt)
-				}
-				serial_opt = []string{"serial=" + serial}
-			} else {
-				return nil, fmt.Errorf("unknown disk option %s", opt)
-			}
-		}
-	} else {
-		return nil, fmt.Errorf("invalid disk spec %s", spec)
+	serialOpt := []string{}
+	multipathed := false
+
+	size, diskmap, err := util.ParseDiskSpec(spec)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse disk spec %q: %w", spec, err)
 	}
+
+	for key, value := range diskmap {
+		switch key {
+		case "channel":
+			channel = value
+		case "4k":
+			sectorSize = 4096
+		case "mpath":
+			multipathed = true
+		case "serial":
+			value = "serial=" + value
+			serialOpt = append(serialOpt, value)
+		default:
+			return nil, fmt.Errorf("invalid key %q", key)
+		}
+	}
+
 	return &Disk{
-		Size:          size,
+		Size:          fmt.Sprintf("%dG", size),
 		Channel:       channel,
-		DeviceOpts:    serial_opt,
+		DeviceOpts:    serialOpt,
 		SectorSize:    sectorSize,
 		MultiPathDisk: multipathed,
 	}, nil
@@ -1225,7 +1216,7 @@ func (builder *QemuBuilder) AddDisk(disk *Disk) error {
 // AddDisksFromSpecs adds multiple secondary disks from their specs.
 func (builder *QemuBuilder) AddDisksFromSpecs(specs []string) error {
 	for _, spec := range specs {
-		if disk, err := ParseDiskSpec(spec); err != nil {
+		if disk, err := ParseDisk(spec); err != nil {
 			return errors.Wrapf(err, "parsing additional disk spec '%s'", spec)
 		} else if err = builder.AddDisk(disk); err != nil {
 			return errors.Wrapf(err, "adding additional disk '%s'", spec)

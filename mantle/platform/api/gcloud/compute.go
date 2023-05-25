@@ -17,7 +17,6 @@ package gcloud
 import (
 	"crypto/rand"
 	"fmt"
-	"strconv"
 	"strings"
 	"time"
 
@@ -35,39 +34,33 @@ func (a *API) vmname() string {
 	return fmt.Sprintf("%s-%x", a.options.BaseName, b)
 }
 
-// ["5G:interface=NVME"], by default the disk type is local-ssd
-func ParseDiskSpec(spec string, zone string) (*compute.AttachedDisk, error) {
-	split := strings.Split(spec, ":")
-	var diskinterface string
-	var disksize string
-	if len(split) == 1 {
-		disksize = split[0]
-	} else if len(split) == 2 {
-		disksize = split[0]
-		for _, opt := range strings.Split(split[1], ",") {
-			if strings.HasPrefix(opt, "interface=") {
-				diskinterface = strings.TrimPrefix(opt, "interface=")
-				if diskinterface == "" || (diskinterface != "NVME" && diskinterface != "SCSI") {
-					return nil, fmt.Errorf("invalid interface opt %s", opt)
-				}
-			} else {
-				return nil, fmt.Errorf("unknown disk option %s", opt)
-			}
-		}
-	} else {
-		return nil, fmt.Errorf("invalid disk spec %s", spec)
-	}
-	disksize = strings.TrimSuffix(disksize, "G")
-	size, err := strconv.ParseInt(disksize, 10, 32)
+// ["5G:channel=nvme"], by default the disk type is local-ssd
+func ParseDisk(spec string, zone string) (*compute.AttachedDisk, error) {
+	var diskInterface string
+
+	size, diskmap, err := util.ParseDiskSpec(spec)
 	if err != nil {
-		return nil, fmt.Errorf("invalid size opt %s: %w", disksize, err)
+		return nil, fmt.Errorf("failed to parse disk spec %q: %w", spec, err)
+	}
+	for key, value := range diskmap {
+		switch key {
+		case "channel":
+			switch value {
+			case "nvme", "scsi":
+				diskInterface = strings.ToUpper(value)
+			default:
+				return nil, fmt.Errorf("invalid channel value: %q", value)
+			}
+		default:
+			return nil, fmt.Errorf("invalid key %q", key)
+		}
 	}
 
 	return &compute.AttachedDisk{
 		AutoDelete: true,
 		Boot:       false,
 		Type:       "SCRATCH",
-		Interface:  diskinterface,
+		Interface:  diskInterface,
 		InitializeParams: &compute.AttachedDiskInitializeParams{
 			DiskType:   "/zones/" + zone + "/diskTypes/local-ssd",
 			DiskSizeGb: size,
@@ -165,9 +158,9 @@ func (a *API) mkinstance(userdata, name string, keys []*agent.Key, opts platform
 	// attach aditional disk
 	for _, spec := range opts.AdditionalDisks {
 		plog.Debugf("Parsing disk spec %q\n", spec)
-		disk, err := ParseDiskSpec(spec, a.options.Zone)
+		disk, err := ParseDisk(spec, a.options.Zone)
 		if err != nil {
-			return nil, fmt.Errorf("failed to parse spec %s: %w", spec, err)
+			return nil, fmt.Errorf("failed to parse spec %q: %w", spec, err)
 		}
 		instance.Disks = append(instance.Disks, disk)
 	}
