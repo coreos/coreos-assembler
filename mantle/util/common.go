@@ -19,6 +19,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"time"
 	"unsafe"
 
@@ -119,4 +121,38 @@ func RunCmdTimeout(timeout time.Duration, cmd string, args ...string) error {
 		<-errc
 		return fmt.Errorf("%s timed out after %s", cmd, timeout)
 	}
+}
+
+// ParseDiskSpec converts a disk specification into a Disk. The format is:
+// <size>[:<opt1>,<opt2>,...], like ["5G:channel=nvme"]
+func ParseDiskSpec(spec string) (int64, map[string]string, error) {
+	diskmap := map[string]string{}
+	split := strings.Split(spec, ":")
+	if split[0] == "" || (!strings.HasSuffix(split[0], "G")) {
+		return 0, nil, fmt.Errorf("invalid size opt %s", spec)
+	}
+	var disksize string
+	if len(split) == 1 {
+		disksize = split[0]
+	} else if len(split) == 2 {
+		disksize = split[0]
+		for _, opt := range strings.Split(split[1], ",") {
+			kvsplit := strings.SplitN(opt, "=", 2)
+			if len(kvsplit) == 0 {
+				return 0, nil, fmt.Errorf("invalid empty option found in spec %q", spec)
+			} else if len(kvsplit) == 1 {
+				diskmap[opt] = ""
+			} else {
+				diskmap[kvsplit[0]] = kvsplit[1]
+			}
+		}
+	} else {
+		return 0, nil, fmt.Errorf("invalid disk spec %s", spec)
+	}
+	disksize = strings.TrimSuffix(disksize, "G")
+	size, err := strconv.ParseInt(disksize, 10, 32)
+	if err != nil {
+		return 0, nil, fmt.Errorf("failed to convert %q to int64: %w", disksize, err)
+	}
+	return size, diskmap, nil
 }
