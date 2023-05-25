@@ -39,7 +39,7 @@ func init() {
 		Run:         rpmOstreeInstallUninstall,
 		ClusterSize: 1,
 		Name:        "rpmostree.install-uninstall",
-		Description: "Verifies rpm-ostree supports installing and uninstalling rpms.",
+		Description: "Verify rpm-ostree supports installing and uninstalling rpms.",
 		Tags:        []string{"rpm-ostree", kola.NeedsInternetTag}, // these need network to retrieve bits
 		// this Ignition config lands the dummy RPM
 		UserData: conf.Ignition(`{

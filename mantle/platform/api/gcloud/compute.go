@@ -163,15 +163,13 @@ func (a *API) mkinstance(userdata, name string, keys []*agent.Key, opts platform
 		}
 	}
 	// attach aditional disk
-	if len(opts.AdditionalDisks) > 0 {
-		for _, spec := range opts.AdditionalDisks {
-			plog.Debugf("Parsing disk spec %q\n", spec)
-			disk, err := ParseDiskSpec(spec, a.options.Zone)
-			if err != nil {
-				return nil, fmt.Errorf("failed to parse spec %s: %w", spec, err)
-			}
-			instance.Disks = append(instance.Disks, disk)
+	for _, spec := range opts.AdditionalDisks {
+		plog.Debugf("Parsing disk spec %q\n", spec)
+		disk, err := ParseDiskSpec(spec, a.options.Zone)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse spec %s: %w", spec, err)
 		}
+		instance.Disks = append(instance.Disks, disk)
 	}
 	return instance, nil
 }
