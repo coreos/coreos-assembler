@@ -684,9 +684,25 @@ func runProvidedTests(testsBank map[string]*register.Test, patterns []string, mu
 		plog.Fatal(err)
 	}
 
+	// Make sure all given patterns by the user match at least one test
+	for _, pattern := range patterns {
+		match, err := patternMatchesTests(pattern, testsBank)
+		if err != nil {
+			plog.Fatal(err)
+		}
+		if !match {
+			plog.Fatalf("The user provided pattern didn't match any tests: %s", pattern)
+		}
+	}
+
 	tests, err := filterTests(testsBank, patterns, pltfrm)
 	if err != nil {
 		plog.Fatal(err)
+	}
+
+	if len(tests) == 0 && allTestsDenyListed(tests) {
+		fmt.Printf("There are no tests to run because all tests are denylisted. Output in %v\n", outputDir)
+		return nil
 	}
 
 	flight, err := NewFlight(pltfrm)
@@ -804,6 +820,7 @@ func runProvidedTests(testsBank map[string]*register.Test, patterns []string, mu
 		} else {
 			fmt.Printf("PASS, output in %v\n", outputDir)
 		}
+
 		return suiteErr
 	}
 
@@ -824,6 +841,20 @@ func runProvidedTests(testsBank map[string]*register.Test, patterns []string, mu
 	}
 	// If the intial run failed and the rerun passed, we still return an error
 	return runErr
+}
+
+func allTestsDenyListed(tests map[string]*register.Test) bool {
+	for name := range tests {
+		isDenylisted, err := testIsDenyListed(name)
+		if err != nil {
+			plog.Warningf("Error while checking denylist for test: %s", err)
+			continue
+		}
+		if !isDenylisted {
+			return false
+		}
+	}
+	return true
 }
 
 func allTestsAllowRerunSuccess(testsBank map[string]*register.Test, testsToRerun, rerunSuccessTags []string) bool {
@@ -1201,6 +1232,18 @@ ExecStart=%s
 func testIsDenyListed(testname string) (bool, error) {
 	for _, bl := range DenylistedTests {
 		if match, err := filepath.Match(bl, testname); err != nil {
+			return false, err
+		} else if match {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+// Function that returns true if at least one test matches the given pattern
+func patternMatchesTests(pattern string, tests map[string]*register.Test) (bool, error) {
+	for testname := range tests {
+		if match, err := filepath.Match(pattern, testname); err != nil {
 			return false, err
 		} else if match {
 			return true, nil
