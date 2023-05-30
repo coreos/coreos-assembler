@@ -85,6 +85,11 @@ const NeedsInternetTag = "needs-internet"
 // For more, see the doc in external-tests.md.
 const PlatformIndependentTag = "platform-independent"
 
+// The string for the tag that indicates a test has been marked as allowing rerun success.
+// In some cases the internal test framework will add this tag to a test to indicate if
+// the test passes a rerun to allow the run to succeed.
+const AllowRerunSuccessTag = "allow-rerun-success"
+
 // defaultPlatformIndependentPlatform is the platform where we run tests that claim platform independence
 const defaultPlatformIndependentPlatform = "qemu"
 
@@ -330,6 +335,13 @@ func testRequiresInternet(test *register.Test) bool {
 		}
 	}
 	return false
+}
+
+func markTestForRerunSuccess(test *register.Test, msg string) {
+	if !HasString(AllowRerunSuccessTag, test.Tags) {
+		plog.Warningf("%s Adding as candidate for rerun success: %s", msg, test.Name)
+		test.Tags = append(test.Tags, AllowRerunSuccessTag)
+	}
 }
 
 type DenyListObj struct {
@@ -811,10 +823,9 @@ func runProvidedTests(testsBank map[string]*register.Test, patterns []string, mu
 }
 
 func allTestsAllowRerunSuccess(testsBank map[string]*register.Test, testsToRerun, rerunSuccessTags []string) bool {
-	// No tags, we can return early
-	if len(rerunSuccessTags) == 0 {
-		return false
-	}
+	// Always consider the special AllowRerunSuccessTag that is added
+	// by the test harness in some failure scenarios.
+	rerunSuccessTags = append(rerunSuccessTags, AllowRerunSuccessTag)
 	// Build up a map of rerunSuccessTags so that we can easily check
 	// if a given tag is in the map.
 	rerunSuccessTagMap := make(map[string]bool)
