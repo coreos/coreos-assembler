@@ -140,16 +140,18 @@ var (
 	nonexclusiveWrapperMatch = regexp.MustCompile(`^non-exclusive-test-bucket-[0-9]$`)
 
 	consoleChecks = []struct {
-		desc     string
-		match    *regexp.Regexp
-		warnOnly bool
-		skipFlag *register.Flag
+		desc              string
+		match             *regexp.Regexp
+		warnOnly          bool
+		allowRerunSuccess bool
+		skipFlag          *register.Flag
 	}{
 		{
-			desc:     "emergency shell",
-			match:    regexp.MustCompile("Press Enter for emergency shell|Starting Emergency Shell|You are in emergency mode"),
-			warnOnly: false,
-			skipFlag: &[]register.Flag{register.NoEmergencyShellCheck}[0],
+			desc:              "emergency shell",
+			match:             regexp.MustCompile("Press Enter for emergency shell|Starting Emergency Shell|You are in emergency mode"),
+			warnOnly:          false,
+			allowRerunSuccess: false,
+			skipFlag:          &[]register.Flag{register.NoEmergencyShellCheck}[0],
 		},
 		{
 			desc:  "dracut fatal",
@@ -1766,10 +1768,11 @@ func scpKolet(machines []platform.Machine) error {
 // descriptions of any bad lines it finds along with a boolean
 // indicating if the configuration has the bad lines marked as
 // warnOnly or not (for things we don't want to error for). If t is
-// specified, its flags are respected.
+// specified, its flags are respected and tags possibly updated for
+// rerun success.
 func CheckConsole(output []byte, t *register.Test) (bool, []string) {
 	var badlines []string
-	warnOnly := true
+	warnOnly, allowRerunSuccess := true, true
 	for _, check := range consoleChecks {
 		if check.skipFlag != nil && t != nil && t.HasFlag(*check.skipFlag) {
 			continue
@@ -1785,7 +1788,13 @@ func CheckConsole(output []byte, t *register.Test) (bool, []string) {
 			if !check.warnOnly {
 				warnOnly = false
 			}
+			if !check.allowRerunSuccess {
+				allowRerunSuccess = false
+			}
 		}
+	}
+	if len(badlines) > 0 && allowRerunSuccess && t != nil {
+		markTestForRerunSuccess(t, "CheckConsole:")
 	}
 	return warnOnly, badlines
 }
