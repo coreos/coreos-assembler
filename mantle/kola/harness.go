@@ -1654,6 +1654,9 @@ func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flig
 			return err
 		})
 		if err != nil {
+			// The platform failed starting machines, which usually isn't *CoreOS
+			// fault. Maybe it will have better luck in the rerun.
+			markTestForRerunSuccess(t, "Platform failed starting machines.")
 			h.Fatalf("Cluster failed starting machines: %v", err)
 		}
 	}
