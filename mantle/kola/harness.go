@@ -166,6 +166,17 @@ var (
 			match: regexp.MustCompile("Oops:"),
 		},
 		{
+			// For this one we see it sometimes when I/O is really slow, which is often
+			// more of an indication of a problem with resources in our pipeline rather
+			// than a problem with the software we are testing. We'll mark it as warnOnly
+			// so it's non-fatal and also allow for a rerun of a test that goes on to
+			// fail that had this problem to ultimately result in success.
+			desc:              "kernel soft lockup",
+			match:             regexp.MustCompile("watchdog: BUG: soft lockup - CPU"),
+			warnOnly:          true,
+			allowRerunSuccess: true,
+		},
+		{
 			desc:  "kernel warning",
 			match: regexp.MustCompile(`WARNING: CPU: \d+ PID: \d+ at (.+)`),
 		},
