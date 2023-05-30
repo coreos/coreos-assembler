@@ -1595,6 +1595,10 @@ func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flig
 	defer func() {
 		h.StopExecTimer()
 		c.Destroy()
+		if h.TimedOut() {
+			// We'll allow tests that time out to succeed on rerun.
+			markTestForRerunSuccess(t, "Test timed out.")
+		}
 		if testSkipBaseChecks(t) {
 			plog.Debugf("Skipping base checks for %s", t.Name)
 			return
