@@ -334,22 +334,11 @@ func HasString(s string, slice []string) bool {
 }
 
 func testSkipBaseChecks(test *register.Test) bool {
-	for _, tag := range test.Tags {
-		if tag == SkipBaseChecksTag {
-			return true
-		}
-	}
-	return false
+	return HasString(SkipBaseChecksTag, test.Tags)
 }
 
 func testRequiresInternet(test *register.Test) bool {
-	// Also parse the newer tag for this
-	for _, tag := range test.Tags {
-		if tag == NeedsInternetTag {
-			return true
-		}
-	}
-	return false
+	return HasString(NeedsInternetTag, test.Tags)
 }
 
 func markTestForRerunSuccess(test *register.Test, msg string) {
