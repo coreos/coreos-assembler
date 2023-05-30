@@ -808,8 +808,8 @@ func runProvidedTests(testsBank map[string]*register.Test, patterns []string, mu
 	}
 
 	suite := harness.NewSuite(opts, htests)
-	firstRunErr := suite.Run()
-	firstRunErr = handleSuiteErrors(outputDir, firstRunErr)
+	runErr := suite.Run()
+	runErr = handleSuiteErrors(outputDir, runErr)
 
 	testsToRerun := getRerunnable(testResults.getResults())
 	if len(testsToRerun) > 0 && rerun {
@@ -823,7 +823,7 @@ func runProvidedTests(testsBank map[string]*register.Test, patterns []string, mu
 		}
 	}
 	// If the intial run failed and the rerun passed, we still return an error
-	return firstRunErr
+	return runErr
 }
 
 func allTestsAllowRerunSuccess(testsBank map[string]*register.Test, testsToRerun, rerunSuccessTags []string) bool {
