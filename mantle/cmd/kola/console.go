@@ -74,8 +74,9 @@ func runCheckConsole(cmd *cobra.Command, args []string) error {
 			errorcount++
 			continue
 		}
-		for _, badness := range kola.CheckConsole(console, nil) {
-			fmt.Printf("%v: %v\n", sourceName, badness)
+		_, badlines := kola.CheckConsole(console, nil)
+		for _, badline := range badlines {
+			fmt.Printf("%v: %v\n", sourceName, badline)
 			errorcount++
 		}
 	}

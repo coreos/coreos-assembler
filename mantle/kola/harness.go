@@ -142,11 +142,13 @@ var (
 	consoleChecks = []struct {
 		desc     string
 		match    *regexp.Regexp
+		warnOnly bool
 		skipFlag *register.Flag
 	}{
 		{
 			desc:     "emergency shell",
 			match:    regexp.MustCompile("Press Enter for emergency shell|Starting Emergency Shell|You are in emergency mode"),
+			warnOnly: false,
 			skipFlag: &[]register.Flag{register.NoEmergencyShellCheck}[0],
 		},
 		{
@@ -1603,19 +1605,24 @@ func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flig
 			plog.Debugf("Skipping base checks for %s", t.Name)
 			return
 		}
-		for id, output := range c.ConsoleOutput() {
-			for _, badness := range CheckConsole([]byte(output), t) {
-				if !SkipConsoleWarnings {
-					h.Errorf("Found %s on machine %s console", badness, id)
+		handleConsoleChecks := func(logtype, id, output string) {
+			warnOnly, badlines := CheckConsole([]byte(output), t)
+			if SkipConsoleWarnings {
+				warnOnly = true
+			}
+			for _, badline := range badlines {
+				if warnOnly {
+					plog.Warningf("Found %s on machine %s %s", badline, id, logtype)
 				} else {
-					plog.Warningf("Found %s on machine %s console", badness, id)
+					h.Errorf("Found %s on machine %s %s", badline, id, logtype)
 				}
 			}
 		}
+		for id, output := range c.ConsoleOutput() {
+			handleConsoleChecks("console", id, output)
+		}
 		for id, output := range c.JournalOutput() {
-			for _, badness := range CheckConsole([]byte(output), t) {
-				h.Errorf("Found %s on machine %s journal", badness, id)
-			}
+			handleConsoleChecks("journal", id, output)
 		}
 	}()
 
@@ -1756,25 +1763,31 @@ func scpKolet(machines []platform.Machine) error {
 }
 
 // CheckConsole checks some console output for badness and returns short
-// descriptions of any badness it finds. If t is specified, its flags are
-// respected.
-func CheckConsole(output []byte, t *register.Test) []string {
-	var ret []string
+// descriptions of any bad lines it finds along with a boolean
+// indicating if the configuration has the bad lines marked as
+// warnOnly or not (for things we don't want to error for). If t is
+// specified, its flags are respected.
+func CheckConsole(output []byte, t *register.Test) (bool, []string) {
+	var badlines []string
+	warnOnly := true
 	for _, check := range consoleChecks {
 		if check.skipFlag != nil && t != nil && t.HasFlag(*check.skipFlag) {
 			continue
 		}
 		match := check.match.FindSubmatch(output)
 		if match != nil {
-			badness := check.desc
+			badline := check.desc
 			if len(match) > 1 {
 				// include first subexpression
-				badness += fmt.Sprintf(" (%s)", match[1])
+				badline += fmt.Sprintf(" (%s)", match[1])
 			}
-			ret = append(ret, badness)
+			badlines = append(badlines, badline)
+			if !check.warnOnly {
+				warnOnly = false
+			}
 		}
 	}
-	return ret
+	return warnOnly, badlines
 }
 
 func SetupOutputDir(outputDir, platform string) (string, error) {
