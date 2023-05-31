@@ -54,7 +54,7 @@ func testMountDisks(c cluster.TestCluster) {
 	config := setupIgnitionConfig()
 
 	options := platform.MachineOptions{
-		AdditionalDisks: []string{"1024M", "1024M"},
+		AdditionalDisks: []string{"1G", "1G"},
 	}
 
 	ignDisks := []types.Disk{
