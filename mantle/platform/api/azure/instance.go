@@ -166,7 +166,7 @@ func (a *API) CreateInstance(name, userdata, sshkey, resourceGroup, storageAccou
 
 	vmParams := a.getVMParameters(name, userdata, sshkey, fmt.Sprintf("https://%s.blob.core.windows.net/", storageAccount), ip, nic)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
 	poller, err := a.compClient.BeginCreateOrUpdate(ctx, resourceGroup, name, vmParams, nil)
 	if err != nil {
@@ -174,7 +174,7 @@ func (a *API) CreateInstance(name, userdata, sshkey, resourceGroup, storageAccou
 	}
 	_, err = poller.PollUntilDone(ctx, nil)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("waiting on instance creation failed: %w", err)
 	}
 
 	err = util.WaitUntilReady(5*time.Minute, 10*time.Second, func() (bool, error) {
