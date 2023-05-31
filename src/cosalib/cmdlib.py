@@ -451,3 +451,14 @@ def ensure_glob(pathname, **kwargs):
 def ncpu():
     '''Return the number of usable CPUs we have for parallelism.'''
     return int(subprocess.check_output(['kola', 'ncpu']))
+
+def create_cosa_rpm_list():
+
+    host_rpms = subprocess.check_output('rpm -qa --qf="%{NAME}:%{EPOCH}:%{VERSION}:%{RELEASE}:%{ARCH}:%{SIGMD5}:%{SIGPGP} \n"', shell=True).strip()
+    rpms = (host_rpms.decode('utf-8')).split("\n")
+    components = []
+    for rpm in rpms:
+        name, epoch, version, release, arch, sigmd5, sigpgp = rpm.split(':')
+        entry = [name, epoch, version, release, arch, sigmd5, sigpgp]
+        components.append(entry)
+    return json.dumps(components)
