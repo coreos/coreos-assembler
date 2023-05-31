@@ -35,6 +35,21 @@ configure_yum_repos() {
     # can depend on those latest tools being available in all container
     # builds.
     echo -e "[f${version_id}-coreos-continuous]\nenabled=1\nmetadata_expire=1m\nbaseurl=https://kojipkgs.fedoraproject.org/repos-dist/f${version_id}-coreos-continuous/latest/\$basearch/\ngpgcheck=0\nskip_if_unavailable=False\n" > /etc/yum.repos.d/coreos.repo
+
+    # The Fedora 35 repo got archived, we need to change it to the new location
+
+    if [ "${arch}" = "x86_64" ] || [ "${arch}" = "aarch64" ]; then
+        sed -i "/metalink*/c\baseurl=https://archives.fedoraproject.org/pub/archive/fedora/linux/releases/\$releasever/Everything/\$basearch/os/" /etc/yum.repos.d/fedora.repo
+        sed -i "/metalink*/c\baseurl=https://archives.fedoraproject.org/pub/archive/fedora/linux/releases/\$releasever/Modular/\$basearch/os/" /etc/yum.repos.d/fedora-modular.repo
+        sed -i "/metalink*/c\baseurl=https://archives.fedoraproject.org/pub/archive/fedora/linux/updates/\$releasever/Everything/\$basearch/" /etc/yum.repos.d/fedora-updates.repo
+        sed -i "/metalink*/c\baseurl=https://archives.fedoraproject.org/pub/archive/fedora/linux/updates/\$releasever/Modular/\$basearch/" /etc/yum.repos.d/fedora-updates-modular.repo
+    else
+        sed -i "/metalink*/c\baseurl=https://archives.fedoraproject.org/pub/archive/fedora-secondary/releases/\$releasever/Everything/\$basearch/os/" /etc/yum.repos.d/fedora.repo
+        sed -i "/metalink*/c\baseurl=https://archives.fedoraproject.org/pub/archive/fedora-secondary/releases/\$releasever/Modular/\$basearch/os/" /etc/yum.repos.d/fedora-modular.repo
+        sed -i "/metalink*/c\baseurl=https://archives.fedoraproject.org/pub/archive/fedora-secondary/updates/\$releasever/Everything/\$basearch/" /etc/yum.repos.d/fedora-updates.repo
+        sed -i "/metalink*/c\baseurl=https://archives.fedoraproject.org/pub/archive/fedora-secondary/updates/\$releasever/Modular/\$basearch/" /etc/yum.repos.d/fedora-updates-modular.repo
+    fi
+
 }
 
 install_rpms() {
