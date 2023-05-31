@@ -96,7 +96,7 @@ func runBootMirrorTest(c cluster.TestCluster) {
 	var err error
 	options := platform.QemuMachineOptions{
 		MachineOptions: platform.MachineOptions{
-			AdditionalDisks: []string{"5120M", "5120M"},
+			AdditionalDisks: []string{"5G", "5G"},
 			MinMemory:       4096,
 		},
 	}
@@ -143,7 +143,7 @@ func runBootMirrorLUKSTest(c cluster.TestCluster) {
 	var err error
 	options := platform.QemuMachineOptions{
 		MachineOptions: platform.MachineOptions{
-			AdditionalDisks: []string{"5120M"},
+			AdditionalDisks: []string{"5G"},
 			MinMemory:       4096,
 		},
 	}
