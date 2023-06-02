@@ -21,7 +21,7 @@ require (
 	github.com/coreos/go-systemd/v22 v22.5.0
 	github.com/coreos/ignition/v2 v2.15.0
 	github.com/coreos/pkg v0.0.0-20180928190104-399ea9e2e55f
-	github.com/coreos/stream-metadata-go v0.4.1
+	github.com/coreos/stream-metadata-go v0.4.2
 	github.com/coreos/vcontext v0.0.0-20230201181013-d72178a18687
 	github.com/digitalocean/go-qemu v0.0.0-20200529005954-1b453d036a9c
 	github.com/digitalocean/godo v1.33.0
@@ -79,7 +79,7 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/satori/go.uuid v1.2.0 // indirect
 	github.com/spf13/pflag v1.0.6-0.20210604193023-d5e0c0615ace // indirect
-	github.com/stretchr/testify v1.8.2 // indirect
+	github.com/stretchr/testify v1.8.4 // indirect
 	github.com/xeipuuv/gojsonpointer v0.0.0-20180127040702-4e3ac2762d5f // indirect
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
 	go.opencensus.io v0.24.0 // indirect
