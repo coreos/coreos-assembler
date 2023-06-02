@@ -308,8 +308,8 @@ github.com/coreos/ignition/v2/config/validate
 ## explicit
 github.com/coreos/pkg/capnslog
 github.com/coreos/pkg/multierror
-# github.com/coreos/stream-metadata-go v0.4.1
-## explicit; go 1.17
+# github.com/coreos/stream-metadata-go v0.4.2
+## explicit; go 1.18
 github.com/coreos/stream-metadata-go/arch
 github.com/coreos/stream-metadata-go/fedoracoreos
 github.com/coreos/stream-metadata-go/fedoracoreos/internals
@@ -460,8 +460,8 @@ github.com/spf13/cobra
 # github.com/spf13/pflag v1.0.6-0.20210604193023-d5e0c0615ace
 ## explicit; go 1.12
 github.com/spf13/pflag
-# github.com/stretchr/testify v1.8.2
-## explicit; go 1.13
+# github.com/stretchr/testify v1.8.4
+## explicit; go 1.20
 github.com/stretchr/testify/assert
 # github.com/vincent-petithory/dataurl v1.0.0
 ## explicit
