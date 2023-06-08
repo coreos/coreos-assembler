@@ -52,6 +52,12 @@ VARIANTS = {
         "image_format": "qcow2",
         "platform": "aliyun",
     },
+    "applehv": {
+        "image_format": "raw",
+        "image_suffix": "raw.gz",
+        "platform": "applehv",
+        "compression": "gzip"
+    },
     "azure": {
         "image_format": "vpc",
         "image_suffix": "vhd",

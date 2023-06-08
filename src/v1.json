@@ -443,6 +443,7 @@
         "ostree"
       ],
       "optional": [
+        "applehv",
         "aliyun",
         "aws",
         "azure",
@@ -613,6 +614,12 @@
           "$id": "#/properties/images/properties/vultr",
           "type": "object",
           "title": "Vultr",
+          "$ref": "#/definitions/artifact"
+        },
+        "applehv": {
+          "$id": "#/properties/images/properties/applehv",
+          "type": "object",
+          "title": "AppleHV",
           "$ref": "#/definitions/artifact"
         },
         "aliyun": {
