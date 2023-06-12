@@ -722,7 +722,11 @@ func runProvidedTests(testsBank map[string]*register.Test, patterns []string, mu
 		}
 	}
 
-	if len(nonExclusiveTests) > 0 {
+	if len(nonExclusiveTests) == 1 {
+		// If there is only one test then it can just be run by itself
+		// so add it back to the tests map.
+		tests[nonExclusiveTests[0].Name] = nonExclusiveTests[0]
+	} else if len(nonExclusiveTests) > 0 {
 		buckets := createTestBuckets(nonExclusiveTests)
 		numBuckets := len(buckets)
 		for i := 0; i < numBuckets; {
