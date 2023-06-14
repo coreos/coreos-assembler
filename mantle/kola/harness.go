@@ -679,18 +679,14 @@ func runProvidedTests(testsBank map[string]*register.Test, patterns []string, mu
 		plog.Fatal(err)
 	}
 
-	// Find all tests matching the given pattern(s) and make sure all given
-	// patterns by the user match at least one test.
-	patternMatchingTests := []register.Test{}
+	// Make sure all given patterns by the user match at least one test
 	for _, pattern := range patterns {
-		matches, err := findPatternMatchingTests(pattern, testsBank)
+		match, err := patternMatchesTests(pattern, testsBank)
 		if err != nil {
 			plog.Fatal(err)
 		}
-		if len(matches) == 0 {
+		if !match {
 			plog.Fatalf("The user provided pattern didn't match any tests: %s", pattern)
-		} else {
-			patternMatchingTests = append(patternMatchingTests, matches...)
 		}
 	}
 
@@ -699,7 +695,7 @@ func runProvidedTests(testsBank map[string]*register.Test, patterns []string, mu
 		plog.Fatal(err)
 	}
 
-	if len(tests) == 0 && allTestsDenyListed(patternMatchingTests) {
+	if len(tests) == 0 && allTestsDenyListed(tests) {
 		fmt.Printf("There are no tests to run because all tests are denylisted. Output in %v\n", outputDir)
 		return nil
 	}
@@ -846,9 +842,9 @@ func runProvidedTests(testsBank map[string]*register.Test, patterns []string, mu
 	return runErr
 }
 
-func allTestsDenyListed(tests []register.Test) bool {
-	for _, test := range tests {
-		isDenylisted, err := testIsDenyListed(test.Name)
+func allTestsDenyListed(tests map[string]*register.Test) bool {
+	for name := range tests {
+		isDenylisted, err := testIsDenyListed(name)
 		if err != nil {
 			plog.Warningf("Error while checking denylist for test: %s", err)
 			continue
@@ -1244,16 +1240,15 @@ func testIsDenyListed(testname string) (bool, error) {
 }
 
 // Function that returns true if at least one test matches the given pattern
-func findPatternMatchingTests(pattern string, tests map[string]*register.Test) ([]register.Test, error) {
-	matchingTests := []register.Test{}
-	for testname, test := range tests {
+func patternMatchesTests(pattern string, tests map[string]*register.Test) (bool, error) {
+	for testname := range tests {
 		if match, err := filepath.Match(pattern, testname); err != nil {
-			return matchingTests, err
+			return false, err
 		} else if match {
-			matchingTests = append(matchingTests, *test)
+			return true, nil
 		}
 	}
-	return matchingTests, nil
+	return false, nil
 }
 
 // registerTestDir parses one test directory and registers it as a test
