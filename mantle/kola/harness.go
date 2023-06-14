@@ -501,44 +501,6 @@ func filterTests(tests map[string]*register.Test, patterns []string, pltfrm stri
 			continue
 		}
 
-		var denylisted bool
-		// Drop anything which is denylisted directly or by pattern
-		for _, bl := range DenylistedTests {
-			nameMatch, err := filepath.Match(bl, t.Name)
-			if err != nil {
-				return nil, err
-			}
-			// If it matched the pattern this test is denylisted
-			if nameMatch {
-				denylisted = true
-				break
-			}
-
-			// Check if any native tests are denylisted. To exclude native tests, specify the high level
-			// test and a "/" and then the glob pattern.
-			// - basic/TestNetworkScripts: excludes only TestNetworkScripts
-			// - basic/* - excludes all
-			// - If no pattern is specified after / , excludes none
-			nativedenylistindex := strings.Index(bl, "/")
-			if nativedenylistindex > -1 {
-				// Check native tests for arch specific exclusion
-				for nativetestname := range t.NativeFuncs {
-					nameMatch, err := filepath.Match(bl[nativedenylistindex+1:], nativetestname)
-					if err != nil {
-						return nil, err
-					}
-					if nameMatch {
-						delete(t.NativeFuncs, nativetestname)
-					}
-				}
-			}
-		}
-		// If the test is denylisted, skip it and continue to the next test
-		if denylisted {
-			plog.Debugf("Skipping denylisted test %s", t.Name)
-			continue
-		}
-
 		nameMatch, err := MatchesPatterns(t.Name, patterns)
 		if err != nil {
 			return nil, err
@@ -658,6 +620,51 @@ func filterTests(tests map[string]*register.Test, patterns []string, pltfrm stri
 	return r, nil
 }
 
+func filterDenylistedTests(tests map[string]*register.Test) (map[string]*register.Test, error) {
+	var denylisted bool
+	r := make(map[string]*register.Test)
+	for name, t := range tests {
+		// Drop anything which is denylisted directly or by pattern
+		for _, bl := range DenylistedTests {
+			nameMatch, err := filepath.Match(bl, t.Name)
+			if err != nil {
+				return nil, err
+			}
+			// If it matched the pattern this test is denylisted
+			if nameMatch {
+				denylisted = true
+				break
+			}
+
+			// Check if any native tests are denylisted. To exclude native tests, specify the high level
+			// test and a "/" and then the glob pattern.
+			// - basic/TestNetworkScripts: excludes only TestNetworkScripts
+			// - basic/* - excludes all
+			// - If no pattern is specified after / , excludes none
+			nativedenylistindex := strings.Index(bl, "/")
+			if nativedenylistindex > -1 {
+				// Check native tests for arch specific exclusion
+				for nativetestname := range t.NativeFuncs {
+					nameMatch, err := filepath.Match(bl[nativedenylistindex+1:], nativetestname)
+					if err != nil {
+						return nil, err
+					}
+					if nameMatch {
+						delete(t.NativeFuncs, nativetestname)
+					}
+				}
+			}
+		}
+		// If the test is denylisted, skip it and continue to the next test
+		if denylisted {
+			plog.Debugf("Skipping denylisted test %s", t.Name)
+			continue
+		}
+		r[name] = t
+	}
+	return r, nil
+}
+
 // runProvidedTests is a harness for running multiple tests in parallel.
 // Filters tests based on a glob pattern and by platform. Has access to all
 // tests either registered in this package or by imported packages that
@@ -695,7 +702,16 @@ func runProvidedTests(testsBank map[string]*register.Test, patterns []string, mu
 		plog.Fatal(err)
 	}
 
-	if len(tests) == 0 && allTestsDenyListed(tests) {
+	if len(tests) == 0 {
+		plog.Fatalf("There are no matching tests to run on this architecture/platform: %s %s", coreosarch.CurrentRpmArch(), pltfrm)
+	}
+
+	tests, err = filterDenylistedTests(tests)
+	if err != nil {
+		plog.Fatal(err)
+	}
+
+	if len(tests) == 0 {
 		fmt.Printf("There are no tests to run because all tests are denylisted. Output in %v\n", outputDir)
 		return nil
 	}
@@ -840,20 +856,6 @@ func runProvidedTests(testsBank map[string]*register.Test, patterns []string, mu
 	}
 	// If the intial run failed and the rerun passed, we still return an error
 	return runErr
-}
-
-func allTestsDenyListed(tests map[string]*register.Test) bool {
-	for name := range tests {
-		isDenylisted, err := testIsDenyListed(name)
-		if err != nil {
-			plog.Warningf("Error while checking denylist for test: %s", err)
-			continue
-		}
-		if !isDenylisted {
-			return false
-		}
-	}
-	return true
 }
 
 func allTestsAllowRerunSuccess(testsBank map[string]*register.Test, testsToRerun, rerunSuccessTags []string) bool {
