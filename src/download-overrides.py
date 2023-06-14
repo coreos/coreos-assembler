@@ -5,11 +5,12 @@ import hawkey
 import os
 import yaml
 import subprocess
-import sys
 
 arch = os.uname().machine
 
 # this was partially copied from coreos-koji-tagger
+
+
 def get_rpminfo(string: str) -> str:
     form = hawkey.FORM_NEVRA
 
@@ -23,19 +24,22 @@ def get_rpminfo(string: str) -> str:
     rpminfo = nevras[0]
     return rpminfo
 
+
 def is_override_lockfile(filename: str) -> bool:
     return (filename == "manifest-lock.overrides.yaml" or
             filename == f'manifest-lock.overrides.{arch}.yaml')
 
+
 def assert_epochs_match(overrides_epoch: int, rpmfile_epoch: str):
     # normalize the input into a string
     if overrides_epoch is None:
-       normalized_overrides_epoch = '(none)' # matches rpm -qp --queryformat='%{E}'
+        normalized_overrides_epoch = '(none)'  # matches rpm -qp --queryformat='%{E}'
     else:
-       normalized_overrides_epoch = str(overrides_epoch)
-    if  normalized_overrides_epoch != rpmfile_epoch:
+        normalized_overrides_epoch = str(overrides_epoch)
+    if normalized_overrides_epoch != rpmfile_epoch:
         raise Exception(f"Epoch mismatch between downloaded rpm ({rpmfile_epoch})"
                         f" and overrides file entry ({overrides_epoch})")
+
 
 assert os.path.isdir("builds"), "Missing builds/ dir; is this a cosa workdir?"
 
@@ -58,9 +62,9 @@ for filename in os.listdir(os.path.join("src/config")):
             # Make sure the epoch matches what was in the overrides file
             # otherwise we can get errors: https://github.com/coreos/fedora-coreos-config/pull/293
             cp = subprocess.run(['rpm', '-qp', '--queryformat', '%{E}', f'{rpmnvra}.rpm'],
-                                  check=True,
-                                  capture_output=True,
-                                  cwd='overrides/rpm')
+                check=True,
+                capture_output=True,
+                cwd='overrides/rpm')
             rpmfile_epoch = cp.stdout.decode('utf-8')
             assert_epochs_match(rpminfo.epoch, rpmfile_epoch)
 
