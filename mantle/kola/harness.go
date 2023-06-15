@@ -621,10 +621,10 @@ func filterTests(tests map[string]*register.Test, patterns []string, pltfrm stri
 }
 
 func filterDenylistedTests(tests map[string]*register.Test) (map[string]*register.Test, error) {
-	var denylisted bool
 	r := make(map[string]*register.Test)
 	for name, t := range tests {
-		// Drop anything which is denylisted directly or by pattern
+		denylisted := false
+		// Detect anything which is denylisted directly or by pattern
 		for _, bl := range DenylistedTests {
 			nameMatch, err := filepath.Match(bl, t.Name)
 			if err != nil {
