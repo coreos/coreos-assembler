@@ -500,13 +500,19 @@ func CheckMachine(ctx context.Context, m Machine) error {
 
 	// ensure we're talking to a supported system
 	var distribution string
-	switch string(out) {
+	outstr := string(out)
+	switch outstr {
 	case `fedora-coreos`:
 		distribution = "fcos"
 	case `scos-`, `scos-coreos`, `rhcos-`, `rhcos-coreos`:
 		distribution = "rhcos"
 	default:
-		return fmt.Errorf("not a supported instance: %v", string(out))
+		// allow custom distriubtions as long as variant is coreos
+		if strings.HasSuffix(outstr, "-coreos") {
+			distribution = strings.Replace(outstr, "-coreos", "", -1)
+		} else {
+			return fmt.Errorf("not a supported instance: %v", outstr)
+		}
 	}
 
 	// check systemd version on host to see if we can use `busctl --json=short`
