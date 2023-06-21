@@ -97,8 +97,13 @@ def is_tag_in_registry(repo, tag):
     try:
         subprocess.check_output(cmd, stderr=subprocess.PIPE)
     except subprocess.CalledProcessError as e:
-        # yuck; check if it's because the tag doesn't exist
-        if b'manifest unknown' in e.stderr:
+        # yuck; check if it's because the tag doesn't exist. This
+        # handles two different kinds of failure:
+        # $ skopeo    inspect    --raw # docker://quay.io/coreos-assembler/staging:aarch64-706fa53
+        # FATA[0000] Error parsing image name "docker://quay.io/coreos-assembler/staging:aarch64-706fa53": reading manifest aarch64-706fa53 in quay.io/coreos-assembler/staging: manifest unknown
+        # $ skopeo    inspect    --raw docker://quay.io/coreos-assembler/staging:aarch64-706fa52
+        # FATA[0000] Error parsing image name "docker://quay.io/coreos-assembler/staging:aarch64-706fa52": reading manifest aarch64-706fa52 in quay.io/coreos-assembler/staging: unknown: Tag aarch64-706fa52 was deleted or has expired. To pull, revive via time machine
+        if b'manifest' in e.stderr and b'unknown' in e.stderr:
             return False
         # any other error is unexpected; fail
         logging.error(f" STDOUT: {e.stdout.decode()}")
