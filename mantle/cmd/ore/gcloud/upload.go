@@ -42,6 +42,7 @@ var (
 	uploadFile             string
 	uploadForce            bool
 	uploadWriteUrl         string
+	uploadImageArch        string
 	uploadImageFamily      string
 	uploadImageDescription string
 	uploadCreateImage      bool
@@ -64,7 +65,7 @@ func init() {
 	}
 	cmdUpload.Flags().BoolVar(&uploadForce, "force", false, "overwrite existing GS and GCP images without prompt")
 	cmdUpload.Flags().StringVar(&uploadWriteUrl, "write-url", "", "output the uploaded URL to the named file")
-	cmdUpload.Flags().StringVar(&uploadImageFamily, "family", "", "GCP image family to attach image to")
+	cmdUpload.Flags().StringVar(&uploadImageArch, "arch", "", "The architecture of the image")
 	cmdUpload.Flags().StringVar(&uploadImageDescription, "description", "", "The description that should be attached to the image")
 	cmdUpload.Flags().BoolVar(&uploadCreateImage, "create-image", true, "Create an image in GCP after uploading")
 	cmdUpload.Flags().BoolVar(&uploadPublic, "public", false, "Set public ACLs on image")
@@ -145,10 +146,11 @@ func runUpload(cmd *cobra.Command, args []string) {
 	if uploadCreateImage {
 		fmt.Printf("Creating image in GCP: %v...\n", imageNameGCP)
 		spec := &gcloud.ImageSpec{
-			Name:        imageNameGCP,
-			Family:      uploadImageFamily,
-			SourceImage: imageStorageURL,
-			Description: uploadImageDescription,
+			Architecture: uploadImageArch,
+			Name:         imageNameGCP,
+			Family:       uploadImageFamily,
+			SourceImage:  imageStorageURL,
+			Description:  uploadImageDescription,
 		}
 		if len(uploadImageLicenses) > 0 {
 			spec.Licenses = uploadImageLicenses

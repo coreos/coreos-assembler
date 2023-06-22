@@ -36,6 +36,7 @@ var (
 		Run:   runCreateImage,
 	}
 
+	createImageArch    string
 	createImageFamily  string
 	createImageBoard   string
 	createImageVersion string
@@ -46,6 +47,8 @@ var (
 
 func init() {
 	user := os.Getenv("USER")
+	cmdCreateImage.Flags().StringVar(&createImageArch, "arch",
+		"", "The architecture of the image")
 	cmdCreateImage.Flags().StringVar(&createImageFamily, "family",
 		user, "GCP image group and name prefix")
 	cmdCreateImage.Flags().StringVar(&createImageBoard, "board",
@@ -116,8 +119,9 @@ func runCreateImage(cmd *cobra.Command, args []string) {
 	// create image on gcp
 	storageSrc := fmt.Sprintf("https://storage.googleapis.com/%v/%v", bucket, imageNameGS)
 	_, pending, err := api.CreateImage(&gcloud.ImageSpec{
-		Name:        imageNameGCP,
-		SourceImage: storageSrc,
+		Architecture: createImageArch,
+		Name:         imageNameGCP,
+		SourceImage:  storageSrc,
 	}, createImageForce)
 	if err == nil {
 		err = pending.Wait()

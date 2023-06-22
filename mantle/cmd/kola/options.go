@@ -117,7 +117,7 @@ func init() {
 	sv(&kola.GCPOptions.Image, "gcp-image", "", "GCP image, full api endpoints names are accepted if resource is in a different project")
 	sv(&kola.GCPOptions.Project, "gcp-project", "fedora-coreos-devel", "GCP project name")
 	sv(&kola.GCPOptions.Zone, "gcp-zone", "us-central1-a", "GCP zone name")
-	sv(&kola.GCPOptions.MachineType, "gcp-machinetype", "n1-standard-1", "GCP machine type")
+	sv(&kola.GCPOptions.MachineType, "gcp-machinetype", "", "GCP machine type")
 	sv(&kola.GCPOptions.DiskType, "gcp-disktype", "pd-ssd", "GCP disk type")
 	sv(&kola.GCPOptions.Network, "gcp-network", "default", "GCP network")
 	sv(&kola.GCPOptions.ServiceAcct, "gcp-service-account", "", "GCP service account to attach to instance (default project default)")
@@ -235,6 +235,17 @@ func syncOptionsImpl(useCosa bool) error {
 			kola.AWSOptions.InstanceType = "c6g.xlarge"
 		}
 		fmt.Printf("Using %s instance type\n", kola.AWSOptions.InstanceType)
+	}
+
+	// Choose an appropriate GCP instance type for the target architecture
+	if kolaPlatform == "gcp" && kola.GCPOptions.MachineType == "" {
+		switch kola.Options.CosaBuildArch {
+		case "x86_64":
+			kola.GCPOptions.MachineType = "n1-standard-1"
+		case "aarch64":
+			kola.GCPOptions.MachineType = "t2a-standard-1"
+		}
+		fmt.Printf("Using %s instance type\n", kola.GCPOptions.MachineType)
 	}
 
 	// if no external dirs were given, automatically add the working directory;
