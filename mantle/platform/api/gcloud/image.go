@@ -16,6 +16,7 @@ package gcloud
 
 import (
 	"fmt"
+	"runtime"
 	"strings"
 
 	"golang.org/x/net/context"
@@ -32,11 +33,12 @@ const (
 )
 
 type ImageSpec struct {
-	SourceImage string
-	Family      string
-	Name        string
-	Description string
-	Licenses    []string // short names
+	Architecture string
+	SourceImage  string
+	Family       string
+	Name         string
+	Description  string
+	Licenses     []string // short names
 }
 
 const endpointPrefix = "https://www.googleapis.com/compute/v1/"
@@ -84,6 +86,18 @@ func (a *API) CreateImage(spec *ImageSpec, overwrite bool) (*compute.Operation, 
 		}
 	}
 
+	if spec.Architecture == "" {
+		spec.Architecture = runtime.GOARCH
+	}
+	switch spec.Architecture {
+	case "amd64", "x86_64":
+		spec.Architecture = "X86_64"
+	case "arm64", "aarch64":
+		spec.Architecture = "ARM64"
+	default:
+		return nil, nil, fmt.Errorf("unsupported gcp architecture %q", spec.Architecture)
+	}
+
 	if overwrite {
 		plog.Debugf("Overwriting image %q", spec.Name)
 		// delete existing image, ignore error since it might not exist.
@@ -121,6 +135,7 @@ func (a *API) CreateImage(spec *ImageSpec, overwrite bool) (*compute.Operation, 
 	}
 
 	image := &compute.Image{
+		Architecture:    spec.Architecture,
 		Family:          spec.Family,
 		Name:            spec.Name,
 		Description:     spec.Description,

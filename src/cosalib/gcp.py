@@ -63,6 +63,7 @@ def gcp_run_ore(build, args):
     ore_upload_cmd = ore_common_args + [
         'upload',
         '--basename', build.build_name,
+        '--arch', build.basearch,
         '--force',  # We want to support restarting the pipeline
         '--bucket', f'{args.bucket}',
         '--name', gcp_name,
