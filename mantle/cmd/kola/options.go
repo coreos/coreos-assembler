@@ -241,7 +241,13 @@ func syncOptionsImpl(useCosa bool) error {
 	if kolaPlatform == "gcp" && kola.GCPOptions.MachineType == "" {
 		switch kola.Options.CosaBuildArch {
 		case "x86_64":
-			kola.GCPOptions.MachineType = "n1-standard-1"
+			if kola.GCPOptions.Confidential {
+				// https://cloud.google.com/compute/confidential-vm/docs/locations
+				fmt.Print("Setting instance type for confidential computing")
+				kola.GCPOptions.MachineType = "n2d-standard-2"
+			} else {
+				kola.GCPOptions.MachineType = "n1-standard-1"
+			}
 		case "aarch64":
 			kola.GCPOptions.MachineType = "t2a-standard-1"
 		}
