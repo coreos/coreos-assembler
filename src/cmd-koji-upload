@@ -375,6 +375,40 @@ class _KojiBase():
         return session
 
 
+class Search(_KojiBase):
+    """
+    Search for builds
+    """
+
+    def __init__(self, profile):
+        """
+        Creates a new instance for search.
+
+        :param profile: Koji profile name in /etc/koji.conf.d
+        :type str
+        """
+        super().__init__(profile)
+
+    def get_state(self, nvr):
+        """
+        Return the build state.
+        :param nvr: The nvr name from Brew
+
+        For more about build state see:
+          https://pagure.io/koji/blob/master/f/www/kojiweb/builds.chtml#_27
+          https://pagure.io/koji/blob/master/f/tests/test_cli/test_import.py#_73
+        """
+
+        info = self.session.getBuild(nvr, strict=False)
+        if (info):
+            return (info['state'])
+
+        # Don't return anything else if no build was found.
+        # Since the build states are describe as numbers from 0
+        # to 4, let's get an empty return
+        return ""
+
+
 class Reserve(_KojiBase):
     """
     Reserves a place in Koji for later archival.
@@ -761,6 +795,11 @@ Examples:
         --keytab keytab \
         --owner me@FEDORA.COM \
         --profile koji
+    $ cmd-koji-upload search \
+        --nvr nvr \
+        --keytab keytab \
+        --owner me@FEDORA.COM \
+        --profile koji
 
 Environment variables are supported:
     - KOJI_USERNAME will set the owner
@@ -807,6 +846,9 @@ Environment variables are supported:
     upload_cmd = sub_commands.add_parser(
         "upload", help="Uploads to koji", parents=[parent_parser], add_help=False)
 
+    search_cmd = sub_commands.add_parser(
+        "search", help="Search for a build", parents=[parent_parser], add_help=False)
+
     sub_commands.add_parser(
         "reserve-id", help="Reserves a koji id", parents=[parent_parser], add_help=False)
 
@@ -839,6 +881,10 @@ Environment variables are supported:
         '--s3-url', required=False,
         help='Store url information in meta.json')
 
+    search_cmd.add_argument(
+        '--nvr',  required=True,
+        help='NVR to look for')
+
     args, extra_args = parser.parse_known_args()
     set_logger(args.log_level)
 
@@ -855,7 +901,8 @@ Environment variables are supported:
 
     if args.auth:
         kinit(args.keytab, args.owner)
-
+    if args._command == 'search':
+        print(Search(args.profile).get_state(args.nvr))
     if args._command == 'upload':
 
         upload = Upload(build, args.owner, args.tag, args.profile)
