@@ -38,12 +38,12 @@ configure_yum_repos() {
     if [ "${arch}" = "x86_64" ] || [ "${arch}" = "aarch64" ]; then
         sed -i "/metalink*/c\baseurl=https://archives.fedoraproject.org/pub/archive/fedora/linux/releases/\$releasever/Everything/\$basearch/os/" /etc/yum.repos.d/fedora.repo
         sed -i "/metalink*/c\baseurl=https://archives.fedoraproject.org/pub/archive/fedora/linux/releases/\$releasever/Modular/\$basearch/os/" /etc/yum.repos.d/fedora-modular.repo
-        sed -i "/metalink*/c\baseurl=https://archives.fedoraproject.org/pub/archive/fedora/linux/updates/\$releasever/Everything/\$basearch/" /etc/yum.repos.d/fedora-updates.repo
+        sed -i "/metalink*/c\baseurl=https://kojipkgs.fedoraproject.org/compose/updates/Fedora-34-updates-20220607.0/compose/Everything/\$basearch/os/" /etc/yum.repos.d/fedora-updates.repo
         sed -i "/metalink*/c\baseurl=https://archives.fedoraproject.org/pub/archive/fedora/linux/updates/\$releasever/Modular/\$basearch/" /etc/yum.repos.d/fedora-updates-modular.repo
     else
         sed -i "/metalink*/c\baseurl=https://archives.fedoraproject.org/pub/archive/fedora-secondary/releases/\$releasever/Everything/\$basearch/os/" /etc/yum.repos.d/fedora.repo
         sed -i "/metalink*/c\baseurl=https://archives.fedoraproject.org/pub/archive/fedora-secondary/releases/\$releasever/Modular/\$basearch/os/" /etc/yum.repos.d/fedora-modular.repo
-        sed -i "/metalink*/c\baseurl=https://archives.fedoraproject.org/pub/archive/fedora-secondary/updates/\$releasever/Everything/\$basearch/" /etc/yum.repos.d/fedora-updates.repo
+        sed -i "/metalink*/c\baseurl=https://kojipkgs.fedoraproject.org/compose/updates/Fedora-34-updates-20220607.0/compose/Everything/\$basearch/os/" /etc/yum.repos.d/fedora-updates.repo
         sed -i "/metalink*/c\baseurl=https://archives.fedoraproject.org/pub/archive/fedora-secondary/updates/\$releasever/Modular/\$basearch/" /etc/yum.repos.d/fedora-updates-modular.repo
     fi
 
