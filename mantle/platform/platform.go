@@ -410,38 +410,11 @@ func NewMachines(c Cluster, userdata *conf.UserData, n int, options MachineOptio
 	return machs, nil
 }
 
-// checkSystemdUnitFailures ensures that no system unit is in a failed state,
-// temporarily ignoring some non-fatal flakes on RHCOS.
-// See: https://bugzilla.redhat.com/show_bug.cgi?id=1914362
-func checkSystemdUnitFailures(output string, distribution string) error {
-	if len(output) == 0 {
-		return nil
+// checkSystemdUnitFailures ensures that no system unit is in a failed state.
+func checkSystemdUnitFailures(output string) error {
+	if len(output) > 0 {
+		return fmt.Errorf("some systemd units failed: %s", output)
 	}
-
-	var ignoredUnits []string
-	if distribution == "rhcos" {
-		ignoredUnits = append(ignoredUnits, "user@1000.service")
-		ignoredUnits = append(ignoredUnits, "user-runtime-dir@1000.service")
-	}
-
-	var failedUnits []string
-	for _, unit := range strings.Split(output, "\n") {
-		// Filter ignored units
-		ignored := false
-		for _, i := range ignoredUnits {
-			if unit == i {
-				ignored = true
-				break
-			}
-		}
-		if !ignored {
-			failedUnits = append(failedUnits, unit)
-		}
-	}
-	if len(failedUnits) > 0 {
-		return fmt.Errorf("some systemd units failed: %s", failedUnits)
-	}
-
 	return nil
 }
 
@@ -534,7 +507,7 @@ func CheckMachine(ctx context.Context, m Machine) error {
 	if err != nil {
 		return fmt.Errorf("failed to query systemd for failed units: %s: %v: %s", out, err, stderr)
 	}
-	err = checkSystemdUnitFailures(string(out), distribution)
+	err = checkSystemdUnitFailures(string(out))
 	if err != nil {
 		plog.Error(err)
 		systemdFailures = true
