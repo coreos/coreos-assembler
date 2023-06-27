@@ -26,7 +26,7 @@ import (
 // the path to an artifact (usually a disk image).
 func TargetDistroFromName(artifact string) string {
 	basename := filepath.Base(artifact)
-	if strings.HasPrefix(basename, "rhcos-") {
+	if strings.HasPrefix(basename, "rhcos-") || strings.HasPrefix(basename, "scos-") {
 		return "rhcos"
 	}
 	// For now, just assume fcos
