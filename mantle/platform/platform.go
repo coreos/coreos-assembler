@@ -466,20 +466,21 @@ func CheckMachine(ctx context.Context, m Machine) error {
 		return errors.Wrapf(err, "ssh unreachable")
 	}
 
-	out, stderr, err := m.SSH(`. /etc/os-release && echo "$ID-$VARIANT_ID"`)
+	out, stderr, err := m.SSH(`. /etc/os-release && echo "$ID"`)
 	if err != nil {
 		return fmt.Errorf("no /etc/os-release file: %v: %s", err, stderr)
 	}
+	osReleaseID := string(out)
 
-	// ensure we're talking to a supported system
-	var distribution string
-	switch string(out) {
-	case `fedora-coreos`:
-		distribution = "fcos"
-	case `scos-`, `scos-coreos`, `rhcos-`, `rhcos-coreos`:
-		distribution = "rhcos"
-	default:
-		return fmt.Errorf("not a supported instance: %v", string(out))
+	out, stderr, err = m.SSH(`. /etc/os-release && echo "$VARIANT_ID"`)
+	if err != nil {
+		return fmt.Errorf("no /etc/os-release file: %v: %s", err, stderr)
+	}
+	osReleaseVariantID := string(out)
+
+	// Basic check to ensure that we're talking to a supported system
+	if osReleaseVariantID != "coreos" {
+		return fmt.Errorf("not a supported instance: %s %s", osReleaseID, osReleaseVariantID)
 	}
 
 	// check systemd version on host to see if we can use `busctl --json=short`
