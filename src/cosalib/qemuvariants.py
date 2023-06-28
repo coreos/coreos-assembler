@@ -312,18 +312,24 @@ class QemuVariantImage(_Build):
         elif self.compression is not None:
             sha256 = sha256sum_file(final_img)
             size = os.stat(final_img).st_size
-            temp_path = f"{final_img}.tmp"
 
+            # gzip and zip both embed the input filename in the output
+            # archive.  For gzip this is harmless, since gunzip ignores it
+            # unless -N is specified, but zip is a container format (like
+            # tar) so we need to care.  Strip the .gz or .zip filename
+            # extension from the uncompressed file before compressing.
+            uncompressed_path = os.path.splitext(final_img)[0]
+            os.rename(final_img, uncompressed_path)
             match self.compression:
                 case "gzip":
-                    rc = ['gzip', '-9c', final_img]
+                    rc = ['gzip', '-9c', uncompressed_path]
                 case "zip":
-                    rc = ['zip', '-9', "-", final_img]
+                    rc = ['zip', '-9', "-", uncompressed_path]
                 case _:
                     raise ImageError(f"unsupported compression type: {self.compression}")
-            with open(temp_path, "wb") as fh:
+            with open(final_img, "wb") as fh:
                 runcmd(rc, stdout=fh)
-            shutil.move(temp_path, final_img)
+            os.unlink(uncompressed_path)
             meta_patch.update({
                 'skip-compression': True,
                 'uncompressed-sha256': sha256,
