@@ -324,7 +324,7 @@ class QemuVariantImage(_Build):
                 case "gzip":
                     rc = ['gzip', '-9c', uncompressed_path]
                 case "zip":
-                    rc = ['zip', '-9', "-", uncompressed_path]
+                    rc = ['zip', '-9j', "-", uncompressed_path]
                 case _:
                     raise ImageError(f"unsupported compression type: {self.compression}")
             with open(final_img, "wb") as fh:
