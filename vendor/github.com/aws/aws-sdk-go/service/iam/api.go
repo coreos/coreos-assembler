@@ -194,7 +194,8 @@ func (c *IAM) AddRoleToInstanceProfileRequest(input *AddRoleToInstanceProfileInp
 //     the limit exceeded.
 //
 //   - ErrCodeUnmodifiableEntityException "UnmodifiableEntity"
-//     The request was rejected because only the service that depends on the service-linked
+//     The request was rejected because service-linked roles are protected Amazon
+//     Web Services resources. Only the service that depends on the service-linked
 //     role can modify or delete the role on your behalf. The error message includes
 //     the name of the service that depends on this service-linked role. You must
 //     request the change through that service.
@@ -508,7 +509,8 @@ func (c *IAM) AttachRolePolicyRequest(input *AttachRolePolicyInput) (req *reques
 //     for an input parameter.
 //
 //   - ErrCodeUnmodifiableEntityException "UnmodifiableEntity"
-//     The request was rejected because only the service that depends on the service-linked
+//     The request was rejected because service-linked roles are protected Amazon
+//     Web Services resources. Only the service that depends on the service-linked
 //     role can modify or delete the role on your behalf. The error message includes
 //     the name of the service that depends on this service-linked role. You must
 //     request the change through that service.
@@ -918,9 +920,9 @@ func (c *IAM) CreateAccountAliasRequest(input *CreateAccountAliasInput) (req *re
 // CreateAccountAlias API operation for AWS Identity and Access Management.
 //
 // Creates an alias for your Amazon Web Services account. For information about
-// using an Amazon Web Services account alias, see Using an alias for your Amazon
-// Web Services account ID (https://docs.aws.amazon.com/IAM/latest/UserGuide/AccountAlias.html)
-// in the IAM User Guide.
+// using an Amazon Web Services account alias, see Creating, deleting, and listing
+// an Amazon Web Services account alias (https://docs.aws.amazon.com/signin/latest/userguide/CreateAccountAlias.html)
+// in the Amazon Web Services Sign-In User Guide.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -930,6 +932,11 @@ func (c *IAM) CreateAccountAliasRequest(input *CreateAccountAliasInput) (req *re
 // API operation CreateAccountAlias for usage and error information.
 //
 // Returned Error Codes:
+//
+//   - ErrCodeConcurrentModificationException "ConcurrentModification"
+//     The request was rejected because multiple requests to change this object
+//     were submitted simultaneously. Wait a few minutes and submit your request
+//     again.
 //
 //   - ErrCodeEntityAlreadyExistsException "EntityAlreadyExists"
 //     The request was rejected because it attempted to create a resource that already
@@ -1339,6 +1346,8 @@ func (c *IAM) CreateOpenIDConnectProviderRequest(input *CreateOpenIDConnectProvi
 //
 //   - A list of client IDs (also known as audiences) that identify the application
 //     or applications allowed to authenticate using the OIDC provider
+//
+//   - A list of tags that are attached to the specified IAM OIDC provider
 //
 //   - A list of thumbprints of one or more server certificates that the IdP
 //     uses
@@ -2361,6 +2370,11 @@ func (c *IAM) DeactivateMFADeviceRequest(input *DeactivateMFADeviceInput) (req *
 //     The request processing has failed because of an unknown error, exception
 //     or failure.
 //
+//   - ErrCodeConcurrentModificationException "ConcurrentModification"
+//     The request was rejected because multiple requests to change this object
+//     were submitted simultaneously. Wait a few minutes and submit your request
+//     again.
+//
 // See also, https://docs.aws.amazon.com/goto/WebAPI/iam-2010-05-08/DeactivateMFADevice
 func (c *IAM) DeactivateMFADevice(input *DeactivateMFADeviceInput) (*DeactivateMFADeviceOutput, error) {
 	req, out := c.DeactivateMFADeviceRequest(input)
@@ -2524,9 +2538,9 @@ func (c *IAM) DeleteAccountAliasRequest(input *DeleteAccountAliasInput) (req *re
 // DeleteAccountAlias API operation for AWS Identity and Access Management.
 //
 // Deletes the specified Amazon Web Services account alias. For information
-// about using an Amazon Web Services account alias, see Using an alias for
-// your Amazon Web Services account ID (https://docs.aws.amazon.com/IAM/latest/UserGuide/AccountAlias.html)
-// in the IAM User Guide.
+// about using an Amazon Web Services account alias, see Creating, deleting,
+// and listing an Amazon Web Services account alias (https://docs.aws.amazon.com/signin/latest/userguide/CreateAccountAlias.html)
+// in the Amazon Web Services Sign-In User Guide.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -2536,6 +2550,11 @@ func (c *IAM) DeleteAccountAliasRequest(input *DeleteAccountAliasInput) (req *re
 // API operation DeleteAccountAlias for usage and error information.
 //
 // Returned Error Codes:
+//
+//   - ErrCodeConcurrentModificationException "ConcurrentModification"
+//     The request was rejected because multiple requests to change this object
+//     were submitted simultaneously. Wait a few minutes and submit your request
+//     again.
 //
 //   - ErrCodeNoSuchEntityException "NoSuchEntity"
 //     The request was rejected because it referenced a resource entity that does
@@ -3474,7 +3493,8 @@ func (c *IAM) DeleteRoleRequest(input *DeleteRoleInput) (req *request.Request, o
 //     the limit exceeded.
 //
 //   - ErrCodeUnmodifiableEntityException "UnmodifiableEntity"
-//     The request was rejected because only the service that depends on the service-linked
+//     The request was rejected because service-linked roles are protected Amazon
+//     Web Services resources. Only the service that depends on the service-linked
 //     role can modify or delete the role on your behalf. The error message includes
 //     the name of the service that depends on this service-linked role. You must
 //     request the change through that service.
@@ -3556,6 +3576,8 @@ func (c *IAM) DeleteRolePermissionsBoundaryRequest(input *DeleteRolePermissionsB
 //
 // Deletes the permissions boundary for the specified IAM role.
 //
+// You cannot set the boundary for a service-linked role.
+//
 // Deleting the permissions boundary for a role might increase its permissions.
 // For example, it might allow anyone who assumes the role to perform all the
 // actions granted in its permissions policies.
@@ -3574,7 +3596,8 @@ func (c *IAM) DeleteRolePermissionsBoundaryRequest(input *DeleteRolePermissionsB
 //     not exist. The error message describes the resource.
 //
 //   - ErrCodeUnmodifiableEntityException "UnmodifiableEntity"
-//     The request was rejected because only the service that depends on the service-linked
+//     The request was rejected because service-linked roles are protected Amazon
+//     Web Services resources. Only the service that depends on the service-linked
 //     role can modify or delete the role on your behalf. The error message includes
 //     the name of the service that depends on this service-linked role. You must
 //     request the change through that service.
@@ -3676,7 +3699,8 @@ func (c *IAM) DeleteRolePolicyRequest(input *DeleteRolePolicyInput) (req *reques
 //     the limit exceeded.
 //
 //   - ErrCodeUnmodifiableEntityException "UnmodifiableEntity"
-//     The request was rejected because only the service that depends on the service-linked
+//     The request was rejected because service-linked roles are protected Amazon
+//     Web Services resources. Only the service that depends on the service-linked
 //     role can modify or delete the role on your behalf. The error message includes
 //     the name of the service that depends on this service-linked role. You must
 //     request the change through that service.
@@ -4262,6 +4286,11 @@ func (c *IAM) DeleteSigningCertificateRequest(input *DeleteSigningCertificateInp
 //     the current Amazon Web Services account limits. The error message describes
 //     the limit exceeded.
 //
+//   - ErrCodeConcurrentModificationException "ConcurrentModification"
+//     The request was rejected because multiple requests to change this object
+//     were submitted simultaneously. Wait a few minutes and submit your request
+//     again.
+//
 //   - ErrCodeServiceFailureException "ServiceFailure"
 //     The request processing has failed because of an unknown error, exception
 //     or failure.
@@ -4669,6 +4698,11 @@ func (c *IAM) DeleteVirtualMFADeviceRequest(input *DeleteVirtualMFADeviceInput) 
 //     The request processing has failed because of an unknown error, exception
 //     or failure.
 //
+//   - ErrCodeConcurrentModificationException "ConcurrentModification"
+//     The request was rejected because multiple requests to change this object
+//     were submitted simultaneously. Wait a few minutes and submit your request
+//     again.
+//
 // See also, https://docs.aws.amazon.com/goto/WebAPI/iam-2010-05-08/DeleteVirtualMFADevice
 func (c *IAM) DeleteVirtualMFADevice(input *DeleteVirtualMFADeviceInput) (*DeleteVirtualMFADeviceOutput, error) {
 	req, out := c.DeleteVirtualMFADeviceRequest(input)
@@ -4864,7 +4898,8 @@ func (c *IAM) DetachRolePolicyRequest(input *DetachRolePolicyInput) (req *reques
 //     for an input parameter.
 //
 //   - ErrCodeUnmodifiableEntityException "UnmodifiableEntity"
-//     The request was rejected because only the service that depends on the service-linked
+//     The request was rejected because service-linked roles are protected Amazon
+//     Web Services resources. Only the service that depends on the service-linked
 //     role can modify or delete the role on your behalf. The error message includes
 //     the name of the service that depends on this service-linked role. You must
 //     request the change through that service.
@@ -5077,6 +5112,11 @@ func (c *IAM) EnableMFADeviceRequest(input *EnableMFADeviceInput) (req *request.
 //   - ErrCodeServiceFailureException "ServiceFailure"
 //     The request processing has failed because of an unknown error, exception
 //     or failure.
+//
+//   - ErrCodeConcurrentModificationException "ConcurrentModification"
+//     The request was rejected because multiple requests to change this object
+//     were submitted simultaneously. Wait a few minutes and submit your request
+//     again.
 //
 // See also, https://docs.aws.amazon.com/goto/WebAPI/iam-2010-05-08/EnableMFADevice
 func (c *IAM) EnableMFADevice(input *EnableMFADeviceInput) (*EnableMFADeviceOutput, error) {
@@ -6773,7 +6813,7 @@ func (c *IAM) GetOrganizationsAccessReportRequest(input *GetOrganizationsAccessR
 // permissions using service last accessed data (https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_access-advisor.html)
 // in the IAM User Guide.
 //
-// For each service that principals in an account (root users, IAM users, or
+// For each service that principals in an account (root user, IAM users, or
 // IAM roles) could access using SCPs, the operation returns details about the
 // most recent access attempt. If there was no attempt, the service is listed
 // without details about the most recent attempt to access the service. If the
@@ -8214,9 +8254,9 @@ func (c *IAM) ListAccountAliasesRequest(input *ListAccountAliasesInput) (req *re
 //
 // Lists the account alias associated with the Amazon Web Services account (Note:
 // you can have only one). For information about using an Amazon Web Services
-// account alias, see Using an alias for your Amazon Web Services account ID
-// (https://docs.aws.amazon.com/IAM/latest/UserGuide/AccountAlias.html) in the
-// IAM User Guide.
+// account alias, see Creating, deleting, and listing an Amazon Web Services
+// account alias (https://docs.aws.amazon.com/signin/latest/userguide/CreateAccountAlias.html)
+// in the Amazon Web Services Sign-In User Guide.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -10954,9 +10994,16 @@ func (c *IAM) ListRolesRequest(input *ListRolesInput) (req *request.Request, out
 // Working with roles (https://docs.aws.amazon.com/IAM/latest/UserGuide/WorkingWithRoles.html).
 //
 // IAM resource-listing operations return a subset of the available attributes
-// for the resource. For example, this operation does not return tags, even
-// though they are an attribute of the returned object. To view all of the information
-// for a role, see GetRole.
+// for the resource. This operation does not return the following attributes,
+// even though they are an attribute of the returned object:
+//
+//   - PermissionsBoundary
+//
+//   - RoleLastUsed
+//
+//   - Tags
+//
+// To view all of the information for a role, see GetRole.
 //
 // You can paginate the results using the MaxItems and Marker parameters.
 //
@@ -12200,9 +12247,14 @@ func (c *IAM) ListUsersRequest(input *ListUsersInput) (req *request.Request, out
 // account. If there are none, the operation returns an empty list.
 //
 // IAM resource-listing operations return a subset of the available attributes
-// for the resource. For example, this operation does not return tags, even
-// though they are an attribute of the returned object. To view all of the information
-// for a user, see GetUser.
+// for the resource. This operation does not return the following attributes,
+// even though they are an attribute of the returned object:
+//
+//   - PermissionsBoundary
+//
+//   - Tags
+//
+// To view all of the information for a user, see GetUser.
 //
 // You can paginate the results using the MaxItems and Marker parameters.
 //
@@ -12617,7 +12669,8 @@ func (c *IAM) PutRolePermissionsBoundaryRequest(input *PutRolePermissionsBoundar
 //     for an input parameter.
 //
 //   - ErrCodeUnmodifiableEntityException "UnmodifiableEntity"
-//     The request was rejected because only the service that depends on the service-linked
+//     The request was rejected because service-linked roles are protected Amazon
+//     Web Services resources. Only the service that depends on the service-linked
 //     role can modify or delete the role on your behalf. The error message includes
 //     the name of the service that depends on this service-linked role. You must
 //     request the change through that service.
@@ -12743,7 +12796,8 @@ func (c *IAM) PutRolePolicyRequest(input *PutRolePolicyInput) (req *request.Requ
 //     not exist. The error message describes the resource.
 //
 //   - ErrCodeUnmodifiableEntityException "UnmodifiableEntity"
-//     The request was rejected because only the service that depends on the service-linked
+//     The request was rejected because service-linked roles are protected Amazon
+//     Web Services resources. Only the service that depends on the service-linked
 //     role can modify or delete the role on your behalf. The error message includes
 //     the name of the service that depends on this service-linked role. You must
 //     request the change through that service.
@@ -13155,7 +13209,8 @@ func (c *IAM) RemoveRoleFromInstanceProfileRequest(input *RemoveRoleFromInstance
 //     the limit exceeded.
 //
 //   - ErrCodeUnmodifiableEntityException "UnmodifiableEntity"
-//     The request was rejected because only the service that depends on the service-linked
+//     The request was rejected because service-linked roles are protected Amazon
+//     Web Services resources. Only the service that depends on the service-linked
 //     role can modify or delete the role on your behalf. The error message includes
 //     the name of the service that depends on this service-linked role. You must
 //     request the change through that service.
@@ -13434,6 +13489,11 @@ func (c *IAM) ResyncMFADeviceRequest(input *ResyncMFADeviceInput) (req *request.
 //   - ErrCodeServiceFailureException "ServiceFailure"
 //     The request processing has failed because of an unknown error, exception
 //     or failure.
+//
+//   - ErrCodeConcurrentModificationException "ConcurrentModification"
+//     The request was rejected because multiple requests to change this object
+//     were submitted simultaneously. Wait a few minutes and submit your request
+//     again.
 //
 // See also, https://docs.aws.amazon.com/goto/WebAPI/iam-2010-05-08/ResyncMFADevice
 func (c *IAM) ResyncMFADevice(input *ResyncMFADeviceInput) (*ResyncMFADeviceOutput, error) {
@@ -14323,10 +14383,10 @@ func (c *IAM) TagOpenIDConnectProviderRequest(input *TagOpenIDConnectProviderInp
 //     Or search for all resources with the key name Cost Center and the value
 //     41200.
 //
-//   - Access control - Include tags in IAM user-based and resource-based policies.
-//     You can use tags to restrict access to only an OIDC provider that has
-//     a specified tag attached. For examples of policies that show how to use
-//     tags to control access, see Control access using IAM tags (https://docs.aws.amazon.com/IAM/latest/UserGuide/access_tags.html)
+//   - Access control - Include tags in IAM identity-based and resource-based
+//     policies. You can use tags to restrict access to only an OIDC provider
+//     that has a specified tag attached. For examples of policies that show
+//     how to use tags to control access, see Control access using IAM tags (https://docs.aws.amazon.com/IAM/latest/UserGuide/access_tags.html)
 //     in the IAM User Guide.
 //
 //   - If any one of the tags is invalid or if you exceed the allowed maximum
@@ -14968,13 +15028,13 @@ func (c *IAM) TagUserRequest(input *TagUserInput) (req *request.Request, output 
 //     Or search for all resources with the key name Cost Center and the value
 //     41200.
 //
-//   - Access control - Include tags in IAM user-based and resource-based policies.
-//     You can use tags to restrict access to only an IAM requesting user that
-//     has a specified tag attached. You can also restrict access to only those
-//     resources that have a certain tag attached. For examples of policies that
-//     show how to use tags to control access, see Control access using IAM tags
-//     (https://docs.aws.amazon.com/IAM/latest/UserGuide/access_tags.html) in
-//     the IAM User Guide.
+//   - Access control - Include tags in IAM identity-based and resource-based
+//     policies. You can use tags to restrict access to only an IAM requesting
+//     user that has a specified tag attached. You can also restrict access to
+//     only those resources that have a certain tag attached. For examples of
+//     policies that show how to use tags to control access, see Control access
+//     using IAM tags (https://docs.aws.amazon.com/IAM/latest/UserGuide/access_tags.html)
+//     in the IAM User Guide.
 //
 //   - Cost allocation - Use tags to help track which individuals and teams
 //     are using which Amazon Web Services resources.
@@ -16096,7 +16156,8 @@ func (c *IAM) UpdateAssumeRolePolicyRequest(input *UpdateAssumeRolePolicyInput) 
 //     the limit exceeded.
 //
 //   - ErrCodeUnmodifiableEntityException "UnmodifiableEntity"
-//     The request was rejected because only the service that depends on the service-linked
+//     The request was rejected because service-linked roles are protected Amazon
+//     Web Services resources. Only the service that depends on the service-linked
 //     role can modify or delete the role on your behalf. The error message includes
 //     the name of the service that depends on this service-linked role. You must
 //     request the change through that service.
@@ -16505,7 +16566,8 @@ func (c *IAM) UpdateRoleRequest(input *UpdateRoleInput) (req *request.Request, o
 // Returned Error Codes:
 //
 //   - ErrCodeUnmodifiableEntityException "UnmodifiableEntity"
-//     The request was rejected because only the service that depends on the service-linked
+//     The request was rejected because service-linked roles are protected Amazon
+//     Web Services resources. Only the service that depends on the service-linked
 //     role can modify or delete the role on your behalf. The error message includes
 //     the name of the service that depends on this service-linked role. You must
 //     request the change through that service.
@@ -16602,7 +16664,8 @@ func (c *IAM) UpdateRoleDescriptionRequest(input *UpdateRoleDescriptionInput) (r
 //     not exist. The error message describes the resource.
 //
 //   - ErrCodeUnmodifiableEntityException "UnmodifiableEntity"
-//     The request was rejected because only the service that depends on the service-linked
+//     The request was rejected because service-linked roles are protected Amazon
+//     Web Services resources. Only the service that depends on the service-linked
 //     role can modify or delete the role on your behalf. The error message includes
 //     the name of the service that depends on this service-linked role. You must
 //     request the change through that service.
@@ -17564,6 +17627,11 @@ func (c *IAM) UploadSigningCertificateRequest(input *UploadSigningCertificateInp
 //     The request was rejected because it referenced a resource entity that does
 //     not exist. The error message describes the resource.
 //
+//   - ErrCodeConcurrentModificationException "ConcurrentModification"
+//     The request was rejected because multiple requests to change this object
+//     were submitted simultaneously. Wait a few minutes and submit your request
+//     again.
+//
 //   - ErrCodeServiceFailureException "ServiceFailure"
 //     The request processing has failed because of an unknown error, exception
 //     or failure.
@@ -17604,7 +17672,7 @@ type AccessDetail struct {
 	// from which an authenticated principal last attempted to access the service.
 	// Amazon Web Services does not report unauthenticated requests.
 	//
-	// This field is null if no principals (IAM users, IAM roles, or root users)
+	// This field is null if no principals (IAM users, IAM roles, or root user)
 	// in the reported Organizations entity attempted to access the service within
 	// the tracking period (https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_access-advisor.html#service-last-accessed-reporting-period).
 	EntityPath *string `min:"19" type:"string"`
@@ -17641,7 +17709,7 @@ type AccessDetail struct {
 	// ServiceNamespace is a required field
 	ServiceNamespace *string `min:"1" type:"string" required:"true"`
 
-	// The number of accounts with authenticated principals (root users, IAM users,
+	// The number of accounts with authenticated principals (root user, IAM users,
 	// and IAM roles) that attempted to access the service in the tracking period.
 	TotalAuthenticatedEntities *int64 `type:"integer"`
 }
@@ -19368,7 +19436,7 @@ type CreateOpenIDConnectProviderInput struct {
 	//
 	// For more information about obtaining the OIDC provider thumbprint, see Obtaining
 	// the thumbprint for an OpenID Connect provider (https://docs.aws.amazon.com/IAM/latest/UserGuide/identity-providers-oidc-obtain-thumbprint.html)
-	// in the IAM User Guide.
+	// in the IAM user Guide.
 	//
 	// ThumbprintList is a required field
 	ThumbprintList []*string `type:"list" required:"true"`
@@ -19923,6 +19991,10 @@ type CreateRoleInput struct {
 	// IAM user, group, role, and policy names must be unique within the account.
 	// Names are not distinguished by case. For example, you cannot create resources
 	// named both "MyResource" and "myresource".
+	//
+	// This parameter allows (through its regex pattern (http://wikipedia.org/wiki/regex))
+	// a string of characters consisting of upper and lowercase alphanumeric characters
+	// with no spaces. You can also include any of the following characters: _+=,.@-
 	//
 	// RoleName is a required field
 	RoleName *string `min:"1" type:"string" required:"true"`
@@ -20626,8 +20698,8 @@ type CreateVirtualMFADeviceInput struct {
 	// of tags, then the entire request fails and the resource is not created.
 	Tags []*Tag `type:"list"`
 
-	// The name of the virtual MFA device. Use with path to uniquely identify a
-	// virtual MFA device.
+	// The name of the virtual MFA device, which must be unique. Use with path to
+	// uniquely identify a virtual MFA device.
 	//
 	// This parameter allows (through its regex pattern (http://wikipedia.org/wiki/regex))
 	// a string of characters consisting of upper and lowercase alphanumeric characters
@@ -34270,7 +34342,7 @@ type Role struct {
 	// if your Region began supporting these features within the last year. The
 	// role might have been used more than 400 days ago. For more information, see
 	// Regions where data is tracked (https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_access-advisor.html#access-advisor_tracking-period)
-	// in the IAM User Guide.
+	// in the IAM user Guide.
 	RoleLastUsed *RoleLastUsed `type:"structure"`
 
 	// The friendly name that identifies the role.
@@ -34531,7 +34603,7 @@ func (s *RoleDetail) SetTags(v []*Tag) *RoleDetail {
 // if your Region began supporting these features within the last year. The
 // role might have been used more than 400 days ago. For more information, see
 // Regions where data is tracked (https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_access-advisor.html#access-advisor_tracking-period)
-// in the IAM User Guide.
+// in the IAM user Guide.
 //
 // This data type is returned as a response element in the GetRole and GetAccountAuthorizationDetails
 // operations.
@@ -40361,7 +40433,7 @@ type VirtualMFADevice struct {
 	_ struct{} `type:"structure"`
 
 	// The base32 seed defined as specified in RFC3548 (https://tools.ietf.org/html/rfc3548.txt).
-	// The Base32StringSeed is base64-encoded.
+	// The Base32StringSeed is base32-encoded.
 	//
 	// Base32StringSeed is a sensitive parameter and its value will be
 	// replaced with "sensitive" in string returned by VirtualMFADevice's
