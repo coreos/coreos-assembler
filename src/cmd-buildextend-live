@@ -403,6 +403,8 @@ def generate_iso():
                     kargs_json['files'].append({
                         'path': os.path.join(dir_suffix, filename),
                         'offset': karg_area_start.start(),
+                        'pad': '#',
+                        'end': '\n',
                     })
                     if karg_embed_area_length == 0:
                         karg_embed_area_length = length
@@ -514,9 +516,11 @@ def generate_iso():
                '-p', os.path.join(tmpisoimages, 'cdboot.prm')])
         os.truncate(iso_initramfs, initramfs_size)
 
-        # Get the initramfs offset in the cdboot.img. For more info, see:
+        # Get the kargs and initramfs offsets in the cdboot.img. For more info, see:
         # https://github.com/ibm-s390-linux/s390-tools/blob/032304d5034e/netboot/mk-s390image#L21-L23
         CDBOOT_IMG_OFFS_INITRD_START_BYTES = 66568
+        CDBOOT_IMG_OFFS_KARGS_START_BYTES = 66688
+        CDBOOT_IMG_OFFS_KARGS_MAX_SIZE = 896
         with open(os.path.join(tmpisoimages, 'cdboot.img'), 'rb') as f:
             f.seek(CDBOOT_IMG_OFFS_INITRD_START_BYTES)
             offset = struct.unpack(">Q", f.read(8))[0]
@@ -533,6 +537,16 @@ def generate_iso():
                 'length': ignition_img_size,
             }
 
+            # kargs are part of 'images/cdboot.img' blob
+            kargs_json['files'].append({
+                'path': 'images/cdboot.img',
+                'offset': CDBOOT_IMG_OFFS_KARGS_START_BYTES,
+                'pad': '\0',
+                'end': '\0',
+            })
+            kargs_json.update(
+                size=CDBOOT_IMG_OFFS_KARGS_MAX_SIZE,
+            )
         # generate .addrsize file for LPAR
         with open(os.path.join(tmpisoimages, 'initrd.addrsize'), 'wb') as addrsize:
             addrsize_data = struct.pack(">iiii", 0, int(INITRD_ADDRESS, 16), 0,
