@@ -33731,7 +33731,7 @@
       }
     }
   },
-  "revision": "20230530",
+  "revision": "20230620",
   "rootUrl": "https://compute.googleapis.com/",
   "schemas": {
     "AcceleratorConfig": {
@@ -34253,7 +34253,7 @@
           "type": "string"
         },
         "ipVersion": {
-          "description": "The IP version that will be used by this address. Valid options are IPV4 or IPV6. This can only be specified for a global address.",
+          "description": "The IP version that will be used by this address. Valid options are IPV4 or IPV6.",
           "enum": [
             "IPV4",
             "IPV6",
@@ -38404,7 +38404,7 @@
       "id": "CustomerEncryptionKey",
       "properties": {
         "kmsKeyName": {
-          "description": "The name of the encryption key that is stored in Google Cloud KMS. For example: \"kmsKeyName\": \"projects/kms_project_id/locations/region/keyRings/ key_region/cryptoKeys/key ",
+          "description": "The name of the encryption key that is stored in Google Cloud KMS. For example: \"kmsKeyName\": \"projects/kms_project_id/locations/region/keyRings/ key_region/cryptoKeys/key The fully-qualifed key name may be returned for resource GET requests. For example: \"kmsKeyName\": \"projects/kms_project_id/locations/region/keyRings/ key_region/cryptoKeys/key /cryptoKeyVersions/1 ",
           "type": "string"
         },
         "kmsKeyServiceAccount": {
@@ -41002,7 +41002,7 @@
           "type": "boolean"
         },
         "allowGlobalAccess": {
-          "description": "This field is used along with the backend_service field for internal load balancing or with the target field for internal TargetInstance. If the field is set to TRUE, clients can access ILB from all regions. Otherwise only allows access from clients in the same region as the internal load balancer.",
+          "description": "This field is used along with the backend_service field for internal load balancing or with the target field for internal TargetInstance. If set to true, clients can access the Internal TCP/UDP Load Balancer, Internal HTTP(S) and TCP Proxy Load Balancer from all regions. If false, only allows access from the local region the load balancer is located at. Note that for INTERNAL_MANAGED forwarding rules, this field cannot be changed after the forwarding rule is created.",
           "type": "boolean"
         },
         "allowPscGlobalAccess": {
@@ -43994,6 +43994,10 @@
           "format": "uint64",
           "type": "string"
         },
+        "instanceEncryptionKey": {
+          "$ref": "CustomerEncryptionKey",
+          "description": "Encrypts suspended data for an instance with a customer-managed encryption key. If you are creating a new instance, this field will encrypt the local SSD and in-memory contents of the instance during the suspend operation. If you do not provide an encryption key when creating the instance, then the local SSD and in-memory contents will be encrypted using an automatically generated key during the suspend operation."
+        },
         "keyRevocationActionType": {
           "description": "KeyRevocationActionType of the instance. Supported options are \"STOP\" and \"NONE\". The default value is \"NONE\" if it is not specified.",
           "enum": [
@@ -45242,14 +45246,14 @@
           ],
           "enumDescriptions": [
             "Do not perform any action.",
-            "Updates applied in runtime, instances will not be disrupted.",
-            "Old instances will be deleted. New instances will be created from the target template.",
-            "Every instance will be restarted."
+            "Do not stop the instance.",
+            "(Default.) Replace the instance according to the replacement method option.",
+            "Stop the instance and start it again."
           ],
           "type": "string"
         },
         "mostDisruptiveAllowedAction": {
-          "description": "Most disruptive action that is allowed to be taken on an instance. You can specify either NONE to forbid any actions, REFRESH to allow actions that do not need instance restart, RESTART to allow actions that can be applied without instance replacing or REPLACE to allow all possible actions. If the Updater determines that the minimal update action needed is more disruptive than most disruptive allowed action you specify it will not perform the update at all.",
+          "description": "Most disruptive action that is allowed to be taken on an instance. You can specify either NONE to forbid any actions, REFRESH to avoid restarting the VM and to limit disruption as much as possible. RESTART to allow actions that can be applied without instance replacing or REPLACE to allow all possible actions. If the Updater determines that the minimal update action needed is more disruptive than most disruptive allowed action you specify it will not perform the update at all.",
           "enum": [
             "NONE",
             "REFRESH",
@@ -45258,9 +45262,9 @@
           ],
           "enumDescriptions": [
             "Do not perform any action.",
-            "Updates applied in runtime, instances will not be disrupted.",
-            "Old instances will be deleted. New instances will be created from the target template.",
-            "Every instance will be restarted."
+            "Do not stop the instance.",
+            "(Default.) Replace the instance according to the replacement method option.",
+            "Stop the instance and start it again."
           ],
           "type": "string"
         },
@@ -45338,7 +45342,7 @@
           "type": "array"
         },
         "minimalAction": {
-          "description": "The minimal action that you want to perform on each instance during the update: - REPLACE: At minimum, delete the instance and create it again. - RESTART: Stop the instance and start it again. - REFRESH: Do not stop the instance. - NONE: Do not disrupt the instance at all. By default, the minimum action is NONE. If your update requires a more disruptive action than you set with this flag, the necessary action is performed to execute the update.",
+          "description": "The minimal action that you want to perform on each instance during the update: - REPLACE: At minimum, delete the instance and create it again. - RESTART: Stop the instance and start it again. - REFRESH: Do not stop the instance and limit disruption as much as possible. - NONE: Do not disrupt the instance at all. By default, the minimum action is NONE. If your update requires a more disruptive action than you set with this flag, the necessary action is performed to execute the update.",
           "enum": [
             "NONE",
             "REFRESH",
@@ -45347,14 +45351,14 @@
           ],
           "enumDescriptions": [
             "Do not perform any action.",
-            "Updates applied in runtime, instances will not be disrupted.",
-            "Old instances will be deleted. New instances will be created from the target template.",
-            "Every instance will be restarted."
+            "Do not stop the instance.",
+            "(Default.) Replace the instance according to the replacement method option.",
+            "Stop the instance and start it again."
           ],
           "type": "string"
         },
         "mostDisruptiveAllowedAction": {
-          "description": "The most disruptive action that you want to perform on each instance during the update: - REPLACE: Delete the instance and create it again. - RESTART: Stop the instance and start it again. - REFRESH: Do not stop the instance. - NONE: Do not disrupt the instance at all. By default, the most disruptive allowed action is REPLACE. If your update requires a more disruptive action than you set with this flag, the update request will fail.",
+          "description": "The most disruptive action that you want to perform on each instance during the update: - REPLACE: Delete the instance and create it again. - RESTART: Stop the instance and start it again. - REFRESH: Do not stop the instance and limit disruption as much as possible. - NONE: Do not disrupt the instance at all. By default, the most disruptive allowed action is REPLACE. If your update requires a more disruptive action than you set with this flag, the update request will fail.",
           "enum": [
             "NONE",
             "REFRESH",
@@ -45363,9 +45367,9 @@
           ],
           "enumDescriptions": [
             "Do not perform any action.",
-            "Updates applied in runtime, instances will not be disrupted.",
-            "Old instances will be deleted. New instances will be created from the target template.",
-            "Every instance will be restarted."
+            "Do not stop the instance.",
+            "(Default.) Replace the instance according to the replacement method option.",
+            "Stop the instance and start it again."
           ],
           "type": "string"
         }
@@ -56186,7 +56190,7 @@
           "type": "string"
         },
         "dnsVerificationIp": {
-          "description": "The IPv4 address to be used for reverse DNS verification.",
+          "description": "The address to be used for reverse DNS verification.",
           "type": "string"
         },
         "fingerprint": {
@@ -56200,7 +56204,7 @@
           "type": "string"
         },
         "ipCidrRange": {
-          "description": "The IPv4 address range, in CIDR format, represented by this public advertised prefix.",
+          "description": "The address range, in CIDR format, represented by this public advertised prefix.",
           "type": "string"
         },
         "kind": {
@@ -56429,7 +56433,7 @@
           "type": "string"
         },
         "ipCidrRange": {
-          "description": "The IPv4 address range, in CIDR format, represented by this public delegated prefix.",
+          "description": "The IP address range, in CIDR format, represented by this public delegated prefix.",
           "type": "string"
         },
         "isLiveMigration": {
@@ -56752,7 +56756,7 @@
           "type": "string"
         },
         "ipCidrRange": {
-          "description": "The IPv4 address range, in CIDR format, represented by this sub public delegated prefix.",
+          "description": "The IP address range, in CIDR format, represented by this sub public delegated prefix.",
           "type": "string"
         },
         "isAddress": {
@@ -57950,7 +57954,7 @@
           "type": "array"
         },
         "minimalAction": {
-          "description": "The minimal action that you want to perform on each instance during the update: - REPLACE: At minimum, delete the instance and create it again. - RESTART: Stop the instance and start it again. - REFRESH: Do not stop the instance. - NONE: Do not disrupt the instance at all. By default, the minimum action is NONE. If your update requires a more disruptive action than you set with this flag, the necessary action is performed to execute the update.",
+          "description": "The minimal action that you want to perform on each instance during the update: - REPLACE: At minimum, delete the instance and create it again. - RESTART: Stop the instance and start it again. - REFRESH: Do not stop the instance and limit disruption as much as possible. - NONE: Do not disrupt the instance at all. By default, the minimum action is NONE. If your update requires a more disruptive action than you set with this flag, the necessary action is performed to execute the update.",
           "enum": [
             "NONE",
             "REFRESH",
@@ -57959,14 +57963,14 @@
           ],
           "enumDescriptions": [
             "Do not perform any action.",
-            "Updates applied in runtime, instances will not be disrupted.",
-            "Old instances will be deleted. New instances will be created from the target template.",
-            "Every instance will be restarted."
+            "Do not stop the instance.",
+            "(Default.) Replace the instance according to the replacement method option.",
+            "Stop the instance and start it again."
           ],
           "type": "string"
         },
         "mostDisruptiveAllowedAction": {
-          "description": "The most disruptive action that you want to perform on each instance during the update: - REPLACE: Delete the instance and create it again. - RESTART: Stop the instance and start it again. - REFRESH: Do not stop the instance. - NONE: Do not disrupt the instance at all. By default, the most disruptive allowed action is REPLACE. If your update requires a more disruptive action than you set with this flag, the update request will fail.",
+          "description": "The most disruptive action that you want to perform on each instance during the update: - REPLACE: Delete the instance and create it again. - RESTART: Stop the instance and start it again. - REFRESH: Do not stop the instance and limit disruption as much as possible. - NONE: Do not disrupt the instance at all. By default, the most disruptive allowed action is REPLACE. If your update requires a more disruptive action than you set with this flag, the update request will fail.",
           "enum": [
             "NONE",
             "REFRESH",
@@ -57975,9 +57979,9 @@
           ],
           "enumDescriptions": [
             "Do not perform any action.",
-            "Updates applied in runtime, instances will not be disrupted.",
-            "Old instances will be deleted. New instances will be created from the target template.",
-            "Every instance will be restarted."
+            "Do not stop the instance.",
+            "(Default.) Replace the instance according to the replacement method option.",
+            "Stop the instance and start it again."
           ],
           "type": "string"
         }
@@ -59941,6 +59945,10 @@
           "description": "The URL to a gateway that should handle matching packets. You can only specify the internet gateway using a full or partial valid URL: projects/ project/global/gateways/default-internet-gateway",
           "type": "string"
         },
+        "nextHopHub": {
+          "description": "[Output Only] The full resource name of the Network Connectivity Center hub that will handle matching packets.",
+          "type": "string"
+        },
         "nextHopIlb": {
           "description": "The URL to a forwarding rule of type loadBalancingScheme=INTERNAL that should handle matching packets or the IP address of the forwarding Rule. For example, the following are all valid URLs: - 10.128.0.56 - https://www.googleapis.com/compute/v1/projects/project/regions/region /forwardingRules/forwardingRule - regions/region/forwardingRules/forwardingRule ",
           "type": "string"
@@ -60598,6 +60606,18 @@
           "$ref": "RouterBgpPeerBfd",
           "description": "BFD configuration for the BGP peering."
         },
+        "customLearnedIpRanges": {
+          "description": "A list of user-defined custom learned route IP address ranges for a BGP session.",
+          "items": {
+            "$ref": "RouterBgpPeerCustomLearnedIpRange"
+          },
+          "type": "array"
+        },
+        "customLearnedRoutePriority": {
+          "description": "The user-defined custom learned route priority for a BGP session. This value is applied to all custom learned route ranges for the session. You can choose a value from `0` to `65335`. If you don't provide a value, Google Cloud assigns a priority of `100` to the ranges.",
+          "format": "int32",
+          "type": "integer"
+        },
         "enable": {
           "description": "The status of the BGP peer connection. If set to FALSE, any active session with the peer is terminated and all associated routing information is removed. If set to TRUE, the peer connection can be established with routing information. The default is TRUE.",
           "enum": [
@@ -60707,6 +60727,16 @@
             "",
             ""
           ],
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "RouterBgpPeerCustomLearnedIpRange": {
+      "id": "RouterBgpPeerCustomLearnedIpRange",
+      "properties": {
+        "range": {
+          "description": "The custom learned route IP address range. Must be a valid CIDR-formatted prefix. If an IP address is provided without a subnet mask, it is interpreted as, for IPv4, a `/32` singular IP address range, and, for IPv6, `/128`.",
           "type": "string"
         }
       },
@@ -60916,6 +60946,22 @@
       "description": "Represents a Nat resource. It enables the VMs within the specified subnetworks to access Internet without external IP addresses. It specifies a list of subnetworks (and the ranges within) that want to use NAT. Customers can also provide the external IPs that would be used for NAT. GCP would auto-allocate ephemeral IPs if no external IPs are provided.",
       "id": "RouterNat",
       "properties": {
+        "autoNetworkTier": {
+          "description": "The network tier to use when automatically reserving IP addresses. Must be one of: PREMIUM, STANDARD. If not specified, PREMIUM tier will be used.",
+          "enum": [
+            "FIXED_STANDARD",
+            "PREMIUM",
+            "STANDARD",
+            "STANDARD_OVERRIDES_FIXED_STANDARD"
+          ],
+          "enumDescriptions": [
+            "Public internet quality with fixed bandwidth.",
+            "High quality, Google-grade network tier, support for all networking products.",
+            "Public internet quality, only limited support for other networking products.",
+            "(Output only) Temporary tier for FIXED_STANDARD when fixed standard tier is expired or not configured."
+          ],
+          "type": "string"
+        },
         "drainNatIps": {
           "description": "A list of URLs of the IP resources to be drained. These IPs must be valid static external IPs that have been assigned to the NAT. These IPs should be used for updating/patching a NAT only.",
           "items": {
@@ -66106,6 +66152,11 @@
           "format": "byte",
           "type": "string"
         },
+        "httpKeepAliveTimeoutSec": {
+          "description": "Specifies how long to keep a connection open, after completing a response, while there is no matching traffic (in seconds). If an HTTP keep-alive is not specified, a default value (610 seconds) will be used. For Global external HTTP(S) load balancer, the minimum allowed value is 5 seconds and the maximum allowed value is 1200 seconds. For Global external HTTP(S) load balancer (classic), this option is not available publicly.",
+          "format": "int32",
+          "type": "integer"
+        },
         "id": {
           "description": "[Output Only] The unique identifier for the resource. This identifier is defined by the server.",
           "format": "uint64",
@@ -66471,6 +66522,11 @@
           "description": "Fingerprint of this resource. A hash of the contents stored in this object. This field is used in optimistic locking. This field will be ignored when inserting a TargetHttpsProxy. An up-to-date fingerprint must be provided in order to patch the TargetHttpsProxy; otherwise, the request will fail with error 412 conditionNotMet. To see the latest fingerprint, make a get() request to retrieve the TargetHttpsProxy.",
           "format": "byte",
           "type": "string"
+        },
+        "httpKeepAliveTimeoutSec": {
+          "description": "Specifies how long to keep a connection open, after completing a response, while there is no matching traffic (in seconds). If an HTTP keep-alive is not specified, a default value (610 seconds) will be used. For Global external HTTP(S) load balancer, the minimum allowed value is 5 seconds and the maximum allowed value is 1200 seconds. For Global external HTTP(S) load balancer (classic), this option is not available publicly.",
+          "format": "int32",
+          "type": "integer"
         },
         "id": {
           "description": "[Output Only] The unique identifier for the resource. This identifier is defined by the server.",
