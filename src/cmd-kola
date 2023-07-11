@@ -10,8 +10,7 @@ import sys
 # Just test these boot to start with.  In the future we should at least
 # do ostree upgrades with uefi etc.  But we don't really need the *full*
 # suite...if podman somehow broke with nvme or uefi I'd be amazed and impressed.
-BASIC_SCENARIOS = ["nvme=true", "firmware=uefi"]
-BASIC_SCENARIOS_SECURE_BOOT = ["firmware=uefi-secure"]
+
 arch = platform.machine()
 
 cosa_dir = os.path.dirname(os.path.abspath(__file__))
@@ -24,9 +23,7 @@ basearch = cmdlib.get_basearch()
 # Parse args and dispatch
 parser = argparse.ArgumentParser()
 parser.add_argument("--build", help="Build ID")
-parser.add_argument("--basic-qemu-scenarios", help="Run the basic test across uefi-secure,nvme etc.", action='store_true')
 parser.add_argument("--output-dir", help="Output directory")
-parser.add_argument("--skip-secure-boot", help="Use with '--basic-qemu-scenarios' to skip the Secure Boot tests", action='store_true')
 parser.add_argument("--upgrades", help="Run upgrade tests", action='store_true')
 parser.add_argument("subargs", help="Remaining arguments for kola", nargs='*',
                     default=[])
@@ -58,33 +55,8 @@ subargs = args.subargs or [default_cmd]
 kolaargs.extend(subargs)
 kolaargs.extend(unknown_args)
 
-if args.basic_qemu_scenarios:
-    if arch == "x86_64":
-        os.mkdir(outputdir)  # Create the toplevel output dir
-        for scenario in BASIC_SCENARIOS:
-            kolaargs.extend(['--output-dir',
-                             os.path.join(outputdir, scenario.replace('=', '-'))])
-            subargs = kolaargs + ['--qemu-' + scenario, 'basic']
-            print(subprocess.list2cmdline(subargs), flush=True)
-            subprocess.check_call(subargs)
-        if not args.skip_secure_boot:
-            for scenario in BASIC_SCENARIOS_SECURE_BOOT:
-                kolaargs.extend(['--output-dir',
-                                 os.path.join(outputdir, scenario.replace('=', '-'))])
-                # See https://issues.redhat.com/browse/COS-2000 - there's
-                # some bug with shim/grub2 that fails with secure boot on < ~1300MiB of RAM.
-                # But we're not going to block on that; real world OCP worker nodes are at least 16GiB etc.
-                subargs = kolaargs + ['--qemu-' + scenario, 'basic'] + ["--qemu-memory", "1536"]
-                print(subprocess.list2cmdline(subargs), flush=True)
-                subprocess.check_call(subargs)
-    else:
-        # Basic qemu scenarios using nvme and uefi
-        # are not supported on multi-arch
-        kolaargs.extend(['--output-dir', outputdir])
-        subargs = kolaargs + ['basic']
-        print(subprocess.list2cmdline(subargs), flush=True)
-        subprocess.check_call(subargs)
-elif args.upgrades:
+
+if args.upgrades:
     kolaargs.extend(['--output-dir', outputdir])
     if '--qemu-image-dir' not in unknown_args:
         os.makedirs('tmp/kola-qemu-cache', exist_ok=True)

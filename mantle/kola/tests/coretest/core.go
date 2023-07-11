@@ -37,10 +37,76 @@ var offServices = []string{
 	"tcsd.service",
 }
 
+var uefi = []string{
+	"uefi",
+}
+
+var uefiSecure = []string{
+	"uefi-secure",
+}
+
+var uefiFirmwares = append(uefi, uefiSecure...)
+
 func init() {
+
 	register.RegisterTest(&register.Test{
-		Name:        "basic",
-		Description: "Verify basic functionalities like SSH, systemd services, useradd, etc.",
+		Name:             "basic.bios",
+		Description:      "Verify basic functionalities like SSH, systemd services, useradd, etc.",
+		ExcludeFirmwares: uefiFirmwares,
+		Run:              LocalTests,
+		ClusterSize:      1,
+		NativeFuncs: map[string]register.NativeFuncWrap{
+			"PortSSH":        register.CreateNativeFuncWrap(TestPortSsh),
+			"DbusPerms":      register.CreateNativeFuncWrap(TestDbusPerms),
+			"ServicesActive": register.CreateNativeFuncWrap(TestServicesActive),
+			"ReadOnly":       register.CreateNativeFuncWrap(TestReadOnlyFs),
+			"Useradd":        register.CreateNativeFuncWrap(TestUseradd),
+			"MachineID":      register.CreateNativeFuncWrap(TestMachineID),
+			"RHCOSGrowpart":  register.CreateNativeFuncWrap(TestRHCOSGrowfs, []string{"fcos"}...),
+			"FCOSGrowpart":   register.CreateNativeFuncWrap(TestFCOSGrowfs, []string{"rhcos"}...),
+		},
+	})
+
+	register.RegisterTest(&register.Test{ // firmeware = uefi
+		Name:             "basic.uefi",
+		Description:      "Verify basic functionalities like SSH, systemd services, useradd, etc, with uefi enabled",
+		ExcludeFirmwares: uefiSecure,
+		Run:              LocalTests,
+		ClusterSize:      1,
+		NativeFuncs: map[string]register.NativeFuncWrap{
+			"PortSSH":        register.CreateNativeFuncWrap(TestPortSsh),
+			"DbusPerms":      register.CreateNativeFuncWrap(TestDbusPerms),
+			"ServicesActive": register.CreateNativeFuncWrap(TestServicesActive),
+			"ReadOnly":       register.CreateNativeFuncWrap(TestReadOnlyFs),
+			"Useradd":        register.CreateNativeFuncWrap(TestUseradd),
+			"MachineID":      register.CreateNativeFuncWrap(TestMachineID),
+			"RHCOSGrowpart":  register.CreateNativeFuncWrap(TestRHCOSGrowfs, []string{"fcos"}...),
+			"FCOSGrowpart":   register.CreateNativeFuncWrap(TestFCOSGrowfs, []string{"rhcos"}...),
+		},
+	})
+
+	register.RegisterTest(&register.Test{ // firmware = uefi-secure
+		Name:             "basic.uefi.secure",
+		Description:      "Verify basic functionalities like SSH, systemd services, useradd, etc, with uefi enabled",
+		ExcludeFirmwares: uefi,
+		Run:              LocalTests,
+		ClusterSize:      1,
+		NativeFuncs: map[string]register.NativeFuncWrap{
+			"PortSSH":        register.CreateNativeFuncWrap(TestPortSsh),
+			"DbusPerms":      register.CreateNativeFuncWrap(TestDbusPerms),
+			"ServicesActive": register.CreateNativeFuncWrap(TestServicesActive),
+			"ReadOnly":       register.CreateNativeFuncWrap(TestReadOnlyFs),
+			"Useradd":        register.CreateNativeFuncWrap(TestUseradd),
+			"MachineID":      register.CreateNativeFuncWrap(TestMachineID),
+			"RHCOSGrowpart":  register.CreateNativeFuncWrap(TestRHCOSGrowfs, []string{"fcos"}...),
+			"FCOSGrowpart":   register.CreateNativeFuncWrap(TestFCOSGrowfs, []string{"rhcos"}...),
+		},
+	})
+
+	register.RegisterTest(&register.Test{ // add nvme = true
+		Name:        "basic.nvme.bios",
+		Description: "Verify basic functionalities like SSH, systemd services, useradd, etc, with nvme enabled",
+		Nvme:        true,
 		Run:         LocalTests,
 		ClusterSize: 1,
 		NativeFuncs: map[string]register.NativeFuncWrap{
@@ -54,6 +120,45 @@ func init() {
 			"FCOSGrowpart":   register.CreateNativeFuncWrap(TestFCOSGrowfs, []string{"rhcos"}...),
 		},
 	})
+
+	register.RegisterTest(&register.Test{ // nvme = true && firmware = uefi
+		Name:             "basic.nvme.uefi",
+		Description:      "Verify basic functionalities like SSH, systemd services, useradd, etc, with nvme and uefi enabled",
+		ExcludeFirmwares: uefiSecure,
+		Nvme:             true,
+		Run:              LocalTests,
+		ClusterSize:      1,
+		NativeFuncs: map[string]register.NativeFuncWrap{
+			"PortSSH":        register.CreateNativeFuncWrap(TestPortSsh),
+			"DbusPerms":      register.CreateNativeFuncWrap(TestDbusPerms),
+			"ServicesActive": register.CreateNativeFuncWrap(TestServicesActive),
+			"ReadOnly":       register.CreateNativeFuncWrap(TestReadOnlyFs),
+			"Useradd":        register.CreateNativeFuncWrap(TestUseradd),
+			"MachineID":      register.CreateNativeFuncWrap(TestMachineID),
+			"RHCOSGrowpart":  register.CreateNativeFuncWrap(TestRHCOSGrowfs, []string{"fcos"}...),
+			"FCOSGrowpart":   register.CreateNativeFuncWrap(TestFCOSGrowfs, []string{"rhcos"}...),
+		},
+	})
+
+	register.RegisterTest(&register.Test{ // nvme = true && firmware = uefi-secure
+		Name:             "basic.nvme.uefi.secure",
+		Description:      "Verify basic functionalities like SSH, systemd services, useradd, etc, with nvme and uefi-secure enabled",
+		ExcludeFirmwares: uefi,
+		Nvme:             true,
+		Run:              LocalTests,
+		ClusterSize:      1,
+		NativeFuncs: map[string]register.NativeFuncWrap{
+			"PortSSH":        register.CreateNativeFuncWrap(TestPortSsh),
+			"DbusPerms":      register.CreateNativeFuncWrap(TestDbusPerms),
+			"ServicesActive": register.CreateNativeFuncWrap(TestServicesActive),
+			"ReadOnly":       register.CreateNativeFuncWrap(TestReadOnlyFs),
+			"Useradd":        register.CreateNativeFuncWrap(TestUseradd),
+			"MachineID":      register.CreateNativeFuncWrap(TestMachineID),
+			"RHCOSGrowpart":  register.CreateNativeFuncWrap(TestRHCOSGrowfs, []string{"fcos"}...),
+			"FCOSGrowpart":   register.CreateNativeFuncWrap(TestFCOSGrowfs, []string{"rhcos"}...),
+		},
+	})
+
 	// TODO: Enable DockerPing/DockerEcho once fixed
 	// TODO: Only enable PodmanPing on non qemu. Needs:
 	// https://github.com/coreos/mantle/issues/1132

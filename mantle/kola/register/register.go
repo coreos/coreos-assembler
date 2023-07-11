@@ -112,6 +112,8 @@ type Test struct {
 	// Conflicts is non-empty iff nonexclusive is true
 	// Contains the tests that conflict with this particular test
 	Conflicts []string
+
+	Nvme bool
 }
 
 // Registered tests that run as part of `kola run` live here. Mapping of names
