@@ -429,12 +429,21 @@ class Reserve(_KojiBase):
         """
         log.info("Reserving a unique koji id")
 
-        release = datetime.datetime.utcnow().strftime("%H%M%S")
-
+        # The koji/brew NVR is constructed like so:
+        # Name = "rhcos-$arch", like `rhcos-x86_64`
+        # Version = Everything before `-` in RHCOS version
+        # Release = Everything after `-` in RHCOS version
+        #
+        # Example: RHCOS Build ID: 414.92.202307170903-0 for x86_64
+        #   Name = rhcos-x86_64
+        #   Version = 414.92.202307170903
+        #   Release = 0
+        #   NVR = rhcos-x86_64-414.92.202307170903-0
+        version, release = build.build_id.split('-')
         data = {
             "name": f"{build.build_name}-{build.basearch}",
             "release": release,
-            "version": f"{build.build_id.replace('-', '.')}",
+            "version": version,
             "cg": "coreos-assembler",
         }
 
@@ -495,7 +504,6 @@ class Upload(_KojiBase):
         self._session = None
         self._tag = tag
         self._image_files = None
-        self._release = None
         self._reserve_id_file = None
         self._retry_attempts = 2
         self._uploaded = False
@@ -598,7 +606,6 @@ class Upload(_KojiBase):
 
         now = datetime.datetime.utcnow()
         stamp = now.strftime("%s")
-        self.release = now.strftime("%H%M%S")
 
         """
         Koji has a couple of checks to ensure the reservation data (build_Id, release, name
@@ -641,6 +648,17 @@ class Upload(_KojiBase):
             "meta", self.build.ckey("container-config-git"))
 
         log.debug(f"Preparing manifest for {(len(self.image_files))} files")
+        # The koji/brew NVR is constructed like so:
+        # Name = "rhcos-$arch", like `rhcos-x86_64`
+        # Version = Everything before `-` in RHCOS version
+        # Release = Everything after `-` in RHCOS version
+        #
+        # Example: RHCOS Build ID: 414.92.202307170903-0 for x86_64
+        #   Name = rhcos-x86_64
+        #   Version = 414.92.202307170903
+        #   Release = 0
+        #   NVR = rhcos-x86_64-414.92.202307170903-0
+        version, release = self.build.build_id.split('-')
         self._manifest = {
             "metadata_version": 0,
             "build": {
@@ -654,14 +672,11 @@ class Upload(_KojiBase):
                     }
                 },
                 "name": f"{self.build.build_name}-{self.build.basearch}",
-                "release": self._release,
+                "release": release,
                 "owner": self._owner,
                 "source": source['origin'],
                 "start_time": stamp,
-                # RHCOS wants to be semver-compatible, but Koji doesn't
-                # accept `-`.  See
-                # https://github.com/openshift/oc/pull/209#issuecomment-564876535
-                "version": f"{self.build.build_id.replace('-', '.')}"
+                "version": version
             },
             "buildroots": [{
                 "id": 1,
