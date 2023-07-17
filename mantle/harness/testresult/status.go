@@ -16,6 +16,7 @@ package testresult
 
 const (
 	Fail TestResult = "FAIL"
+	Warn TestResult = "WARN"
 	Skip TestResult = "SKIP"
 	Pass TestResult = "PASS"
 )

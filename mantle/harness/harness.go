@@ -76,6 +76,7 @@ type H struct {
 
 	isParallel               bool
 	nonExclusiveTestsStarted bool
+	warningOnFailure         bool
 
 	timeout   time.Duration // Duration for which the test will be allowed to run
 	timedout  bool          // A timeout was reached
@@ -167,6 +168,9 @@ func (h *H) Verbose() bool {
 
 func (c *H) status() testresult.TestResult {
 	if c.Failed() {
+		if c.warningOnFailure {
+			return testresult.Warn
+		}
 		return testresult.Fail
 	} else if c.Skipped() {
 		return testresult.Skip
@@ -274,6 +278,10 @@ func (c *H) GetNonExclusiveTestStarted() bool {
 
 func (c *H) NonExclusiveTestStarted() {
 	c.nonExclusiveTestsStarted = true
+}
+
+func (c *H) WarningOnFailure() {
+	c.warningOnFailure = true
 }
 
 // Fail marks the function as having failed but continues execution.
