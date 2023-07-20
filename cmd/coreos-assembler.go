@@ -111,7 +111,8 @@ func run(argv []string) error {
 	c.Stdout = os.Stdout
 	c.Stderr = os.Stderr
 	if err := c.Run(); err != nil {
-		return fmt.Errorf("failed to execute cmd-%s: %w", cmd, err)
+		fmt.Fprintf(os.Stderr, "failed to execute cmd-%s: %v\n", cmd, err.Error())
+		return err
 	}
 	return nil
 }
@@ -192,7 +193,13 @@ func initializeGlobalState(argv []string) error {
 func main() {
 	err := run(os.Args[1:])
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "error: %v\n", err)
-		os.Exit(1)
+		if exitErr, ok := err.(*exec.ExitError); ok {
+			// In this case the command we ran gave a non-zero exit
+			// code. Let's also exit with that exit code.
+			os.Exit(exitErr.ExitCode())
+		} else {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(1)
+		}
 	}
 }
