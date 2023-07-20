@@ -15,6 +15,7 @@
 package cli
 
 import (
+	"errors"
 	"os"
 
 	"github.com/coreos/pkg/capnslog"
@@ -39,6 +40,8 @@ var (
 	logLevel   = capnslog.NOTICE
 
 	plog = capnslog.NewPackageLogger("github.com/coreos/coreos-assembler/mantle", "cli")
+
+	ErrExitWarning77 = errors.New("A test marked as warn:true failed. Exiting with 77 as exit code")
 )
 
 // Execute sets up common features that all mantle commands should share
@@ -65,7 +68,12 @@ func Execute(main *cobra.Command) {
 	})
 
 	if err := main.Execute(); err != nil {
-		plog.Fatal(err)
+		if err == ErrExitWarning77 {
+			plog.Warning(err)
+			os.Exit(77)
+		} else {
+			plog.Fatal(err)
+		}
 	}
 	os.Exit(0)
 }
