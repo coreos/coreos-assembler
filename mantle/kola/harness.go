@@ -449,36 +449,38 @@ func ParseDenyListYaml(pltfrm string) error {
 			continue
 		}
 
+		// Process "special" patterns which aren't test names, but influence overall behavior
+		if obj.Pattern == SkipConsoleWarningsTag {
+			SkipConsoleWarnings = true
+			continue
+		}
+
 		if obj.SnoozeDate != "" {
 			snoozeDate, err := time.Parse(snoozeFormat, obj.SnoozeDate)
 			if err != nil {
 				return err
 			}
 			if today.After(snoozeDate) {
-				if !obj.Warn {
-					continue
+				fmt.Printf("⏰ Snooze for kola test pattern \"%s\" expired on %s\n", obj.Pattern, snoozeDate.Format("Jan 02 2006"))
+				if obj.Warn {
+					fmt.Printf("⚠️  Will warn on failure for kola test pattern \"%s\":\n", obj.Pattern)
+					WarnOnErrorTests = append(WarnOnErrorTests, obj.Pattern)
 				}
-				fmt.Printf("⚠️  Warning kola test pattern \"%s\", snoozing expired on %s:\n", obj.Pattern, snoozeDate.Format("Jan 02 2006"))
+			} else {
+				fmt.Printf("🕒  Snoozing kola test pattern \"%s\" until %s\n", obj.Pattern, snoozeDate.Format("Jan 02 2006"))
+				DenylistedTests = append(DenylistedTests, obj.Pattern)
+			}
+		} else {
+			if obj.Warn {
+				fmt.Printf("⚠️  Will warn on failure for kola test pattern \"%s\":\n", obj.Pattern)
 				WarnOnErrorTests = append(WarnOnErrorTests, obj.Pattern)
 			} else {
-				fmt.Printf("🕒 Snoozing kola test pattern \"%s\" until %s:\n", obj.Pattern, snoozeDate.Format("Jan 02 2006"))
+				fmt.Printf("⏭️  Skipping kola test pattern \"%s\":\n", obj.Pattern)
+				DenylistedTests = append(DenylistedTests, obj.Pattern)
 			}
-		} else if obj.Warn {
-			fmt.Printf("⚠️  Will warn on failure for kola test pattern \"%s\":\n", obj.Pattern)
-			WarnOnErrorTests = append(WarnOnErrorTests, obj.Pattern)
-		} else {
-			fmt.Printf("⏭️  Skipping kola test pattern \"%s\":\n", obj.Pattern)
 		}
-
 		if obj.Tracker != "" {
 			fmt.Printf("  👉 %s\n", obj.Tracker)
-		}
-
-		/// Process "special" patterns which aren't test names, but influence overall behavior
-		if obj.Pattern == SkipConsoleWarningsTag {
-			SkipConsoleWarnings = true
-		} else if !obj.Warn {
-			DenylistedTests = append(DenylistedTests, obj.Pattern)
 		}
 	}
 
