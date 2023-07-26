@@ -132,6 +132,10 @@ func (a *API) CreateImage(spec *ImageSpec, overwrite bool) (*compute.Operation, 
 		{
 			Type: "UEFI_COMPATIBLE",
 		},
+		// https://cloud.google.com/blog/products/identity-security/rsa-snp-vm-more-confidential
+		{
+			Type: "SEV_SNP_CAPABLE",
+		},
 	}
 
 	image := &compute.Image{
