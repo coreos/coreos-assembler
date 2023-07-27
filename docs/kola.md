@@ -207,21 +207,20 @@ After you run the kola test, you can find more information in `tmp/kola/<test-na
 5. For running the likes of metal/metal4k artifacts there's not much difference than running `kola run` from the coreos-assembler
 6. `cd builds/latest/` (This will show your latest build information)
 7. `cosa list` (This will show you the most recent CoreOS builds that have been made and the artifacts that were created)
-8. In the case of the `testiso` command, you'll see that there is the `--qemu-native-4k` option passed to `kola testiso`.  This instructs the `testiso` test to attempt to install FCOS/RHCOS to a disk that uses 4k sector size.  If you don't include that option, the `testiso` command will attempt to install FCOS/RHCOS to a non 4k disk (512b sector size)
-9. `kola testiso -S --scenarios pxe-install,pxe-offline-install --output-dir tmp/kola-metal`   You can also pass some scenarios, in case you do not want to run all of them
-10. `cosa kola testiso --qemu-native-4k` (This is an example testing the live ISO build for a 4k sectors disk. This tests all of the scenarios.)
+8. In the case of the `testiso` command, you can determine what tests are running by looking for the pattern in the test name. It will follow: `test-to-run.disk-type.networking.multipath.firmware`. For example, the `iso-live-login.4k.uefi`, attempts to install FCOS/RHCOS to a disk that uses 4k sector size. If you don't see the 4k pattern, the `testiso` command will attempt to install FCOS/RHCOS to a non 4k disk (512b sector size).
+9. `cosa kola testiso iso-offline-install.mpath.uefi` (This is an example testing the live ISO build with no internet access using multipath and the uefi firmware.)
 
 Example output:
 
 ```
-kola -p qemu --output-dir tmp/kola testiso -P --qemu-native-4k
-Testing scenarios: [iso-offline-install iso-live-login iso-as-disk miniso-install miniso-install-nm]
-Detected development build; disabling signature verification
-Successfully tested scenario iso-offline-install for 35.20220217.dev.0 on uefi (metal4k)
-Successfully tested scenario iso-live-login for 35.20220217.dev.0 on uefi (metal4k)
-Successfully tested scenario iso-as-disk for 35.20220217.dev.0 on uefi (metal4k)
-Successfully tested scenario miniso-install for 35.20220217.dev.0 on uefi (metal4k)
-Successfully tested scenario miniso-install-nm for 35.20220217.dev.0 on uefi (metal4k with NM keyfile)
+kola -p qemu testiso --inst-insecure --output-dir tmp/kola
+Ignoring verification of signature on metal image
+Running test: iso-as-disk.bios
+PASS: iso-as-disk.bios (12.408s)
+Running test: iso-as-disk.uefi
+PASS: iso-as-disk.uefi (16.039s)
+Running test: iso-as-disk.uefi-secure
+PASS: iso-as-disk.uefi-secure (16.994s)
 ```
 
 ## Useful commands

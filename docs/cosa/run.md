@@ -123,7 +123,7 @@ installed system automatically just as the live environment itself was set up.)
 
 Of course, one can also use an Ignition config or [a customized ISO](https://coreos.github.io/coreos-installer/cmd/iso/#coreos-installer-iso-customize)
 or the `coreos.inst.*` kargs using `--kargs` to also manually test automated
-flows. (Many of these flows are covered by our `kola testiso` scenarios.)
+flows. (Many of these flows are covered by our `kola testiso` tests.)
 
 ## Multipath
 
@@ -191,4 +191,4 @@ TARGET   SOURCE              FSTYPE OPTIONS
 (The `--ignition /run/ignition.json` is a trick for getting auto-login on the
 installed system automatically just as the live environment itself was set up.)
 
-This is equivalent to our `kola testiso` multipath scenarios.
+This is equivalent to our `kola testiso` multipath tests.
