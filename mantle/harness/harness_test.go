@@ -76,6 +76,9 @@ func TestContextCancel(t *testing.T) {
 }
 
 func TestSubTests(t *testing.T) {
+	// When TERM is set, we add colors to highlight tests results: '--- FAIL' will be in red '--- \033[31mFAIL\033[0m'
+	// Let's unset it here for simplicity
+	os.Unsetenv("TERM")
 	realTest := t
 	testCases := []struct {
 		desc   string
