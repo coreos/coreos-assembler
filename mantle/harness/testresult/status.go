@@ -14,6 +14,8 @@
 
 package testresult
 
+import "os"
+
 const (
 	Fail TestResult = "FAIL"
 	Warn TestResult = "WARN"
@@ -22,3 +24,25 @@ const (
 )
 
 type TestResult string
+
+func (s TestResult) Display() string {
+	if term, has_term := os.LookupEnv("TERM"); !has_term || term == "" {
+		return string(s)
+	}
+
+	red := "\033[31m"
+	yellow := "\033[33m"
+	blue := "\033[34m"
+	green := "\033[32m"
+	reset := "\033[0m"
+
+	if s == Fail {
+		return red + string(s) + reset
+	} else if s == Warn {
+		return yellow + string(s) + reset
+	} else if s == Skip {
+		return blue + string(s) + reset
+	} else {
+		return green + string(s) + reset
+	}
+}
