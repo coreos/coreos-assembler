@@ -574,7 +574,7 @@ func (t *H) report() {
 
 	status := t.status()
 	if status == testresult.Fail || t.suite.opts.Verbose {
-		t.flushToParent(format, status, t.name, dstr)
+		t.flushToParent(format, status.Display(), t.name, dstr)
 	}
 
 	// TODO: store multiple buffers for subtests without indentation
