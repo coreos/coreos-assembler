@@ -408,6 +408,37 @@ class Search(_KojiBase):
         # to 4, let's get an empty return
         return ""
 
+    def check_tag(self, nvr, tag):
+        """
+        Check if the build contains the tag
+        :param nvr: The nvr name from Brew
+        :param tag: The tag to be checked
+        """
+
+        tags = self.session.listTags(build=nvr)
+        for build_tag in tags:
+            if tag == build_tag['name']:
+                return True
+
+        return False
+
+    def ensure_tag(self, nvr, tag):
+        """
+        Ensure if the build contains the tag
+        :param nvr: The nvr name from Brew
+        :param tag: The tag to be checked
+        """
+
+        if not self.check_tag(nvr, tag):
+            log.info('Build %s was not tagged. Adding tag: %s' % (nvr, tag))
+            task_id = self.session.tagBuild(tag, nvr)
+            task_result = klib.watch_tasks(self.session, [task_id], quiet=True, poll_interval=15)
+            if task_result != 0:
+                raise Exception('failed to tag builds')
+            log.info('Tag %s successfully added' % (tag))
+        else:
+            log.info('Tag %s already exists' % (tag))
+
 
 class Reserve(_KojiBase):
     """
@@ -864,6 +895,8 @@ Environment variables are supported:
     search_cmd = sub_commands.add_parser(
         "search", help="Search for a build", parents=[parent_parser], add_help=False)
 
+    ensure_cmd = sub_commands.add_parser(
+        "ensure-tag", help="Ensure the build tag is correct", parents=[parent_parser], add_help=False)
     sub_commands.add_parser(
         "reserve-id", help="Reserves a koji id", parents=[parent_parser], add_help=False)
 
@@ -900,6 +933,14 @@ Environment variables are supported:
         '--nvr',  required=True,
         help='NVR to look for')
 
+    ensure_cmd.add_argument(
+        '--nvr',  required=True,
+        help='NVR to look for')
+
+    ensure_cmd.add_argument(
+        '--tag',  required=True,
+        help='Ensure the tag if the build does not have it')
+
     args, extra_args = parser.parse_known_args()
     set_logger(args.log_level)
 
@@ -918,6 +959,8 @@ Environment variables are supported:
         kinit(args.keytab, args.owner)
     if args._command == 'search':
         print(Search(args.profile).get_state(args.nvr))
+    if args._command == 'ensure-tag':
+        Search(args.profile).ensure_tag(args.nvr, args.tag)
     if args._command == 'upload':
 
         upload = Upload(build, args.owner, args.tag, args.profile)
