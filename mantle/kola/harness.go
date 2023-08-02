@@ -33,7 +33,6 @@ import (
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
 
-	"github.com/coreos/coreos-assembler/mantle/cli"
 	"github.com/coreos/coreos-assembler/mantle/harness"
 	"github.com/coreos/coreos-assembler/mantle/harness/reporters"
 	"github.com/coreos/coreos-assembler/mantle/kola/cluster"
@@ -237,6 +236,8 @@ var (
 			match: regexp.MustCompile(`(/.*/system-generators/.*) (failed with exit status|terminated by signal|failed due to unknown reason)`),
 		},
 	}
+
+	ErrWarnOnTestFail = errors.New("A test marked as warn:true failed.")
 )
 
 const (
@@ -870,8 +871,7 @@ func runProvidedTests(testsBank map[string]*register.Test, patterns []string, mu
 
 	// Ignore the error when only denied tests with Warn:true feature failed
 	if runErr != nil && allFailedTestsAreWarnOnError(testResults.getResults()) {
-		return cli.ErrExitWarning77
-
+		return ErrWarnOnTestFail
 	}
 
 	// If the intial run failed and the rerun passed, we still return an error

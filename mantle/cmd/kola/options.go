@@ -57,6 +57,7 @@ func init() {
 	root.PersistentFlags().StringVarP(&kolaParallelArg, "parallel", "j", "1", "number of tests to run in parallel, or \"auto\" to match CPU count")
 	sv(&kola.TAPFile, "tapfile", "", "file to write TAP results to")
 	root.PersistentFlags().BoolVarP(&kola.Options.NoTestExitError, "no-test-exit-error", "T", false, "Don't exit with non-zero if tests fail")
+	root.PersistentFlags().BoolVarP(&kola.Options.UseWarnExitCode77, "on-warn-failure-exit-77", "", false, "Exit with code 77 if 'warn: true' tests fail")
 	sv(&kola.Options.BaseName, "basename", "kola", "Cluster name prefix")
 	ss("debug-systemd-unit", []string{}, "full-unit-name.service to enable SYSTEMD_LOG_LEVEL=debug on. Can be specified multiple times.")
 	ssv(&kola.DenylistedTests, "denylist-test", []string{}, "Test pattern to add to denylist. Can be specified multiple times.")
