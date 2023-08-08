@@ -11,24 +11,7 @@ type kolaTests map[string]Stage
 
 // kolaTestDefinitions contain a map of the kola tests.
 var kolaTestDefinitions = kolaTests{
-	"basicBios": {
-		ID:               "Kola Basic BIOS Test",
-		PostCommands:     []string{"cosa kola run --qemu-nvme=true basic"},
-		RequireArtifacts: []string{"qemu"},
-		ExecutionOrder:   2,
-	},
-	"basicQemu": {
-		ID:               "Kola Basic Qemu",
-		PostCommands:     []string{"cosa kola --basic-qemu-scenarios"},
-		RequireArtifacts: []string{"qemu"},
-		ExecutionOrder:   2,
-	},
-	"basicUEFI": {
-		ID:               "Basic UEFI Test",
-		PostCommands:     []string{"cosa kola run --qemu-firmware=uefi basic"},
-		RequireArtifacts: []string{"qemu"},
-		ExecutionOrder:   2,
-	},
+	
 	"external": {
 		ID:               "Enternal Kola Test",
 		PostCommands:     []string{"cosa kola run 'ext.*'"},

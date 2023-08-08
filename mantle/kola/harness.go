@@ -611,9 +611,6 @@ func filterTests(tests map[string]*register.Test, patterns []string, pltfrm stri
 			if allowed, excluded := isAllowed(QEMUOptions.Firmware, t.Firmwares, t.ExcludeFirmwares); !allowed || excluded {
 				continue
 			}
-			if QEMUOptions.Nvme {
-				continue
-			}
 		}
 
 		// Check native tests for arch-specific and distro-specfic exclusion
