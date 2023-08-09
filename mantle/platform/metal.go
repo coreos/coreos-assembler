@@ -599,11 +599,6 @@ func (inst *Install) InstallViaISOEmbed(kargs []string, liveIgnition, targetIgni
 		return nil, fmt.Errorf("Cannot use `--add-nm-keyfile` with offline mode")
 	}
 
-	// XXX: we do support this now, via `coreos-installer iso kargs`
-	if len(inst.kargs) > 0 {
-		return nil, errors.New("injecting kargs is not supported yet, see https://github.com/coreos/coreos-installer/issues/164")
-	}
-
 	installerConfig := installerConfig{
 		IgnitionFile: "/var/opt/pointer.ign",
 		DestDevice:   "/dev/vda",
@@ -645,6 +640,20 @@ func (inst *Install) InstallViaISOEmbed(kargs []string, liveIgnition, targetIgni
 
 	builddir := inst.CosaBuild.Dir
 	srcisopath := filepath.Join(builddir, inst.CosaBuild.Meta.BuildArtifacts.LiveIso.Path)
+
+	// Copy the ISO to a new location for modification.
+	// This is a bit awkward; we copy here, but QemuBuilder will also copy
+	// again (in `setupIso()`). I didn't want to lower the NM keyfile stuff
+	// into QemuBuilder. And plus, both tempdirs should be in /var/tmp so
+	// the `cp --reflink=auto` that QemuBuilder does should just reflink.
+	newIso := filepath.Join(tempdir, "install.iso")
+	cmd := exec.Command("cp", "--reflink=auto", srcisopath, newIso)
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		return nil, errors.Wrapf(err, "copying iso")
+	}
+	srcisopath = newIso
+
 	var metalimg string
 	if inst.Native4k {
 		metalimg = inst.CosaBuild.Meta.BuildArtifacts.Metal4KNative.Path
@@ -732,18 +741,8 @@ func (inst *Install) InstallViaISOEmbed(kargs []string, liveIgnition, targetIgni
 		keyfileArgs = append(keyfileArgs, "--keyfile", path)
 	}
 	if len(keyfileArgs) > 0 {
-		// This is a bit awkward; we copy here, but QemuBuilder will also copy
-		// again (in `setupIso()`). I didn't want to lower the NM keyfile stuff
-		// into QemuBuilder. And plus, both tempdirs should be in /var/tmp so
-		// the `cp --reflink=auto` that QemuBuilder does should just reflink.
-		newIso := filepath.Join(tempdir, "install.iso")
-		cmd := exec.Command("cp", "--reflink=auto", srcisopath, newIso)
-		cmd.Stderr = os.Stderr
-		if err := cmd.Run(); err != nil {
-			return nil, errors.Wrapf(err, "copying iso")
-		}
 
-		args := []string{"iso", "network", "embed", newIso}
+		args := []string{"iso", "network", "embed", srcisopath}
 		args = append(args, keyfileArgs...)
 		cmd = exec.Command("coreos-installer", args...)
 		cmd.Stderr = os.Stderr
@@ -751,14 +750,22 @@ func (inst *Install) InstallViaISOEmbed(kargs []string, liveIgnition, targetIgni
 			return nil, errors.Wrapf(err, "running coreos-installer iso network embed")
 		}
 
+		installerConfig.CopyNetwork = true
+
 		// force networking on in the initrd to verify the keyfile was used
-		cmd = exec.Command("coreos-installer", "iso", "kargs", "modify", newIso, "--append", "rd.neednet=1")
+		inst.kargs = append(inst.kargs, "rd.neednet=1")
+	}
+
+	if len(inst.kargs) > 0 {
+		args := []string{"iso", "kargs", "modify", srcisopath}
+		for _, karg := range inst.kargs {
+			args = append(args, "--append", karg)
+		}
+		cmd = exec.Command("coreos-installer", args...)
 		cmd.Stderr = os.Stderr
 		if err := cmd.Run(); err != nil {
-			return nil, errors.Wrapf(err, "running coreos-installer iso kargs modify")
+			return nil, errors.Wrapf(err, "running coreos-installer iso kargs")
 		}
-		srcisopath = newIso
-		installerConfig.CopyNetwork = true
 	}
 
 	if inst.Insecure {
