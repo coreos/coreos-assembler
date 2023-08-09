@@ -472,7 +472,10 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 		} else if kola.HasString("uefi", components) {
 			enableUefi = true
 		}
-		if kola.HasString("offline", components) {
+		// For offline it is a part of the first component. i.e. for
+		// iso-offline-install.bios we need to search for 'offline' in
+		// iso-offline-install, which is currently in components[0].
+		if kola.HasString("offline", strings.Split(components[0], "-")) {
 			isOffline = true
 		}
 
