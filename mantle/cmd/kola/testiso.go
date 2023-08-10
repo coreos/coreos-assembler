@@ -64,6 +64,7 @@ var (
 	enableUefi       bool
 	enableUefiSecure bool
 	isOffline        bool
+	isISOFromRAM     bool
 
 	// The iso-as-disk tests are only supported in x86_64 because other
 	// architectures don't have the required hybrid partition table.
@@ -79,7 +80,7 @@ var (
 		"iso-live-login.4k.uefi",
 		"iso-offline-install.bios",
 		"iso-offline-install.mpath.bios",
-		"iso-offline-install.4k.uefi",
+		"iso-offline-install-fromram.4k.uefi",
 		"miniso-install.bios",
 		"miniso-install.nm.bios",
 		"miniso-install.4k.uefi",
@@ -101,7 +102,7 @@ var (
 	}
 	tests_ppc64le = []string{
 		"iso-live-login.ppcfw",
-		"iso-offline-install.ppcfw",
+		"iso-offline-install-fromram.ppcfw",
 		"iso-offline-install.mpath.ppcfw",
 		"iso-offline-install.4k.ppcfw",
 		"miniso-install.ppcfw",
@@ -114,7 +115,7 @@ var (
 	tests_aarch64 = []string{
 		"iso-live-login.uefi",
 		"iso-live-login.4k.uefi",
-		"iso-offline-install.uefi",
+		"iso-offline-install-fromram.uefi",
 		"iso-offline-install.mpath.uefi",
 		"iso-offline-install.4k.uefi",
 		"miniso-install.uefi",
@@ -130,6 +131,8 @@ var (
 
 const (
 	installTimeout = 10 * time.Minute
+	// https://github.com/coreos/fedora-coreos-config/pull/2544
+	liveISOFromRAMKarg = "coreos.liveiso.fromram"
 )
 
 var liveOKSignal = "live-test-OK"
@@ -235,6 +238,24 @@ ExecStart=/bin/sh -c '! efibootmgr -v | grep -E "(HD|CDROM)\("'
 RequiredBy=coreos-installer.target
 # for iso-as-disk
 RequiredBy=multi-user.target`
+
+// Unit to check that /run/media/iso is not mounted when
+// coreos.liveiso.fromram kernel argument is passed
+var isoNotMountedUnit = `[Unit]
+Description=Verify ISO is not mounted when coreos.liveiso.fromram
+OnFailure=emergency.target
+OnFailureJobMode=isolate
+ConditionKernelCommandLine=coreos.liveiso.fromram
+[Service]
+Type=oneshot
+StandardOutput=kmsg+console
+StandardError=kmsg+console
+RemainAfterExit=yes
+# Would like to use SuccessExitStatus but it doesn't support what
+# we want: https://github.com/systemd/systemd/issues/10297#issuecomment-1672002635
+ExecStart=bash -c "if mountpoint /run/media/iso 2>/dev/null; then exit 1; fi"
+[Install]
+RequiredBy=coreos-installer.target`
 
 var nmConnectionId = "CoreOS DHCP"
 var nmConnectionFile = "coreos-dhcp.nmconnection"
@@ -519,6 +540,12 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 		if kola.HasString("offline", strings.Split(components[0], "-")) {
 			isOffline = true
 		}
+		// For fromram it is a part of the first component. i.e. for
+		// iso-offline-install-fromram.uefi we need to search for 'fromram' in
+		// iso-offline-install-fromram, which is currently in components[0].
+		if kola.HasString("fromram", strings.Split(components[0], "-")) {
+			isISOFromRAM = true
+		}
 
 		switch components[0] {
 		case "pxe-offline-install", "pxe-online-install":
@@ -527,7 +554,7 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 			duration, err = testAsDisk(ctx, filepath.Join(outputDir, test))
 		case "iso-live-login":
 			duration, err = testLiveLogin(ctx, filepath.Join(outputDir, test))
-		case "iso-install", "iso-offline-install":
+		case "iso-install", "iso-offline-install", "iso-offline-install-fromram":
 			duration, err = testLiveIso(ctx, inst, filepath.Join(outputDir, test), false)
 		case "miniso-install":
 			duration, err = testLiveIso(ctx, inst, filepath.Join(outputDir, test), true)
@@ -711,6 +738,7 @@ func testLiveIso(ctx context.Context, inst platform.Install, outdir string, mini
 		return 0, err
 	}
 
+	var isoKernelArgs []string
 	var keys []string
 	keys = append(keys, strings.TrimSpace(string(sshPubKeyBuf)))
 	virtioJournalConfig.AddAuthorizedKeys("core", keys)
@@ -718,6 +746,7 @@ func testLiveIso(ctx context.Context, inst platform.Install, outdir string, mini
 	liveConfig := *virtioJournalConfig
 	liveConfig.AddSystemdUnit("live-signal-ok.service", liveSignalOKUnit, conf.Enable)
 	liveConfig.AddSystemdUnit("verify-no-efi-boot-entry.service", verifyNoEFIBootEntry, conf.Enable)
+	liveConfig.AddSystemdUnit("iso-not-mounted-when-fromram.service", isoNotMountedUnit, conf.Enable)
 	liveConfig.AddSystemdUnit("coreos-test-entered-emergency-target.service", signalFailureUnit, conf.Enable)
 
 	targetConfig := *virtioJournalConfig
@@ -738,7 +767,11 @@ func testLiveIso(ctx context.Context, inst platform.Install, outdir string, mini
 		liveConfig.AddFile(nmstateConfigFile, nmstateConfig, 0644)
 	}
 
-	mach, err := inst.InstallViaISOEmbed(nil, liveConfig, targetConfig, outdir, isOffline, minimal)
+	if isISOFromRAM {
+		isoKernelArgs = append(isoKernelArgs, liveISOFromRAMKarg)
+	}
+
+	mach, err := inst.InstallViaISOEmbed(isoKernelArgs, liveConfig, targetConfig, outdir, isOffline, minimal)
 	if err != nil {
 		return 0, errors.Wrapf(err, "running iso install")
 	}
