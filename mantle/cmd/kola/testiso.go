@@ -223,6 +223,8 @@ ExecStart=/bin/bash -c '[[ $(findmnt -nvro SOURCE /sysroot) == /dev/mapper/mpath
 [Install]
 RequiredBy=multi-user.target`
 
+// This test is broken. Please fix!
+// https://github.com/coreos/coreos-assembler/issues/3554
 var verifyNoEFIBootEntry = `[Unit]
 Description=TestISO Verify No EFI Boot Entry
 OnFailure=emergency.target
