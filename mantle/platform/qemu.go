@@ -1077,18 +1077,22 @@ func (builder *QemuBuilder) addDiskImpl(disk *Disk, primary bool) error {
 		return err
 	}
 	if primary {
-		// If the board doesn't support -fw_cfg or we were explicitly
-		// requested, inject via libguestfs on the primary disk.
-		if err := builder.renderIgnition(); err != nil {
-			return errors.Wrapf(err, "rendering ignition")
-		}
-		requiresInjection := builder.ConfigFile != "" && builder.ForceConfigInjection
-		if requiresInjection || builder.AppendFirstbootKernelArgs != "" || builder.AppendKernelArgs != "" {
-			if err := setupPreboot(builder.architecture, builder.ConfigFile, builder.AppendFirstbootKernelArgs, builder.AppendKernelArgs,
-				disk.dstFileName, disk.SectorSize); err != nil {
-				return errors.Wrapf(err, "ignition injection with guestfs failed")
+		// Only try to inject config if it hasn't already been injected somewhere
+		// else, which can happen when running an ISO install.
+		if !builder.configInjected {
+			// If the board doesn't support -fw_cfg or we were explicitly
+			// requested, inject via libguestfs on the primary disk.
+			if err := builder.renderIgnition(); err != nil {
+				return errors.Wrapf(err, "rendering ignition")
 			}
-			builder.configInjected = true
+			requiresInjection := builder.ConfigFile != "" && builder.ForceConfigInjection
+			if requiresInjection || builder.AppendFirstbootKernelArgs != "" || builder.AppendKernelArgs != "" {
+				if err := setupPreboot(builder.architecture, builder.ConfigFile, builder.AppendFirstbootKernelArgs, builder.AppendKernelArgs,
+					disk.dstFileName, disk.SectorSize); err != nil {
+					return errors.Wrapf(err, "ignition injection with guestfs failed")
+				}
+				builder.configInjected = true
+			}
 		}
 	}
 	diskOpts := disk.DeviceOpts

@@ -125,6 +125,41 @@ func parseBindOpt(s string) (string, string, error) {
 	return parts[0], parts[1], nil
 }
 
+// buildDiskFromOptions generates a disk image template using the process-global
+// defaults that were parsed from command line arguments.
+func buildDiskFromOptions() *platform.Disk {
+	channel := "virtio"
+	if kola.QEMUOptions.Nvme {
+		channel = "nvme"
+	}
+	sectorSize := 0
+	if kola.QEMUOptions.Native4k {
+		sectorSize = 4096
+	}
+	options := []string{}
+	if kola.QEMUOptions.DriveOpts != "" {
+		options = append(options, strings.Split(kola.QEMUOptions.DriveOpts, ",")...)
+	}
+	// If there was no disk image specified and no size then just
+	// default to an arbitrary value of 12G for the blank disk image.
+	size := kola.QEMUOptions.DiskSize
+	if kola.QEMUOptions.DiskImage == "" && kola.QEMUOptions.DiskSize == "" {
+		size = "12G"
+	}
+	// Build the disk definition. Note that if kola.QEMUOptions.DiskImage is
+	// "" we'll just end up with a blank disk image, which is what we want.
+	disk := &platform.Disk{
+		BackingFile:   kola.QEMUOptions.DiskImage,
+		Channel:       channel,
+		Size:          size,
+		SectorSize:    sectorSize,
+		DriveOpts:     options,
+		MultiPathDisk: kola.QEMUOptions.MultiPathDisk,
+		NbdDisk:       kola.QEMUOptions.NbdDisk,
+	}
+	return disk
+}
+
 func runQemuExec(cmd *cobra.Command, args []string) error {
 	var err error
 
@@ -283,34 +318,20 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 		builder.Firmware = kola.QEMUOptions.Firmware
 	}
 	if kola.QEMUOptions.DiskImage != "" {
-		channel := "virtio"
-		if kola.QEMUOptions.Nvme {
-			channel = "nvme"
+		if err := builder.AddBootDisk(buildDiskFromOptions()); err != nil {
+			return err
 		}
-		sectorSize := 0
-		if kola.QEMUOptions.Native4k {
-			sectorSize = 4096
-		}
-		options := []string{}
-		if kola.QEMUOptions.DriveOpts != "" {
-			options = append(options, strings.Split(kola.QEMUOptions.DriveOpts, ",")...)
-		}
-		err = builder.AddBootDisk(&platform.Disk{
-			BackingFile:   kola.QEMUOptions.DiskImage,
-			Channel:       channel,
-			Size:          kola.QEMUOptions.DiskSize,
-			SectorSize:    sectorSize,
-			DriveOpts:     options,
-			MultiPathDisk: kola.QEMUOptions.MultiPathDisk,
-			NbdDisk:       kola.QEMUOptions.NbdDisk,
-		})
 		if err != nil {
 			return err
 		}
 	}
 	if kola.QEMUIsoOptions.IsoPath != "" {
-		err := builder.AddIso(kola.QEMUIsoOptions.IsoPath, "", kola.QEMUIsoOptions.AsDisk)
+		err := builder.AddIso(kola.QEMUIsoOptions.IsoPath, "bootindex=3", kola.QEMUIsoOptions.AsDisk)
 		if err != nil {
+			return err
+		}
+		// Add a blank disk (this is a disk we can install to)
+		if err := builder.AddBootDisk(buildDiskFromOptions()); err != nil {
 			return err
 		}
 	}
