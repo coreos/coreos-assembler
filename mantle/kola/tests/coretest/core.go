@@ -331,8 +331,13 @@ func checkService(unit string) error {
 	// https://github.com/systemd/systemd/blob/master/src/systemd/sd-messages.h
 	// For oneshot type services that remain after exit, STARTED being "done"
 	// should imply that the service ran and exited successfully.
-	c := exec.Command("journalctl", "-o", "json", "MESSAGE_ID=39f53479d3a045ac8e11786248231fbf",
-		"UNIT="+unit)
+	//
+	// We add `--directory=/var/log/journal` here because we were seeing a race
+	// condition starting on systemd 254 on s390x/ppc64le where we would get
+	// two duplicate entries (one each from {/var,/run}log/journal/) returned
+	// and it would break the json.Unmarshal below.
+	c := exec.Command("journalctl", "-o", "json", "--directory=/var/log/journal",
+		"MESSAGE_ID=39f53479d3a045ac8e11786248231fbf", "UNIT="+unit)
 	out, err := c.Output()
 	if err != nil {
 		return fmt.Errorf("journalctl: %s", err)
