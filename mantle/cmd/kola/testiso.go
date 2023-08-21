@@ -99,6 +99,9 @@ var (
 		// "iso-offline-install.4k.s390fw",
 		"pxe-online-install.s390fw",
 		"pxe-offline-install.s390fw",
+		"miniso-install.s390fw",
+		"miniso-install.nm.s390fw",
+		"miniso-install.4k.nm.s390fw",
 	}
 	tests_ppc64le = []string{
 		"iso-live-login.ppcfw",
