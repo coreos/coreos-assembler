@@ -276,7 +276,7 @@ func kolaRunPatterns(patterns []string, rerun bool) error {
 		return err
 	}
 
-	runErr := kola.RunTests(patterns, runMultiply, rerun, rerunSuccessTags, kolaPlatform, outputDir, !kola.Options.NoTestExitError)
+	runErr := kola.RunTests(patterns, runMultiply, rerun, rerunSuccessTags, kolaPlatform, outputDir)
 
 	// needs to be after RunTests() because harness empties the directory
 	if err := writeProps(); err != nil {
@@ -714,7 +714,7 @@ func runRunUpgrade(cmd *cobra.Command, args []string) error {
 		patterns = args
 	}
 
-	runErr := kola.RunUpgradeTests(patterns, runRerunFlag, kolaPlatform, outputDir, !kola.Options.NoTestExitError)
+	runErr := kola.RunUpgradeTests(patterns, runRerunFlag, kolaPlatform, outputDir)
 
 	// needs to be after RunTests() because harness empties the directory
 	if err := writeProps(); err != nil {
