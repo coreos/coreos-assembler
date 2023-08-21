@@ -182,7 +182,6 @@ type Options struct {
 	CosaBuildId   string
 	CosaBuildArch string
 
-	NoTestExitError   bool
 	UseWarnExitCode77 bool
 
 	AppendButane   string
