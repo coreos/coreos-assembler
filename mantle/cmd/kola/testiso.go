@@ -105,10 +105,8 @@ var (
 	tests_s390x = []string{
 		"iso-live-login.s390fw",
 		"iso-offline-install.s390fw",
-		// https://github.com/coreos/fedora-coreos-tracker/issues/1434
-		// "iso-offline-install.mpath.s390fw",
-		// https://github.com/coreos/fedora-coreos-tracker/issues/1261
-		// "iso-offline-install.4k.s390fw",
+		"iso-offline-install.mpath.s390fw",
+		"iso-offline-install.4k.s390fw",
 		"pxe-online-install.s390fw",
 		"pxe-offline-install.s390fw",
 		"miniso-install.s390fw",
