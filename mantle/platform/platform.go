@@ -176,7 +176,8 @@ type Options struct {
 	CosaBuildId   string
 	CosaBuildArch string
 
-	NoTestExitError bool
+	NoTestExitError   bool
+	UseWarnExitCode77 bool
 
 	// OSContainer is an image pull spec that can be given to the pivot service
 	// in RHCOS machines to perform machine content upgrades.
