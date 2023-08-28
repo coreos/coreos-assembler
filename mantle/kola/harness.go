@@ -1307,13 +1307,39 @@ func registerTestDir(dir, testprefix string, children []os.DirEntry) error {
 			return fmt.Errorf("getting info for %q: %w", e.Name(), err)
 		}
 		fpath := filepath.Join(dir, c.Name())
-		// follow symlinks; oddly, there's no IsSymlink()
+
 		if c.Mode()&os.ModeSymlink != 0 {
-			c, err = os.Stat(fpath)
+			// follow symlinks; oddly, there's no IsSymlink()
+			// This should work with nested symlinks but it have not been tested
+			dest, err := os.Readlink(fpath)
+			if err != nil {
+				return errors.Wrapf(err, "could not resolve symlink: %s", fpath)
+			}
+			resolved := filepath.Join(dir, dest)
+			destinfo, err := os.Stat(resolved)
 			if err != nil {
 				return errors.Wrapf(err, "stat %s", fpath)
 			}
+
+			// If the symlink point to a directory, simply do the recursive call
+			// with the resolved path
+			// we don't carry on with the resolved path because the logic below
+			// construct a file path, which is alrady done when resolving the symlink
+			if destinfo.IsDir() {
+				subchildren, err := os.ReadDir(resolved)
+				if err != nil {
+					return err
+				}
+				subprefix := fmt.Sprintf("%s.%s", testprefix, c.Name())
+				if err := registerTestDir(resolved, subprefix, subchildren); err != nil {
+					return err
+				}
+			// otherwise, carry on with the resolved file
+			} else {
+				c = destinfo
+			}
 		}
+
 		isreg := c.Mode().IsRegular()
 		if isreg && (c.Mode().Perm()&0001) > 0 {
 			executables = append(executables, filepath.Join(dir, c.Name()))
