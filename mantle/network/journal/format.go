@@ -65,7 +65,13 @@ func (s *shortWriter) WriteEntry(entry Entry) error {
 	var buf bytes.Buffer
 	buf.WriteString(realtime.In(s.tz).Format(time.StampMicro))
 
-	if identifier, ok := entry[FIELD_SYSLOG_IDENTIFIER]; ok {
+	// Default to equivalent of journalctl -o with-unit, because its value is
+	// trusted, and the syslog identifier (commonly when executing bash via ExecStart)
+	// can be garbage.
+	if unit, ok := entry[FIELD_SYSTEMD_UNIT]; ok {
+		buf.WriteByte(' ')
+		buf.WriteString(string(unit))
+	} else if identifier, ok := entry[FIELD_SYSLOG_IDENTIFIER]; ok {
 		buf.WriteByte(' ')
 		buf.Write(identifier)
 	} else {
