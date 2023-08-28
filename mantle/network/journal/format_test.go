@@ -171,8 +171,8 @@ func TestFormatShortFromExport(t *testing.T) {
 	const expect = `Jul 17 16:01:01.413961 gdm-password][587]: AccountsService-DEBUG(+): ActUserManager: ignoring unspecified session '8' since it's not graphical: Success
 Jul 17 16:01:01.416351 /USR/SBIN/CROND[8278]: (root) CMD (run-parts /etc/cron.hourly)
 -- Reboot --
-Feb 14 20:15:16.372858 python3[16853]: foo
-                                       bar
+Feb 14 20:15:16.372858 session-35898.scope[16853]: foo
+                                                   bar
 `
 	if d := diff.Diff(buf.String(), expect); d != "" {
 		t.Errorf("unexpected output:\n%s", d)
