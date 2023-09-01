@@ -1595,6 +1595,8 @@ func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 	if err != nil {
 		return nil, err
 	}
+	// Allocate a shared memory object, which is needed for virtiofs
+	argv = append(argv, "-object", fmt.Sprintf("memory-backend-memfd,id=mem,size=%dM,share=on", builder.MemoryMiB))
 	argv = append(argv, "-m", fmt.Sprintf("%d", builder.MemoryMiB))
 
 	if builder.Processors < 0 {
