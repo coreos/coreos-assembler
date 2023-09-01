@@ -46,6 +46,9 @@ type Options struct {
 	//Option to create a temporary software TPM - true by default
 	Swtpm bool
 
+	// Array of $hostpath
+	BindRO []string
+
 	//IBM Secure Execution
 	SecureExecution               bool
 	SecureExecutionIgnitionPubKey string
