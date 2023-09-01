@@ -91,8 +91,8 @@ func init() {
 	cmdQemuExec.Flags().BoolVarP(&devshellConsole, "devshell-console", "c", false, "Connect directly to serial console in devshell mode")
 	cmdQemuExec.Flags().StringVarP(&ignition, "ignition", "i", "", "Path to Ignition config")
 	cmdQemuExec.Flags().StringVarP(&butane, "butane", "B", "", "Path to Butane config")
-	cmdQemuExec.Flags().StringArrayVar(&bindro, "bind-ro", nil, "Mount readonly via 9pfs a host directory (use --bind-ro=/path/to/host,/var/mnt/guest")
-	cmdQemuExec.Flags().StringArrayVar(&bindrw, "bind-rw", nil, "Same as above, but writable")
+	cmdQemuExec.Flags().StringArrayVar(&bindro, "bind-ro", nil, "Mount $hostpath,$guestpath readonly; for example --bind-ro=/path/on/host,/var/mnt/guest)")
+	cmdQemuExec.Flags().StringArrayVar(&bindrw, "bind-rw", nil, "Mount $hostpath,$guestpath writable; for example --bind-rw=/path/on/host,/var/mnt/guest)")
 	cmdQemuExec.Flags().BoolVarP(&forceConfigInjection, "inject-ignition", "", false, "Force injecting Ignition config using guestfs")
 	cmdQemuExec.Flags().BoolVar(&propagateInitramfsFailure, "propagate-initramfs-failure", false, "Error out if the system fails in the initramfs")
 	cmdQemuExec.Flags().StringVarP(&consoleFile, "console-to-file", "", "", "Filepath in which to save serial console logs")
@@ -296,18 +296,18 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		builder.Mount9p(src, dest, true)
+		builder.MountHost(src, dest, true)
 		ensureConfig()
-		config.Mount9p(dest, true)
+		config.MountHost(dest, builder.UseVirtiofs, true)
 	}
 	for _, b := range bindrw {
 		src, dest, err := parseBindOpt(b)
 		if err != nil {
 			return err
 		}
-		builder.Mount9p(src, dest, false)
+		builder.MountHost(src, dest, false)
 		ensureConfig()
-		config.Mount9p(dest, false)
+		config.MountHost(dest, builder.UseVirtiofs, false)
 	}
 	builder.ForceConfigInjection = forceConfigInjection
 	if len(firstbootkargs) > 0 {

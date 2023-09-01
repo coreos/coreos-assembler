@@ -1362,11 +1362,22 @@ resize_terminal() {
 PROMPT_COMMAND+=(resize_terminal)`, 0644)
 }
 
-// Mount9p adds an Ignition config to mount an folder with 9p
-func (c *Conf) Mount9p(dest string, readonly bool) {
-	readonlyStr := ""
-	if readonly {
-		readonlyStr = ",ro"
+// MountHost adds an Ignition config to mount an folder
+func (c *Conf) MountHost(dest string, virtiofs, readonly bool) {
+	mountType := "virtiofs"
+	if !virtiofs {
+		mountType = "9p"
+	}
+	options := ""
+	if virtiofs {
+		if readonly {
+			options = "ro"
+		}
+	} else {
+		options = "trans=virtio,version=9p2000.L,msize=10485760"
+		if readonly {
+			options += ",ro"
+		}
 	}
 	content := fmt.Sprintf(`[Unit]
 DefaultDependencies=no
@@ -1375,11 +1386,11 @@ Before=basic.target
 [Mount]
 What=%s
 Where=%s
-Type=9p
-Options=trans=virtio,version=9p2000.L%s,msize=10485760
+Type=%s
+Options=%s
 [Install]
 WantedBy=multi-user.target
-`, dest, dest, readonlyStr)
+`, dest, dest, mountType, options)
 	c.AddSystemdUnit(fmt.Sprintf("%s.mount", systemdunit.UnitNameEscape(dest[1:])), content, Enable)
 }
 
