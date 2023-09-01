@@ -112,7 +112,7 @@ func (qc *Cluster) NewMachineWithQemuOptions(userdata *conf.UserData, options pl
 		if err != nil {
 			return nil, errors.Wrapf(err, "parsing memory option")
 		}
-		builder.Memory = int(memory)
+		builder.MemoryMiB = int(memory)
 	}
 
 	if err := builder.AddIso(qc.flight.opts.IsoPath, "", qc.flight.opts.AsDisk); err != nil {
