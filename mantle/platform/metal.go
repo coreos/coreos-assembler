@@ -73,7 +73,7 @@ func NewMetalQemuBuilderDefault() *QemuBuilder {
 	builder := NewQemuBuilder()
 	// https://github.com/coreos/fedora-coreos-tracker/issues/388
 	// https://github.com/coreos/fedora-coreos-docs/pull/46
-	builder.Memory = 4096
+	builder.MemoryMiB = 4096
 	return builder
 }
 

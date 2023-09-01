@@ -338,15 +338,15 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 	builder.Hostname = hostname
 	// for historical reasons, both --memory and --qemu-memory are supported
 	if memory != 0 {
-		builder.Memory = memory
+		builder.MemoryMiB = memory
 	} else if kola.QEMUOptions.Memory != "" {
 		parsedMem, err := strconv.ParseInt(kola.QEMUOptions.Memory, 10, 32)
 		if err != nil {
 			return errors.Wrapf(err, "parsing memory option")
 		}
-		builder.Memory = int(parsedMem)
+		builder.MemoryMiB = int(parsedMem)
 	} else if kola.QEMUOptions.SecureExecution {
-		builder.Memory = 4096 // SE needs at least 4GB
+		builder.MemoryMiB = 4096 // SE needs at least 4GB
 	}
 	if err = builder.AddDisksFromSpecs(addDisks); err != nil {
 		return err

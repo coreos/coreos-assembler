@@ -434,8 +434,8 @@ type QemuBuilder struct {
 
 	// If set, use QEMU full emulation for the target architecture
 	architecture string
-	// Memory defaults to 1024 on most architectures, others it may be 2048
-	Memory int
+	// MemoryMiB defaults to 1024 on most architectures, others it may be 2048
+	MemoryMiB int
 	// Processors < 0 means to use host count, unset means 1, values > 1 are directly used
 	Processors int
 	UUID       string
@@ -1246,7 +1246,7 @@ func (builder *QemuBuilder) finalize() {
 	if builder.finalized {
 		return
 	}
-	if builder.Memory == 0 {
+	if builder.MemoryMiB == 0 {
 		// FIXME; Required memory should really be a property of the tests, and
 		// let's try to drop these arch-specific overrides.  ARM was bumped via
 		// commit 09391907c0b25726374004669fa6c2b161e3892f
@@ -1264,7 +1264,7 @@ func (builder *QemuBuilder) finalize() {
 		case "aarch64", "s390x", "ppc64le":
 			memory = 2048
 		}
-		builder.Memory = memory
+		builder.MemoryMiB = memory
 	}
 	builder.finalized = true
 }
@@ -1595,7 +1595,7 @@ func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 	if err != nil {
 		return nil, err
 	}
-	argv = append(argv, "-m", fmt.Sprintf("%d", builder.Memory))
+	argv = append(argv, "-m", fmt.Sprintf("%d", builder.MemoryMiB))
 
 	if builder.Processors < 0 {
 		nproc, err := system.GetProcessors()
