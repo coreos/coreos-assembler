@@ -125,11 +125,11 @@ func (qc *Cluster) NewMachineWithQemuOptions(userdata *conf.UserData, options pl
 		if err != nil {
 			return nil, errors.Wrapf(err, "parsing memory option")
 		}
-		builder.Memory = int(memory)
+		builder.MemoryMiB = int(memory)
 	} else if options.MinMemory != 0 {
-		builder.Memory = options.MinMemory
+		builder.MemoryMiB = options.MinMemory
 	} else if qc.flight.opts.SecureExecution {
-		builder.Memory = 4096 // SE needs at least 4GB
+		builder.MemoryMiB = 4096 // SE needs at least 4GB
 	}
 
 	channel := "virtio"
