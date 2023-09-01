@@ -17,7 +17,7 @@
 // Why not libvirt?
 // Two main reasons.  First, we really do want to use qemu, and not
 // something else.  We rely on qemu features/APIs and there's a general
-// assumption that the qemu process is local (e.g. we expose 9p filesystem
+// assumption that the qemu process is local (e.g. we expose 9p/virtiofs filesystem
 // sharing).  Second, libvirt runs as a daemon, but we want the
 // VMs "lifecycle bound" to their creating process (e.g. kola),
 // so that e.g. Ctrl-C (SIGINT) kills both reliably.
@@ -145,11 +145,12 @@ type bootIso struct {
 
 // QemuInstance holds an instantiated VM through its lifecycle.
 type QemuInstance struct {
-	qemu               exec.Cmd
-	architecture       string
-	tempdir            string
-	swtpm              exec.Cmd
-	nbdServers         []exec.Cmd
+	qemu         exec.Cmd
+	architecture string
+	tempdir      string
+	swtpm        exec.Cmd
+	// Helpers are child processes such as nbd or virtiofsd that should be lifecycle bound to qemu
+	helpers            []exec.Cmd
 	hostForwardedPorts []HostForwardPort
 
 	journalPipe *os.File
@@ -287,12 +288,12 @@ func (inst *QemuInstance) Destroy() {
 		inst.swtpm.Kill() //nolint // Ignore errors
 		inst.swtpm = nil
 	}
-	for _, nbdServ := range inst.nbdServers {
-		if nbdServ != nil {
-			nbdServ.Kill() //nolint // Ignore errors
+	for _, p := range inst.helpers {
+		if p != nil {
+			p.Kill() //nolint // Ignore errors
 		}
 	}
-	inst.nbdServers = nil
+	inst.helpers = nil
 
 	if inst.tempdir != "" {
 		if err := os.RemoveAll(inst.tempdir); err != nil {
@@ -421,6 +422,13 @@ func (inst *QemuInstance) RemovePrimaryBlockDevice() (err2 error) {
 	return nil
 }
 
+// A directory mounted from the host into the guest, via 9p or virtiofs
+type HostMount struct {
+	src      string
+	dest     string
+	readonly bool
+}
+
 // QemuBuilder is a configurator that can then create a qemu instance
 type QemuBuilder struct {
 	// ConfigFile is a path to Ignition configuration
@@ -469,6 +477,8 @@ type QemuBuilder struct {
 	ignitionSet      bool
 	ignitionRendered bool
 
+	// UseVirtiofs should be true if mounts use virtiofs (default: 9p)
+	UseVirtiofs               bool
 	UsermodeNetworking        bool
 	RestrictNetworking        bool
 	requestedHostForwardPorts []HostForwardPort
@@ -477,9 +487,10 @@ type QemuBuilder struct {
 	finalized bool
 	diskID    uint
 	disks     []*Disk
-	fs9pID    uint
 	// virtioSerialID is incremented for each device
 	virtioSerialID uint
+	// hostMounts is an array of directories mounted (via 9p or virtiofs) from the host
+	hostMounts []HostMount
 	// fds is file descriptors we own to pass to qemu
 	fds []*os.File
 
@@ -499,12 +510,14 @@ func NewQemuBuilder() *QemuBuilder {
 	default:
 		defaultFirmware = ""
 	}
+	_, useVirtiofs := os.LookupEnv("COSA_VIRTIOFS")
 	ret := QemuBuilder{
 		Firmware:     defaultFirmware,
 		Swtpm:        true,
 		Pdeathsig:    true,
 		Argv:         []string{},
 		architecture: coreosarch.CurrentRpmArch(),
+		UseVirtiofs:  useVirtiofs,
 	}
 	return &ret
 }
@@ -702,16 +715,10 @@ func (builder *QemuBuilder) encryptIgnitionConfig() error {
 	return nil
 }
 
-// Mount9p sets up a mount point from the host to guest.  To be replaced
-// with https://virtio-fs.gitlab.io/ once it lands everywhere.
-func (builder *QemuBuilder) Mount9p(source, destHint string, readonly bool) {
-	builder.fs9pID++
-	readonlyStr := ""
-	if readonly {
-		readonlyStr = ",readonly=on"
-	}
-	builder.Append("--fsdev", fmt.Sprintf("local,id=fs%d,path=%s,security_model=mapped%s", builder.fs9pID, source, readonlyStr))
-	builder.Append("-device", virtio(builder.architecture, "9p", fmt.Sprintf("fsdev=fs%d,mount_tag=%s", builder.fs9pID, destHint)))
+// MountVirtiofs sets up a mount point from the host to guest.
+// Note that virtiofs does not currently support read-only mounts (which is really surprising!)
+func (builder *QemuBuilder) MountHost(source, dest string, readonly bool) {
+	builder.hostMounts = append(builder.hostMounts, HostMount{src: source, dest: dest, readonly: readonly})
 }
 
 // supportsFwCfg if the target system supports injecting
@@ -1699,7 +1706,7 @@ func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 			if err := cmd.Start(); err != nil {
 				return nil, errors.Wrapf(err, "spawing nbd server")
 			}
-			inst.nbdServers = append(inst.nbdServers, cmd)
+			inst.helpers = append(inst.helpers, cmd)
 		}
 	}
 
@@ -1777,6 +1784,77 @@ func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 	inst.journalPipe = journalPipeR
 	if err != nil {
 		return nil, err
+	}
+
+	// Process 9p/virtiofs mounts
+	if len(builder.hostMounts) > 0 && builder.UseVirtiofs {
+		if err := builder.ensureTempdir(); err != nil {
+			return nil, err
+		}
+
+		plog.Debug("creating virtiofs helpers")
+
+		// Spawn off a virtiofsd helper per mounted path
+		virtiofsHelpers := make(map[string]exec.Cmd)
+		for i, hostmnt := range builder.hostMounts {
+			// By far the most common failure to spawn virtiofsd will be a typo'd source directory,
+			// so let's synchronously check that ourselves here.
+			if _, err := os.Stat(hostmnt.src); err != nil {
+				return nil, fmt.Errorf("failed to access virtiofs source directory %s", hostmnt.src)
+			}
+			virtiofsChar := fmt.Sprintf("virtiofschar%d", i)
+			virtiofsdSocket := filepath.Join(builder.tempdir, fmt.Sprintf("virtiofsd-%d.sock", i))
+			builder.Append("-chardev", fmt.Sprintf("socket,id=%s,path=%s", virtiofsChar, virtiofsdSocket))
+			builder.Append("-device", fmt.Sprintf("vhost-user-fs-pci,queue-size=1024,chardev=%s,tag=%s", virtiofsChar, hostmnt.dest))
+			plog.Debugf("creating virtiofs helper for %s", hostmnt.src)
+			// TODO: Honor hostmnt.readonly somehow here (add an option to virtiofsd)
+			p := exec.Command("/usr/libexec/virtiofsd", "--sandbox", "none", "--socket-path", virtiofsdSocket, "--shared-dir", ".")
+			p.Dir = hostmnt.src
+			// Quiet the daemon by default
+			p.Env = append(p.Env, "RUST_LOG=ERROR")
+			p.Stderr = os.Stderr
+			p.SysProcAttr = &syscall.SysProcAttr{
+				Pdeathsig: syscall.SIGTERM,
+			}
+			if err := p.Start(); err != nil {
+				return nil, fmt.Errorf("failed to start virtiofsd")
+			}
+			virtiofsHelpers[virtiofsdSocket] = p
+		}
+		// Loop waiting for the sockets to appear
+		err := util.RetryUntilTimeout(10*time.Minute, 1*time.Second, func() error {
+			found := []string{}
+			for sockpath := range virtiofsHelpers {
+				if _, err := os.Stat(sockpath); err == nil {
+					found = append(found, sockpath)
+				}
+			}
+			for _, sockpath := range found {
+				helper := virtiofsHelpers[sockpath]
+				inst.helpers = append(inst.helpers, helper)
+				delete(virtiofsHelpers, sockpath)
+			}
+			if len(virtiofsHelpers) == 0 {
+				return nil
+			}
+			waitingFor := []string{}
+			for socket := range virtiofsHelpers {
+				waitingFor = append(waitingFor, socket)
+			}
+			return fmt.Errorf("waiting for virtiofsd sockets: %s", strings.Join(waitingFor, " "))
+		})
+		if err != nil {
+			return nil, err
+		}
+	} else if len(builder.hostMounts) > 0 {
+		for i, hostmnt := range builder.hostMounts {
+			readonlyStr := ""
+			if hostmnt.readonly {
+				readonlyStr = ",readonly=on"
+			}
+			builder.Append("--fsdev", fmt.Sprintf("local,id=fs%d,path=%s,security_model=mapped%s", i, hostmnt.src, readonlyStr))
+			builder.Append("-device", virtio(builder.architecture, "9p", fmt.Sprintf("fsdev=fs%d,mount_tag=%s", i, hostmnt.dest)))
+		}
 	}
 
 	fdnum := 3 // first additional file starts at position 3
