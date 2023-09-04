@@ -935,6 +935,12 @@ func GetRerunnableTestName(testName string) (string, bool) {
 			// be adding a subtest. We don't want to do this
 			return "", false
 		}
+
+		// Tests with 'warn: true' are not rerunnable
+		if IsWarningOnFailure(name) {
+			return "", false
+		}
+
 		// The test is not a nonexclusive wrapper, and its not a
 		// subtest of an exclusive test
 		return name, true
@@ -963,7 +969,12 @@ func getRerunnable(tests []*harness.H) []string {
 		// subtests start due to some initial failure.
 		if nonexclusiveWrapperMatch.MatchString(h.Name()) && !h.GetNonExclusiveTestStarted() {
 			if h.Failed() {
-				testsToRerun = append(testsToRerun, h.Subtests()...)
+				for _, testName := range h.Subtests() {
+					// Tests with 'warn: true' are not rerunnable
+					if !IsWarningOnFailure(testName) {
+						testsToRerun = append(testsToRerun, testName)
+					}
+				}
 			}
 		} else {
 			name, isRerunnable := GetRerunnableTestName(h.Name())
