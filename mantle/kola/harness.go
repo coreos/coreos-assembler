@@ -935,6 +935,12 @@ func GetRerunnableTestName(testName string) (string, bool) {
 			// be adding a subtest. We don't want to do this
 			return "", false
 		}
+
+		// Tests with 'warn: true' are not rerunnable
+		if IsWarningOnFailure(name) {
+			return "", false
+		}
+
 		// The test is not a nonexclusive wrapper, and its not a
 		// subtest of an exclusive test
 		return name, true
