@@ -226,12 +226,26 @@ class HTTPFetcher(Fetcher):
 
     @retry(stop=retry_stop, retry=retry_requests_exception, before_sleep=retry_callback)
     def fetch_impl(self, url, dest):
-        # notice we don't use `stream=True` here; the stuff we're fetching for
-        # now is super small
-        with requests.get(url) as r:
+        with requests.get(url, stream=True) as r:
             r.raise_for_status()
             with open(dest, mode='wb') as f:
-                f.write(r.content)
+                # Stream file data from the network to the file in these size chunks.
+                # 30 MiB is somewhat arbitrary but should be easily supported on most systems
+                # without transfer slowdown.
+                max_chunk_size = 30 * 1024 * 1024
+
+                # If the HTTP headers have encoded the file transfer as chunks already, respect those instead
+                # of our hardcoded max size.
+                if 'chunked' in r.headers.get('transfer-encoding', list()):
+                    max_chunk_size = None
+
+                # With stream=True above, read data from the network and write it to the file in chunks
+                # rather than trying to put it all in RAM and then write it all to disk.
+                # For large ociarchive files on lower-RAM systems, this can cause a crash, and the performance
+                # trade-off for chunking it is usually negligible unless the files are extra huge, the disk IO cache is
+                # very small, and the network pipe is very large.
+                for chunk in r.iter_content(chunk_size=max_chunk_size):
+                    f.write(chunk)
 
     @retry(stop=retry_stop, retry=retry_requests_exception, before_sleep=retry_callback)
     def exists_impl(self, url):
