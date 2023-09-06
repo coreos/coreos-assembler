@@ -477,8 +477,6 @@ type QemuBuilder struct {
 	ignitionSet      bool
 	ignitionRendered bool
 
-	// UseVirtiofs should be true if mounts use virtiofs (default: 9p)
-	UseVirtiofs               bool
 	UsermodeNetworking        bool
 	RestrictNetworking        bool
 	requestedHostForwardPorts []HostForwardPort
@@ -510,14 +508,12 @@ func NewQemuBuilder() *QemuBuilder {
 	default:
 		defaultFirmware = ""
 	}
-	_, use9P := os.LookupEnv("COSA_9P_FALLBACK")
 	ret := QemuBuilder{
 		Firmware:     defaultFirmware,
 		Swtpm:        true,
 		Pdeathsig:    true,
 		Argv:         []string{},
 		architecture: coreosarch.CurrentRpmArch(),
-		UseVirtiofs:  !use9P,
 	}
 	return &ret
 }
@@ -1787,8 +1783,8 @@ func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 		return nil, err
 	}
 
-	// Process 9p/virtiofs mounts
-	if len(builder.hostMounts) > 0 && builder.UseVirtiofs {
+	// Process virtiofs mounts
+	if len(builder.hostMounts) > 0 {
 		if err := builder.ensureTempdir(); err != nil {
 			return nil, err
 		}
@@ -1846,15 +1842,6 @@ func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 		})
 		if err != nil {
 			return nil, err
-		}
-	} else if len(builder.hostMounts) > 0 {
-		for i, hostmnt := range builder.hostMounts {
-			readonlyStr := ""
-			if hostmnt.readonly {
-				readonlyStr = ",readonly=on"
-			}
-			builder.Append("--fsdev", fmt.Sprintf("local,id=fs%d,path=%s,security_model=mapped%s", i, hostmnt.src, readonlyStr))
-			builder.Append("-device", virtio(builder.architecture, "9p", fmt.Sprintf("fsdev=fs%d,mount_tag=%s", i, hostmnt.dest)))
 		}
 	}
 

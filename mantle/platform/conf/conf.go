@@ -1363,21 +1363,11 @@ PROMPT_COMMAND+=(resize_terminal)`, 0644)
 }
 
 // MountHost adds an Ignition config to mount an folder
-func (c *Conf) MountHost(dest string, virtiofs, readonly bool) {
+func (c *Conf) MountHost(dest string, readonly bool) {
 	mountType := "virtiofs"
-	if !virtiofs {
-		mountType = "9p"
-	}
 	options := ""
-	if virtiofs {
-		if readonly {
-			options = "ro"
-		}
-	} else {
-		options = "trans=virtio,version=9p2000.L,msize=10485760"
-		if readonly {
-			options += ",ro"
-		}
+	if readonly {
+		options = "ro"
 	}
 	content := fmt.Sprintf(`[Unit]
 DefaultDependencies=no

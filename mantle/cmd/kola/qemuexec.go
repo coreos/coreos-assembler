@@ -296,7 +296,7 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 		}
 		builder.MountHost(src, dest, true)
 		ensureConfig()
-		config.MountHost(dest, builder.UseVirtiofs, true)
+		config.MountHost(dest, true)
 	}
 	for _, b := range bindrw {
 		src, dest, err := parseBindOpt(b)
@@ -305,7 +305,7 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 		}
 		builder.MountHost(src, dest, false)
 		ensureConfig()
-		config.MountHost(dest, builder.UseVirtiofs, false)
+		config.MountHost(dest, false)
 	}
 	builder.ForceConfigInjection = forceConfigInjection
 	if len(firstbootkargs) > 0 {
