@@ -915,36 +915,39 @@ func allTestsAllowRerunSuccess(testsBank map[string]*register.Test, testsToRerun
 	}
 	return true
 }
+func GetBaseTestName(testName string) string {
+	// If this is a non-exclusive wrapper then just return the empty string
+	if nonexclusiveWrapperMatch.MatchString(testName) {
+		return ""
+	}
+
+	// If the given test is a non-exclusive test with the prefix in
+	// the name we'll need to pull it apart. For example:
+	// non-exclusive-test-bucket-0/ext.config.files.license -> ext.config.files.license
+	substrings := nonexclusivePrefixMatch.Split(testName, 2)
+	return substrings[len(substrings)-1]
+}
 
 func GetRerunnableTestName(testName string) (string, bool) {
-	// The current nonexclusive test wrapper would rerun all non-exclusive tests.
-	// Instead, we only want to rerun the one(s) that failed, so we will not consider
-	// the wrapper as "rerunnable".
-	if nonexclusiveWrapperMatch.MatchString(testName) {
+	name := GetBaseTestName(testName)
+	if name == "" {
 		// Test is not rerunnable if the test name matches the wrapper pattern
 		return "", false
-	} else {
-		// Failed non-exclusive tests will have a prefix in the name
-		// since they are run as subtests of a wrapper test, we need to
-		// remove this prefix to match the true name of the test
-		substrings := nonexclusivePrefixMatch.Split(testName, 2)
-		name := substrings[len(substrings)-1]
-
-		if strings.Contains(name, "/") {
-			// In the case that a test is exclusive, we may
-			// be adding a subtest. We don't want to do this
-			return "", false
-		}
-
-		// Tests with 'warn: true' are not rerunnable
-		if IsWarningOnFailure(name) {
-			return "", false
-		}
-
-		// The test is not a nonexclusive wrapper, and its not a
-		// subtest of an exclusive test
-		return name, true
 	}
+	if strings.Contains(name, "/") {
+		// In the case that a test is exclusive, we may
+		// be adding a subtest. We don't want to do this
+		return "", false
+	}
+
+	// Tests with 'warn: true' are not rerunnable
+	if IsWarningOnFailure(name) {
+		return "", false
+	}
+
+	// The test is not a nonexclusive wrapper, and its not a
+	// subtest of an exclusive test
+	return name, true
 }
 
 func IsWarningOnFailure(testName string) bool {
