@@ -1276,37 +1276,43 @@ func (builder *QemuBuilder) Append(args ...string) {
 
 // baseQemuArgs takes a board and returns the basic qemu
 // arguments needed for the current architecture.
-func baseQemuArgs(arch string) ([]string, error) {
-	accel := "accel=kvm"
+func baseQemuArgs(arch string, memoryMiB int) ([]string, error) {
+	// memoryDevice is the object identifier we use for the backing RAM
+	const memoryDevice = "mem"
+
 	kvm := true
 	hostArch := coreosarch.CurrentRpmArch()
+	// The machine argument needs to reference our memory device; see below
+	machineArg := "memory-backend=" + memoryDevice
+	accel := "accel=kvm"
 	if _, ok := os.LookupEnv("COSA_NO_KVM"); ok || hostArch != arch {
 		accel = "accel=tcg"
 		kvm = false
 	}
+	machineArg += "," + accel
 	var ret []string
 	switch arch {
 	case "x86_64":
 		ret = []string{
 			"qemu-system-x86_64",
-			"-machine", accel,
+			"-machine", machineArg,
 		}
 	case "aarch64":
 		ret = []string{
 			"qemu-system-aarch64",
-			"-machine", "virt,gic-version=max," + accel,
+			"-machine", "virt,gic-version=max," + machineArg,
 		}
 	case "s390x":
 		ret = []string{
 			"qemu-system-s390x",
-			"-machine", "s390-ccw-virtio," + accel,
+			"-machine", "s390-ccw-virtio," + machineArg,
 		}
 	case "ppc64le":
 		ret = []string{
 			"qemu-system-ppc64",
 			// kvm-type=HV ensures we use bare metal KVM and not "user mode"
 			// https://qemu.readthedocs.io/en/latest/system/ppc/pseries.html#switching-between-the-kvm-pr-and-kvm-hv-kernel-module
-			"-machine", "pseries,kvm-type=HV," + accel,
+			"-machine", "pseries,kvm-type=HV," + machineArg,
 		}
 	default:
 		return nil, fmt.Errorf("architecture %s not supported for qemu", arch)
@@ -1321,6 +1327,9 @@ func baseQemuArgs(arch string) ([]string, error) {
 			ret = append(ret, "-cpu", "Nehalem")
 		}
 	}
+	// And define memory using a memfd (in shared mode), which is needed for virtiofs
+	ret = append(ret, "-object", fmt.Sprintf("memory-backend-memfd,id=%s,size=%dM,share=on", memoryDevice, memoryMiB))
+	ret = append(ret, "-m", fmt.Sprintf("%d", memoryMiB))
 	return ret, nil
 }
 
@@ -1591,13 +1600,10 @@ func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 		}
 	}()
 
-	argv, err := baseQemuArgs(builder.architecture)
+	argv, err := baseQemuArgs(builder.architecture, builder.MemoryMiB)
 	if err != nil {
 		return nil, err
 	}
-	// Allocate a shared memory object, which is needed for virtiofs
-	argv = append(argv, "-object", fmt.Sprintf("memory-backend-memfd,id=mem,size=%dM,share=on", builder.MemoryMiB))
-	argv = append(argv, "-m", fmt.Sprintf("%d", builder.MemoryMiB))
 
 	if builder.Processors < 0 {
 		nproc, err := system.GetProcessors()
