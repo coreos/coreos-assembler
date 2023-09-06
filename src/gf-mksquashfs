@@ -36,8 +36,15 @@ coreos_gf_run_mount "${src}" --ro
 coreos_gf download /ostree/repo/config "${tmpd}/config"
 grep -v readonly=true "${tmpd}/config" > "${tmpd}/config.new"
 coreos_gf upload "${tmpd}/config.new" /ostree/repo/config
-coreos_gf mksquashfs / "${tmp_dest}" "compress:${compression}"
 
+# And ensure that the kernel binary and hmac file is in the place that dracut
+# expects it to be; xref https://issues.redhat.com/browse/OCPBUGS-15843
+kernel_binary=$(coreos_gf glob-expand /boot/ostree/*/vmlinuz*)
+kernel_hmac=$(coreos_gf glob-expand /boot/ostree/*/.*.hmac)
+coreos_gf ln "${kernel_hmac}" "/boot/$(basename "${kernel_hmac}")"
+coreos_gf ln "${kernel_binary}" "/boot/$(basename "${kernel_binary}")"
+
+coreos_gf mksquashfs / "${tmp_dest}" "compress:${compression}"
 coreos_gf_shutdown
 
 mv "${tmp_dest}" "${dest}"
