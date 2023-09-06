@@ -879,7 +879,11 @@ func allFailedTestsAreWarnOnError(tests []*harness.H) bool {
 		if !test.Failed() {
 			continue
 		}
-		if !IsWarningOnFailure(test.Name()) {
+		name := GetBaseTestName(test.Name())
+		if name == "" {
+			continue // skip non-exclusive test wrapper
+		}
+		if !IsWarningOnFailure(name) {
 			return false
 		}
 	}
@@ -1640,6 +1644,9 @@ func makeNonExclusiveTest(bucket int, tests []*register.Test, flight platform.Fl
 						setupExternalTest(h, t, newTC)
 						// Collect the journal logs after execution is finished
 						defer collectLogsExternalTest(h, t, newTC)
+					}
+					if IsWarningOnFailure(t.Name) {
+						newTC.H.WarningOnFailure()
 					}
 
 					t.Run(newTC)
