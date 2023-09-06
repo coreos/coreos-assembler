@@ -853,6 +853,7 @@ func runProvidedTests(testsBank map[string]*register.Test, patterns []string, mu
 	runErr := suite.Run()
 	runErr = handleSuiteErrors(outputDir, runErr)
 
+	failed := getFailedTestsNames(testResults.getResults())
 	testsToRerun := getRerunnable(testResults.getResults())
 	if len(testsToRerun) > 0 && rerun {
 		newOutputDir := filepath.Join(outputDir, "rerun")
@@ -861,12 +862,18 @@ func runProvidedTests(testsBank map[string]*register.Test, patterns []string, mu
 
 		// Return the results from the rerun if rerun success allowed
 		if allTestsAllowRerunSuccess(testsBank, testsToRerun, rerunSuccessTags) {
-			return reRunErr
+			runErr = reRunErr
+			// Early exit on failure
+			if runErr != nil {
+				return runErr
+			}
+			// All tests passed, but let's check below if there some failed with 'warn: true' left
+			failed = removeRerunSuccessFromFailed(failed, testsToRerun)
 		}
 	}
 
 	// Ignore the error when only denied tests with Warn:true feature failed
-	if runErr != nil && allFailedTestsAreWarnOnError(testResults.getResults()) {
+	if len(failed) > 0 && allFailedTestsAreWarnOnError(failed) {
 		return ErrWarnOnTestFail
 	}
 
@@ -874,12 +881,33 @@ func runProvidedTests(testsBank map[string]*register.Test, patterns []string, mu
 	return runErr
 }
 
-func allFailedTestsAreWarnOnError(tests []*harness.H) bool {
+func getFailedTestsNames(tests []*harness.H) []string {
+	var failed []string
 	for _, test := range tests {
-		if !test.Failed() {
-			continue
+		if test.Failed() {
+			failed = append(failed, test.Name())
 		}
-		if !IsWarningOnFailure(test.Name()) {
+	}
+	return failed
+}
+
+func removeRerunSuccessFromFailed(failed []string, rerun []string) []string {
+	rerun_map := make(map[string]bool)
+	for _, test := range rerun {
+		rerun_map[test] = true
+	}
+	var result []string
+	for _, test := range failed {
+		if !rerun_map[test] {
+			result = append(result, test)
+		}
+	}
+	return result
+}
+
+func allFailedTestsAreWarnOnError(failed []string) bool {
+	for _, test := range failed {
+		if !IsWarningOnFailure(test) {
 			return false
 		}
 	}
