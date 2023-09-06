@@ -853,28 +853,33 @@ func runProvidedTests(testsBank map[string]*register.Test, patterns []string, mu
 	runErr := suite.Run()
 	runErr = handleSuiteErrors(outputDir, runErr)
 
+	detectedFailedWarnTrueTests := len(getWarnTrueFailedTests(testResults.getResults())) != 0
+
 	testsToRerun := getRerunnable(testResults.getResults())
+	failedTests := testsToRerun
 	if len(testsToRerun) > 0 && rerun {
 		newOutputDir := filepath.Join(outputDir, "rerun")
 		fmt.Printf("\n\n======== Re-running failed tests (flake detection) ========\n\n")
 		reRunErr := runProvidedTests(testsBank, testsToRerun, multiply, false, rerunSuccessTags, pltfrm, newOutputDir)
-
-		// Return the results from the rerun if rerun success allowed
-		if allTestsAllowRerunSuccess(testsBank, testsToRerun, rerunSuccessTags) {
-			return reRunErr
+		if reRunErr == nil && allTestsAllowRerunSuccess(testsBank, testsToRerun, rerunSuccessTags) {
+			runErr = nil             // reset to success since all tests allowed rerun success
+			failedTests = []string{} // zero out the list of failed tests
+		} else {
+			runErr = reRunErr
 		}
+
 	}
 
-	// Ignore the error when only denied tests with Warn:true feature failed
-	if runErr != nil && allFailedTestsAreWarnOnError(testResults.getResults()) {
+	// Return ErrWarnOnTestFail when ONLY tests with warn:true feature failed
+	if detectedFailedWarnTrueTests && len(failedTests) == 0 {
 		return ErrWarnOnTestFail
+	} else {
+		return runErr
 	}
-
-	// If the intial run failed and the rerun passed, we still return an error
-	return runErr
 }
 
-func allFailedTestsAreWarnOnError(tests []*harness.H) bool {
+func getWarnTrueFailedTests(tests []*harness.H) []string {
+	var warnTrueFailedTests []string
 	for _, test := range tests {
 		if !test.Failed() {
 			continue
@@ -883,11 +888,11 @@ func allFailedTestsAreWarnOnError(tests []*harness.H) bool {
 		if name == "" {
 			continue // skip non-exclusive test wrapper
 		}
-		if !IsWarningOnFailure(name) {
-			return false
+		if IsWarningOnFailure(name) {
+			warnTrueFailedTests = append(warnTrueFailedTests, name)
 		}
 	}
-	return true
+	return warnTrueFailedTests
 }
 
 func allTestsAllowRerunSuccess(testsBank map[string]*register.Test, testsToRerun, rerunSuccessTags []string) bool {
