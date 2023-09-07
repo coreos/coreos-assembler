@@ -564,7 +564,7 @@ runcompose_tree() {
         local import_repo="${workdir}/tmp/repo-import"
         rm -rf "${import_repo}" && mkdir "${import_repo}"
         tar -C "${import_repo}" -xf "${tarball}" && rm -f "${tarball}"
-        mv "${import_repo}/compose.json" "${composejson}"
+        mv -f "${import_repo}/compose.json" "${composejson}"
         local commit
         commit=$(jq -r '.["ostree-commit"]' < "${composejson}")
         # this is archive to archive so will hardlink
