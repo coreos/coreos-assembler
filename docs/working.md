@@ -223,7 +223,7 @@ The output of coreos-assembler is conceptually two things:
 
 In many cases, rather than booting from a new disk image with the new OS, you will
 want to explicitly test in-place upgrades.  This uses an [ostree native container](https://fedoraproject.org/wiki/Changes/OstreeNativeContainer), which is in the form of an `.ociarchive` file generated
-by `cosa build ostree` (as well as the default `cosa build`, which *also* generates a `qemu` disk image).
+by `cosa build container` (as well as the default `cosa build`, which *also* generates a `qemu` disk image).
 
 You will need to make the container image available to your targeted system (VM or physical).  One
 way to do this is to push the container to a public registry such as quay.io:
