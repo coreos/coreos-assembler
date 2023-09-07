@@ -551,28 +551,7 @@ runcompose_tree() {
         (umask 0022 && sudo -E "$@")
         sudo chown -R -h "${USER}":"${USER}" "${tmprepo}"
     else
-        local tarball="${workdir}/tmp/repo/commit.tar"
-        rm -f "${tarball}"
-        runvm_with_cache \
-            -chardev "file,id=tarout,path=${tarball}" \
-            -device "virtserialport,chardev=tarout,name=tarout" -- \
-            /usr/lib/coreos-assembler/compose.sh \
-                "/dev/virtio-ports/tarout" "$@"
-        if [ ! -s "${tarball}" ]; then
-            return
-        fi
-        local import_repo="${workdir}/tmp/repo-import"
-        rm -rf "${import_repo}" && mkdir "${import_repo}"
-        tar -C "${import_repo}" -xf "${tarball}" && rm -f "${tarball}"
-        mv -f "${import_repo}/compose.json" "${composejson}"
-        local commit
-        commit=$(jq -r '.["ostree-commit"]' < "${composejson}")
-        # this is archive to archive so will hardlink
-        ostree pull-local --repo "${repo}" "${import_repo}" "${commit}"
-        if [ -n "${ref}" ]; then
-            ostree refs --repo "${repo}" "${commit}" --create "${ref}" --force
-        fi
-        rm -rf "${import_repo}"
+        runvm_with_cache -- "$@" --repo "${repo}" --write-composejson-to "${composejson}"
     fi
 }
 
