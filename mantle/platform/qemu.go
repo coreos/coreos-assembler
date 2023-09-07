@@ -1910,6 +1910,43 @@ func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 		return nil, fmt.Errorf("failed to connect over qmp to qemu instance")
 	}
 
+	// Hacky code to test https://github.com/openshift/os/pull/1346
+	if timeout, ok := os.LookupEnv("COSA_TEST_CDROM_UNPLUG"); ok {
+		val, err := time.ParseDuration(timeout)
+		if err != nil {
+			return nil, err
+		}
+		go func() {
+			devs, err := inst.listDevices()
+			if err != nil {
+				plog.Error("failed to list devices")
+				return
+			}
+
+			var cdrom string
+			for _, dev := range devs.Return {
+				switch dev.Type {
+				case "child<scsi-cd>":
+					cdrom = filepath.Join("/machine/peripheral-anon", dev.Name)
+				default:
+					break
+				}
+			}
+			if cdrom == "" {
+				plog.Errorf("failed to get scsi-cd id")
+				return
+			}
+
+			plog.Debugf("get cdrom id %s", cdrom)
+			time.Sleep(val)
+			if err := inst.deleteBlockDevice(cdrom); err != nil {
+				plog.Errorf("failed to delete block device: %s", cdrom)
+				return
+			}
+			plog.Info("delete cdrom")
+		}()
+	}
+
 	return &inst, nil
 }
 
