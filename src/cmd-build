@@ -10,15 +10,16 @@ print_help() {
 Usage: coreos-assembler build --help
        coreos-assembler build [OPTIONS]... [TARGET]...
 
-  Build OSTree and image base artifacts from previously fetched packages.
+  Build bootable container (ostree) and image base artifacts from previously fetched packages.
   Accepted TARGET arguments:
 
-  - ostree     Compose an ostree commit
+  - container  Build the bootable container image (ostree)
+  - ostree     Deprecated alias for container
   - qemu       Also create a QCOW2 image to run with QEMU
   - metal      Also create a raw disk image
   - metal4k    Also create a raw disk image for 4K native disks
 
-  The "qemu" and "metal" targets imply "ostree". If unspecified, defaults to
+  The "qemu" and "metal" targets imply "container". If unspecified, defaults to
   "qemu". They are equivalent to manually running buildextend-[TARGET] after.
 
   The following options are supported:
@@ -137,7 +138,13 @@ fi
 # sanity check the targets and aggregate into a set
 declare -A targets=( )
 for target in "$@"; do
-    if [[ $target != ostree ]]; then
+    # Process the alias
+    if [[ $target == ostree ]]; then
+        target=container
+    fi
+    # Except we *always* build the container image, so ignore
+    # it as a request.
+    if [[ $target != container ]]; then
         case "$target" in
             metal|metal4k|qemu|secex) ;;
             *) fatal "Unrecognized target: $target" ;;
@@ -381,7 +388,7 @@ else
         cp-reflink "${cached_previous_composejson}" "${composejson}"
     else
         if [ -z "${previous_build}" ]; then
-            # This can happen if building the OSTree worked on the first time,
+            # This can happen if building the bootable container worked on the first time,
             # but image creation failed, and then tmp/ was nuked before trying a
             # second time. Just recommend re-running with --force.
             fatal "compose tree had no changes, but no previous build or cached data; try rerunning with --force"
