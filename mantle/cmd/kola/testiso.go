@@ -67,7 +67,7 @@ var (
 	isISOFromRAM     bool
 
 	// These tests only run on RHCOS
-	tests_RHCOS = []string{
+	tests_RHCOS_uefi = []string{
 		"iso-fips.uefi",
 	}
 
@@ -344,8 +344,8 @@ func getAllTests(build *util.LocalBuild) []string {
 	case "aarch64":
 		tests = tests_aarch64
 	}
-	if kola.CosaBuild.Meta.Name == "rhcos" {
-		tests = append(tests, tests_RHCOS...)
+	if kola.CosaBuild.Meta.Name == "rhcos" && arch != "s390x" && arch != "ppc64le" {
+		tests = append(tests, tests_RHCOS_uefi...)
 	}
 	return tests
 }
