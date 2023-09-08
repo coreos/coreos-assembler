@@ -31,3 +31,4 @@ vmware-secure-boot: true
 # Defaults for AWS
 aws-imds-support: "v2.0"
 aws-volume-type: "gp3"
+aws-boot-mode-x86-64: "uefi-preferred"

@@ -119,7 +119,7 @@ def aws_run_ore(build, args):
     )
     os.environ["MANTLE_AWS_IMDS_SUPPORT"] = image_yaml['aws-imds-support']
     os.environ["MANTLE_AWS_VOLUME_TYPE"] = image_yaml['aws-volume-type']
-    os.environ["aws_boot_mode"] = image_yaml['aws-boot-mode']
+    os.environ["MANTLE_AWS_BOOT_MODE_x86_64"] = image_yaml['aws-boot-mode-x86-64']
 
     # First add the ore command to run before any options
     ore_args = ['ore', 'aws', 'upload']

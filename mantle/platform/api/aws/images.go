@@ -344,11 +344,14 @@ func (a *API) CreateHVMImage(snapshotID string, diskSizeGiB uint, name string, d
 	if !set {
 		imdsSupport = "v2.0"
 	}
+	bootmode, set = os.LookupEnv("MANTLE_AWS_BOOT_MODE_x86_64")
 
 	switch architecture {
 	case "amd64", "x86_64":
 		awsArch = ec2.ArchitectureTypeX8664
-		bootmode = "uefi-preferred"
+		if !set {
+			bootmode = "uefi-preferred"
+		}
 	case "arm64", "aarch64":
 		awsArch = ec2.ArchitectureTypeArm64
 		bootmode = "uefi"
