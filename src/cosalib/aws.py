@@ -5,9 +5,10 @@ import subprocess
 import sys
 
 from cosalib.cmdlib import (
-    retry_stop,
+    flatten_image_yaml,
     retry_boto_exception,
-    retry_callback
+    retry_callback,
+    retry_stop
 )
 from tenacity import (
     retry,
@@ -111,6 +112,15 @@ def aws_run_ore_replicate(build, args):
 
 @retry(reraise=True, stop=stop_after_attempt(3))
 def aws_run_ore(build, args):
+    # set environment variables before setting up the ore command
+    image_yaml = flatten_image_yaml(
+        '/usr/lib/coreos-assembler/image-default.yaml',
+        flatten_image_yaml('src/config/image.yaml')
+    )
+    os.environ["MANTLE_AWS_IMDS_SUPPORT"] = image_yaml['aws-imds-support']
+    os.environ["MANTLE_AWS_VOLUME_TYPE"] = image_yaml['aws-volume-type']
+    os.environ["aws_boot_mode"] = image_yaml['aws-boot-mode']
+
     # First add the ore command to run before any options
     ore_args = ['ore', 'aws', 'upload']
 

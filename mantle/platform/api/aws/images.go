@@ -17,6 +17,7 @@ package aws
 import (
 	"fmt"
 	"net/url"
+	"os"
 	"runtime"
 	"strings"
 	"sync"
@@ -335,6 +336,15 @@ func (a *API) CreateHVMImage(snapshotID string, diskSizeGiB uint, name string, d
 	if architecture == "" {
 		architecture = runtime.GOARCH
 	}
+	volumeType, set := os.LookupEnv("MANTLE_AWS_VOLUME_TYPE")
+	if !set {
+		volumeType = "gp3"
+	}
+	imdsSupport, set := os.LookupEnv("MANTLE_AWS_IMDS_SUPPORT")
+	if !set {
+		imdsSupport = "v2.0"
+	}
+
 	switch architecture {
 	case "amd64", "x86_64":
 		awsArch = ec2.ArchitectureTypeX8664
@@ -352,6 +362,7 @@ func (a *API) CreateHVMImage(snapshotID string, diskSizeGiB uint, name string, d
 		Architecture:       aws.String(awsArch),
 		VirtualizationType: aws.String("hvm"),
 		RootDeviceName:     aws.String("/dev/xvda"),
+		ImdsSupport:        aws.String(imdsSupport),
 		BlockDeviceMappings: []*ec2.BlockDeviceMapping{
 			{
 				DeviceName: aws.String("/dev/xvda"),
@@ -359,7 +370,7 @@ func (a *API) CreateHVMImage(snapshotID string, diskSizeGiB uint, name string, d
 					SnapshotId:          aws.String(snapshotID),
 					DeleteOnTermination: aws.Bool(true),
 					VolumeSize:          aws.Int64(int64(diskSizeGiB)),
-					VolumeType:          aws.String("gp2"),
+					VolumeType:          aws.String(volumeType),
 				},
 			},
 			{
