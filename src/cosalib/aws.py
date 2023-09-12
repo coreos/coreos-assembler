@@ -5,9 +5,10 @@ import subprocess
 import sys
 
 from cosalib.cmdlib import (
-    retry_stop,
+    flatten_image_yaml,
     retry_boto_exception,
-    retry_callback
+    retry_callback,
+    retry_stop
 )
 from tenacity import (
     retry,
@@ -126,6 +127,15 @@ def aws_run_ore(build, args):
     region = "us-east-1"
     if args.region is not None and len(args.region) > 0:
         region = args.region[0]
+    # Capture any input from image.yaml
+    image_yaml = flatten_image_yaml(
+        '/usr/lib/coreos-assembler/image-default.yaml',
+        flatten_image_yaml('src/config/image.yaml')
+    )
+    if 'aws-imdsv2-only' in image_yaml and image_yaml['aws-imdsv2-only']:
+        ore_args.extend(['--imdsv2-only'])
+    if 'aws-volume-type' in image_yaml:
+        ore_args.extend(['--volume-type', image_yaml['aws-volume-type']])
 
     ore_args.extend([
         '--region', f"{region}",

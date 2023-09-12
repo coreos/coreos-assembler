@@ -329,7 +329,7 @@ func (a *API) CreateImportRole(bucket string) error {
 	return nil
 }
 
-func (a *API) CreateHVMImage(snapshotID string, diskSizeGiB uint, name string, description string, architecture string) (string, error) {
+func (a *API) CreateHVMImage(snapshotID string, diskSizeGiB uint, name string, description string, architecture string, volumetype string, imdsv2Only bool) (string, error) {
 	var awsArch string
 	var bootmode string
 	if architecture == "" {
@@ -346,7 +346,11 @@ func (a *API) CreateHVMImage(snapshotID string, diskSizeGiB uint, name string, d
 		return "", fmt.Errorf("unsupported ec2 architecture %q", architecture)
 	}
 
-	return a.createImage(&ec2.RegisterImageInput{
+	// default to gp3
+	if volumetype == "" {
+		volumetype = "gp3"
+	}
+	params := &ec2.RegisterImageInput{
 		Name:               aws.String(name),
 		Description:        aws.String(description),
 		Architecture:       aws.String(awsArch),
@@ -359,7 +363,7 @@ func (a *API) CreateHVMImage(snapshotID string, diskSizeGiB uint, name string, d
 					SnapshotId:          aws.String(snapshotID),
 					DeleteOnTermination: aws.Bool(true),
 					VolumeSize:          aws.Int64(int64(diskSizeGiB)),
-					VolumeType:          aws.String("gp2"),
+					VolumeType:          aws.String(volumetype),
 				},
 			},
 			{
@@ -370,7 +374,12 @@ func (a *API) CreateHVMImage(snapshotID string, diskSizeGiB uint, name string, d
 		EnaSupport:      aws.Bool(true),
 		SriovNetSupport: aws.String("simple"),
 		BootMode:        aws.String(bootmode),
-	})
+	}
+	if imdsv2Only {
+		params.ImdsSupport = aws.String("v2.0")
+	}
+
+	return a.createImage(params)
 }
 
 func (a *API) deregisterImageIfExists(name string) error {
