@@ -383,8 +383,8 @@ func (inst *QemuInstance) SwitchBootOrder() (err2 error) {
 }
 
 // RemovePrimaryBlockDevice deletes the primary device from a qemu instance
-// and sets the seconday device as primary. It expects that all block devices
-// are mirrors.
+// and sets the secondary device as primary. It expects that all block devices
+// with device name disk-<N> are mirrors.
 func (inst *QemuInstance) RemovePrimaryBlockDevice() (err2 error) {
 	var primaryDevice string
 	var secondaryDevicePath string
@@ -397,7 +397,7 @@ func (inst *QemuInstance) RemovePrimaryBlockDevice() (err2 error) {
 	// a `BackingFileDepth` parameter of a device and check if
 	// it is a removable and part of `virtio-blk-pci` devices.
 	for _, dev := range blkdevs.Return {
-		if !dev.Removable && strings.Contains(dev.DevicePath, "virtio-backend") {
+		if !dev.Removable && strings.HasPrefix(dev.Device, "disk-") {
 			if dev.Inserted.BackingFileDepth == 1 {
 				primaryDevice = dev.DevicePath
 			} else {
@@ -1131,7 +1131,7 @@ func (builder *QemuBuilder) addDiskImpl(disk *Disk, primary bool) error {
 		opts = "," + strings.Join(diskOpts, ",")
 	}
 
-	id := fmt.Sprintf("d%d", builder.diskID)
+	id := fmt.Sprintf("disk-%d", builder.diskID)
 
 	// Avoid file locking detection, and the disks we create
 	// here are always currently ephemeral.
