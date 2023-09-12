@@ -64,6 +64,8 @@ After a successful run, the final line of output will be a line of JSON describi
 	uploadGrantUsers         []string
 	uploadGrantUsersSnapshot []string
 	uploadTags               []string
+	uploadIMDSv2Only         bool
+	uploadVolumeType         string
 )
 
 func init() {
@@ -85,6 +87,8 @@ func init() {
 	cmdUpload.Flags().StringSliceVar(&uploadGrantUsers, "grant-user", []string{}, "grant launch permission to this AWS user ID")
 	cmdUpload.Flags().StringSliceVar(&uploadGrantUsersSnapshot, "grant-user-snapshot", []string{}, "grant snapshot volume permission to this AWS user ID")
 	cmdUpload.Flags().StringSliceVar(&uploadTags, "tags", []string{}, "list of key=value tags to attach to the AMI")
+	cmdUpload.Flags().BoolVar(&uploadIMDSv2Only, "imdsv2-only", false, "enable IMDSv2-only support")
+	cmdUpload.Flags().StringVar(&uploadVolumeType, "volume-type", "gp3", "EBS volume type (gp3, gp2, io1, st1, sc1, standard, etc.)")
 }
 
 func defaultBucketNameForRegion(region string) string {
@@ -243,7 +247,7 @@ func runUpload(cmd *cobra.Command, args []string) error {
 	}
 
 	// create AMIs and grant permissions
-	amiID, err := API.CreateHVMImage(sourceSnapshot, uploadDiskSizeGiB, uploadAMIName, uploadAMIDescription, uploadImageArchitecture)
+	amiID, err := API.CreateHVMImage(sourceSnapshot, uploadDiskSizeGiB, uploadAMIName, uploadAMIDescription, uploadImageArchitecture, uploadVolumeType, uploadIMDSv2Only)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "unable to create HVM image: %v\n", err)
 		os.Exit(1)

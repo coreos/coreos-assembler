@@ -27,3 +27,7 @@ squashfs-compression: zstd
 vmware-hw-version: 13
 vmware-os-type: rhel7_64Guest
 vmware-secure-boot: true
+
+# Defaults for AWS
+aws-imdsv2-only: true
+aws-volume-type: "gp3"
