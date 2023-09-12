@@ -164,7 +164,7 @@ func runTest(c cluster.TestCluster, tpm2 bool, threshold int, killTangAfterFirst
 	opts := platform.MachineOptions{
 		MinMemory: 4096,
 	}
-	// ppc64le and aarch64 use 64K pages
+	// ppc64le and aarch64 use 64K pages; see similar logic in harness.go and boot-mirror.go
 	switch coreosarch.CurrentRpmArch() {
 	case "ppc64le", "aarch64":
 		opts.MinMemory = 8192
