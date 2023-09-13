@@ -329,7 +329,7 @@ func (a *API) CreateImportRole(bucket string) error {
 	return nil
 }
 
-func (a *API) CreateHVMImage(snapshotID string, diskSizeGiB uint, name string, description string, architecture string, volumetype string, imdsv2Only bool) (string, error) {
+func (a *API) CreateHVMImage(snapshotID string, diskSizeGiB uint, name string, description string, architecture string, volumetype string, imdsv2Only bool, X86BootMode string) (string, error) {
 	var awsArch string
 	var bootmode string
 	if architecture == "" {
@@ -338,7 +338,7 @@ func (a *API) CreateHVMImage(snapshotID string, diskSizeGiB uint, name string, d
 	switch architecture {
 	case "amd64", "x86_64":
 		awsArch = ec2.ArchitectureTypeX8664
-		bootmode = "uefi-preferred"
+		bootmode = X86BootMode
 	case "arm64", "aarch64":
 		awsArch = ec2.ArchitectureTypeArm64
 		bootmode = "uefi"
