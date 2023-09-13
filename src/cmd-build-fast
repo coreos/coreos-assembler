@@ -90,16 +90,22 @@ echo "Basing on previous build: ${previous_build:-none}"
 
 if [ -n "${projectdir}" ]; then
     cd "${projectdir}"
-    rm _install -rf
+    instroot=_install
+    # Rust projects will already have a handy directory for build artifacts
+    if test -d target; then
+        instroot=target/cosa-build-fast
+    fi
+    instroot=$(pwd)/${instroot}  # Must be absolute for `make`
+    rm "${instroot}" -rf
     make
-    make install DESTDIR="$(pwd)/_install"
+    make install DESTDIR="${instroot}"
     fastref=cosa/fastbuild/"$(basename "${projectdir}")"
     version="$(git describe --tags --abbrev=10)"
     if ! git diff --quiet; then
         version="${version}+dirty"
     fi
     outdir=${projectdir}/.cosa
-    rootfsoverrides="${projectdir}/_install"
+    rootfsoverrides="${instroot}"
 else
     fastref=cosa/fastbuild/${name}
     version="$(date +"%s")"
