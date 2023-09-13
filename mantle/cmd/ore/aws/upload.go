@@ -66,6 +66,7 @@ After a successful run, the final line of output will be a line of JSON describi
 	uploadTags               []string
 	uploadIMDSv2Only         bool
 	uploadVolumeType         string
+	uploadX86BootMode        string
 )
 
 func init() {
@@ -89,6 +90,7 @@ func init() {
 	cmdUpload.Flags().StringSliceVar(&uploadTags, "tags", []string{}, "list of key=value tags to attach to the AMI")
 	cmdUpload.Flags().BoolVar(&uploadIMDSv2Only, "imdsv2-only", false, "enable IMDSv2-only support")
 	cmdUpload.Flags().StringVar(&uploadVolumeType, "volume-type", "gp3", "EBS volume type (gp3, gp2, io1, st1, sc1, standard, etc.)")
+	cmdUpload.Flags().StringVar(&uploadX86BootMode, "x86-boot-mode", "uefi-preferred", "Set boot mode (uefi-preferred, uefi)")
 }
 
 func defaultBucketNameForRegion(region string) string {
@@ -247,7 +249,7 @@ func runUpload(cmd *cobra.Command, args []string) error {
 	}
 
 	// create AMIs and grant permissions
-	amiID, err := API.CreateHVMImage(sourceSnapshot, uploadDiskSizeGiB, uploadAMIName, uploadAMIDescription, uploadImageArchitecture, uploadVolumeType, uploadIMDSv2Only)
+	amiID, err := API.CreateHVMImage(sourceSnapshot, uploadDiskSizeGiB, uploadAMIName, uploadAMIDescription, uploadImageArchitecture, uploadVolumeType, uploadIMDSv2Only, uploadX86BootMode)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "unable to create HVM image: %v\n", err)
 		os.Exit(1)

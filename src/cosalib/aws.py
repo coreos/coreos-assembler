@@ -136,6 +136,8 @@ def aws_run_ore(build, args):
         ore_args.extend(['--imdsv2-only'])
     if 'aws-volume-type' in image_yaml:
         ore_args.extend(['--volume-type', image_yaml['aws-volume-type']])
+    if 'aws-x86-boot-mode' in image_yaml:
+        ore_args.extend(['--x86-boot-mode', image_yaml['aws-x86-boot-mode']])
 
     ore_args.extend([
         '--region', f"{region}",
