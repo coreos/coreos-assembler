@@ -125,7 +125,7 @@ func (qc *Cluster) NewMachineWithQemuOptions(userdata *conf.UserData, options pl
 	// reliably change the Ignition config here...
 	for _, path := range qc.flight.opts.BindRO {
 		destpathrel := strings.TrimLeft(path, "/")
-		builder.Mount9p(path, "/kola/host/"+destpathrel, true)
+		builder.MountHost(path, "/kola/host/"+destpathrel, true)
 	}
 
 	if qc.flight.opts.Memory != "" {
