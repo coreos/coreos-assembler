@@ -1204,10 +1204,10 @@ ExecStart=%s
 	config.AddSystemdUnit(unitName, unit, conf.NoState)
 
 	// Architectures using 64k pages use slightly more memory, ask for more than requested
-	// to make sure that we don't run out of it. Currently ppc64le and aarch64 use 64k pages.
+	// to make sure that we don't run out of it. Currently, only ppc64le uses 64k pages by default.
 	// See similar logic in boot-mirror.go and luks.go.
 	switch coreosarch.CurrentRpmArch() {
-	case "ppc64le", "aarch64":
+	case "ppc64le":
 		if targetMeta.MinMemory <= 4096 {
 			targetMeta.MinMemory = targetMeta.MinMemory * 2
 		}

@@ -100,9 +100,9 @@ func runBootMirrorTest(c cluster.TestCluster) {
 			MinMemory:       4096,
 		},
 	}
-	// ppc64le and aarch64 use 64K pages; see similar logic in harness.go and luks.go
+	// ppc64le uses 64K pages; see similar logic in harness.go and luks.go
 	switch coreosarch.CurrentRpmArch() {
-	case "ppc64le", "aarch64":
+	case "ppc64le":
 		options.MinMemory = 8192
 	}
 	// FIXME: for QEMU tests kola currently assumes the host CPU architecture
@@ -152,9 +152,9 @@ func runBootMirrorLUKSTest(c cluster.TestCluster) {
 			MinMemory:       4096,
 		},
 	}
-	// ppc64le and aarch64 use 64K pages; see similar logic in harness.go and luks.go
+	// ppc64le uses 64K pages; see similar logic in harness.go and luks.go
 	switch coreosarch.CurrentRpmArch() {
-	case "ppc64le", "aarch64":
+	case "ppc64le":
 		options.MinMemory = 8192
 	}
 	// FIXME: for QEMU tests kola currently assumes the host CPU architecture
