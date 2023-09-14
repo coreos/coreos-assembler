@@ -582,24 +582,9 @@ runcompose_extensions() {
 }
 
 runvm_with_cache() {
-    # "cache2" has an explicit label so we can find it in qemu easily
-    if [ ! -f "${workdir}"/cache/cache2.qcow2 ]; then
-        qemu-img create -f qcow2 cache2.qcow2.tmp 10G
-        (
-         # shellcheck source=src/libguestfish.sh
-         source /usr/lib/coreos-assembler/libguestfish.sh
-         virt-format --filesystem=xfs --label=cosa-cache -a cache2.qcow2.tmp)
-        mv -T cache2.qcow2.tmp "${workdir}"/cache/cache2.qcow2
-    fi
-    # And remove the old one
+    # Clean up old cache qcow2; we now always rely on virtiofs
     rm -vf "${workdir}"/cache/cache.qcow2
-    local cachedriveargs="discard=unmap"
-    if is_transient; then
-        cachedriveargs="cache=unsafe,discard=ignore"
-    fi
-    cache_args+=("-drive" "if=none,id=cache,$cachedriveargs,file=${workdir}/cache/cache2.qcow2" \
-                        "-device" "virtio-blk,drive=cache")
-    runvm "${cache_args[@]}" "$@"
+    runvm "$@"
 }
 
 # Strips out the digest field from lockfiles since they subtly conflict with
