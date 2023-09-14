@@ -1048,9 +1048,10 @@ cmdlib.write_image_json('${srcfile}', '${outfile}')")
 
 # API to prepare image builds.
 # Ensures that the tmp/repo ostree repo is initialized,
-# and also writes tmp/image.json.
+# and also writes tmp/image.json if arg2 is unset or set to 1
 import_ostree_commit_for_build() {
     local buildid=$1; shift
+    local extractjson=${1:-1}
     (python3 -c "
 import sys
 sys.path.insert(0, '${DIR}')
@@ -1060,7 +1061,7 @@ workdir = '${workdir:-$(pwd)}'
 builds = Builds(workdir)
 builddir = builds.get_build_dir('${buildid}')
 buildmeta = builds.get_build_meta('${buildid}')
-cmdlib.import_ostree_commit(workdir, builddir, buildmeta)
+cmdlib.import_ostree_commit(workdir, builddir, buildmeta, ${extractjson})
 ")
 }
 

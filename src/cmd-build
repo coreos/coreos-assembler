@@ -193,7 +193,8 @@ if [ -n "${previous_commit}" ]; then
     commitpartial=${tmprepo}/state/${previous_commit}.commitpartial
     if [ ! -f "${commitpath}" ] || [ -f "${commitpartial}" ]; then
         if [ -f "${previous_builddir}/${previous_ostree_tarfile_path}" ]; then
-            import_ostree_commit_for_build "${previous_build}"
+            # don't extract the image.json though, keep the one we generated during prepare_build above
+            import_ostree_commit_for_build "${previous_build}" 0
         else
             # ok, just fallback to importing the commit object only
             mkdir -p "$(dirname "${commitpath}")"
