@@ -107,9 +107,9 @@ var (
 	}
 	tests_ppc64le = []string{
 		"iso-live-login.ppcfw",
-		"iso-offline-install-fromram.ppcfw",
+		"iso-offline-install.ppcfw",
 		"iso-offline-install.mpath.ppcfw",
-		"iso-offline-install.4k.ppcfw",
+		"iso-offline-install-fromram.4k.ppcfw",
 		"miniso-install.ppcfw",
 		"miniso-install.nm.ppcfw",
 		"miniso-install.4k.ppcfw",
@@ -120,9 +120,9 @@ var (
 	tests_aarch64 = []string{
 		"iso-live-login.uefi",
 		"iso-live-login.4k.uefi",
-		"iso-offline-install-fromram.uefi",
+		"iso-offline-install.uefi",
 		"iso-offline-install.mpath.uefi",
-		"iso-offline-install.4k.uefi",
+		"iso-offline-install-fromram.4k.uefi",
 		"miniso-install.uefi",
 		"miniso-install.nm.uefi",
 		"miniso-install.4k.uefi",
