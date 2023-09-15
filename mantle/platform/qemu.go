@@ -339,7 +339,7 @@ func (inst *QemuInstance) SwitchBootOrder() (err2 error) {
 		switch dev.Device {
 		case "installiso":
 			bootdev = devpath
-		case "d1", "mpath10":
+		case "disk-1", "mpath10":
 			primarydev = devpath
 		case "mpath11":
 			secondarydev = devpath
