@@ -29,6 +29,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/coreos/coreos-assembler/mantle/kola"
 	"github.com/coreos/coreos-assembler/mantle/harness/reporters"
 	"github.com/coreos/coreos-assembler/mantle/harness/testresult"
 )
@@ -78,6 +79,7 @@ type H struct {
 	nonExclusiveTestsStarted bool
 	warningOnFailure         bool
 
+	snoozeDate kola.DenyListObj // date from denylist for snoozed test update
 	timeout   time.Duration // Duration for which the test will be allowed to run
 	timedout  bool          // A timeout was reached
 	execTimer *time.Timer   // Used to interrupt the test after timeout
@@ -586,6 +588,7 @@ func (t *H) RunTimeout(name string, f func(t *H), timeout time.Duration) bool {
 		level:     t.level + 1,
 		reporters: t.reporters,
 		timeout:   timeout,
+		snoozeDate: t.SnoozeDate,
 	}
 	t.w = indenter{t}
 	// Indent logs 8 spaces to distinguish them from sub-test headers.
@@ -621,12 +624,17 @@ func (t *H) report() {
 	}
 	dstr := fmtDuration(t.duration)
 	format := "--- %s: %s (%s)\n"
-
+	today := time.Now()
+	sd := t.SnoozeDate
 	status := t.status()
 	if status == testresult.Fail || t.suite.opts.Verbose {
-		t.flushToParent(format, status.Display(), t.name, dstr)
-	}
-
+		if today.Before(sd.AddDate(0, 0, 7)) {
+			format = "--- %s: %s (%s) snooze expired %s\n"
+			t.flushToParent(format, status.Display(), t.name, dstr, sd)
+		} else {
+			t.flushToParent(format, status.Display(), t.name, dstr)
+		}
+		
 	// TODO: store multiple buffers for subtests without indentation
 	// potentially add a TeeWriter which will output to both buffers
 	//
