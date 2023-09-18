@@ -547,8 +547,8 @@ func filterTests(tests map[string]*register.Test, patterns []string, pltfrm stri
 
 		if userTypedPattern {
 			// If the user explicitly typed a pattern, then the test *must*
-			// match by name or by tag. Otherwise, we skip it.
-			if !nameMatch && !tagMatch {
+			// have a name match. Otherwise, we skip it.
+			if !nameMatch {
 				continue
 			}
 		} else {
