@@ -1587,6 +1587,27 @@ func (builder *QemuBuilder) VirtioJournal(config *conf.Conf, queryArguments stri
 	return stream, nil
 }
 
+// createVirtiofsCmd returns a new command instance configured to launch virtiofsd.
+func createVirtiofsCmd(directory, socketPath string) exec.Cmd {
+	args := []string{"--sandbox", "none", "--socket-path", socketPath, "--shared-dir", "."}
+	// Work around https://gitlab.com/virtio-fs/virtiofsd/-/merge_requests/197
+	if os.Getuid() == 0 {
+		args = append(args, "--modcaps=-mknod:-setfcap")
+	}
+	cmd := exec.Command("/usr/libexec/virtiofsd", args...)
+	// This sets things up so that the `.` we passed in the arguments is the target directory
+	cmd.Dir = directory
+	// Quiet the daemon by default
+	cmd.Env = append(cmd.Env, "RUST_LOG=ERROR")
+	// But we do want to see errors
+	cmd.Stderr = os.Stderr
+	// Like other processes, "lifecycle bind" it to us
+	cmd.SysProcAttr = &syscall.SysProcAttr{
+		Pdeathsig: syscall.SIGTERM,
+	}
+	return cmd
+}
+
 // Exec tries to run a QEMU instance with the given settings.
 func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 	builder.finalize()
@@ -1805,14 +1826,7 @@ func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 			builder.Append("-device", fmt.Sprintf("vhost-user-fs-pci,queue-size=1024,chardev=%s,tag=%s", virtiofsChar, hostmnt.dest))
 			plog.Debugf("creating virtiofs helper for %s", hostmnt.src)
 			// TODO: Honor hostmnt.readonly somehow here (add an option to virtiofsd)
-			p := exec.Command("/usr/libexec/virtiofsd", "--sandbox", "none", "--socket-path", virtiofsdSocket, "--shared-dir", ".")
-			p.Dir = hostmnt.src
-			// Quiet the daemon by default
-			p.Env = append(p.Env, "RUST_LOG=ERROR")
-			p.Stderr = os.Stderr
-			p.SysProcAttr = &syscall.SysProcAttr{
-				Pdeathsig: syscall.SIGTERM,
-			}
+			p := createVirtiofsCmd(hostmnt.src, virtiofsdSocket)
 			if err := p.Start(); err != nil {
 				return nil, fmt.Errorf("failed to start virtiofsd")
 			}
