@@ -855,15 +855,15 @@ func runProvidedTests(testsBank map[string]*register.Test, patterns []string, mu
 
 	detectedFailedWarnTrueTests := len(getWarnTrueFailedTests(testResults.getResults())) != 0
 
-	testsToRerun := getRerunnable(testResults.getResults())
-	failedTests := testsToRerun
+	testsToRerun := getRerunnable(testsBank, testResults.getResults())
+	numFailedTests := len(testsToRerun)
 	if len(testsToRerun) > 0 && rerun {
 		newOutputDir := filepath.Join(outputDir, "rerun")
 		fmt.Printf("\n\n======== Re-running failed tests (flake detection) ========\n\n")
-		reRunErr := runProvidedTests(testsBank, testsToRerun, multiply, false, rerunSuccessTags, pltfrm, newOutputDir)
-		if reRunErr == nil && allTestsAllowRerunSuccess(testsBank, testsToRerun, rerunSuccessTags) {
-			runErr = nil             // reset to success since all tests allowed rerun success
-			failedTests = []string{} // zero out the list of failed tests
+		reRunErr := runProvidedTests(testsToRerun, []string{"*"}, multiply, false, rerunSuccessTags, pltfrm, newOutputDir)
+		if reRunErr == nil && allTestsAllowRerunSuccess(testsToRerun, rerunSuccessTags) {
+			runErr = nil       // reset to success since all tests allowed rerun success
+			numFailedTests = 0 // zero out the tally of failed tests
 		} else {
 			runErr = reRunErr
 		}
@@ -871,7 +871,7 @@ func runProvidedTests(testsBank map[string]*register.Test, patterns []string, mu
 	}
 
 	// Return ErrWarnOnTestFail when ONLY tests with warn:true feature failed
-	if detectedFailedWarnTrueTests && len(failedTests) == 0 {
+	if detectedFailedWarnTrueTests && numFailedTests == 0 {
 		return ErrWarnOnTestFail
 	} else {
 		return runErr
@@ -895,7 +895,7 @@ func getWarnTrueFailedTests(tests []*harness.H) []string {
 	return warnTrueFailedTests
 }
 
-func allTestsAllowRerunSuccess(testsBank map[string]*register.Test, testsToRerun, rerunSuccessTags []string) bool {
+func allTestsAllowRerunSuccess(testsToRerun map[string]*register.Test, rerunSuccessTags []string) bool {
 	// Always consider the special AllowRerunSuccessTag that is added
 	// by the test harness in some failure scenarios.
 	rerunSuccessTags = append(rerunSuccessTags, AllowRerunSuccessTag)
@@ -913,7 +913,7 @@ func allTestsAllowRerunSuccess(testsBank map[string]*register.Test, testsToRerun
 	// allow rerun success then just exit early.
 	for _, test := range testsToRerun {
 		testAllowsRerunSuccess := false
-		for _, tag := range testsBank[test].Tags {
+		for _, tag := range test.Tags {
 			if rerunSuccessTagMap[tag] {
 				testAllowsRerunSuccess = true
 			}
@@ -973,20 +973,30 @@ func IsWarningOnFailure(testName string) bool {
 	return false
 }
 
-func getRerunnable(tests []*harness.H) []string {
-	var testsToRerun []string
-	for _, h := range tests {
+func getRerunnable(testsBank map[string]*register.Test, testResults []*harness.H) map[string]*register.Test {
+	// First get the names of the tests that need to rerun
+	var testNamesToRerun []string
+	for _, h := range testResults {
 		// The current nonexclusive test wrapper would have all non-exclusive tests.
 		// We would add all those tests for rerunning if none of the non-exclusive
 		// subtests start due to some initial failure.
 		if nonexclusiveWrapperMatch.MatchString(h.Name()) && !h.GetNonExclusiveTestStarted() {
 			if h.Failed() {
-				testsToRerun = append(testsToRerun, h.Subtests()...)
+				testNamesToRerun = append(testNamesToRerun, h.Subtests()...)
 			}
 		} else {
 			name, isRerunnable := GetRerunnableTestName(h.Name())
 			if h.Failed() && isRerunnable {
-				testsToRerun = append(testsToRerun, name)
+				testNamesToRerun = append(testNamesToRerun, name)
+			}
+		}
+	}
+	// Then convert the list of names into a list of a register.Test objects
+	testsToRerun := make(map[string]*register.Test)
+	for name, t := range testsBank {
+		for _, rerun := range testNamesToRerun {
+			if name == rerun {
+				testsToRerun[name] = t
 			}
 		}
 	}
