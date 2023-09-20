@@ -119,7 +119,7 @@ rootfs_args=$(getconfig_def "rootfs-args" "")
 
 bootfs=$(getconfig "bootfs")
 composefs=$(getconfig_def "composefs" "")
-grub_script=$(getconfig "grub-script")
+bootupd_epoch=$(getconfig "bootupd-epoch")
 ostree_container=$(getconfig "ostree-container")
 commit=$(getconfig "ostree-commit")
 ref=$(getconfig "ostree-ref")
@@ -396,51 +396,7 @@ cat > $rootfs/.coreos-aleph-version.json << EOF
 }
 EOF
 
-install_uefi() {
-    # https://github.com/coreos/fedora-coreos-tracker/issues/510
-    # See also https://github.com/ostreedev/ostree/pull/1873#issuecomment-524439883
-    # Unshare mount ns to work around https://github.com/coreos/bootupd/issues/367
-    unshare -m /usr/bin/bootupctl backend install --src-root="${deploy_root}" "${rootfs}"
-    # We have a "static" grub config file that basically configures grub to look
-    # in the RAID called "md-boot", if it exists, or the partition labeled "boot".
-    local target_efi="$rootfs/boot/efi"
-    local grubefi
-    grubefi=$(find "${target_efi}/EFI/" -maxdepth 1 -type d | grep -v BOOT)
-    local vendor_id="${grubefi##*/}"
-    local vendordir="${target_efi}/EFI/${vendor_id}"
-    mkdir -p "${vendordir}"
-    cat > "${vendordir}/grub.cfg" << 'EOF'
-if [ -e (md/md-boot) ]; then
-  # The search command might pick a RAID component rather than the RAID,
-  # since the /boot RAID currently uses superblock 1.0.  See the comment in
-  # the main grub.cfg.
-  set prefix=md/md-boot
-else
-  if [ -f ${config_directory}/bootuuid.cfg ]; then
-    source ${config_directory}/bootuuid.cfg
-  fi
-  if [ -n "${BOOT_UUID}" ]; then
-    search --fs-uuid "${BOOT_UUID}" --set prefix --no-floppy
-  else
-    search --label boot --set prefix --no-floppy
-  fi
-fi
-set prefix=($prefix)/grub2
-configfile $prefix/grub.cfg
-boot
-EOF
-    install_grub_cfg
-}
-
-# copy the grub config and any other files we might need
-install_grub_cfg() {
-    # 0700 to match the RPM permissions which I think are mainly in case someone has
-    # manually set a grub password
-    mkdir -p $rootfs/boot/grub2
-    chmod 0700 $rootfs/boot/grub2
-    printf "%s\n" "$grub_script" | \
-        sed -E 's@(^# CONSOLE-SETTINGS-START$)@\1'"${platform_grub_cmds:+\\n${platform_grub_cmds}}"'@' \
-        > $rootfs/boot/grub2/grub.cfg
+install_platforms_json() {
     # Copy platforms table if it's non-empty for this arch
     # shellcheck disable=SC2031
     if jq -e ".$arch" < "$platforms_json" > /dev/null; then
@@ -472,32 +428,28 @@ generate_gpgkeys() {
     rm -rf "${tmp_home}"
 }
 
+# Hard require epoch 1, but leave space for future versions
+case "${bootupd_epoch}" in
+    1)
+       ;;
+    *) echo "Unhandled ${bootupd_epoch} 1>&2; exit 1"
+       ;;
+esac
+
 # Other arch-specific bootloader changes
 # shellcheck disable=SC2031
 case "$arch" in
-x86_64)
-    # UEFI
-    install_uefi
+x86_64|aarch64|ppc64le)
+    # For background on bootupd, see https://github.com/coreos/fedora-coreos-tracker/issues/510
+    # This requires bootupd 0.2.11 in the target system, and handles both BIOS and UEFI for x86_64 for example.
+    bootupd_args=()
     if [ "${x86_bios_bootloader}" = 1 ]; then
-        # And BIOS grub in addition.  See also
-        # https://github.com/coreos/fedora-coreos-tracker/issues/32
-        # Install BIOS/PReP bootloader using the target system's grub2-install,
-        # see https://github.com/coreos/coreos-assembler/issues/3156
-        chroot_run /sbin/grub2-install \
-            --target i386-pc \
-            --boot-directory $rootfs/boot \
-            --modules mdraid1x \
-            "$disk"
+        bootupd_args+=("--device=$disk")
     fi
-    ;;
-aarch64)
-    # Our aarch64 is UEFI only.
-    install_uefi
-    ;;
-ppc64le)
-    # to populate PReP Boot, i.e. support pseries
-    chroot_run /sbin/grub2-install --target=powerpc-ieee1275 --boot-directory $rootfs/boot --no-nvram "${disk}${PREPPN}"
-    install_grub_cfg
+    chroot_run env /usr/bin/bootupctl backend install --with-static-configs --src-root="${deploy_root}" "${bootupd_args[@]}" "${rootfs}"
+    if test -n "${platform_grub_cmds}"; then
+        echo "${platform_grub_cmds}" > $rootfs/boot/grub2/platform01.cfg
+    fi
     ;;
 s390x)
     ostree config --repo $rootfs/ostree/repo set sysroot.bootloader zipl
