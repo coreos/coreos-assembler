@@ -245,7 +245,9 @@ func detachPrimaryBlockDevice(c cluster.TestCluster, m platform.Machine) {
 		// that rebooting too quickly after ripping out the primary device can trigger
 		// a kernel panic on ppc64le. This may be memory-related since the same panic
 		// happens more easily if memory is lowered to 4G.
-		time.Sleep(30 * time.Second)
+		if coreosarch.CurrentRpmArch() == "ppc64le" {
+			time.Sleep(60 * time.Second)
+		}
 
 		err := m.Reboot()
 		if err != nil {
