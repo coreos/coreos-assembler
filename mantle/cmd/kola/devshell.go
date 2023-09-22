@@ -114,9 +114,19 @@ func runDevShellSSH(ctx context.Context, builder *platform.QemuBuilder, conf *co
 	if err != nil {
 		return err
 	}
-	serialLog, err := os.CreateTemp(tmpd, "cosa-run-serial")
-	if err != nil {
-		return err
+
+	// Save console logs
+	var serialLog *os.File
+	if builder.ConsoleFile != "" {
+		serialLog, err = os.Create(builder.ConsoleFile)
+		if err != nil {
+			return err
+		}
+	} else {
+		serialLog, err = os.CreateTemp(tmpd, "cosa-run-serial")
+		if err != nil {
+			return err
+		}
 	}
 
 	builder.InheritConsole = false
