@@ -1594,6 +1594,9 @@ func createVirtiofsCmd(directory, socketPath string) exec.Cmd {
 	if os.Getuid() == 0 {
 		args = append(args, "--modcaps=-mknod:-setfcap")
 	}
+	// We don't need seccomp filtering; we trust our workloads. This incidentally
+	// works around issues like https://gitlab.com/virtio-fs/virtiofsd/-/merge_requests/200.
+	args = append(args, "--seccomp=none")
 	cmd := exec.Command("/usr/libexec/virtiofsd", args...)
 	// This sets things up so that the `.` we passed in the arguments is the target directory
 	cmd.Dir = directory
