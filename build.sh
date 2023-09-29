@@ -72,6 +72,8 @@ install_rpms() {
     # Add fast-tracked packages here.  We don't want to wait on bodhi for rpm-ostree
     # as we want to enable fast iteration there.
     yum -y --enablerepo=updates-testing upgrade rpm-ostree
+    # Fix rebooting https://gitlab.com/virtio-fs/virtiofsd/-/issues/62#note_1584371000
+    yum -y --enablerepo=updates-testing upgrade virtiofsd
 
     # Delete file that only exists on ppc64le because it is causing
     # sudo to not work.
