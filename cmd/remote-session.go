@@ -144,8 +144,9 @@ func runCreate(c *cobra.Command, args []string) error {
 		"--volume=secex-data:/data.secex:ro",
 		"--uidmap=1000:0:1", "--uidmap=0:1:1000", "--uidmap=1001:1001:64536",
 		"--device=/dev/kvm", "--device=/dev/fuse", "--tmpfs=/tmp",
-		"--entrypoint=/usr/bin/dumb-init", remoteSessionOpts.CreateImage,
-		"sleep", remoteSessionOpts.CreateExpiration}
+		"--init", "--entrypoint=/usr/bin/sleep",
+		remoteSessionOpts.CreateImage,
+		remoteSessionOpts.CreateExpiration}
 	cmd := exec.Command("podman", podmanargs...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
