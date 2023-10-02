@@ -227,7 +227,7 @@ func runSync(c *cobra.Command, args []string) error {
 		return fmt.Errorf("Must pass in a single arg with `:` prepended")
 	}
 	// build command and execute
-	rsyncargs := []string{"-ah", "--mkpath", "--blocking-io",
+	rsyncargs := []string{"-ah", "--no-owner", "--no-group", "--mkpath", "--blocking-io",
 		"--compress", "--rsh", "podman --remote exec -i"}
 	if !remoteSessionOpts.SyncQuiet {
 		rsyncargs = append(rsyncargs, "-v")
