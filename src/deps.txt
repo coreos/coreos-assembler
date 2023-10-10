@@ -16,12 +16,6 @@ dumb-init
 rpm-ostree createrepo_c openssh-clients python3-createrepo_c
 dnf-utils
 
-# We don't actually use this right now but we intend to share
-# code in the future.
-# XXX: temporarily disabled until we fix
-# https://github.com/osbuild/osbuild-composer/issues/1915
-# osbuild-composer
-
 # For generating ISO images
 genisoimage
 

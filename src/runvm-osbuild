@@ -1,0 +1,30 @@
+#!/bin/bash
+set -eux -o pipefail
+
+repo=$1
+ref=$2
+mppyaml=$3
+path=$4
+
+# Since it doesn't exist create loop-control
+mknod /dev/loop-control c 10 237
+
+# get away from the virtiofs share because the xattrs that
+# are written out by the ostree deploy will cause SELinux denials.
+mkdir /root/osbuild && cd /root/osbuild
+
+# Run through the preprocessor
+osbuild-mpp                         \
+    -D ref=\""${ref}"\"             \
+    -D repourl=\""file://${repo}"\" \
+    "${mppyaml}"                    \
+    processed.json
+
+# Build the image
+osbuild --store store/      \
+    --output-directory out/ \
+    --export qcow2 processed.json
+
+
+# Copy it out to the specified location
+cp out/qcow2/disk.qcow2 "${path}"
