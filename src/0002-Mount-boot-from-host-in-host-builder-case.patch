@@ -1,0 +1,45 @@
+From 2e34303f2e9ef1d48b965703976ef1029d7309f1 Mon Sep 17 00:00:00 2001
+From: Dusty Mabe <dusty@dustymabe.com>
+Date: Fri, 1 Sep 2023 12:18:25 -0400
+Subject: [PATCH] Mount boot from host in host builder case
+
+---
+ osbuild/buildroot.py   | 2 +-
+ osbuild/objectstore.py | 3 +++
+ 2 files changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/osbuild/buildroot.py b/osbuild/buildroot.py
+index 5b47d70..a0f654d 100644
+--- a/osbuild/buildroot.py
++++ b/osbuild/buildroot.py
+@@ -196,7 +196,7 @@ class BuildRoot(contextlib.AbstractContextManager):
+ 
+         # Import directories from the caller-provided root.
+         imports = ["usr"]
+-        if self.mount_boot:
++        if True:
+             imports.insert(0, "boot")
+ 
+         for p in imports:
+diff --git a/osbuild/objectstore.py b/osbuild/objectstore.py
+index 922d5ee..6a3f89a 100644
+--- a/osbuild/objectstore.py
++++ b/osbuild/objectstore.py
+@@ -294,11 +294,14 @@ class HostTree:
+         # fixed we can probably remove this bind mount.
+         etc_containers = os.path.join(root, "etc", "containers")
+         os.makedirs(etc_containers)
++        boot = os.path.join(root, "boot")
++        os.makedirs(boot)
+ 
+         # ensure / is read-only
+         mount(root, root)
+         mount("/usr", usr)
+         mount("/etc/containers", etc_containers)
++        mount("/boot", boot)
+ 
+     @property
+     def tree(self) -> os.PathLike:
+-- 
+2.41.0
+

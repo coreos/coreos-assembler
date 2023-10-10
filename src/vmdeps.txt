@@ -35,3 +35,6 @@ tar
 
 # needed for extensions container build
 podman
+
+# For running osbuild
+osbuild osbuild-ostree osbuild-selinux osbuild-tools python3-pyrsistent

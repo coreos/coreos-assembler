@@ -22,6 +22,7 @@ if [ $# -gt 1 ]; then
   echo "    configure_yum_repos"
   echo "    install_rpms"
   echo "    make_and_makeinstall"
+  echo "    patch_osbuild"
   exit 1
 fi
 
@@ -168,6 +169,12 @@ write_archive_info() {
     prepare_git_artifacts "${srcdir}" /cosa/coreos-assembler-git.json /cosa/coreos-assembler-git.tar.gz
 }
 
+patch_osbuild() {
+    # A few patches that either haven't made it into a release or
+    # that will be obsoleted with other work that will be done soon.
+    cat /usr/lib/coreos-assembler/*.patch | patch -p1 -d /usr/lib/python3.11/site-packages/
+}
+
 if [ $# -ne 0 ]; then
   # Run the function specified by the calling script
   ${1}
@@ -182,4 +189,5 @@ else
   install_ocp_tools
   trust_redhat_gpg_keys
   configure_user
+  patch_osbuild
 fi
