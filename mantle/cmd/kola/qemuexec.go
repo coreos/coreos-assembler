@@ -73,6 +73,8 @@ var (
 
 	netboot    string
 	netbootDir string
+
+	usernetAddr string
 )
 
 const maxAdditionalNics = 16
@@ -102,6 +104,7 @@ func init() {
 	cmdQemuExec.Flags().StringVarP(&sshCommand, "ssh-command", "x", "", "Command to execute instead of spawning a shell")
 	cmdQemuExec.Flags().StringVarP(&netboot, "netboot", "", "", "Filepath to BOOTP program (e.g. PXELINUX/GRUB binary or iPXE script")
 	cmdQemuExec.Flags().StringVarP(&netbootDir, "netboot-dir", "", "", "Directory to serve over TFTP (default: BOOTP parent dir). If specified, --netboot is relative to this dir.")
+	cmdQemuExec.Flags().StringVarP(&usernetAddr, "usernet-addr", "", "", "Guest IP network (QEMU default is '10.0.2.0/24')")
 }
 
 func renderFragments(fragments []string, c *conf.Conf) error {
@@ -356,11 +359,11 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 	if cpuCountHost {
 		builder.Processors = -1
 	}
-	if usernet {
+	if usernet || usernetAddr != "" {
 		h := []platform.HostForwardPort{
 			{Service: "ssh", HostPort: 0, GuestPort: 22},
 		}
-		builder.EnableUsermodeNetworking(h)
+		builder.EnableUsermodeNetworking(h, usernetAddr)
 	}
 	if netboot != "" {
 		builder.SetNetbootP(netboot, netbootDir)
