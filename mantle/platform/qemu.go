@@ -481,6 +481,8 @@ type QemuBuilder struct {
 	RestrictNetworking        bool
 	requestedHostForwardPorts []HostForwardPort
 	additionalNics            int
+	netbootP                  string
+	netbootDir                string
 
 	finalized bool
 	diskID    uint
@@ -602,6 +604,12 @@ func (builder *QemuBuilder) EnableUsermodeNetworking(h []HostForwardPort) {
 	builder.requestedHostForwardPorts = h
 }
 
+func (builder *QemuBuilder) SetNetbootP(filename, dir string) {
+	builder.UsermodeNetworking = true
+	builder.netbootP = filename
+	builder.netbootDir = dir
+}
+
 func (builder *QemuBuilder) AddAdditionalNics(additionalNics int) {
 	builder.additionalNics = additionalNics
 }
@@ -628,6 +636,31 @@ func (builder *QemuBuilder) setupNetworking() error {
 	}
 	if builder.RestrictNetworking {
 		netdev += ",restrict=on"
+	}
+	if builder.netbootP != "" {
+		// do an early stat so we fail with a nicer error now instead of in the VM
+		if _, err := os.Stat(filepath.Join(builder.netbootDir, builder.netbootP)); err != nil {
+			return err
+		}
+		tftpDir := ""
+		relpath := ""
+		if builder.netbootDir == "" {
+			absPath, err := filepath.Abs(builder.netbootP)
+			if err != nil {
+				return err
+			}
+			tftpDir = filepath.Dir(absPath)
+			relpath = filepath.Base(absPath)
+		} else {
+			absPath, err := filepath.Abs(builder.netbootDir)
+			if err != nil {
+				return err
+			}
+			tftpDir = absPath
+			relpath = builder.netbootP
+		}
+		netdev += fmt.Sprintf(",tftp=%s,bootfile=/%s", tftpDir, relpath)
+		builder.Append("-boot", "order=n")
 	}
 
 	builder.Append("-netdev", netdev, "-device", virtio(builder.architecture, "net", "netdev=eth0"))

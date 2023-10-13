@@ -192,3 +192,91 @@ TARGET   SOURCE              FSTYPE OPTIONS
 installed system automatically just as the live environment itself was set up.)
 
 This is equivalent to our `kola testiso` multipath tests.
+
+## Netbooting
+
+You can use the `--netboot` option to boot via BOOTP (e.g. iPXE, PXELINUX, GRUB).
+
+### iPXE
+
+This is the simplest since it's the default firmware and doesn't require
+chaining. You can just point to the iPXE script, e.g.:
+
+```
+$ cat tmp/ipxe/boot.ipxe
+#!ipxe
+kernel /<relative path to kernel> initrd=main coreos.live.rootfs_url=<URL> ignition.firstboot ignition.platform.id=metal console=ttyS0 ignition.config.url=<URL>
+initrd --name main /<relative path to initrd>
+boot
+$ cosa run -c --netboot tmp/ipxe/boot.ipxe
+```
+
+(That example requires hosting the rootfs separately, but you can also combine with the initrd.)
+
+Or doing an iSCSI boot:
+
+```
+#!ipxe
+sanboot iscsi:192.168.10.1::::iqn.2023-10.coreos.target.vm:coreos
+```
+
+See [this section](https://docs.fedoraproject.org/en-US/fedora-coreos/live-booting/#_booting_via_ipxe) of the official docs for more info.
+
+### PXELINUX
+
+Point to the `pxelinux.0` binary, likely symlinked, e.g.:
+
+```
+$ tree tmp/pxelinux/
+tmp/pxelinux/
+├── fedora-coreos-38.20231010.dev.0-live-initramfs.x86_64.img -> ../../builds/latest/x86_64/fedora-coreos-38.20231010.dev.0-live-initramfs.x86_64.img
+├── fedora-coreos-38.20231010.dev.0-live-kernel-x86_64 -> ../../builds/latest/x86_64/fedora-coreos-38.20231010.dev.0-live-kernel-x86_64
+├── fedora-coreos-38.20231010.dev.0-live-rootfs.x86_64.img -> ../../builds/latest/x86_64/fedora-coreos-38.20231010.dev.0-live-rootfs.x86_64.img
+├── ldlinux.c32 -> /usr/share/syslinux/ldlinux.c32
+├── pxelinux.0 -> /usr/share/syslinux/pxelinux.0
+└── pxelinux.cfg
+    └── default
+
+2 directories, 6 files
+$ cat tmp/pxelinux/pxelinux.cfg/default
+DEFAULT pxeboot
+TIMEOUT 20
+PROMPT 0
+LABEL pxeboot
+    KERNEL fedora-coreos-38.20231010.dev.0-live-kernel-x86_64
+    APPEND initrd=fedora-coreos-38.20231010.dev.0-live-initramfs.x86_64.img,fedora-coreos-38.20231010.dev.0-live-rootfs.x86_64.img ignition.firstboot ignition.platform.id=metal ignition.config.url=<URL> console=ttyS0
+IPAPPEND 2
+
+$ cosa run -c --netboot tmp/pxelinux/pxelinux.0 -m 4096
+```
+
+See [this section](https://docs.fedoraproject.org/en-US/fedora-coreos/live-booting/#_booting_via_pxe) of the official docs for more info.
+
+### GRUB
+
+Create the netboot dir if not already created:
+
+```
+$ mkdir tmp/grub-netboot
+$ grub2-mknetdir --net-directory tmp/grub-netboot
+```
+
+Create your GRUB config, e.g.:
+
+```
+$ cat tmp/grub-netboot/boot/grub2/grub.cfg
+default=0
+timeout=1
+menuentry "CoreOS (BIOS/UEFI)" {
+        echo "Loading kernel"
+        linux /fedora-coreos-38.20231010.dev.0-live-kernel-x86_64 coreos.live.rootfs_url=<URL> ignition.firstboot ignition.platform.id=metal console=ttyS0 ignition.config.url=<URL>
+        echo "Loading initrd"
+        initrd fedora-coreos-38.20231010.dev.0-live-initramfs.x86_64.img
+}
+```
+
+And point to it and the `core.0` binary:
+
+```
+$ cosa run -c --netboot-dir tmp/grub-netboot --netboot boot/grub2/i386-pc/core.0 -m 4096
+```
