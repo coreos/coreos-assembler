@@ -175,12 +175,12 @@ func (qc *Cluster) NewMachineWithQemuOptions(userdata *conf.UserData, options pl
 	}
 
 	if len(options.HostForwardPorts) > 0 {
-		builder.EnableUsermodeNetworking(options.HostForwardPorts)
+		builder.EnableUsermodeNetworking(options.HostForwardPorts, "")
 	} else {
 		h := []platform.HostForwardPort{
 			{Service: "ssh", HostPort: 0, GuestPort: 22},
 		}
-		builder.EnableUsermodeNetworking(h)
+		builder.EnableUsermodeNetworking(h, "")
 	}
 	if options.AdditionalNics > 0 {
 		builder.AddAdditionalNics(options.AdditionalNics)

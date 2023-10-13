@@ -478,6 +478,7 @@ type QemuBuilder struct {
 	ignitionRendered bool
 
 	UsermodeNetworking        bool
+	usermodeNetworkingAddr    string
 	RestrictNetworking        bool
 	requestedHostForwardPorts []HostForwardPort
 	additionalNics            int
@@ -599,9 +600,10 @@ func virtio(arch, device, args string) string {
 
 // EnableUsermodeNetworking configure forwarding for all requested ports,
 // via usermode network helpers.
-func (builder *QemuBuilder) EnableUsermodeNetworking(h []HostForwardPort) {
+func (builder *QemuBuilder) EnableUsermodeNetworking(h []HostForwardPort, usernetAddr string) {
 	builder.UsermodeNetworking = true
 	builder.requestedHostForwardPorts = h
+	builder.usermodeNetworkingAddr = usernetAddr
 }
 
 func (builder *QemuBuilder) SetNetbootP(filename, dir string) {
@@ -636,6 +638,9 @@ func (builder *QemuBuilder) setupNetworking() error {
 	}
 	if builder.RestrictNetworking {
 		netdev += ",restrict=on"
+	}
+	if builder.usermodeNetworkingAddr != "" {
+		netdev += ",net=" + builder.usermodeNetworkingAddr
 	}
 	if builder.netbootP != "" {
 		// do an early stat so we fail with a nicer error now instead of in the VM
