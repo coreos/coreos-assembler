@@ -539,8 +539,8 @@ fstrim -a -v
 # Ensure the filesystem journals are flushed
 for fs in $rootfs/boot $rootfs; do
     mount -o remount,ro "$fs"
-    xfs_freeze -f "$fs"
-    xfs_freeze -u "$fs"
+    fsfreeze -f "$fs"
+    fsfreeze -u "$fs"
 done
 
 umount -R $rootfs
