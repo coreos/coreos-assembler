@@ -826,7 +826,7 @@ func runProvidedTests(testsBank map[string]*register.Test, patterns []string, mu
 			// At the end of the test, its cluster is destroyed
 			runTest(h, test, pltfrm, flight)
 		}
-		htests.Add(test.Name, run, test.Timeout)
+		htests.Add(test.Name, run, (test.Timeout*time.Duration(100+(Options.ExtendTimeoutPercent)))/100)
 	}
 
 	handleSuiteErrors := func(outputDir string, suiteErr error) error {

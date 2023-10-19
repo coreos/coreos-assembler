@@ -135,7 +135,7 @@ var (
 )
 
 const (
-	installTimeout = 10 * time.Minute
+	installTimeoutMins = 10
 	// https://github.com/coreos/fedora-coreos-config/pull/2544
 	liveISOFromRAMKarg = "coreos.liveiso.fromram"
 )
@@ -589,8 +589,9 @@ func awaitCompletion(ctx context.Context, inst *platform.QemuInstance, outdir st
 	start := time.Now()
 	errchan := make(chan error)
 	go func() {
-		time.Sleep(installTimeout)
-		errchan <- fmt.Errorf("timed out after %v", installTimeout)
+		timeout := (time.Duration(installTimeoutMins*(100+kola.Options.ExtendTimeoutPercent)) * time.Minute) / 100
+		time.Sleep(timeout)
+		errchan <- fmt.Errorf("timed out after %v", timeout)
 	}()
 	if !console {
 		go func() {
