@@ -71,6 +71,8 @@ func init() {
 	sv(&kola.Options.CosaBuildArch, "arch", coreosarch.CurrentRpmArch(), "The target architecture of the build")
 	sv(&kola.Options.AppendButane, "append-butane", "", "Path to Butane config which is merged with test code")
 	sv(&kola.Options.AppendIgnition, "append-ignition", "", "Path to Ignition config which is merged with test code")
+	// we make this a percentage to avoid having to deal with floats
+	root.PersistentFlags().UintVar(&kola.Options.ExtendTimeoutPercent, "extend-timeout-percentage", 0, "Extend all test timeouts by N percent")
 	// rhcos-specific options
 	sv(&kola.Options.OSContainer, "oscontainer", "", "oscontainer image pullspec for pivot (RHCOS only)")
 

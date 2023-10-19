@@ -194,6 +194,8 @@ type Options struct {
 	OSContainer string
 
 	SSHOnTestFailure bool
+
+	ExtendTimeoutPercent uint
 }
 
 // RuntimeConfig contains cluster-specific configuration.
