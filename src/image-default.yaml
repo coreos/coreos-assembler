@@ -7,6 +7,9 @@ rootfs-args: ""
 # Set to "true" to enable composefs
 composefs: false
 
+# - "1": adds a hard requirement of bootupd 0.2.X and updated ignition
+bootupd-epoch: "1"
+
 # Additional default kernel arguments injected into disk images
 extra-kargs: []
 
