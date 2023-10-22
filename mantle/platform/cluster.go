@@ -282,6 +282,8 @@ After=network-online.target
 
 [Service]
 Type=oneshot
+# Newer zincati more explicitly fails on containers; fully disable it
+ExecStart=systemctl mask --now zincati
 ExecStart=rpm-ostree rebase --experimental %s
 ExecStart=touch /etc/kola-rebase-done
 ExecStart=systemctl reboot
