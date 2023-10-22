@@ -269,8 +269,7 @@ func (bc *BaseCluster) RenderUserData(userdata *platformConf.UserData, ignitionV
 
 	// disable Zincati by default
 	if bc.Distribution() == "fcos" {
-		conf.AddFile("/etc/zincati/config.d/90-disable-auto-updates.toml", `[updates]
-enabled = false`, 0644)
+		conf.DisableAutomaticUpdates()
 	}
 
 	if bc.bf.baseopts.OSContainer != "" {
