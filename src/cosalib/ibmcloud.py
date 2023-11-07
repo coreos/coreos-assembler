@@ -169,7 +169,7 @@ def ibmcloud_run_ore_replicate(build, args):
     # PowerVS insatnces are supported in all the regions where cloud object storage can be created. This list is common for
     # both IBMCloud and PowerVS.
     if not args.region:
-        args.region = ['au-syd', 'br-sao', 'ca-tor', 'eu-de', 'eu-gb', 'jp-osa', 'jp-tok', 'us-east', 'us-south']
+        args.region = ['au-syd', 'br-sao', 'ca-tor', 'eu-de', 'eu-es', 'eu-gb', 'jp-osa', 'jp-tok', 'us-east', 'us-south']
         log.info(("default: replicating to all regions. If this is not "
                  " desirable, use '--regions'"))
 
