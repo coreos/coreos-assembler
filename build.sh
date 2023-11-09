@@ -172,7 +172,7 @@ write_archive_info() {
 patch_osbuild() {
     # A few patches that either haven't made it into a release or
     # that will be obsoleted with other work that will be done soon.
-    cat /usr/lib/coreos-assembler/*.patch | patch -p1 -d /usr/lib/python3.11/site-packages/
+    cat /usr/lib/coreos-assembler/*.patch | patch -p1 -d /usr/lib/python3.12/site-packages/
 }
 
 if [ $# -ne 0 ]; then
