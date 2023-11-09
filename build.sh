@@ -44,14 +44,6 @@ install_rpms() {
 
     frozendeps=""
 
-    # freeze grub2 for https://github.com/coreos/coreos-assembler/issues/3370
-    case "${arch}" in
-        x86_64) frozendeps=$(echo grub2-{common,tools,tools-extra,tools-minimal,efi-x64,pc,pc-modules}-1:2.06-76.fc38);;
-        aarch64) frozendeps=$(echo grub2-{common,tools,tools-extra,tools-minimal,efi-aa64}-1:2.06-76.fc38);;
-        ppc64le) frozendeps=$(echo grub2-{common,tools,tools-extra,tools-minimal,ppc64le,ppc64le-modules}-1:2.06-76.fc38);;
-        *) ;;
-    esac
-
     # First, a general update; this is best practice.  We also hit an issue recently
     # where qemu implicitly depended on an updated libusbx but didn't have a versioned
     # requires https://bugzilla.redhat.com/show_bug.cgi?id=1625641
