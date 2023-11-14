@@ -143,13 +143,13 @@ def test_merge_meta(tmpdir):
             m = meta.GenericBuildMeta(_create_test_files(tmpdir, meta_data=td),
                                       '1.2.3')
 
+            # create working copies
             w = meta.GenericBuildMeta(_create_test_files(tmpdir, meta_data=td),
                                       '1.2.3')
-            # create working copies
             if x is None:
-                x = copy.deepcopy(m)
+                x = w
             else:
-                y = copy.deepcopy(m)
+                y = w
 
             # add the stamp
             m.write()
