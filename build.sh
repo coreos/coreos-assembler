@@ -164,7 +164,12 @@ write_archive_info() {
 patch_osbuild() {
     # A few patches that either haven't made it into a release or
     # that will be obsoleted with other work that will be done soon.
-    cat /usr/lib/coreos-assembler/*.patch | patch -p1 -d /usr/lib/python3.12/site-packages/
+    cat /usr/lib/coreos-assembler/0001-Mount-boot-from-host-in-host-builder-case.patch           \
+        /usr/lib/coreos-assembler/0001-osbuild-util-fscache-calculate-actual-size-of-files.patch \
+            | patch -p1 -d /usr/lib/python3.12/site-packages/
+    # shellcheck disable=SC2002
+    cat /usr/lib/coreos-assembler/0001-stages-add-kernel-cmdline.bls-append-stage.patch \
+            | patch -p1 -d /usr/lib/osbuild/
 }
 
 if [ $# -ne 0 ]; then
