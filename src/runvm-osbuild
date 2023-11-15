@@ -3,28 +3,36 @@ set -eux -o pipefail
 
 repo=$1
 ref=$2
-mppyaml=$3
-path=$4
+platform=$3
+mppyaml=$4
+path=$5
+filename=$(basename "$path")
 
 # Since it doesn't exist create loop-control
 mknod /dev/loop-control c 10 237
 
-# get away from the virtiofs share because the xattrs that
-# are written out by the ostree deploy will cause SELinux denials.
-mkdir /root/osbuild && cd /root/osbuild
+# Tell osbuild to write out artifacts into a file in the root
+# filesystem of the supermin VM, which is ephemeral.
+mkdir /var/osbuild
+outdir=/var/osbuild/out
 
 # Run through the preprocessor
 osbuild-mpp                         \
     -D ref=\""${ref}"\"             \
     -D repourl=\""file://${repo}"\" \
+    -D filename=\""${filename}"\"   \
     "${mppyaml}"                    \
     processed.json
 
 # Build the image
-osbuild --store store/      \
-    --output-directory out/ \
-    --export qcow2 processed.json
+osbuild \
+    --out "$outdir"            \
+    --store cache/osbuild/store/ \
+    --cache-max-size 9GiB        \
+    --checkpoint tree            \
+    --checkpoint raw-image       \
+    --export "$platform" processed.json
 
 
 # Copy it out to the specified location
-cp out/qcow2/disk.qcow2 "${path}"
+cp "${outdir}/${platform}/${filename}" "${path}"

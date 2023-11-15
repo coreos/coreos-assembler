@@ -262,9 +262,15 @@ cat "${image_json}" image-dynamic.json | jq -s add > image-for-disk.json
 platforms_json="${workdir}/tmp/platforms.json"
 yaml2json "${configdir}/platforms.yaml" "${platforms_json}"
 
-if [ "${image_type}" == "qemu" ] && [ "${COSA_USE_OSBUILD:-}" != "" ]; then
-    runvm -- /usr/lib/coreos-assembler/runvm-osbuild              \
-                "${ostree_repo}" "${ref}"                         \
+# Currently we only support OSBuild for qemu and metal disk images
+if [ "${image_type}" == "qemu" ] || [ "${image_type}" == "metal" ]; then
+    OSBUILD_SUPPORTED=1
+fi
+
+# Run with OSBuild if it's supported and requested, otherwise use create_disk
+if [ "${OSBUILD_SUPPORTED:-}" != "" ] && [ "${COSA_USE_OSBUILD:-}" != "" ]; then
+    runvm_with_cache -- /usr/lib/coreos-assembler/runvm-osbuild   \
+                "${ostree_repo}" "${ref}" ${image_type}           \
                 /usr/lib/coreos-assembler/coreos.osbuild.mpp.yaml \
                 "${path}.tmp"
 else
