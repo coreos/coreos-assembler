@@ -225,6 +225,21 @@ bootargs=
 if [ "${bootfs_metadata_csum_seed}" == "true" ]; then
     bootargs="-O metadata_csum_seed"
 fi
+
+# Detect if the target system supports orphan_file.
+# https://github.com/coreos/coreos-assembler/pull/3653#issuecomment-1813181723
+# Ideally, we'd do feature detection here but there's no clean way to do that.
+# So just use version comparisons. (But ideally ideally, we use the mkfs.*
+# binaries from the target system, not cosa.)
+e2fsprogs_version=$(jq -r '.["rpmostree.rpmdb.pkglist"][] | select(.[0] == "e2fsprogs") | .[2]' \
+                        "builds/${buildid}/${arch}/commitmeta.json")
+if [ "${e2fsprogs_version}" != "1.47.0" ] && \
+        [ "$(echo -e "${e2fsprogs_version}\n1.47.0" | sort -V | tail -n1)" = "1.47.0" ]; then
+    # target system has e2fsprogs older than 1.47.0; it won't support
+    # orphan_file so make sure we opt out of it
+    bootargs+="-O ^orphan_file"
+fi
+
 case "${bootfs}" in
     ext4verity)
         # Need blocks to match host page size; TODO
