@@ -1,6 +1,6 @@
 version: '2'
 mpp-vars:
-  release: 38
+  filename: $filename
 mpp-define-image:
   id: image
   #10G
@@ -28,7 +28,7 @@ mpp-define-image:
         type: 0FC63DAF-8483-4772-8E79-3D69D8477DE4
         uuid: CA7D7CCB-63ED-4C53-861C-1742536059CC
 pipelines:
-  - name: image-tree
+  - name: tree
     source-epoch: 1659397331
     stages:
       - type: org.osbuild.ostree.init-fs
@@ -57,9 +57,6 @@ pipelines:
             - /boot/efi
           kernel_opts:
             - rw
-            - console=tty0
-            - console=ttyS0
-            - ignition.platform.id=qemu
             - '$ignition_firstboot'
         inputs:
           commits:
@@ -88,7 +85,7 @@ pipelines:
           write_defaults: false
           greenboot: false
           ignition: true
-  - name: image
+  - name: raw-image
     stages:
       - type: org.osbuild.truncate
         options:
@@ -151,7 +148,7 @@ pipelines:
             type: org.osbuild.tree
             origin: org.osbuild.pipeline
             references:
-              - name:image-tree
+              - name:tree
         options:
           paths:
             - from: input://tree/
@@ -211,7 +208,87 @@ pipelines:
             number:
               mpp-format-int: '{image.layout[''boot''].index}'
             path: /grub2
-  - name: qcow2
+  - name: raw-metal-image
+    stages:
+      - type: org.osbuild.copy
+        inputs:
+          tree:
+            type: org.osbuild.tree
+            origin: org.osbuild.pipeline
+            references:
+              - name:raw-image
+        options:
+          paths:
+            - from: input://tree/disk.img
+              to: tree:///disk.img
+      - type: org.osbuild.kernel-cmdline.bls-append
+        options:
+          bootpath: mount:///
+          kernel_opts:
+            - ignition.platform.id=metal
+        devices:
+          boot:
+            type: org.osbuild.loopback
+            options:
+              filename: disk.img
+              start:
+                mpp-format-int: '{image.layout[''boot''].start}'
+              size:
+                mpp-format-int: '{image.layout[''boot''].size}'
+        mounts:
+          - name: boot
+            type: org.osbuild.ext4
+            source: boot
+            target: /
+  - name: raw-qemu-image
+    stages:
+      - type: org.osbuild.copy
+        inputs:
+          tree:
+            type: org.osbuild.tree
+            origin: org.osbuild.pipeline
+            references:
+              - name:raw-image
+        options:
+          paths:
+            - from: input://tree/disk.img
+              to: tree:///disk.img
+      - type: org.osbuild.kernel-cmdline.bls-append
+        options:
+          bootpath: mount:///
+          kernel_opts:
+            - console=tty0
+            - console=ttyS0,115200n8
+            - ignition.platform.id=qemu
+        devices:
+          boot:
+            type: org.osbuild.loopback
+            options:
+              filename: disk.img
+              start:
+                mpp-format-int: '{image.layout[''boot''].start}'
+              size:
+                mpp-format-int: '{image.layout[''boot''].size}'
+        mounts:
+          - name: boot
+            type: org.osbuild.ext4
+            source: boot
+            target: /
+  - name: metal
+    stages:
+      - type: org.osbuild.copy
+        inputs:
+          tree:
+            type: org.osbuild.tree
+            origin: org.osbuild.pipeline
+            references:
+              - name:raw-metal-image
+        options:
+          paths:
+            - from: input://tree/disk.img
+              to:
+                mpp-format-string: 'tree:///{filename}'
+  - name: qemu
     stages:
       - type: org.osbuild.qemu
         inputs:
@@ -219,10 +296,11 @@ pipelines:
             type: org.osbuild.files
             origin: org.osbuild.pipeline
             references:
-              name:image:
+              name:raw-qemu-image:
                 file: disk.img
         options:
-          filename: disk.qcow2
+          filename:
+            mpp-format-string: '{filename}'
           format:
             type: qcow2
             compat: '1.1'
