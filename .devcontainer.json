@@ -1,0 +1,17 @@
+{
+    "image": "quay.io/coreos-assembler/coreos-assembler",
+    "workspaceMount": "",
+    "workspaceFolder": "/srv",
+    "runArgs": [
+              "--volume=${localWorkspaceFolder}:/srv/:Z", 
+              "--uidmap=1000:0:1", "--uidmap=0:1:1000", "--uidmap=1001:1001:64536",
+              "--device=/dev/kvm", "--device=/dev/fuse",  "--security-opt=label=disable", "--privileged",
+              "--tmpfs=/tmp", "-v=/var/tmp:/var/tmp"
+            ],      
+    "remoteUser": "builder",
+    "customizations": {
+        "vscode": {
+          "extensions": ["golang.Go", "ms-vsliveshare.vsliveshare"]
+        }
+      }
+}
