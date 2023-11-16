@@ -1,0 +1,85 @@
+#!/usr/bin/python3
+
+# The logic in this script is heavily inspired by the reporting code in openQA:
+# https://pagure.io/fedora-qa/fedora_openqa/blob/d7ad20a2ac376e2e49127e623c12e31d3df09013/f/src/fedora_openqa/report.py
+
+import argparse
+import os
+import sys
+import time
+
+from resultsdb_api import ResultsDBAuth, ResultsDBapi
+from resultsdb_conventions.fedora import FedoraBodhiResult
+
+RESULTSDB_URL = 'https://resultsdb.fedoraproject.org/api/v2.0/'
+RESULTSDB_STG_URL = 'https://resultsdb.stg.fedoraproject.org/api/v2.0/'
+
+
+def main():
+    args = parse_args()
+    rdb = initialize_rdb(args.stg)
+    report = prepare_report(args)
+    send_report(rdb, report)
+
+
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--testcase", help="Testcase name", required=True)
+    parser.add_argument("--testcase-url", help="Testcase URL", required=True)
+    parser.add_argument("--testrun-url", help="Test run URL", required=True)
+    parser.add_argument("--outcome", help="Outcome", required=True,
+                        # there are technically more, but don't need them yet
+                        choices=['QUEUED', 'RUNNING', 'PASSED',
+                                 'NEEDS_INSPECTION', 'FAILED'])
+    parser.add_argument("--advisory", help="Bodhi advisory ID", required=True)
+    parser.add_argument("--stream", help="Stream name", required=True)
+    parser.add_argument("--stg", action="store_true",
+                        help="Report to stage ResultsDB instance")
+    return parser.parse_args()
+
+
+def initialize_rdb(stg):
+    url = RESULTSDB_URL if not stg else RESULTSDB_STG_URL
+    auth = ResultsDBAuth.basic_auth(os.environ['RDB_USERNAME'],
+                                    os.environ['RDB_PASSWORD'])
+    return ResultsDBapi(url, request_auth=auth)
+
+
+def prepare_report(args):
+    return FedoraBodhiResult(args.advisory, tc_name='coreos.' + args.testcase,
+                             outcome=args.outcome, tc_url=args.testcase_url,
+                             ref_url=args.testrun_url, source='coreos')
+
+
+def send_report(rdb, report):
+    # this is lifted almost straight from openQA:
+    # https://pagure.io/fedora-qa/fedora_openqa/blob/d7ad20a2ac376e2e49127e623c12e31d3df09013/f/src/fedora_openqa/report.py#L624
+
+    # report result, retrying with a delay on failure
+    tries = 40
+    while tries:
+        try:
+            report.report(rdb)
+            err = None
+            break
+        except Exception as newerr:
+            err = newerr
+            eprint("ResultsDB report failed! Retrying...")
+            try:
+                eprint("Response:", newerr.response)
+                eprint("Message:", newerr.message)
+            except AttributeError:
+                eprint("Error:", str(newerr))
+            tries -= 1
+            time.sleep(30)
+    if err:
+        eprint("ResultsDB reporting failed after multiple retries! Giving up.")
+        raise err
+
+
+def eprint(*args):
+    print(*args, file=sys.stderr)
+
+
+if __name__ == "__main__":
+    sys.exit(main())

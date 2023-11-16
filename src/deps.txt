@@ -67,6 +67,11 @@ cryptsetup
 # For communicating with RoboSignatory for signing requests
 fedora-messaging
 
+# For reporting test results to Fedora's ResultsDB
+python3-resultsdb_api
+python3-resultsdb_conventions
+python3-resultsdb_conventions-fedora
+
 # For debugging running processes in the pipelines
 strace
 
