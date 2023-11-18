@@ -31,9 +31,8 @@ var (
 	plog = capnslog.NewPackageLogger("github.com/coreos/coreos-assembler/mantle", "kola/tests/util/rpmostree")
 )
 
-// GetRpmOstreeStatusJSON returns an unmarshal'ed JSON object that contains
-// a limited representation of the output of `rpm-ostree status --json`
-func GetRpmOstreeStatusJSON(c cluster.TestCluster, m platform.Machine) (rpmostreeclient.Status, error) {
+// GetRpmOstreeStatus returns the rpm-ostree status.
+func GetRpmOstreeStatus(c cluster.TestCluster, m platform.Machine) (rpmostreeclient.Status, error) {
 	target := rpmostreeclient.Status{}
 	// We have a case where the rpm-ostree status command is failing
 	// for the ostree.hotfix test and we don't know why:
@@ -58,14 +57,14 @@ func GetRpmOstreeStatusJSON(c cluster.TestCluster, m platform.Machine) (rpmostre
 	}
 
 	if err := json.Unmarshal(rpmOstreeJSON, &target); err != nil {
-		return target, fmt.Errorf("Couldn't umarshal the rpm-ostree status JSON data: %v", err)
+		return target, fmt.Errorf("couldn't umarshal the rpm-ostree status JSON data: %v", err)
 	}
 
 	return target, nil
 }
 
 func GetBootedDeployment(c cluster.TestCluster, m platform.Machine) (*rpmostreeclient.Deployment, error) {
-	s, err := GetRpmOstreeStatusJSON(c, m)
+	s, err := GetRpmOstreeStatus(c, m)
 	if err != nil {
 		return nil, err
 	}
