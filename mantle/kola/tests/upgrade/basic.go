@@ -145,16 +145,12 @@ func fcosUpgradeBasic(c cluster.TestCluster) {
 		// Keep any changes around here in sync with tests/rhcos/upgrade.go too!
 
 		// See https://github.com/coreos/fedora-coreos-tracker/issues/812
-		if strings.HasSuffix(ostreeblob, ".ociarchive") {
-			tmprepo := workdir + "/repo-bare"
-			// TODO: https://github.com/ostreedev/ostree-rs-ext/issues/34
-			c.RunCmdSyncf(m, "ostree --repo=%s init --mode=bare-user", tmprepo)
-			c.RunCmdSyncf(m, "ostree container import --repo=%s --write-ref %s ostree-unverified-image:oci-archive:%s:latest", tmprepo, ostreeref, ostreeblob)
-			c.RunCmdSyncf(m, "ostree --repo=%s init --mode=archive", ostreeRepo)
-			c.RunCmdSyncf(m, "ostree --repo=%s pull-local %s %s", ostreeRepo, tmprepo, ostreeref)
-		} else {
-			c.RunCmdSyncf(m, "mkdir -p %s && tar -xf %s -C %s", ostreeRepo, ostreeblob, ostreeRepo)
-		}
+		tmprepo := workdir + "/repo-bare"
+		// TODO: https://github.com/ostreedev/ostree-rs-ext/issues/34
+		c.RunCmdSyncf(m, "ostree --repo=%s init --mode=bare-user", tmprepo)
+		c.RunCmdSyncf(m, "ostree container import --repo=%s --write-ref %s ostree-unverified-image:oci-archive:%s:latest", tmprepo, ostreeref, ostreeblob)
+		c.RunCmdSyncf(m, "ostree --repo=%s init --mode=archive", ostreeRepo)
+		c.RunCmdSyncf(m, "ostree --repo=%s pull-local %s %s", ostreeRepo, tmprepo, ostreeref)
 
 		// XXX: This is to work around sysroot
 		// remounting in libostree forcing a cache flush and blocking D-Bus.
