@@ -17,6 +17,7 @@ package upgrade
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"path/filepath"
 	"strconv"
@@ -131,14 +132,26 @@ func fcosUpgradeBasic(c cluster.TestCluster) {
 	m := c.Machines()[0]
 	graph := new(Graph)
 
+	containerImageFilename := kola.CosaBuild.Meta.BuildArtifacts.Ostree.Path
+
+	rpmostreeStatus, err := util.GetRpmOstreeStatus(c, m)
+	if err != nil {
+		c.Fatal(err)
+	}
+	booted, err := rpmostreeStatus.GetBootedDeployment()
+	if err != nil {
+		c.Fatal(err)
+	}
+	usingContainer := booted.ContainerImageReference != ""
+	sourceContainerRef := fmt.Sprintf("ostree-unverified-image:oci-archive:%s:latest", containerImageFilename)
+
 	c.Run("setup", func(c cluster.TestCluster) {
-		ostreeblob := kola.CosaBuild.Meta.BuildArtifacts.Ostree.Path
 		ostreeref := kola.CosaBuild.Meta.BuildRef
 		// this is the only heavy-weight part, though remember this test is
 		// optimized for qemu testing locally where this won't leave localhost at
 		// all. cloud testing should mostly be a pipeline thing, where the infra
 		// connection should be much faster
-		ostreeTarPath := filepath.Join(kola.CosaBuild.Dir, ostreeblob)
+		ostreeTarPath := filepath.Join(kola.CosaBuild.Dir, containerImageFilename)
 		if err := cluster.DropFile(c.Machines(), ostreeTarPath); err != nil {
 			c.Fatal(err)
 		}
@@ -146,12 +159,19 @@ func fcosUpgradeBasic(c cluster.TestCluster) {
 		// Keep any changes around here in sync with tests/rhcos/upgrade.go too!
 
 		// See https://github.com/coreos/fedora-coreos-tracker/issues/812
-		tmprepo := workdir + "/repo-bare"
-		// TODO: https://github.com/ostreedev/ostree-rs-ext/issues/34
-		c.RunCmdSyncf(m, "ostree --repo=%s init --mode=bare-user", tmprepo)
-		c.RunCmdSyncf(m, "ostree container import --repo=%s --write-ref %s ostree-unverified-image:oci-archive:%s:latest", tmprepo, ostreeref, ostreeblob)
-		c.RunCmdSyncf(m, "ostree --repo=%s init --mode=archive", ostreeRepo)
-		c.RunCmdSyncf(m, "ostree --repo=%s pull-local %s %s", ostreeRepo, tmprepo, ostreeref)
+		if usingContainer {
+			// In the container path we'll pass this file directly, so put it outside
+			// of the user's home directory so the systemd service can find it.
+			c.RunCmdSyncf(m, "sudo mv %s /var/tmp/%s", containerImageFilename, containerImageFilename)
+			sourceContainerRef = fmt.Sprintf("ostree-unverified-image:oci-archive:/var/tmp/%s:latest", containerImageFilename)
+		} else {
+			tmprepo := workdir + "/repo-bare"
+			// TODO: https://github.com/ostreedev/ostree-rs-ext/issues/34
+			c.RunCmdSyncf(m, "ostree --repo=%s init --mode=bare-user", tmprepo)
+			c.RunCmdSyncf(m, "ostree container import --repo=%s --write-ref %s %s", tmprepo, ostreeref, sourceContainerRef)
+			c.RunCmdSyncf(m, "ostree --repo=%s init --mode=archive", ostreeRepo)
+			c.RunCmdSyncf(m, "ostree --repo=%s pull-local %s %s", ostreeRepo, tmprepo, ostreeref)
+		}
 
 		// XXX: This is to work around sysroot
 		// remounting in libostree forcing a cache flush and blocking D-Bus.
@@ -175,13 +195,16 @@ func fcosUpgradeBasic(c cluster.TestCluster) {
 		if err != nil {
 			c.Fatal(err)
 		}
-		if strings.HasSuffix(d.Origin, ":"+kola.CosaBuild.Meta.BuildRef) {
+		version := kola.CosaBuild.Meta.OstreeVersion
+		if usingContainer {
+			rpmostreeRebase(c, m, sourceContainerRef, version)
+		} else if strings.HasSuffix(d.Origin, ":"+kola.CosaBuild.Meta.BuildRef) {
 			// same stream; let's use Zincati
 			graph.seedFromMachine(c, m)
-			graph.addUpdate(c, m, kola.CosaBuild.Meta.OstreeVersion, kola.CosaBuild.Meta.OstreeCommit)
-			waitForUpgradeToVersion(c, m, kola.CosaBuild.Meta.OstreeVersion)
+			graph.addUpdate(c, m, version, kola.CosaBuild.Meta.OstreeCommit)
+			waitForUpgradeToVersion(c, m, version)
 		} else {
-			rebaseToStream(c, m, kola.CosaBuild.Meta.BuildRef, kola.CosaBuild.Meta.OstreeVersion)
+			rpmostreeRebase(c, m, kola.CosaBuild.Meta.BuildRef, version)
 			// and from now on we can use Zincati, so seed the graph with the new node
 			graph.seedFromMachine(c, m)
 		}
@@ -192,17 +215,24 @@ func fcosUpgradeBasic(c cluster.TestCluster) {
 	// starting disk is the previous release (and also, we're doing this via
 	// Zincati & HTTP). Essentially, this sanity-checks that old starting state
 	// + new content set can update.
+
 	c.Run("upgrade-from-current", func(c cluster.TestCluster) {
 		newVersion := kola.CosaBuild.Meta.OstreeVersion + ".kola"
-		ostree_command := "ostree commit --repo %s -b %s --tree ref=%s --add-metadata-string version=%s " +
-			"--keep-metadata='fedora-coreos.stream' --keep-metadata='coreos-assembler.basearch' --parent=%s"
-		newCommit := c.MustSSHf(m,
-			ostree_command,
-			ostreeRepo, kola.CosaBuild.Meta.BuildRef, kola.CosaBuild.Meta.OstreeCommit, newVersion, kola.CosaBuild.Meta.OstreeCommit)
+		ostreeCommit := kola.CosaBuild.Meta.OstreeCommit
+		if usingContainer {
+			newCommit := c.MustSSHf(m, "sudo ostree commit -b testupdate --tree=ref=%s --add-metadata-string version=%s", ostreeCommit, newVersion)
+			rpmostreeRebase(c, m, string(newCommit), newVersion)
+		} else {
+			ostree_command := "ostree commit --repo %s -b %s --tree ref=%s --add-metadata-string version=%s " +
+				"--keep-metadata='fedora-coreos.stream' --keep-metadata='coreos-assembler.basearch' --parent=%s"
+			newCommit := c.MustSSHf(m,
+				ostree_command,
+				ostreeRepo, kola.CosaBuild.Meta.BuildRef, ostreeCommit, newVersion, ostreeCommit)
 
-		graph.addUpdate(c, m, newVersion, string(newCommit))
+			graph.addUpdate(c, m, newVersion, string(newCommit))
 
-		waitForUpgradeToVersion(c, m, newVersion)
+			waitForUpgradeToVersion(c, m, newVersion)
+		}
 	})
 }
 
@@ -338,7 +368,9 @@ func waitForUpgradeToVersion(c cluster.TestCluster, m platform.Machine, version 
 	})
 }
 
-func rebaseToStream(c cluster.TestCluster, m platform.Machine, ref, version string) {
+// rpmostreeRebase causes rpm-ostree to rebase and reboot into the targeted ref.  The provided
+// version number will be verified post reboot.
+func rpmostreeRebase(c cluster.TestCluster, m platform.Machine, ref, version string) {
 	runFnAndWaitForRebootIntoVersion(c, m, version, func() {
 		c.RunCmdSyncf(m, "sudo systemctl stop zincati")
 		// we use systemd-run here so that we can test the --reboot path
