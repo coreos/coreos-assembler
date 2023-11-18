@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/coreos/pkg/capnslog"
+	rpmostreeclient "github.com/coreos/rpmostree-client-go/pkg/client"
 
 	"github.com/coreos/coreos-assembler/mantle/kola"
 	"github.com/coreos/coreos-assembler/mantle/kola/cluster"
@@ -258,18 +259,20 @@ func (g *Graph) addUpdate(c cluster.TestCluster, m platform.Machine, version, pa
 }
 
 // XXX: consider making this distinction part of FCOS itself?
-func onProdStream(c cluster.TestCluster, d *util.RpmOstreeDeployment) bool {
-	switch d.BaseCommitMeta.FedoraCoreOSStream {
-	case "":
-		c.Fatalf("missing fedora-coreos.stream metadata key")
+func onProdStream(c cluster.TestCluster, d *rpmostreeclient.Deployment) bool {
+	stream, err := util.GetDeploymentStream(d)
+	if err != nil {
+		panic(err)
+	}
+	switch stream {
 	case "stable", "testing", "next":
 		return true
+	default:
+		return false
 	}
-
-	return false
 }
 
-func isDevBuild(c cluster.TestCluster, d *util.RpmOstreeDeployment) bool {
+func isDevBuild(c cluster.TestCluster, d *rpmostreeclient.Deployment) bool {
 	return strings.Contains(d.Version, "dev")
 }
 

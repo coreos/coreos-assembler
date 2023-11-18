@@ -24,43 +24,17 @@ import (
 	"github.com/coreos/coreos-assembler/mantle/platform"
 	"github.com/coreos/coreos-assembler/mantle/util"
 	"github.com/coreos/pkg/capnslog"
+	rpmostreeclient "github.com/coreos/rpmostree-client-go/pkg/client"
 )
 
 var (
 	plog = capnslog.NewPackageLogger("github.com/coreos/coreos-assembler/mantle", "kola/tests/util/rpmostree")
 )
 
-// RpmOstreeDeployment represents some of the data of an rpm-ostree deployment
-type RpmOstreeDeployment struct {
-	Booted                 bool     `json:"booted"`
-	Checksum               string   `json:"checksum"`
-	Origin                 string   `json:"origin"`
-	Osname                 string   `json:"osname"`
-	Packages               []string `json:"packages"`
-	RequestedPackages      []string `json:"requested-packages"`
-	RequestedLocalPackages []string `json:"requested-local-packages"`
-	Timestamp              int64    `json:"timestamp"`
-	Unlocked               string   `json:"unlocked"`
-	Version                string   `json:"version"`
-
-	// instead of making it a generic map of strings to "value", we just
-	// special-case the keys we're interested in for now
-	BaseCommitMeta rpmOstreeBaseCommitMeta `json:"base-commit-meta"`
-}
-
-type rpmOstreeBaseCommitMeta struct {
-	FedoraCoreOSStream string `json:"fedora-coreos.stream"`
-}
-
-// simplifiedRpmOstreeStatus contains deployments from rpm-ostree status
-type simplifiedRpmOstreeStatus struct {
-	Deployments []RpmOstreeDeployment
-}
-
 // GetRpmOstreeStatusJSON returns an unmarshal'ed JSON object that contains
 // a limited representation of the output of `rpm-ostree status --json`
-func GetRpmOstreeStatusJSON(c cluster.TestCluster, m platform.Machine) (simplifiedRpmOstreeStatus, error) {
-	target := simplifiedRpmOstreeStatus{}
+func GetRpmOstreeStatusJSON(c cluster.TestCluster, m platform.Machine) (rpmostreeclient.Status, error) {
+	target := rpmostreeclient.Status{}
 	// We have a case where the rpm-ostree status command is failing
 	// for the ostree.hotfix test and we don't know why:
 	// https://github.com/coreos/fedora-coreos-tracker/issues/942
@@ -90,7 +64,7 @@ func GetRpmOstreeStatusJSON(c cluster.TestCluster, m platform.Machine) (simplifi
 	return target, nil
 }
 
-func GetBootedDeployment(c cluster.TestCluster, m platform.Machine) (*RpmOstreeDeployment, error) {
+func GetBootedDeployment(c cluster.TestCluster, m platform.Machine) (*rpmostreeclient.Deployment, error) {
 	s, err := GetRpmOstreeStatusJSON(c, m)
 	if err != nil {
 		return nil, err
@@ -103,4 +77,17 @@ func GetBootedDeployment(c cluster.TestCluster, m platform.Machine) (*RpmOstreeD
 	}
 
 	return nil, errors.New("No booted deployment found")
+}
+
+func GetDeploymentStream(deployment *rpmostreeclient.Deployment) (string, error) {
+	const streamKey = "fedora-coreos.stream"
+	streamVal, ok := deployment.BaseCommitMeta[streamKey]
+	if !ok {
+		return "", fmt.Errorf("missing %s", streamKey)
+	}
+	stream, ok := streamVal.(string)
+	if !ok {
+		return "", fmt.Errorf("invalid non-string %s", streamKey)
+	}
+	return stream, nil
 }
