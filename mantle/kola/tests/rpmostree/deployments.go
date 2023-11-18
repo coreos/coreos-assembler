@@ -77,7 +77,7 @@ func rpmOstreeUpgradeRollback(c cluster.TestCluster) {
 
 	m := c.Machines()[0]
 
-	originalStatus, err := util.GetRpmOstreeStatusJSON(c, m)
+	originalStatus, err := util.GetRpmOstreeStatus(c, m)
 	if err != nil {
 		c.Fatal(err)
 	}
@@ -103,7 +103,7 @@ func rpmOstreeUpgradeRollback(c cluster.TestCluster) {
 		c.RunCmdSync(m, "sudo rpm-ostree rebase :"+newBranch)
 
 		// get latest rpm-ostree status output to check validity
-		postUpgradeStatus, err := util.GetRpmOstreeStatusJSON(c, m)
+		postUpgradeStatus, err := util.GetRpmOstreeStatus(c, m)
 		if err != nil {
 			c.Fatal(err)
 		}
@@ -120,7 +120,7 @@ func rpmOstreeUpgradeRollback(c cluster.TestCluster) {
 		}
 
 		// get latest rpm-ostree status output
-		postRebootStatus, err := util.GetRpmOstreeStatusJSON(c, m)
+		postRebootStatus, err := util.GetRpmOstreeStatus(c, m)
 		if err != nil {
 			c.Fatal(err)
 		}
@@ -160,7 +160,7 @@ func rpmOstreeUpgradeRollback(c cluster.TestCluster) {
 			c.Fatalf("Failed to reboot machine: %v", err)
 		}
 
-		rollbackStatus, err := util.GetRpmOstreeStatusJSON(c, m)
+		rollbackStatus, err := util.GetRpmOstreeStatus(c, m)
 		if err != nil {
 			c.Fatal(err)
 		}
@@ -203,7 +203,7 @@ func rpmOstreeInstallUninstall(c cluster.TestCluster) {
 
 	m := c.Machines()[0]
 
-	originalStatus, err := util.GetRpmOstreeStatusJSON(c, m)
+	originalStatus, err := util.GetRpmOstreeStatus(c, m)
 	if err != nil {
 		c.Fatal(err)
 	}
@@ -224,7 +224,7 @@ func rpmOstreeInstallUninstall(c cluster.TestCluster) {
 			c.Fatalf("Failed to reboot machine: %v", installRebootErr)
 		}
 
-		postInstallStatus, err := util.GetRpmOstreeStatusJSON(c, m)
+		postInstallStatus, err := util.GetRpmOstreeStatus(c, m)
 		if err != nil {
 			c.Fatal(err)
 		}
@@ -264,7 +264,7 @@ func rpmOstreeInstallUninstall(c cluster.TestCluster) {
 			c.Fatalf("Failed to reboot machine: %v", uninstallRebootErr)
 		}
 
-		postUninstallStatus, err := util.GetRpmOstreeStatusJSON(c, m)
+		postUninstallStatus, err := util.GetRpmOstreeStatus(c, m)
 		if err != nil {
 			c.Fatal(err)
 		}

@@ -61,7 +61,7 @@ func ostreeAdminUnlock(c cluster.TestCluster, m platform.Machine, hotfix bool) e
 	// https://github.com/coreos/fedora-coreos-tracker/issues/942
 	c.RunCmdSync(m, "true")
 
-	status, err := util.GetRpmOstreeStatusJSON(c, m)
+	status, err := util.GetRpmOstreeStatus(c, m)
 	if err != nil {
 		c.Fatal(err)
 	}
@@ -166,7 +166,7 @@ func ostreeUnlockTest(c cluster.TestCluster) {
 			c.Fatalf("Failed to reboot machine: %v", unlockRebootErr)
 		}
 
-		ros, err := util.GetRpmOstreeStatusJSON(c, m)
+		ros, err := util.GetRpmOstreeStatus(c, m)
 		if err != nil {
 			c.Fatal(err)
 		}
@@ -226,7 +226,7 @@ func ostreeHotfixTest(c cluster.TestCluster) {
 			c.Fatalf("Failed to reboot machine: %v", unlockRebootErr)
 		}
 
-		ros, err := util.GetRpmOstreeStatusJSON(c, m)
+		ros, err := util.GetRpmOstreeStatus(c, m)
 		if err != nil {
 			c.Fatal(err)
 		}
@@ -249,7 +249,7 @@ func ostreeHotfixTest(c cluster.TestCluster) {
 			c.Fatalf("Failed to reboot machine: %v", rollbackRebootErr)
 		}
 
-		rollbackStatus, err := util.GetRpmOstreeStatusJSON(c, m)
+		rollbackStatus, err := util.GetRpmOstreeStatus(c, m)
 		if err != nil {
 			c.Fatal(err)
 		}

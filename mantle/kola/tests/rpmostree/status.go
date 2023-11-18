@@ -46,7 +46,7 @@ func rpmOstreeCleanup(c cluster.TestCluster, m platform.Machine) error {
 	c.RunCmdSync(m, "sudo rpm-ostree cleanup -rpmb")
 
 	// one last check to make sure we are back to the original state
-	cleanupStatus, err := util.GetRpmOstreeStatusJSON(c, m)
+	cleanupStatus, err := util.GetRpmOstreeStatus(c, m)
 	if err != nil {
 		return fmt.Errorf(`Failed to get status JSON: %v`, err)
 	}
@@ -65,7 +65,7 @@ func rpmOstreeStatus(c cluster.TestCluster) {
 	// check that rpm-ostreed is static?
 	c.AssertCmdOutputContains(m, "systemctl is-enabled rpm-ostreed", "static")
 
-	status, err := util.GetRpmOstreeStatusJSON(c, m)
+	status, err := util.GetRpmOstreeStatus(c, m)
 	if err != nil {
 		c.Fatal(err)
 	}
