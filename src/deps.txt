@@ -71,6 +71,7 @@ fedora-messaging
 python3-resultsdb_api
 python3-resultsdb_conventions
 python3-resultsdb_conventions-fedora
+python3-fedfind
 
 # For debugging running processes in the pipelines
 strace
