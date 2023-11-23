@@ -1,0 +1,142 @@
+variant: fcos
+version: 1.5.0
+storage:
+  filesystems:
+    - path: /var
+      device: /dev/disk/by-id/virtio-var
+      format: ext4
+      wipe_filesystem: true
+      label: var
+      with_mount_unit: true
+  files:
+    - path: /etc/containers/systemd/target.container
+      contents:
+        inline: |
+            [Unit]
+            Description=Targetd container
+            Documentation=https://github.com/jbtrystram/targetcli-containers
+            After=local-fs.target network-online.target After=nss-lookup.target dev-disk-by\x2did-virtio\x2dtarget.device
+            Wants=network-online.target
+            OnFailure=emergency.target
+            [Container]
+            Image=quay.io/jbtrystram/targetcli:latest
+            ContainerName=target
+            Network=host
+            Volume=/dev/disk/by-id/virtio-target:/dev/disk/by-id/virtio-target
+            Volume=/lib/modules:/lib/modules
+            Volume=/sys/kernel/config:/sys/kernel/config
+            PodmanArgs=--privileged
+            [Install]
+            # Start by default on boot
+            WantedBy=multi-user.target
+    - path: /usr/local/bin/targetcli_script
+      mode: 0755
+      contents:
+          inline: |
+            #!/bin/bash
+            set -xeuo pipefail
+            podman exec target bash -exc "
+            targetcli /backstores/block create name=coreos dev=/dev/disk/by-id/virtio-target
+            targetcli iscsi/ create iqn.2023-10.coreos.target.vm:coreos
+            targetcli iscsi/iqn.2023-10.coreos.target.vm:coreos/tpg1/luns create /backstores/block/coreos
+            targetcli iscsi/iqn.2023-10.coreos.target.vm:coreos/tpg1/ set attribute authentication=0 demo_mode_write_protect=0 generate_node_acls=1 cache_dynamic_acls=1
+            "
+            # Will return 0 if the discovery yield a valid portal
+            iscsiadm -m discovery -p 127.0.0.1 -t st | grep iqn.2023-10.coreos.target.vm:coreos
+    - path: /mnt/workdir-tmp/boot.ipxe
+      mode: 0644
+      contents:
+        inline: |
+            #!ipxe
+            set initiator-iqn iqn.2023-11.coreos.diskless:testsetup
+            sanboot iscsi:10.0.2.15::::iqn.2023-10.coreos.target.vm:coreos
+    - path: /usr/local/bin/install-coreos-iscsi
+      mode: 0755
+      contents:
+        inline: |
+          #!/bin/bash
+          set -euxo
+          # Mount the iscsi target
+          iscsiadm -m discovery -t st -p 127.0.0.1
+          iscsiadm -m node -T iqn.2023-10.coreos.target.vm:coreos -l
+          # Give a bit of time to udev to create the persistent names paths
+          sleep 2 
+          # Install coreos
+          coreos-installer install \
+            /dev/disk/by-path/ip-127.0.0.1\:3260-iscsi-iqn.2023-10.coreos.target.vm\:coreos-lun-0 \
+            --append-karg rd.iscsi.firmware=1 --append-karg ip=ibft \
+            --console ttyS0 \
+            -i /mnt/workdir-tmp/nested-ign.json
+          # Unmount the disk
+          iscsiadm --mode node --logoutall=all
+    - path: /etc/containers/systemd/coreos-iscsi-vm.container
+      contents:
+        inline: |
+          [Unit]
+          Description=Boot VM over iSCSI
+          After=network-online.target After=nss-lookup.target install-coreos-to-iscsi-target.service 
+          Wants=network-online.target install-coreos-to-iscsi-target.service 
+          Requires=install-coreos-to-iscsi-target.service
+          OnFailure=emergency.target
+          [Container]
+          Image=quay.io/coreos-assembler/coreos-assembler
+          ContainerName=iscsiboot
+          Volume=/mnt/workdir-tmp/:/mnt/workdir-tmp/
+          Volume=/dev/virtio-ports/testiscsicompletion:/mnt/serial
+          PodmanArgs=--privileged
+          Network=host
+          Exec=shell -- kola qemuexec --netboot /mnt/workdir-tmp/boot.ipxe --usernet-addr 10.0.3.0/24 -- -device virtio-serial -chardev file,id=iscsi-completion-virtio,path=/mnt/serial,append=on -device virtserialport,chardev=iscsi-completion-virtio,name=testiscsicompletion
+          [Install]
+          # Start by default on boot
+          WantedBy=multi-user.target
+          [Service]
+          # fix permissions on the serial device before passing it as a volume
+          ExecStartPre=chmod 777 /dev/virtio-ports/testiscsicompletion
+    - path: /mnt/workdir-tmp/nested-ign.json
+      contents:
+        inline: | 
+          {
+            "ignition": {
+              "version": "3.1.0"
+            },
+            "systemd": {
+              "units": [
+                {
+                  "contents": "[Unit]\nDescription=iSCSI Boot Signal Completion\nAfter=multi-user.target\nOnFailureJobMode=isolate\n[Service]\nType=oneshot\nRemainAfterExit=yes\nExecStart=/bin/sh -c '/usr/bin/echo \"iscsi-boot-ok\" \u003e/dev/virtio-ports/testiscsicompletion \u0026\u0026 systemctl poweroff'\n[Install]\nRequiredBy=multi-user.target\n",
+                  "enabled": true,
+                  "name": "successful-boot-signal.service"
+                }
+              ]
+            }
+          }
+systemd:
+    units:
+    - name: setup-targetcli.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Setup targetcli
+        Requires=target.service
+        After=target.service
+        ConditionFirstBoot=true
+        OnFailure=emergency.target
+        [Service]
+        Type=oneshot
+        RemainAfterExit=yes
+        ExecStart=/usr/local/bin/targetcli_script
+        [Install]
+        WantedBy=multi-user.target
+    - name: install-coreos-to-iscsi-target.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Mount an iscsi target and install coreOS into it
+        Requires=setup-targetcli.service
+        After=setup-targetcli.service
+        OnFailure=emergency.target
+        [Service]
+        Type=oneshot
+        RemainAfterExit=yes
+        ExecStart=/usr/local/bin/install-coreos-iscsi
+        [Install]
+        WantedBy=multi-user.target
