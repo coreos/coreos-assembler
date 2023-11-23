@@ -22,6 +22,7 @@ package main
 import (
 	"bufio"
 	"context"
+	_ "embed"
 	"fmt"
 	"io"
 	"os"
@@ -88,6 +89,7 @@ var (
 		"iso-offline-install.bios",
 		"iso-offline-install.mpath.bios",
 		"iso-offline-install-fromram.4k.uefi",
+		"iso-offline-install-iscsi.bios",
 		"miniso-install.bios",
 		"miniso-install.nm.bios",
 		"miniso-install.4k.uefi",
@@ -109,6 +111,7 @@ var (
 		"miniso-install.s390fw",
 		"miniso-install.nm.s390fw",
 		"miniso-install.4k.nm.s390fw",
+		"iso-offline-install-iscsi.bios",
 	}
 	tests_ppc64le = []string{
 		"iso-live-login.ppcfw",
@@ -121,6 +124,7 @@ var (
 		"miniso-install.4k.nm.ppcfw",
 		"pxe-online-install.ppcfw",
 		"pxe-offline-install.4k.ppcfw",
+		"iso-offline-install-iscsi.bios",
 	}
 	tests_aarch64 = []string{
 		"iso-live-login.uefi",
@@ -136,6 +140,7 @@ var (
 		"pxe-offline-install.4k.uefi",
 		"pxe-online-install.uefi",
 		"pxe-online-install.4k.uefi",
+		"iso-offline-install-iscsi.bios",
 	}
 )
 
@@ -318,6 +323,9 @@ ExecStart=/usr/bin/nmcli c show br-ex
 RequiredBy=coreos-installer.target
 # for target system
 RequiredBy=multi-user.target`, nmConnectionId, nmConnectionFile)
+
+//go:embed resources/iscsi_butane_setup.yaml
+var iscsi_butane_config string
 
 func init() {
 	cmdTestIso.Flags().BoolVarP(&instInsecure, "inst-insecure", "S", false, "Do not verify signature on metal image")
@@ -587,6 +595,8 @@ func runTestIso(cmd *cobra.Command, args []string) (err error) {
 			duration, err = testLiveIso(ctx, inst, filepath.Join(outputDir, test), false)
 		case "miniso-install":
 			duration, err = testLiveIso(ctx, inst, filepath.Join(outputDir, test), true)
+		case "iso-offline-install-iscsi":
+			duration, err = testLiveInstalliscsi(ctx, inst, filepath.Join(outputDir, test))
 		default:
 			plog.Fatalf("Unknown test name:%s", test)
 		}
@@ -954,4 +964,78 @@ func testAsDisk(ctx context.Context, outdir string) (time.Duration, error) {
 	defer mach.Destroy()
 
 	return awaitCompletion(ctx, mach, outdir, completionChannel, nil, []string{liveOKSignal})
+}
+
+// iscsi_butane_setup.yaml contain the full butane config but here is an overview of the setup
+// 1 - Boot a live ISO with two extra 10G disks with labels "target" and "var"
+//   - Format and mount `virtio-var` to var
+//
+// 2 - target.container -> start an iscsi target, using quay.io/jbtrystram/targetcli
+// 3 - setup-targetcli.service calls /usr/local/bin/targetcli_script:
+//   - instructs targetcli to serve /dev/disk/by-id/virtio-target as an iscsi target
+//   - disables authentication
+//   - verifies the iscsi service is active and reachable
+//
+// 4 - install-coreos-to-iscsi-target.service calls /usr/local/bin/install-coreos-iscsi:
+//   - mount iscsi target
+//   - run coreos-installer on the mounted block device
+//   - unmount iscsi
+//
+// 5 - coreos-iscsi-vm.container start a coreos-assemble:
+//   - launch cosa qemuexec instructing it to boot from an iPXE script
+//     wich in turns mount the iscsi target and load kernel
+//   - note the virtserial port device: we pass through the serial port that was created by kola for test completion
+//
+// 6 - /mnt/workdir-tmp/nested-ign.json contains an ignition config:
+//   - when the system is booted, write a success string to /dev/virtio-ports/testiscsicompletion
+//   - As this serial device is mapped to the host serial device, the test concludes
+func testLiveInstalliscsi(ctx context.Context, inst platform.Install, outdir string) (time.Duration, error) {
+
+	builddir := kola.CosaBuild.Dir
+	isopath := filepath.Join(builddir, kola.CosaBuild.Meta.BuildArtifacts.LiveIso.Path)
+	builder, err := newBaseQemuBuilder(outdir)
+	if err != nil {
+		return 0, err
+	}
+	defer builder.Close()
+	if err := builder.AddIso(isopath, "", false); err != nil {
+		return 0, err
+	}
+
+	completionChannel, err := builder.VirtioChannelRead("testiscsicompletion")
+	if err != nil {
+		return 0, err
+	}
+
+	// empty disk to use as an iscsi target to install coreOS on and subseqently boot
+	// Also add a 10G disk that we will mount on /var, to increase space available when pulling containers
+	err = builder.AddDisksFromSpecs([]string{"10G:serial=target", "10G:serial=var"})
+	if err != nil {
+		return 0, err
+	}
+
+	// We need more memory to start another VM within !
+	builder.MemoryMiB = 4096
+
+	var iscsiTargetConfig = conf.Butane(iscsi_butane_config)
+
+	config, err := iscsiTargetConfig.Render(conf.FailWarnings)
+	if err != nil {
+		return 0, err
+	}
+	// Add a failure target to stop the test if something go wrong rather than waiting for the 10min timeout
+	config.AddSystemdUnit("coreos-test-entered-emergency-target.service", signalFailureUnit, conf.Enable)
+
+	// enable network
+	builder.EnableUsermodeNetworking([]platform.HostForwardPort{}, "")
+
+	builder.SetConfig(config)
+
+	mach, err := builder.Exec()
+	if err != nil {
+		return 0, errors.Wrapf(err, "running iso")
+	}
+	defer mach.Destroy()
+
+	return awaitCompletion(ctx, mach, outdir, completionChannel, nil, []string{"iscsi-boot-ok"})
 }
