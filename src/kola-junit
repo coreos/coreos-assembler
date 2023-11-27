@@ -1,0 +1,126 @@
+#!/usr/bin/env python3
+
+'''
+    This script is used in Jenkins to convert kola's `report.json` to JUnit
+    XML, which Jenkins knows how to display natively.
+'''
+
+import argparse
+import json
+import os
+import re
+import sys
+
+from junit_xml import TestSuite, TestCase
+
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--classname", required=True)
+parser.add_argument("--koladir", required=True)
+parser.add_argument("--output", required=True)
+parser.add_argument("--with-passed-tests", action='store_true')
+args = parser.parse_args()
+
+with open(os.path.join(args.koladir, "reports/report.json")) as f:
+    report = json.load(f)
+
+
+# https://stackoverflow.com/a/14693789
+def strip_ansi(text):
+    ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
+    return ansi_escape.sub('', text)
+
+
+# In a {kola_outputdir}/{testname}/ dir, there can be multiple directories; one
+# per host that was brought up. e.g. the Tang test brings up a Tang server in a
+# separate host. We can only report one host, so we choose the one whose dir
+# was created most recently since that's more likely to be the one with the
+# error.
+def get_most_recent_host_dir(parent_dir):
+    # special case for testiso tests, where there's no nested dir per host
+    if os.path.exists(os.path.join(parent_dir, "console.txt")):
+        return parent_dir
+
+    most_recent = None
+    most_recent_ts = 0
+    for dirent in os.listdir(parent_dir):
+        path = os.path.join(parent_dir, dirent)
+        if not os.path.isdir(path):
+            continue
+        ts = os.path.getctime(path)
+        if ts > most_recent_ts:
+            most_recent = path
+            most_recent_ts = ts
+    return most_recent
+
+
+test_cases = []
+for test in report['tests']:
+    # by default, we don't include passed tests in the report
+    if test['result'] == 'PASS' and not args.with_passed_tests:
+        continue
+
+    has_bucket_prefix = test['name'].startswith('non-exclusive-test-bucket-')
+
+    if '/' in test['name']:
+        # a subtest; we don't normally report them, except bucketed tests since
+        # they're really full tests of their own
+        main_test, subtest = test['name'].split('/')
+        if not has_bucket_prefix:
+            continue
+        dirname = main_test
+        test['name'] = subtest
+    elif has_bucket_prefix:
+        # it's the bucketed test itself; we don't report that one since we
+        # directly report on the subtests that failed
+        continue
+    else:
+        dirname = test['name']
+
+    host_dir = get_most_recent_host_dir(f"{args.koladir}/{dirname}")
+
+    ext_test_out = None
+    if host_dir and test['name'].startswith('ext.'):
+        ext_test_out_fn = os.path.join(host_dir, f"{test['name']}.txt")
+        if os.path.isfile(ext_test_out_fn):
+            with open(ext_test_out_fn, encoding='utf-8') as f:
+                ext_test_out = f.read()
+
+    # for external tests; we append the kola-runext.service output
+    if ext_test_out is not None:
+        test['output'] += f"\n---\n{ext_test_out}"
+    test['output'] = strip_ansi(test['output'])
+
+    if test['result'] == 'PASS':
+        tc = TestCase(test['name'], args.classname + ".tests",
+                      test['duration'] / 10**9, test["output"])
+    else:
+        # we only add console/journal for failing tests
+        console_txt = None
+        journal_txt = None
+        if host_dir:
+            console_fn = os.path.join(host_dir, "console.txt")
+            if os.path.isfile(console_fn):
+                with open(console_fn, encoding='utf-8') as f:
+                    console_txt = strip_ansi(f.read())
+            journal_fn = os.path.join(host_dir, "journal.txt")
+            if os.path.isfile(journal_fn):
+                with open(journal_fn, encoding='utf-8') as f:
+                    journal_txt = f.read()
+
+        tc = TestCase(test['name'], args.classname + ".tests",
+                      test['duration'] / 10**9, console_txt, journal_txt)
+
+        if test["result"] == 'FAIL':
+            tc.add_failure_info(message="Test failed", output=test["output"])
+        elif test["result"] == 'SKIP':
+            tc.add_skipped_info(message="Test skipped", output=test["output"])
+
+    test_cases.append(tc)
+
+ts = TestSuite(args.classname, test_cases)
+if args.output == '-':
+    TestSuite.to_file(sys.stdout, [ts])
+else:
+    with open(args.outputxml, "w", encoding='utf-8') as f:
+        TestSuite.to_file(f, [ts])
