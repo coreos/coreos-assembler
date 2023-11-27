@@ -73,6 +73,9 @@ python3-resultsdb_conventions
 python3-resultsdb_conventions-fedora
 python3-fedfind
 
+# For creating JUnit test results for Jenkins
+python3-junit_xml
+
 # For debugging running processes in the pipelines
 strace
 
