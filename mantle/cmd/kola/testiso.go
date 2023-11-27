@@ -30,6 +30,8 @@ import (
 	"time"
 
 	"github.com/coreos/coreos-assembler/mantle/harness"
+	"github.com/coreos/coreos-assembler/mantle/harness/reporters"
+	"github.com/coreos/coreos-assembler/mantle/harness/testresult"
 	"github.com/coreos/coreos-assembler/mantle/platform/conf"
 	"github.com/coreos/coreos-assembler/mantle/util"
 	coreosarch "github.com/coreos/stream-metadata-go/arch"
@@ -448,8 +450,7 @@ func filterTests(tests []string, patterns []string) ([]string, error) {
 	return r, nil
 }
 
-func runTestIso(cmd *cobra.Command, args []string) error {
-	var err error
+func runTestIso(cmd *cobra.Command, args []string) (err error) {
 	if kola.CosaBuild == nil {
 		return fmt.Errorf("Must provide --build")
 	}
@@ -490,6 +491,19 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+
+	// see similar code in suite.go
+	reportDir := filepath.Join(outputDir, "reports")
+	if err := os.Mkdir(reportDir, 0777); err != nil {
+		return err
+	}
+
+	reporter := reporters.NewJSONReporter("report.json", "testiso", "")
+	defer func() {
+		if reportErr := reporter.Output(reportDir); reportErr != nil && err != nil {
+			err = reportErr
+		}
+	}()
 
 	baseInst := platform.Install{
 		CosaBuild:       kola.CosaBuild,
@@ -576,12 +590,22 @@ func runTestIso(cmd *cobra.Command, args []string) error {
 		default:
 			plog.Fatalf("Unknown test name:%s", test)
 		}
+
+		result := testresult.Pass
+		output := []byte{}
+		if err != nil {
+			result = testresult.Fail
+			output = []byte(err.Error())
+		}
+		reporter.ReportTest(test, []string{}, result, duration, output)
 		if printResult(test, duration, err) {
 			atLeastOneFailed = true
 		}
 	}
 
+	reporter.SetResult(testresult.Pass)
 	if atLeastOneFailed {
+		reporter.SetResult(testresult.Fail)
 		return harness.SuiteFailed
 	}
 
