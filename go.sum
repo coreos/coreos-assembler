@@ -63,8 +63,8 @@ github.com/coreos/pkg v0.0.0-20180928190104-399ea9e2e55f h1:lBNOc5arjvs8E5mO2tbp
 github.com/coreos/pkg v0.0.0-20180928190104-399ea9e2e55f/go.mod h1:E3G3o1h8I7cfcXa63jLwjI0eiQQMgzzUDFVpN/nH/eA=
 github.com/coreos/rpmostree-client-go v0.0.0-20231118154446-df964bc5419a h1:Ruje6Jj/CTQYLdY5JXW6bs4R81Jl4abhUfCCVbU835E=
 github.com/coreos/rpmostree-client-go v0.0.0-20231118154446-df964bc5419a/go.mod h1:UQfCEPNXlaq2KFDafVxhMA1sZKThWK7P0c/2ruzH8ZE=
-github.com/coreos/stream-metadata-go v0.4.3 h1:5GykJ8dtZSx1rdlzEAiDVzA73cwmUF3ceTuIP293L6E=
-github.com/coreos/stream-metadata-go v0.4.3/go.mod h1:fMObQqQm8Ku91G04btKzEH3AsdP1mrAb986z9aaK0tE=
+github.com/coreos/stream-metadata-go v0.4.4 h1:PM/6iNhofKGydsatiY1zdnMMHBT34skb5P7nfEFR4GU=
+github.com/coreos/stream-metadata-go v0.4.4/go.mod h1:fMObQqQm8Ku91G04btKzEH3AsdP1mrAb986z9aaK0tE=
 github.com/coreos/vcontext v0.0.0-20230201181013-d72178a18687 h1:uSmlDgJGbUB0bwQBcZomBTottKwEDF5fF8UjSwKSzWM=
 github.com/coreos/vcontext v0.0.0-20230201181013-d72178a18687/go.mod h1:Salmysdw7DAVuobBW/LwsKKgpyCPHUhjyJoMJD+ZJiI=
 github.com/cpuguy83/go-md2man/v2 v2.0.2/go.mod h1:tgQtvFlXSQOSOSIRvRPT7W67SCa46tRHOmNcaadrF8o=
