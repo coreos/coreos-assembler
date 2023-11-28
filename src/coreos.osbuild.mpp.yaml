@@ -1,32 +1,42 @@
 version: '2'
 mpp-vars:
   filename: $filename
+  disk_size_gb: 10
+  bios_boot_size_mb: 1
+  efi_system_size_mb: 127
+  boot_size_mb: 384
+  # XXX: Dynamically set this size in the future
+  root_size_mb: 2048
+  sector_size: 512
 mpp-define-image:
   id: image
-  #10G
-  size: '10737418240'
+  size:
+    mpp-format-string: "{disk_size_gb * 1024 * 1024 * 1024}"
   table:
     uuid: 00000000-0000-4000-a000-000000000001
     label: gpt
     partitions:
       - id: BIOS-BOOT
-        size: 2048
         type: 21686148-6449-6E6F-744E-656564454649
         bootable: true
         uuid: FAC7F1FB-3E8D-4137-A512-961DE09A5549
+        size:
+          mpp-format-int: "{bios_boot_size_mb * 1024 * 1024 / sector_size}"
       - id: EFI-SYSTEM
-        size: 260096
         type: C12A7328-F81F-11D2-BA4B-00A0C93EC93B
         uuid: 68B2905B-DF3E-4FB3-80FA-49D1E773AA33
+        size:
+          mpp-format-int: "{efi_system_size_mb * 1024 * 1024 / sector_size}"
       - id: boot
-        size: 786432
         type: 0FC63DAF-8483-4772-8E79-3D69D8477DE4
         uuid: 61B2905B-DF3E-4FB3-80FA-49D1E773AA32
+        size:
+          mpp-format-int: "{boot_size_mb * 1024 * 1024 / sector_size}"
       - id: root
-        # XXX: Dynamically set this size in the future
-        size: 4194304
         type: 0FC63DAF-8483-4772-8E79-3D69D8477DE4
         uuid: CA7D7CCB-63ED-4C53-861C-1742536059CC
+        size:
+          mpp-format-int: "{root_size_mb * 1024 * 1024 / sector_size}"
 pipelines:
   - name: tree
     source-epoch: 1659397331
