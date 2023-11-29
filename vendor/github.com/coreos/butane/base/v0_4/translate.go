@@ -134,7 +134,7 @@ func translateFile(from File, options common.TranslateOptions) (to types.File, t
 func translateResource(from Resource, options common.TranslateOptions) (to types.Resource, tm translate.TranslationSet, r report.Report) {
 	tr := translate.NewTranslator("yaml", "json", options)
 	tm, r = translate.Prefixed(tr, "verification", &from.Verification, &to.Verification)
-	translate.MergeP(tr, tm, &r, "httpHeaders", &from.HTTPHeaders, &to.HTTPHeaders)
+	translate.MergeP2(tr, tm, &r, "http_headers", &from.HTTPHeaders, "httpHeaders", &to.HTTPHeaders)
 	translate.MergeP(tr, tm, &r, "source", &from.Source, &to.Source)
 	translate.MergeP(tr, tm, &r, "compression", &from.Compression, &to.Compression)
 

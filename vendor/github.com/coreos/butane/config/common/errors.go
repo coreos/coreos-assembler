@@ -49,14 +49,16 @@ var (
 	ErrTooManySystemdSources = errors.New("only one of the following can be set: contents, contents_local")
 
 	// mount units
-	ErrMountUnitNoPath   = errors.New("path is required if with_mount_unit is true and format is not swap")
-	ErrMountUnitNoFormat = errors.New("format is required if with_mount_unit is true")
+	ErrMountUnitNoPath     = errors.New("path is required if with_mount_unit is true and format is not swap")
+	ErrMountUnitNoFormat   = errors.New("format is required if with_mount_unit is true")
+	ErrMountPointForbidden = errors.New("path must be under /etc or /var if with_mount_unit is true")
 
 	// boot device
 	ErrUnknownBootDeviceLayout = errors.New("layout must be one of: aarch64, ppc64le, x86_64")
 	ErrTooFewMirrorDevices     = errors.New("mirroring requires at least two devices")
 
 	// partition
+	ErrReuseByLabel         = errors.New("partitions cannot be reused by label; number must be specified except on boot disk (/dev/disk/by-id/coreos-boot-disk) or when wipe_table is true")
 	ErrWrongPartitionNumber = errors.New("incorrect partition number; a new partition will be created using reserved label")
 
 	// MachineConfigs
@@ -69,11 +71,12 @@ var (
 	ErrFileSchemeSupport      = errors.New("file contents source must be data URL in this spec version")
 	ErrFileAppendSupport      = errors.New("appending to files is not supported in this spec version")
 	ErrFileCompressionSupport = errors.New("file compression is not supported in this spec version")
+	ErrFileHeaderSupport      = errors.New("file HTTP headers are not supported in this spec version")
 	ErrFileSpecialModeSupport = errors.New("special mode bits are not supported in this spec version")
 	ErrGroupSupport           = errors.New("groups are not supported in this spec version")
 	ErrUserFieldSupport       = errors.New("fields other than \"name\", \"ssh_authorized_keys\", and \"password_hash\" (4.13.0+) are not supported in this spec version")
 	ErrUserNameSupport        = errors.New("users other than \"core\" are not supported in this spec version")
-	ErrKernelArgumentSupport  = errors.New("this field cannot be used for kernel arguments in this spec version; use openshift.kernel_arguments instead")
+	ErrKernelArgumentSupport  = errors.New("this section cannot be used for kernel arguments in this spec version; use openshift.kernel_arguments instead")
 
 	// Storage
 	ErrClevisSupport     = errors.New("clevis is not supported in this spec version")

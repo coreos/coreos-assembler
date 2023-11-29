@@ -15,12 +15,38 @@
 package v1_6_exp
 
 import (
+	"regexp"
+
 	"github.com/coreos/butane/config/common"
 	"github.com/coreos/ignition/v2/config/util"
 
 	"github.com/coreos/vcontext/path"
 	"github.com/coreos/vcontext/report"
 )
+
+const rootDevice = "/dev/disk/by-id/coreos-boot-disk"
+
+var allowedMountpoints = regexp.MustCompile(`^/(etc|var)(/|$)`)
+
+// We can't define a Validate function directly on Disk because that's defined in base,
+// so we use a Validate function on the top-level Config instead.
+func (conf Config) Validate(c path.ContextPath) (r report.Report) {
+	for i, disk := range conf.Storage.Disks {
+		if disk.Device != rootDevice && !util.IsTrue(disk.WipeTable) {
+			for p, partition := range disk.Partitions {
+				if partition.Number == 0 && partition.Label != nil {
+					r.AddOnWarn(c.Append("storage", "disks", i, "partitions", p, "number"), common.ErrReuseByLabel)
+				}
+			}
+		}
+	}
+	for i, fs := range conf.Storage.Filesystems {
+		if fs.Path != nil && !allowedMountpoints.MatchString(*fs.Path) && util.IsTrue(fs.WithMountUnit) {
+			r.AddOnError(c.Append("storage", "filesystems", i, "path"), common.ErrMountPointForbidden)
+		}
+	}
+	return
+}
 
 func (d BootDevice) Validate(c path.ContextPath) (r report.Report) {
 	if d.Layout != nil {

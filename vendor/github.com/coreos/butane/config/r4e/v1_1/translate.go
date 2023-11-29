@@ -17,48 +17,24 @@ package v1_1
 import (
 	"github.com/coreos/butane/config/common"
 	cutil "github.com/coreos/butane/config/util"
-	"github.com/coreos/butane/translate"
+
 	"github.com/coreos/ignition/v2/config/v3_4/types"
-	"github.com/coreos/vcontext/path"
 	"github.com/coreos/vcontext/report"
 )
 
-// ToIgn3_4Unvalidated translates the config to an Ignition config.  It also
-// returns the set of translations it did so paths in the resultant config
-// can be tracked back to their source in the source config.  No config
-// validation is performed on input or output.
-func (c Config) ToIgn3_4Unvalidated(options common.TranslateOptions) (types.Config, translate.TranslationSet, report.Report) {
-	ret, ts, r := c.Config.ToIgn3_4Unvalidated(options)
-	if r.IsFatal() {
-		return types.Config{}, translate.TranslationSet{}, r
-	}
+var (
+	fieldFilters = cutil.NewFilters(types.Config{}, cutil.FilterMap{
+		"kernelArguments":     common.ErrGeneralKernelArgumentSupport,
+		"storage.disks":       common.ErrDiskSupport,
+		"storage.filesystems": common.ErrFilesystemSupport,
+		"storage.luks":        common.ErrLuksSupport,
+		"storage.raid":        common.ErrRaidSupport,
+	})
+)
 
-	checkForForbiddenFields(ret, &r)
-
-	return ret, ts, r
-}
-
-// Checks and adds the appropiate errors when unsupported fields on r4e are
-// provided
-func checkForForbiddenFields(t types.Config, r *report.Report) {
-	for i := range t.KernelArguments.ShouldExist {
-		r.AddOnError(path.New("path", "json", "kernel_arguments", "should_exist", i), common.ErrGeneralKernelArgumentSupport)
-	}
-	for i := range t.KernelArguments.ShouldNotExist {
-		r.AddOnError(path.New("path", "json", "kernel_arguments", "should_not_exist", i), common.ErrGeneralKernelArgumentSupport)
-	}
-	for i := range t.Storage.Disks {
-		r.AddOnError(path.New("path", "json", "storage", "disks", i), common.ErrDiskSupport)
-	}
-	for i := range t.Storage.Filesystems {
-		r.AddOnError(path.New("path", "json", "storage", "filesystems", i), common.ErrFilesystemSupport)
-	}
-	for i := range t.Storage.Luks {
-		r.AddOnError(path.New("path", "json", "storage", "luks", i), common.ErrLuksSupport)
-	}
-	for i := range t.Storage.Raid {
-		r.AddOnError(path.New("path", "json", "storage", "raid", i), common.ErrRaidSupport)
-	}
+// Return FieldFilters for this spec.
+func (c Config) FieldFilters() *cutil.FieldFilters {
+	return &fieldFilters
 }
 
 // ToIgn3_4 translates the config to an Ignition config. It returns a
