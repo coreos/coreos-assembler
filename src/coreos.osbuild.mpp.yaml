@@ -8,8 +8,11 @@ mpp-vars:
   # XXX: Dynamically set this size in the future
   root_size_mb: 2048
   sector_size: 512
+  four_k_sector_size: 4096
 mpp-define-images:
   - id: image
+    sector_size:
+        mpp-format-int: "{sector_size}"
     size:
       mpp-format-string: "{disk_size_gb * 1024 * 1024 * 1024}"
     table:
@@ -37,6 +40,36 @@ mpp-define-images:
           uuid: CA7D7CCB-63ED-4C53-861C-1742536059CC
           size:
             mpp-format-int: "{root_size_mb * 1024 * 1024 / sector_size}"
+  - id: image4k
+    sector_size:
+        mpp-format-int: "{four_k_sector_size}"
+    size:
+      mpp-format-string: "{disk_size_gb * 1024 * 1024 * 1024}"
+    table:
+      uuid: 00000000-0000-4000-a000-000000000001
+      label: gpt
+      partitions:
+        - name: BIOS-BOOT
+          type: 21686148-6449-6E6F-744E-656564454649
+          bootable: true
+          uuid: FAC7F1FB-3E8D-4137-A512-961DE09A5549
+          size:
+            mpp-format-int: "{bios_boot_size_mb * 1024 * 1024 / four_k_sector_size}"
+        - name: EFI-SYSTEM
+          type: C12A7328-F81F-11D2-BA4B-00A0C93EC93B
+          uuid: 68B2905B-DF3E-4FB3-80FA-49D1E773AA33
+          size:
+            mpp-format-int: "{efi_system_size_mb * 1024 * 1024 / four_k_sector_size}"
+        - name: boot
+          type: 0FC63DAF-8483-4772-8E79-3D69D8477DE4
+          uuid: 61B2905B-DF3E-4FB3-80FA-49D1E773AA32
+          size:
+            mpp-format-int: "{boot_size_mb * 1024 * 1024 / four_k_sector_size}"
+        - name: root
+          type: 0FC63DAF-8483-4772-8E79-3D69D8477DE4
+          uuid: CA7D7CCB-63ED-4C53-861C-1742536059CC
+          size:
+            mpp-format-int: "{root_size_mb * 1024 * 1024 / four_k_sector_size}"
 pipelines:
   - name: tree
     source-epoch: 1659397331
@@ -218,6 +251,126 @@ pipelines:
             number:
               mpp-format-int: '{image.layout[''boot''].index}'
             path: /grub2
+  - name: raw-4k-image
+    stages:
+      - type: org.osbuild.truncate
+        options:
+          filename: disk.img
+          size:
+            mpp-format-string: '{image4k.size}'
+      - type: org.osbuild.sfdisk
+        devices:
+          device:
+            type: org.osbuild.loopback
+            options:
+              filename: disk.img
+              sector-size:
+                  mpp-format-int: "{four_k_sector_size}"
+        options:
+          mpp-format-json: '{image4k.layout}'
+      - type: org.osbuild.mkfs.fat
+        devices:
+          device:
+            type: org.osbuild.loopback
+            options:
+              filename: disk.img
+              start:
+                mpp-format-int: '{image4k.layout[''EFI-SYSTEM''].start}'
+              size:
+                mpp-format-int: '{image4k.layout[''EFI-SYSTEM''].size}'
+              lock: true
+              sector-size:
+                  mpp-format-int: "{four_k_sector_size}"
+        options:
+          label: EFI-SYSTEM
+          volid: 7B7795E7
+      - type: org.osbuild.mkfs.ext4
+        devices:
+          device:
+            type: org.osbuild.loopback
+            options:
+              filename: disk.img
+              start:
+                mpp-format-int: '{image4k.layout[''boot''].start}'
+              size:
+                mpp-format-int: '{image4k.layout[''boot''].size}'
+              lock: true
+              sector-size:
+                  mpp-format-int: "{four_k_sector_size}"
+        options:
+          uuid: 96d15588-3596-4b3c-adca-a2ff7279ea63
+          label: boot
+      - type: org.osbuild.mkfs.xfs
+        devices:
+          device:
+            type: org.osbuild.loopback
+            options:
+              filename: disk.img
+              start:
+                mpp-format-int: '{image4k.layout[''root''].start}'
+              size:
+                mpp-format-int: '{image4k.layout[''root''].size}'
+              lock: true
+              sector-size:
+                  mpp-format-int: "{four_k_sector_size}"
+        options:
+          uuid: 910678ff-f77e-4a7d-8d53-86f2ac47a823
+          label: root
+      - type: org.osbuild.copy
+        inputs:
+          tree:
+            type: org.osbuild.tree
+            origin: org.osbuild.pipeline
+            references:
+              - name:tree
+        options:
+          paths:
+            - from: input://tree/
+              to: mount://root/
+        devices:
+          efi:
+            type: org.osbuild.loopback
+            options:
+              filename: disk.img
+              start:
+                mpp-format-int: '{image4k.layout[''EFI-SYSTEM''].start}'
+              size:
+                mpp-format-int: '{image4k.layout[''EFI-SYSTEM''].size}'
+              sector-size:
+                  mpp-format-int: "{four_k_sector_size}"
+          boot:
+            type: org.osbuild.loopback
+            options:
+              filename: disk.img
+              start:
+                mpp-format-int: '{image4k.layout[''boot''].start}'
+              size:
+                mpp-format-int: '{image4k.layout[''boot''].size}'
+              sector-size:
+                  mpp-format-int: "{four_k_sector_size}"
+          root:
+            type: org.osbuild.loopback
+            options:
+              filename: disk.img
+              start:
+                mpp-format-int: '{image4k.layout[''root''].start}'
+              size:
+                mpp-format-int: '{image4k.layout[''root''].size}'
+              sector-size:
+                  mpp-format-int: "{four_k_sector_size}"
+        mounts:
+          - name: root
+            type: org.osbuild.xfs
+            source: root
+            target: /
+          - name: boot
+            type: org.osbuild.ext4
+            source: boot
+            target: /boot
+          - name: efi
+            type: org.osbuild.fat
+            source: efi
+            target: /boot/efi
   - name: raw-metal-image
     stages:
       - type: org.osbuild.copy
@@ -245,6 +398,40 @@ pipelines:
                 mpp-format-int: '{image.layout[''boot''].start}'
               size:
                 mpp-format-int: '{image.layout[''boot''].size}'
+        mounts:
+          - name: boot
+            type: org.osbuild.ext4
+            source: boot
+            target: /
+  - name: raw-metal4k-image
+    stages:
+      - type: org.osbuild.copy
+        inputs:
+          tree:
+            type: org.osbuild.tree
+            origin: org.osbuild.pipeline
+            references:
+              - name:raw-4k-image
+        options:
+          paths:
+            - from: input://tree/disk.img
+              to: tree:///disk.img
+      - type: org.osbuild.kernel-cmdline.bls-append
+        options:
+          bootpath: mount:///
+          kernel_opts:
+            - ignition.platform.id=metal
+        devices:
+          boot:
+            type: org.osbuild.loopback
+            options:
+              filename: disk.img
+              start:
+                mpp-format-int: '{image4k.layout[''boot''].start}'
+              size:
+                mpp-format-int: '{image4k.layout[''boot''].size}'
+              sector-size:
+                  mpp-format-int: "{four_k_sector_size}"
         mounts:
           - name: boot
             type: org.osbuild.ext4
@@ -293,6 +480,20 @@ pipelines:
             origin: org.osbuild.pipeline
             references:
               - name:raw-metal-image
+        options:
+          paths:
+            - from: input://tree/disk.img
+              to:
+                mpp-format-string: 'tree:///{filename}'
+  - name: metal4k
+    stages:
+      - type: org.osbuild.copy
+        inputs:
+          tree:
+            type: org.osbuild.tree
+            origin: org.osbuild.pipeline
+            references:
+              - name:raw-metal4k-image
         options:
           paths:
             - from: input://tree/disk.img

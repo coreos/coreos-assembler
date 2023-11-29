@@ -263,7 +263,7 @@ platforms_json="${workdir}/tmp/platforms.json"
 yaml2json "${configdir}/platforms.yaml" "${platforms_json}"
 
 # Currently we only support OSBuild for qemu and metal disk images
-if [ "${image_type}" == "qemu" ] || [ "${image_type}" == "metal" ]; then
+if [ "${image_type}" == "qemu" ] || [ "${image_type}" == "metal" ] || [ "${image_type}" == "metal4k" ]; then
     OSBUILD_SUPPORTED=1
 fi
 
