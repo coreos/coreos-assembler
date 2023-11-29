@@ -54,6 +54,11 @@ const (
 	bootV1SizeMiB     = 384
 )
 
+// Return FieldFilters for this spec.
+func (c Config) FieldFilters() *cutil.FieldFilters {
+	return nil
+}
+
 // ToIgn3_3Unvalidated translates the config to an Ignition config.  It also
 // returns the set of translations it did so paths in the resultant config
 // can be tracked back to their source in the source config.  No config

@@ -21,6 +21,7 @@ import (
 	"reflect"
 	"regexp"
 	"strings"
+	"unicode"
 
 	"github.com/coreos/butane/config/common"
 	"github.com/coreos/butane/translate"
@@ -36,17 +37,21 @@ import (
 )
 
 var (
-	snakeRe = regexp.MustCompile("([A-Z])")
+	snakeRe = regexp.MustCompile("(MiB|[A-Z])")
 )
 
 // Misc helpers
+
+type Config interface {
+	FieldFilters() *FieldFilters
+}
 
 // Translate translates cfg to the corresponding Ignition config version
 // using the named translation method on cfg, and returns the marshaled
 // Ignition config.  It returns a report of any errors or warnings in the
 // source and resultant config.  If the report has fatal errors or it
 // encounters other problems translating, an error is returned.
-func Translate(cfg interface{}, translateMethod string, options common.TranslateOptions) (interface{}, report.Report, error) {
+func Translate(cfg Config, translateMethod string, options common.TranslateOptions) (interface{}, report.Report, error) {
 	// Get method, and zero return value for error returns.
 	method := reflect.ValueOf(cfg).MethodByName(translateMethod)
 	zeroValue := reflect.Zero(method.Type().Out(0)).Interface()
@@ -62,7 +67,7 @@ func Translate(cfg interface{}, translateMethod string, options common.Translate
 	final := translateRet[0].Interface()
 	translations := translateRet[1].Interface().(translate.TranslationSet)
 	translateReport := translateRet[2].Interface().(report.Report)
-	r.Merge(translateReport)
+	r.Merge(TranslateReportPaths(translateReport, translations))
 	if r.IsFatal() {
 		return zeroValue, r, common.ErrInvalidSourceConfig
 	}
@@ -70,6 +75,16 @@ func Translate(cfg interface{}, translateMethod string, options common.Translate
 		fmt.Fprint(os.Stderr, translations)
 		if err := translations.DebugVerifyCoverage(final); err != nil {
 			fmt.Fprintf(os.Stderr, "\n%s", err)
+		}
+	}
+
+	// Check for fields forbidden by this spec.
+	filters := cfg.FieldFilters()
+	if filters != nil {
+		filterReport := filters.Verify(final)
+		r.Merge(TranslateReportPaths(filterReport, translations))
+		if r.IsFatal() {
+			return zeroValue, r, common.ErrInvalidSourceConfig
 		}
 	}
 
@@ -204,7 +219,7 @@ func snakePath(p path.ContextPath) path.ContextPath {
 	ret := path.New(p.Tag)
 	for _, part := range p.Path {
 		if str, ok := part.(string); ok {
-			ret = ret.Append(snake(str))
+			ret = ret.Append(Snake(str))
 		} else {
 			ret = ret.Append(part)
 		}
@@ -212,18 +227,36 @@ func snakePath(p path.ContextPath) path.ContextPath {
 	return ret
 }
 
-// snake converts from camelCase (not CamelCase) to snake_case
-func snake(in string) string {
+// Snake converts from camelCase (not CamelCase) to snake_case
+func Snake(in string) string {
 	return strings.ToLower(snakeRe.ReplaceAllString(in, "_$1"))
 }
 
-// TranslateReportPaths takes a report from a camelCase json document and a set of translations rules,
-// applies those rules and converts all camelCase to snake_case.
+// Camel converts from snake_case to camelCase
+func Camel(in string) string {
+	if strings.HasSuffix(in, "_mib") {
+		in = strings.TrimSuffix(in, "_mib") + "MiB"
+	}
+	arr := []rune(in)
+	for i := range arr {
+		if i > 0 && arr[i-1] == '_' {
+			arr[i] = unicode.ToUpper(arr[i])
+		}
+	}
+	return strings.ReplaceAll(string(arr), "_", "")
+}
+
+// TranslateReportPaths takes a report with a mix of json (camelCase) and
+// yaml (snake_case) paths, and a set of translation rules.  It applies
+// those rules and converts all json paths to snake-cased yaml.
 func TranslateReportPaths(r report.Report, ts translate.TranslationSet) report.Report {
 	var ret report.Report
 	ret.Merge(r)
 	for i, ent := range ret.Entries {
 		context := ent.Context
+		if context.Tag == "yaml" {
+			continue
+		}
 		if t, ok := ts.Set[context.String()]; ok {
 			context = t.From
 		} else {

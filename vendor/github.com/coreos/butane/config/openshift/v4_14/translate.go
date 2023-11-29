@@ -12,19 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.)
 
-package v4_12
+package v4_14
 
 import (
 	"net/url"
 	"strings"
 
 	"github.com/coreos/butane/config/common"
-	"github.com/coreos/butane/config/openshift/v4_12/result"
+	"github.com/coreos/butane/config/openshift/v4_14/result"
 	cutil "github.com/coreos/butane/config/util"
 	"github.com/coreos/butane/translate"
 
 	"github.com/coreos/ignition/v2/config/util"
-	"github.com/coreos/ignition/v2/config/v3_2/types"
+	"github.com/coreos/ignition/v2/config/v3_4/types"
 	"github.com/coreos/vcontext/path"
 	"github.com/coreos/vcontext/report"
 )
@@ -36,6 +36,10 @@ import (
 //
 // FORBIDDEN - Not supported by the MCD.  If present in MC, MCD will mark
 // the node degraded.  We reject these.
+//
+// REDUNDANT - Feature is also provided by a MachineConfig-specific field
+// with different semantics.  To reduce confusion, disable this
+// implementation.
 //
 // IMMUTABLE - Permitted in MC, passed through to Ignition, but not
 // supported by the MCD.  MCD will mark the node degraded if the field
@@ -58,6 +62,8 @@ const (
 var (
 	// See also validateRHCOSSupport() and validateMCOSupport()
 	fieldFilters = cutil.NewFilters(result.MachineConfig{}, cutil.FilterMap{
+		// UNPARSABLE, REDUNDANT
+		"spec.config.kernelArguments": common.ErrKernelArgumentSupport,
 		// IMMUTABLE
 		"spec.config.passwd.groups": common.ErrGroupSupport,
 		// TRIPWIRE
@@ -72,8 +78,6 @@ var (
 		"spec.config.passwd.users.noLogInit": common.ErrUserFieldSupport,
 		// TRIPWIRE
 		"spec.config.passwd.users.noUserGroup": common.ErrUserFieldSupport,
-		// TRIPWIRE
-		"spec.config.passwd.users.passwordHash": common.ErrUserFieldSupport,
 		// TRIPWIRE
 		"spec.config.passwd.users.primaryGroup": common.ErrUserFieldSupport,
 		// TRIPWIRE
@@ -104,12 +108,12 @@ func (c Config) FieldFilters() *cutil.FieldFilters {
 	return &fieldFilters
 }
 
-// ToMachineConfig4_12Unvalidated translates the config to a MachineConfig.  It also
+// ToMachineConfig4_14Unvalidated translates the config to a MachineConfig.  It also
 // returns the set of translations it did so paths in the resultant config
 // can be tracked back to their source in the source config.  No config
 // validation is performed on input or output.
-func (c Config) ToMachineConfig4_12Unvalidated(options common.TranslateOptions) (result.MachineConfig, translate.TranslationSet, report.Report) {
-	cfg, ts, r := c.Config.ToIgn3_2Unvalidated(options)
+func (c Config) ToMachineConfig4_14Unvalidated(options common.TranslateOptions) (result.MachineConfig, translate.TranslationSet, report.Report) {
+	cfg, ts, r := c.Config.ToIgn3_4Unvalidated(options)
 	if r.IsFatal() {
 		return result.MachineConfig{}, ts, r
 	}
@@ -160,21 +164,21 @@ func (c Config) ToMachineConfig4_12Unvalidated(options common.TranslateOptions) 
 	return mc, ts, r
 }
 
-// ToMachineConfig4_12 translates the config to a MachineConfig.  It returns a
+// ToMachineConfig4_14 translates the config to a MachineConfig.  It returns a
 // report of any errors or warnings in the source and resultant config.  If
 // the report has fatal errors or it encounters other problems translating,
 // an error is returned.
-func (c Config) ToMachineConfig4_12(options common.TranslateOptions) (result.MachineConfig, report.Report, error) {
-	cfg, r, err := cutil.Translate(c, "ToMachineConfig4_12Unvalidated", options)
+func (c Config) ToMachineConfig4_14(options common.TranslateOptions) (result.MachineConfig, report.Report, error) {
+	cfg, r, err := cutil.Translate(c, "ToMachineConfig4_14Unvalidated", options)
 	return cfg.(result.MachineConfig), r, err
 }
 
-// ToIgn3_2Unvalidated translates the config to an Ignition config.  It also
+// ToIgn3_4Unvalidated translates the config to an Ignition config.  It also
 // returns the set of translations it did so paths in the resultant config
 // can be tracked back to their source in the source config.  No config
 // validation is performed on input or output.
-func (c Config) ToIgn3_2Unvalidated(options common.TranslateOptions) (types.Config, translate.TranslationSet, report.Report) {
-	mc, ts, r := c.ToMachineConfig4_12Unvalidated(options)
+func (c Config) ToIgn3_4Unvalidated(options common.TranslateOptions) (types.Config, translate.TranslationSet, report.Report) {
+	mc, ts, r := c.ToMachineConfig4_14Unvalidated(options)
 	cfg := mc.Spec.Config
 
 	// report warnings if there are any non-empty fields in Spec (other
@@ -189,23 +193,23 @@ func (c Config) ToIgn3_2Unvalidated(options common.TranslateOptions) (types.Conf
 	return cfg, ts, r
 }
 
-// ToIgn3_2 translates the config to an Ignition config.  It returns a
+// ToIgn3_4 translates the config to an Ignition config.  It returns a
 // report of any errors or warnings in the source and resultant config.  If
 // the report has fatal errors or it encounters other problems translating,
 // an error is returned.
-func (c Config) ToIgn3_2(options common.TranslateOptions) (types.Config, report.Report, error) {
-	cfg, r, err := cutil.Translate(c, "ToIgn3_2Unvalidated", options)
+func (c Config) ToIgn3_4(options common.TranslateOptions) (types.Config, report.Report, error) {
+	cfg, r, err := cutil.Translate(c, "ToIgn3_4Unvalidated", options)
 	return cfg.(types.Config), r, err
 }
 
-// ToConfigBytes translates from a v4.12 Butane config to a v4.12 MachineConfig or a v3.2.0 Ignition config. It returns a report of any errors or
+// ToConfigBytes translates from a v4.14 Butane config to a v4.14 MachineConfig or a v3.4.0 Ignition config. It returns a report of any errors or
 // warnings in the source and resultant config. If the report has fatal errors or it encounters other problems
 // translating, an error is returned.
 func ToConfigBytes(input []byte, options common.TranslateBytesOptions) ([]byte, report.Report, error) {
 	if options.Raw {
-		return cutil.TranslateBytes(input, &Config{}, "ToIgn3_2", options)
+		return cutil.TranslateBytes(input, &Config{}, "ToIgn3_4", options)
 	} else {
-		return cutil.TranslateBytesYAML(input, &Config{}, "ToMachineConfig4_12", options)
+		return cutil.TranslateBytesYAML(input, &Config{}, "ToMachineConfig4_14", options)
 	}
 }
 
@@ -269,6 +273,12 @@ func validateMCOSupport(mc result.MachineConfig) report.Report {
 	// See also fieldFilters at the top of this file.
 
 	var r report.Report
+	for i, fs := range mc.Spec.Config.Storage.Filesystems {
+		if fs.Format != nil && *fs.Format == "none" {
+			// UNPARSABLE
+			r.AddOnError(path.New("json", "spec", "config", "storage", "filesystems", i, "format"), common.ErrFilesystemNoneSupport)
+		}
+	}
 	for i, file := range mc.Spec.Config.Storage.Files {
 		if file.Contents.Source != nil {
 			fileSource, err := url.Parse(*file.Contents.Source)

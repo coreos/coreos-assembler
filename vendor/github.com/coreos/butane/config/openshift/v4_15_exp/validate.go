@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.)
 
-package v4_14_exp
+package v4_15_exp
 
 import (
 	"github.com/coreos/butane/config/common"
@@ -26,7 +26,7 @@ func (m Metadata) Validate(c path.ContextPath) (r report.Report) {
 		r.AddOnError(c.Append("name"), common.ErrNameRequired)
 	}
 	if m.Labels[ROLE_LABEL_KEY] == "" {
-		r.AddOnError(c.Append("labels", ROLE_LABEL_KEY), common.ErrRoleRequired)
+		r.AddOnError(c.Append("labels"), common.ErrRoleRequired)
 	}
 	return
 }
