@@ -1,0 +1,233 @@
+From f25a1718033dc6b2e51766c77febded06b5be978 Mon Sep 17 00:00:00 2001
+From: Luke Yang <luyang@redhat.com>
+Date: Wed, 25 Oct 2023 13:47:56 -0400
+Subject: [PATCH 3/3] create org.osbuild.ostree.aleph stage
+
+Similar to the aleph file created for builds of FCOS based on ostree
+commit inputs, this adds an aleph file that contains information about
+the initial deployment of data when the disk image was built
+
+A new stage is preferred here as both the org.osbuild.ostree.deploy
+and org.osbuild.ostree.deploy.container stages need an aleph file and
+use of the aleph file may depend on the project/product. For example,
+right now CoreOS is the only project that uses an aleph file, but others
+may want it in the future.
+---
+ osbuild/util/ostree.py          |  28 ++++++
+ stages/org.osbuild.ostree.aleph | 165 ++++++++++++++++++++++++++++++++
+ 2 files changed, 193 insertions(+)
+ create mode 100755 stages/org.osbuild.ostree.aleph
+
+diff --git a/osbuild/util/ostree.py b/osbuild/util/ostree.py
+index 90821d5b..170c28c3 100644
+--- a/osbuild/util/ostree.py
++++ b/osbuild/util/ostree.py
+@@ -237,6 +237,34 @@ def deployment_path(root: PathLike, osname: str, ref: str, serial: int):
+     return sysroot
+ 
+ 
++def parse_origin(origin: PathLike):
++    """Parse the origin file and return the deployment type and imgref
++
++    Example container case: container-image-reference=ostree-remote-image:fedora:docker://quay.io/fedora/fedora-coreos:stable
++    Example ostree commit case: refspec=fedora:fedora/x86_64/coreos/stable
++    """
++    deploy_type = ""
++    imgref = ""
++    with open(origin, "r", encoding="utf8") as f:
++        for line in f:
++            separated_line = line.split("=")
++            if separated_line[0] == "container-image-reference":
++                deploy_type = "container"
++                imgref = separated_line[1].rstrip()
++                break
++            if separated_line[0] == "refspec":
++                deploy_type = "ostree_commit"
++                imgref = separated_line[1].rstrip()
++                break
++
++    if deploy_type == "":
++        raise ValueError("Could not find 'container-image-reference' or 'refspec' in origin file")
++    if imgref == "":
++        raise ValueError("Could not find imgref in origin file")
++
++    return deploy_type, imgref
++
++
+ class PasswdLike:
+     """Representation of a file with structure like /etc/passwd
+ 
+diff --git a/stages/org.osbuild.ostree.aleph b/stages/org.osbuild.ostree.aleph
+new file mode 100755
+index 00000000..b152a822
+--- /dev/null
++++ b/stages/org.osbuild.ostree.aleph
+@@ -0,0 +1,165 @@
++#!/usr/bin/python3
++"""
++Create aleph version file for the deployment.
++"""
++
++
++import json
++import os
++import sys
++
++import osbuild.api
++from osbuild.util import ostree
++
++CAPABILITIES = ["CAP_MAC_ADMIN"]
++ALEPH_FILENAME = ".aleph-version.json"
++COREOS_ALEPH_FILENAME = ".coreos-aleph-version.json"
++
++
++SCHEMA_2 = """
++"options": {
++  "additionalProperties": false,
++  "properties": {
++    "coreos_compat": {
++      "description": "boolean to allow for CoreOS aleph version backwards compatibility",
++      "type": "boolean"
++    },
++    "deployment": {
++      "additionalProperties": false,
++      "required": ["osname", "ref"],
++      "properties": {
++        "osname": {
++          "description": "Name of the stateroot to be used in the deployment",
++          "type": "string"
++        },
++        "ref": {
++          "description": "OStree ref to create and use for deployment",
++          "type": "string"
++        },
++        "serial": {
++          "description": "The deployment serial (usually '0')",
++          "type": "number",
++          "default": 0
++        }
++      }
++    }
++  }
++}
++"""
++
++
++def aleph_commit(tree, imgref):
++    extra_args = []
++    extra_args.append("--print-metadata-key=version")
++
++    aleph_version = ostree.cli("show", f"--repo={tree}/ostree/repo", imgref, *extra_args).stdout.rstrip().strip('\'')
++    aleph_ref = imgref
++    # get the commit by parsing the revision of the deployment
++    aleph_ostree_commit = ostree.rev_parse(tree + "/ostree/repo", imgref)
++
++    aleph_version_data = {
++        "osbuild-version": osbuild.__version__,
++        "version": aleph_version,
++        "ref": aleph_ref,
++        "ostree-commit": aleph_ostree_commit
++    }
++
++    return aleph_version_data
++
++
++def aleph_container(tree, imgref):
++    # extract the image name from the imgref
++    imgref_list = imgref.split(':')
++    if imgref_list[0] in ["ostree-remote-registry", "ostree-remote-image"]:
++        img_name = ':'.join(imgref_list[2:])
++    elif imgref_list[0] in ["ostree-image-signed", "ostree-unverified-registry"]:
++        img_name = ':'.join(imgref_list[1:])
++    else:
++        raise ValueError(f"Image ref {imgref} has unsupported type (supported: 'ostree-remote-registry', \
++                         'ostree-remote-image', 'ostree-image-signed', or 'ostree-unverified-registry')")
++
++    img_name = img_name.removeprefix('docker://')
++
++    extra_args = []
++    extra_args.append(f"--repo={tree}/ostree/repo")
++    extra_args.append(f"registry:{img_name}")
++
++    container_data_json = ostree.cli("container", "image", "metadata", *extra_args).stdout.rstrip()
++    container_data = json.loads(container_data_json)
++
++    extra_args.append("--config")
++    container_data_config_json = ostree.cli("container", "image", "metadata", *extra_args).stdout.rstrip()
++    container_data_config = json.loads(container_data_config_json)
++
++    aleph_digest = container_data['config']['digest']
++    aleph_ref = f"docker://{imgref}"
++    aleph_version = container_data_config['config']['Labels']['org.opencontainers.image.version']
++    aleph_container_image = container_data_config['config']['Labels']
++
++    aleph_version_data = {
++        "osbuild-version": osbuild.__version__,
++        "ref": aleph_ref,
++        "version": aleph_version,
++        "container-image": {
++            "image-name": img_name,
++            "image-digest": aleph_digest,
++            "image-labels": aleph_container_image
++        }
++    }
++
++    # the 'ostree.commit' label will be optional in the future so
++    # prevent hard failing if key is not found
++    aleph_ostree_commit = container_data_config['config']['Labels'].get('ostree.commit')
++    if aleph_ostree_commit is not None:
++        aleph_version_data["ostree-commit"] = aleph_ostree_commit
++
++    return aleph_version_data
++
++
++def construct_aleph_json(tree, origin):
++    deploy_type, imgref = ostree.parse_origin(origin)
++    data = {}
++    # null deploy_type and imgref error is caught in the parse_origin() function
++    if deploy_type == "container":
++        data = aleph_container(tree, imgref)
++    elif deploy_type == "ostree_commit":
++        data = aleph_commit(tree, imgref)
++    else:
++        raise ValueError("Unknown deployment type")
++
++    return data
++
++
++def main(tree, options):
++    coreos_compat = options.get("coreos_compat", False)
++    dep = options.get("deployment", None)
++    osname = ""
++    ref = ""
++    serial = None
++    origin = ""
++
++    # if deployment is specified, use it to find the origin file.
++    # otherwise, autodetect the only deployment found in the tree.
++    if dep is not None:
++        osname = dep.get("osname", "")
++        ref = dep.get("ref", "")
++        serial = dep.get("serial", 0)
++
++    origin = ostree.deployment_path(tree, osname, ref, serial) + ".origin"
++    data = construct_aleph_json(tree, origin)
++
++    # write the data out to the file
++    with open(os.path.join(tree, ALEPH_FILENAME), "w", encoding="utf8") as f:
++        json.dump(data, f, indent=4, sort_keys=True)
++        f.write("\n")
++
++    # create a symlink for backwards compatibility with CoreOS
++    if coreos_compat:
++        os.symlink(ALEPH_FILENAME, os.path.join(tree, COREOS_ALEPH_FILENAME))
++
++
++if __name__ == '__main__':
++    stage_args = osbuild.api.arguments()
++    r = main(stage_args["tree"],
++             stage_args["options"])
++    sys.exit(r)
+-- 
+2.41.0
+

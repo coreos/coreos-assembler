@@ -187,6 +187,9 @@ patch_osbuild() {
         /usr/lib/coreos-assembler/0003-tools-osbuild-mpp-support-defining-multiple-image-la.patch \
         /usr/lib/coreos-assembler/0004-tools-osbuild-mpp-add-sector-size-support-for-image-.patch \
         /usr/lib/coreos-assembler/0005-tools-osbuild-mpp-set-part-ID-from-name-if-missing.patch   \
+        /usr/lib/coreos-assembler/0001-osbuild-util-ostree-convert-cli-to-return-the-comple.patch \
+        /usr/lib/coreos-assembler/0002-osbuild-util-ostree-optimize-deployment_path.patch         \
+        /usr/lib/coreos-assembler/0003-create-org.osbuild.ostree.aleph-stage.patch                \
             | patch -d /usr/lib/osbuild -p1
 
     # And then move the files back; supermin appliance creation will need it back
