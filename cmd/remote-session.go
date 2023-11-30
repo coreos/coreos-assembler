@@ -135,7 +135,7 @@ func preRunCheckEnv(c *cobra.Command, args []string) error {
 // COREOS_ASSEMBLER_REMOTE_SESSION environment variable.
 func runCreate(c *cobra.Command, args []string) error {
 	podmanargs := []string{"--remote", "run", "--rm", "-d",
-		"--pull=always", "--privileged", "--security-opt=label=disable",
+		"--pull=always", "--net=host", "--privileged", "--security-opt=label=disable",
 		"--volume", remoteSessionOpts.CreateWorkdir,
 		"--workdir", remoteSessionOpts.CreateWorkdir,
 		// Mount required volume for buildextend-secex, it will be empty on
