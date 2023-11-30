@@ -223,7 +223,7 @@ bootargs=
 # flag was only recently added to grub.
 # https://lists.gnu.org/archive/html/grub-devel/2021-06/msg00031.html
 if [ "${bootfs_metadata_csum_seed}" == "true" ]; then
-    bootargs="-O metadata_csum_seed"
+    bootargs+=" -O metadata_csum_seed"
 fi
 
 # Detect if the target system supports orphan_file.
@@ -237,7 +237,7 @@ if [ "${e2fsprogs_version}" != "1.47.0" ] && \
         [ "$(echo -e "${e2fsprogs_version}\n1.47.0" | sort -V | tail -n1)" = "1.47.0" ]; then
     # target system has e2fsprogs older than 1.47.0; it won't support
     # orphan_file so make sure we opt out of it
-    bootargs+="-O ^orphan_file"
+    bootargs+=" -O ^orphan_file"
 fi
 
 case "${bootfs}" in
