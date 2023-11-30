@@ -168,12 +168,32 @@ write_archive_info() {
 }
 
 patch_osbuild() {
-    # A few patches that either haven't made it into a release or
+    # Add a few patches that either haven't made it into a release or
     # that will be obsoleted with other work that will be done soon.
+
+    # To make it easier to apply patches we'll move around the osbuild
+    # code on the system first:
+    rmdir /usr/lib/osbuild/osbuild
+    mv /usr/lib/python3.12/site-packages/osbuild /usr/lib/osbuild/
+    mkdir /usr/lib/osbuild/tools
+    mv /usr/bin/osbuild-mpp /usr/lib/osbuild/tools/
+
+    # Now all the software is under the /usr/lib/osbuild dir and we can patch
     cat /usr/lib/coreos-assembler/0001-Mount-boot-from-host-in-host-builder-case.patch           \
         /usr/lib/coreos-assembler/0001-osbuild-util-fscache-calculate-actual-size-of-files.patch \
         /usr/lib/coreos-assembler/0002-util-tweak-_calculate_size-to-_calculate_space.patch      \
-            | patch -p1 -d /usr/lib/python3.12/site-packages/
+        /usr/lib/coreos-assembler/0001-devices-loopback-make-setting-sector_size-meaningful.patch \
+        /usr/lib/coreos-assembler/0002-tools-osbuild-mpp-handle-corner-case-in-mpp-format-i.patch \
+        /usr/lib/coreos-assembler/0003-tools-osbuild-mpp-support-defining-multiple-image-la.patch \
+        /usr/lib/coreos-assembler/0004-tools-osbuild-mpp-add-sector-size-support-for-image-.patch \
+        /usr/lib/coreos-assembler/0005-tools-osbuild-mpp-set-part-ID-from-name-if-missing.patch   \
+            | patch -d /usr/lib/osbuild -p1
+
+    # And then move the files back; supermin appliance creation will need it back
+    # in the places delivered by the RPM.
+    mv /usr/lib/osbuild/tools/osbuild-mpp /usr/bin/osbuild-mpp
+    mv /usr/lib/osbuild/osbuild /usr/lib/python3.12/site-packages/osbuild
+    mkdir /usr/lib/osbuild/osbuild
 }
 
 if [ $# -ne 0 ]; then
