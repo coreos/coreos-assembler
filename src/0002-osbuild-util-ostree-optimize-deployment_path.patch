@@ -1,0 +1,43 @@
+From 009813573024d4d42f37e5c1d3752e0c0e07bb06 Mon Sep 17 00:00:00 2001
+From: Dusty Mabe <dusty@dustymabe.com>
+Date: Mon, 27 Nov 2023 16:24:29 -0500
+Subject: [PATCH 2/3] osbuild/util/ostree: optimize deployment_path()
+
+When provisioning disk images there should really not be more than
+one deployment on a system. We don't really need any of the parameters
+here so let's make them optional and just find the deployment anyway.
+
+Co-authored-by: Luke Yang <luyang@redhat.com>
+---
+ osbuild/util/ostree.py | 9 +++++++++
+ 1 file changed, 9 insertions(+)
+
+diff --git a/osbuild/util/ostree.py b/osbuild/util/ostree.py
+index 09c648fb..90821d5b 100644
+--- a/osbuild/util/ostree.py
++++ b/osbuild/util/ostree.py
+@@ -1,5 +1,6 @@
+ import collections
+ import contextlib
++import glob
+ import json
+ import os
+ import subprocess
+@@ -217,6 +218,14 @@ def parse_input_commits(commits):
+ def deployment_path(root: PathLike, osname: str, ref: str, serial: int):
+     """Return the path to a deployment given the parameters"""
+ 
++    if osname == "" and ref == "" and serial is None:
++        filenames = glob.glob(root + '/ostree/deploy/*/deploy/*.0', recursive=True)
++        if len(filenames) < 1:
++            raise ValueError("Could not find deployment")
++        if len(filenames) > 1:
++            raise ValueError("More than one deployment found")
++        return filenames[0]
++
+     base = os.path.join(root, "ostree")
+ 
+     repo = os.path.join(base, "repo")
+-- 
+2.41.0
+

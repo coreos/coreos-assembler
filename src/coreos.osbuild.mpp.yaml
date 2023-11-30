@@ -110,6 +110,9 @@ pipelines:
                 - ref: $ref
                   remote:
                     url: $repourl
+      - type: org.osbuild.ostree.aleph
+        options:
+          coreos_compat: true
       - type: org.osbuild.ostree.selinux
         options:
           deployment:
