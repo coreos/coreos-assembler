@@ -83,7 +83,7 @@ pipelines:
           repo: /ostree/repo
           config:
             sysroot:
-              readonly: false
+              readonly: true
               bootloader: none
       - type: org.osbuild.mkdir
         options:
