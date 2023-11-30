@@ -1,0 +1,45 @@
+From 28c2772d42159ccdf07b629509dbaf23ebb61f68 Mon Sep 17 00:00:00 2001
+From: Dusty Mabe <dusty@dustymabe.com>
+Date: Tue, 21 Nov 2023 21:12:37 -0500
+Subject: [PATCH 4/5] tools/osbuild-mpp: add sector size support for image
+ layouts
+
+Now you can specify a sector_size in `mpp-define-images` to support
+creating a 4k native disk image (sector_size=4096).
+
+This does use a loopback device, which means osbuild-mpp also needs
+to run as root, when previously that wasn't necessary.
+---
+ tools/osbuild-mpp | 12 +++++++++---
+ 1 file changed, 9 insertions(+), 3 deletions(-)
+
+diff --git a/tools/osbuild-mpp b/tools/osbuild-mpp
+index b3165936..c2f440a7 100755
+--- a/tools/osbuild-mpp
++++ b/tools/osbuild-mpp
+@@ -974,13 +974,19 @@ class Image:
+     def from_dict(cls, js):
+         size = js["size"]
+         data = js["table"]
++        sector_size = js.get('sector_size', 512)
+ 
+         with tempfile.TemporaryDirectory() as tmp:
+             image = os.path.join(tmp, "disk.img")
+             subprocess.run(["truncate", "--size", size, image], check=True)
+-
+-            table = PartitionTable.from_dict(data)
+-            table.write_to(image)
++            cp = subprocess.run(["losetup", "--find", "--show", f"--sector-size={sector_size}", image],
++                                stdout=subprocess.PIPE, check=True)
++            loopimage = cp.stdout.rstrip()
++            try:
++                table = PartitionTable.from_dict(data)
++                table.write_to(loopimage)
++            finally:
++                subprocess.run(["losetup", "-d", loopimage])
+ 
+         return cls(size, table)
+ 
+-- 
+2.41.0
+
