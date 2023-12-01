@@ -131,7 +131,6 @@ os_name=$(getconfig "osname")
 rootfs_size=$(getconfig "rootfs-size")
 buildid=$(getconfig "buildid")
 imgid=$(getconfig "imgid")
-bootfs_metadata_csum_seed=$(getconfig_def "bootfs_metadata_csum_seed" "false")
 
 set -x
 
@@ -217,15 +216,6 @@ boot_dev="${disk}${BOOTPN}"
 root_dev="${disk}${ROOTPN}"
 
 bootargs=
-# If the bootfs_metadata_csum_seed image.yaml knob is set to true then
-# we'll enable the metadata_csum_seed filesystem feature. This is
-# gated behind an image.yaml knob because support for this feature
-# flag was only recently added to grub.
-# https://lists.gnu.org/archive/html/grub-devel/2021-06/msg00031.html
-if [ "${bootfs_metadata_csum_seed}" == "true" ]; then
-    bootargs+=" -O metadata_csum_seed"
-fi
-
 # Detect if the target system supports orphan_file.
 # https://github.com/coreos/coreos-assembler/pull/3653#issuecomment-1813181723
 # Ideally, we'd do feature detection here but there's no clean way to do that.
