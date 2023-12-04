@@ -47,6 +47,9 @@ install_rpms() {
     # We freeze the version for now since we're carrying patches.
     frozendeps+=" $(echo osbuild{,-ostree,-selinux,-tools}-100-1.fc39.noarch)"
 
+    # Freeze the version of podman for https://github.com/coreos/coreos-assembler/issues/3678
+    frozendeps+=" podman-4.7.2-1.fc39"
+
     # First, a general update; this is best practice.  We also hit an issue recently
     # where qemu implicitly depended on an updated libusbx but didn't have a versioned
     # requires https://bugzilla.redhat.com/show_bug.cgi?id=1625641
