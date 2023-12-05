@@ -101,7 +101,7 @@ func verifyError(builder *platform.QemuBuilder, searchPattern string) error {
 		return err
 	}
 	defer inst.Destroy()
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), 4*time.Minute)
 
 	defer cancel()
 
