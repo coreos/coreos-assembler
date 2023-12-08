@@ -58,7 +58,6 @@ import (
 	"github.com/coreos/coreos-assembler/mantle/platform/machine/qemuiso"
 	"github.com/coreos/coreos-assembler/mantle/system"
 	"github.com/coreos/coreos-assembler/mantle/util"
-	coreosarch "github.com/coreos/stream-metadata-go/arch"
 )
 
 // InstalledTestsDir is a directory where "installed" external
@@ -599,7 +598,7 @@ func filterTests(tests map[string]*register.Test, patterns []string, pltfrm stri
 				isExcluded = true
 				break
 			}
-			allowedArchitecture, _ := isAllowed(coreosarch.CurrentRpmArch(), t.Architectures, t.ExcludeArchitectures)
+			allowedArchitecture, _ := isAllowed(Options.CosaBuildArch, t.Architectures, t.ExcludeArchitectures)
 			allowed = allowed || (allowedPlatform && allowedArchitecture)
 		}
 		if isExcluded || !allowed {
@@ -622,7 +621,7 @@ func filterTests(tests map[string]*register.Test, patterns []string, pltfrm stri
 				delete(t.NativeFuncs, k)
 				continue
 			}
-			_, excluded = isAllowed(coreosarch.CurrentRpmArch(), nil, NativeFuncWrap.Exclusions)
+			_, excluded = isAllowed(Options.CosaBuildArch, nil, NativeFuncWrap.Exclusions)
 			if excluded {
 				delete(t.NativeFuncs, k)
 			}
@@ -717,7 +716,7 @@ func runProvidedTests(testsBank map[string]*register.Test, patterns []string, mu
 	}
 
 	if len(tests) == 0 {
-		plog.Fatalf("There are no matching tests to run on this architecture/platform: %s %s", coreosarch.CurrentRpmArch(), pltfrm)
+		plog.Fatalf("There are no matching tests to run on this architecture/platform: %s %s", Options.CosaBuildArch, pltfrm)
 	}
 
 	tests, err = filterDenylistedTests(tests)
@@ -1216,7 +1215,7 @@ ExecStart=%s
 	// Architectures using 64k pages use slightly more memory, ask for more than requested
 	// to make sure that we don't run out of it. Currently, only ppc64le uses 64k pages by default.
 	// See similar logic in boot-mirror.go and luks.go.
-	switch coreosarch.CurrentRpmArch() {
+	switch Options.CosaBuildArch {
 	case "ppc64le":
 		if targetMeta.MinMemory <= 4096 {
 			targetMeta.MinMemory = targetMeta.MinMemory * 2
