@@ -707,9 +707,9 @@ runvm() {
     find /usr/lib/coreos-assembler/ -type f > "${vmpreparedir}/hostfiles"
 
     # include new patched in osbuild stage in the image.
-    # can drop this once osbuild v100 is out.
-    # https://github.com/osbuild/osbuild/pull/1429
-    echo /usr/lib/osbuild/stages/org.osbuild.kernel-cmdline.bls-append >> "${vmpreparedir}/hostfiles"
+    # can drop this once the upstream PRs are merged:
+    # https://github.com/osbuild/osbuild/pull/1519
+    echo /usr/lib/osbuild/stages/org.osbuild.bootupd >> "${vmpreparedir}/hostfiles"
 
     # and include all GPG keys
     find /etc/pki/rpm-gpg/ -type f >> "${vmpreparedir}/hostfiles"

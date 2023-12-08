@@ -113,24 +113,14 @@ pipelines:
       - type: org.osbuild.ostree.aleph
         options:
           coreos_compat: true
+          deployment:
+            osname: fedora-coreos
+            ref: ostree/1/1/0
       - type: org.osbuild.ostree.selinux
         options:
           deployment:
             osname: fedora-coreos
             ref: ostree/1/1/0
-      - type: org.osbuild.grub2
-        options:
-          rootfs:
-            label: root
-          bootfs:
-            label: boot
-          uefi:
-            vendor: fedora
-            install: true
-          legacy: i386-pc
-          write_defaults: false
-          greenboot: false
-          ignition: true
   - name: raw-image
     stages:
       - type: org.osbuild.truncate
@@ -200,60 +190,60 @@ pipelines:
             - from: input://tree/
               to: mount://root/
         devices:
-          efi:
+          disk:
             type: org.osbuild.loopback
             options:
               filename: disk.img
-              start:
-                mpp-format-int: '{image.layout[''EFI-SYSTEM''].start}'
-              size:
-                mpp-format-int: '{image.layout[''EFI-SYSTEM''].size}'
-          boot:
-            type: org.osbuild.loopback
-            options:
-              filename: disk.img
-              start:
-                mpp-format-int: '{image.layout[''boot''].start}'
-              size:
-                mpp-format-int: '{image.layout[''boot''].size}'
-          root:
-            type: org.osbuild.loopback
-            options:
-              filename: disk.img
-              start:
-                mpp-format-int: '{image.layout[''root''].start}'
-              size:
-                mpp-format-int: '{image.layout[''root''].size}'
+              partscan: true
         mounts:
           - name: root
             type: org.osbuild.xfs
-            source: root
+            source: disk
+            partition:
+              mpp-format-int: '{image.layout[''root''].partnum}'
             target: /
           - name: boot
             type: org.osbuild.ext4
-            source: boot
+            source: disk
+            partition:
+              mpp-format-int: '{image.layout[''boot''].partnum}'
             target: /boot
           - name: efi
             type: org.osbuild.fat
-            source: efi
+            source: disk
+            partition:
+              mpp-format-int: '{image.layout[''EFI-SYSTEM''].partnum}'
             target: /boot/efi
-      - type: org.osbuild.grub2.inst
+      - type: org.osbuild.bootupd
         options:
-          platform: i386-pc
-          filename: disk.img
-          location:
-            mpp-format-int: '{image.layout[''BIOS-BOOT''].start}'
-          core:
-            type: mkimage
-            partlabel: gpt
-            filesystem: ext4
-          prefix:
-            type: partition
-            partlabel:
-              mpp-format-string: '{image.layout.label}'
-            number:
-              mpp-format-int: '{image.layout[''boot''].index}'
-            path: /grub2
+          bios:
+            disk: disk
+          static-configs: true
+        devices:
+          disk:
+            type: org.osbuild.loopback
+            options:
+              filename: disk.img
+              partscan: true
+        mounts:
+          - name: root
+            type: org.osbuild.xfs
+            source: disk
+            partition:
+              mpp-format-int: '{image.layout[''root''].partnum}'
+            target: /
+          - name: boot
+            type: org.osbuild.ext4
+            source: disk
+            partition:
+              mpp-format-int: '{image.layout[''boot''].partnum}'
+            target: /boot
+          - name: efi
+            type: org.osbuild.fat
+            source: disk
+            partition:
+              mpp-format-int: '{image.layout[''EFI-SYSTEM''].partnum}'
+            target: /boot/efi
   - name: raw-4k-image
     stages:
       - type: org.osbuild.truncate
@@ -331,48 +321,61 @@ pipelines:
             - from: input://tree/
               to: mount://root/
         devices:
-          efi:
+          disk:
             type: org.osbuild.loopback
             options:
               filename: disk.img
-              start:
-                mpp-format-int: '{image4k.layout[''EFI-SYSTEM''].start}'
-              size:
-                mpp-format-int: '{image4k.layout[''EFI-SYSTEM''].size}'
-              sector-size:
-                  mpp-format-int: "{four_k_sector_size}"
-          boot:
-            type: org.osbuild.loopback
-            options:
-              filename: disk.img
-              start:
-                mpp-format-int: '{image4k.layout[''boot''].start}'
-              size:
-                mpp-format-int: '{image4k.layout[''boot''].size}'
-              sector-size:
-                  mpp-format-int: "{four_k_sector_size}"
-          root:
-            type: org.osbuild.loopback
-            options:
-              filename: disk.img
-              start:
-                mpp-format-int: '{image4k.layout[''root''].start}'
-              size:
-                mpp-format-int: '{image4k.layout[''root''].size}'
+              partscan: true
               sector-size:
                   mpp-format-int: "{four_k_sector_size}"
         mounts:
           - name: root
             type: org.osbuild.xfs
-            source: root
+            source: disk
+            partition:
+              mpp-format-int: '{image4k.layout[''root''].partnum}'
             target: /
           - name: boot
             type: org.osbuild.ext4
-            source: boot
+            source: disk
+            partition:
+              mpp-format-int: '{image4k.layout[''boot''].partnum}'
             target: /boot
           - name: efi
             type: org.osbuild.fat
-            source: efi
+            source: disk
+            partition:
+              mpp-format-int: '{image4k.layout[''EFI-SYSTEM''].partnum}'
+            target: /boot/efi
+      - type: org.osbuild.bootupd
+        options:
+          static-configs: true
+        devices:
+          disk:
+            type: org.osbuild.loopback
+            options:
+              filename: disk.img
+              partscan: true
+              sector-size:
+                  mpp-format-int: "{four_k_sector_size}"
+        mounts:
+          - name: root
+            type: org.osbuild.xfs
+            source: disk
+            partition:
+              mpp-format-int: '{image4k.layout[''root''].partnum}'
+            target: /
+          - name: boot
+            type: org.osbuild.ext4
+            source: disk
+            partition:
+              mpp-format-int: '{image4k.layout[''boot''].partnum}'
+            target: /boot
+          - name: efi
+            type: org.osbuild.fat
+            source: disk
+            partition:
+              mpp-format-int: '{image4k.layout[''EFI-SYSTEM''].partnum}'
             target: /boot/efi
   - name: raw-metal-image
     stages:

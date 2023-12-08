@@ -1,0 +1,148 @@
+From 1daad28dda6ad47109499fbd67a5094605c4221b Mon Sep 17 00:00:00 2001
+From: Renata Ravanelli <rravanel@redhat.com>
+Date: Thu, 16 Nov 2023 09:41:18 -0500
+Subject: [PATCH] create org.osbuild.bootupd stage
+
+Add the bootupd stage to install GRUB on both BIOS and UEFI systems,
+ensuring that your bootloader stays up-to-date.
+
+Signed-off-by: Renata Ravanelli <rravanel@redhat.com>
+---
+ stages/org.osbuild.bootupd | 125 +++++++++++++++++++++++++++++++++++++
+ 1 file changed, 125 insertions(+)
+ create mode 100755 stages/org.osbuild.bootupd
+
+diff --git a/stages/org.osbuild.bootupd b/stages/org.osbuild.bootupd
+new file mode 100755
+index 00000000..96613019
+--- /dev/null
++++ b/stages/org.osbuild.bootupd
+@@ -0,0 +1,125 @@
++#!/usr/bin/python3
++"""
++Install GRUB on both BIOS and UEFI systems,
++ensuring that your bootloader stays up-to-date.
++
++Bootupd supports updating GRUB and shim for
++UEFI firmware on x86_64 and aarch64,
++and GRUB for BIOS firmware on x86_64.
++The project is deployed in Fedora CoreOS and derivatives
++"""
++
++import os
++import subprocess
++import sys
++
++import osbuild.api
++from osbuild.util import ostree
++
++SCHEMA_2 = r"""
++"devices": {
++  "type": "object",
++  "additionalProperties": true
++},
++"mounts": {
++  "type": "array"
++},
++"options": {
++"additionalProperties": true,
++"properties": {
++  "deployment": {
++    "additionalProperties": false,
++    "required": ["osname", "ref"],
++    "properties": {
++      "osname": {
++        "description": "Name of the stateroot to be used in the deployment",
++        "type": "string"
++      },
++      "ref": {
++        "description": "OStree ref to create and use for deployment",
++        "type": "string"
++      },
++      "serial": {
++        "description": "The deployment serial (usually '0')",
++        "type": "number",
++        "default": 0
++      }
++    }
++  },
++  "static-configs": {
++    "description": "Install the grub configs defined for Fedora CoreOS",
++    "type": "boolean"
++  },
++  "bios": {
++    "additionalProperties": false,
++    "required": ["disk"],
++    "properties": {
++      "disk": {
++          "description": "Disk to install GRUB for BIOS-based systems",
++          "type": "string"
++      }
++    }
++  }
++}
++}
++"""
++
++
++def main(args, options):
++    deployment = options.get("deployment", None)
++    static_configs = options.get("static-configs", False)
++    bios = options.get("bios", {})
++    disk = bios.get("disk", "")
++
++    # Get the path where the filesystems are mounted
++    mounts = args["paths"]["mounts"]
++
++    # Get the deployment root. For non-OSTree this is simply
++    # the root location of the mount points. For OSTree systems
++    # we'll call ostree.deployment_path() helper to find it for us.
++    root = mounts
++    if deployment:
++        osname = deployment["osname"]
++        ref = deployment["ref"]
++        serial = deployment.get("serial", 0)
++        root = ostree.deployment_path(mounts, osname, ref, serial)
++
++    bootupd_args = []
++    if disk:
++        # The value passed by the user is the name of the device
++        # as specified in the devices array (also passed in by the
++        # user). Let's map that name to the actual loopback device
++        # that now backs it.
++        dev = args["devices"][disk]["path"]
++        bootupd_args.append(f"--device={dev}")
++    if static_configs:
++        bootupd_args.append("--with-static-configs")
++
++    # We want to run the bootupctl command from the target (i.e. we
++    # want to make sure the version used matches the target and not
++    # risk any inconsistencies with the build root). Let's set up
++    # and chroot to run the bootupctl command from the target.
++    submounts = ['dev', 'proc', 'sys', 'run', 'var', 'tmp']
++    for mnt in submounts:
++        subprocess.run(['mount', '--rbind',
++                       os.path.join("/", mnt),
++                       os.path.join(root, mnt)],
++                       check=True)
++    try:
++        cmd = ['chroot', root, '/usr/bin/bootupctl', 'backend', 'install']
++        cmd.extend(bootupd_args)
++        cmd.append(mounts)
++        subprocess.run(cmd, check=True)
++    finally:
++        for mnt in submounts:
++            subprocess.run(['umount', '--recursive',
++                           os.path.join(root, mnt)],
++                           check=False)
++
++    return 0
++
++
++if __name__ == '__main__':
++    _args = osbuild.api.arguments()
++    r = main(_args, _args["options"])
++    sys.exit(r)
+-- 
+2.43.0
+
