@@ -45,7 +45,7 @@ install_rpms() {
     frozendeps=""
 
     # We freeze the version for now since we're carrying patches.
-    frozendeps+=" $(echo osbuild{,-ostree,-selinux,-tools}-100-1.fc39.noarch)"
+    frozendeps+=" $(echo osbuild{,-ostree,-selinux,-tools}-103-1.fc39.noarch)"
 
     # First, a general update; this is best practice.  We also hit an issue recently
     # where qemu implicitly depended on an updated libusbx but didn't have a versioned
@@ -176,17 +176,7 @@ patch_osbuild() {
     mv /usr/bin/osbuild-mpp /usr/lib/osbuild/tools/
 
     # Now all the software is under the /usr/lib/osbuild dir and we can patch
-    cat /usr/lib/coreos-assembler/0001-Mount-boot-from-host-in-host-builder-case.patch           \
-        /usr/lib/coreos-assembler/0001-osbuild-util-fscache-calculate-actual-size-of-files.patch \
-        /usr/lib/coreos-assembler/0002-util-tweak-_calculate_size-to-_calculate_space.patch      \
-        /usr/lib/coreos-assembler/0001-devices-loopback-make-setting-sector_size-meaningful.patch \
-        /usr/lib/coreos-assembler/0002-tools-osbuild-mpp-handle-corner-case-in-mpp-format-i.patch \
-        /usr/lib/coreos-assembler/0003-tools-osbuild-mpp-support-defining-multiple-image-la.patch \
-        /usr/lib/coreos-assembler/0004-tools-osbuild-mpp-add-sector-size-support-for-image-.patch \
-        /usr/lib/coreos-assembler/0005-tools-osbuild-mpp-set-part-ID-from-name-if-missing.patch   \
-        /usr/lib/coreos-assembler/0001-osbuild-util-ostree-convert-cli-to-return-the-comple.patch \
-        /usr/lib/coreos-assembler/0002-osbuild-util-ostree-optimize-deployment_path.patch         \
-        /usr/lib/coreos-assembler/0003-create-org.osbuild.ostree.aleph-stage.patch                \
+    cat /usr/lib/coreos-assembler/0001-create-org.osbuild.bootupd-stage.patch \
             | patch -d /usr/lib/osbuild -p1
 
     # And then move the files back; supermin appliance creation will need it back
