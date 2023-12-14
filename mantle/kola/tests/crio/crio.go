@@ -32,6 +32,8 @@ import (
 	"github.com/coreos/coreos-assembler/mantle/lang/worker"
 	"github.com/coreos/coreos-assembler/mantle/platform"
 	"github.com/coreos/coreos-assembler/mantle/platform/conf"
+
+	"github.com/google/uuid"
 )
 
 // simplifiedCrioInfo represents the results from crio info
@@ -51,7 +53,8 @@ const overrideCrioOperationTimeoutSeconds = "300s"
 var crioPodTemplate = `{
 	"metadata": {
 		"name": "rhcos-crio-pod-%s",
-		"namespace": "redhat.test.crio"
+		"namespace": "redhat.test.crio",
+		"uid": "%s"
 	},
 	"image": {
 			"image": "localhost/%s:latest"
@@ -220,7 +223,7 @@ func crioBaseTests(c cluster.TestCluster) {
 // generateCrioConfig generates a crio pod/container configuration
 // based on the input name and arguments returning the path to the generated configs.
 func generateCrioConfig(podName, imageName string, command []string) (string, string, error) {
-	fileContentsPod := fmt.Sprintf(crioPodTemplate, podName, imageName)
+	fileContentsPod := fmt.Sprintf(crioPodTemplate, podName, uuid.New().String(), imageName)
 
 	tmpFilePod, err := os.CreateTemp("", podName+"Pod")
 	if err != nil {
