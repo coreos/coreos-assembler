@@ -386,11 +386,6 @@ test -d "${deploy_root}" || (echo "failed to find $deploy_root"; exit 1)
 #
 # build:         The coreos-assembler build ID; today we support
 #                having the same ostree commit in different image builds.
-# version:       same value as build for now, even though version is
-#                not exactly the same as build ID, this will ease
-#                transition to using osbuild where it's defined
-#                appropriately and build: isn't there:
-#                https://github.com/osbuild/osbuild/pull/1475
 # ref:           The ostree ref used; useful for cross-checking.
 # ostree-commit: Similar to `ref`; one can derive this from looking
 #                at the coreos-assembler builds, but it's very
@@ -400,7 +395,6 @@ test -d "${deploy_root}" || (echo "failed to find $deploy_root"; exit 1)
 cat > $rootfs/.coreos-aleph-version.json << EOF
 {
 	"build": "${buildid}",
-	"version": "${buildid}",
 	"ref": "${ref}",
 	"ostree-commit": "${commit}",
 	"imgid": "${imgid}"
