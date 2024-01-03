@@ -1899,7 +1899,17 @@ func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 	}
 
 	if builder.ConsoleFile != "" {
-		builder.Append("-display", "none", "-chardev", "file,id=log,path="+builder.ConsoleFile, "-serial", "chardev:log")
+		// If we're logging to a file, then we're headless
+		builder.Append("-display", "none")
+		builder.Append("-chardev", "file,id=log,path="+builder.ConsoleFile)
+		if _, useHvc := os.LookupEnv("COSA_QEMU_CONSOLE_HVC"); useHvc {
+			if builder.virtioSerialID == 0 {
+				builder.Append("-device", "virtio-serial")
+			}
+			builder.Append("-device", "virtconsole,chardev=log,id=console,name=console")
+		} else {
+			builder.Append("-serial", "chardev:log")
+		}
 	} else {
 		builder.Append("-serial", "mon:stdio")
 	}
