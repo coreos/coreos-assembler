@@ -19,7 +19,7 @@ storage:
             Wants=network-online.target
             OnFailure=emergency.target
             [Container]
-            Image=quay.io/jbtrystram/targetcli:latest
+            Image=quay.io/coreos-assembler/targetcli:latest
             ContainerName=targetd
             Network=host
             Volume=/dev/disk/by-id/virtio-target:/dev/disk/by-id/virtio-target
