@@ -19,6 +19,7 @@ storage:
             Wants=network-online.target
             OnFailure=emergency.target
             [Container]
+            #TODO: move container image to centralized namespace
             Image=quay.io/jbtrystram/targetcli:latest
             ContainerName=target
             Network=host

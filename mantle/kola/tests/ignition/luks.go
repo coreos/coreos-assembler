@@ -93,10 +93,7 @@ func setupTangMachine(c cluster.TestCluster) ut.TangServer {
 
 	// TODO: move container image to centralized namespace
 	// container source: https://github.com/mike-nguyen/tang-docker-container/
-	containerImage := "quay.io/mike_nguyen/tang"
-	if coreosarch.CurrentRpmArch() != "x86_64" {
-		containerImage = "quay.io/multi-arch/tang:" + coreosarch.CurrentRpmArch()
-	}
+	containerImage := "quay.io/jbtrystram/tang"
 
 	containerID, errMsg, err := m.SSH("sudo podman run -d -p 80:80 " + containerImage)
 	if err != nil {
