@@ -249,7 +249,7 @@ func TestReadOnlyFs() error {
 
 // Test that the root disk's GUID was set to a random one on first boot.
 func TestFsRandomUUID() error {
-	c := exec.Command("sh", "-ec", "sudo blkid -o value -s PTUUID /dev/$(lsblk -no PKNAME $(findmnt -vno SOURCE /))")
+	c := exec.Command("sh", "-ec", "sudo blkid -o value -s PTUUID /dev/$(lsblk -no PKNAME $(findmnt -vno SOURCE /sysroot))")
 	out, err := c.Output()
 	if err != nil {
 		return fmt.Errorf("findmnt: %v", err)
