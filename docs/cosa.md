@@ -59,7 +59,6 @@ Those less commonly used commands are listed here:
 | [buildfetch](https://github.com/coreos/coreos-assembler/blob/main/src/cmd-buildfetch) | Fetches the bare minimum from external servers to create the next build
 | [buildupload](https://github.com/coreos/coreos-assembler/blob/main/src/cmd-buildupload) | Upload a build which later can be partially re-downloaded with cmd-buildfetch
 | [compress](https://github.com/coreos/coreos-assembler/blob/main/src/cmd-compress) | Compresses all images in a build
-| [dev-overlay](https://github.com/coreos/coreos-assembler/blob/main/src/cmd-dev-overlay) | Add content on top of a commit, handling SELinux labeling etc.
 | [dev-synthesize-osupdate](https://github.com/coreos/coreos-assembler/blob/main/src/cmd-dev-synthesize-osupdate) | Synthesize an OS update by modifying ELF files in a "benign" way (adding an ELF note)
 | [dev-synthesize-osupdatecontainer](https://github.com/coreos/coreos-assembler/blob/main/src/cmd-dev-synthesize-osupdatecontainer) | Wrapper for dev-synthesize-osupdate that operates on an oscontainer for OpenShift
 | [koji-upload](https://github.com/coreos/coreos-assembler/blob/main/src/cmd-koji-upload) | Performs the required steps to make COSA a Koji Content Generator
