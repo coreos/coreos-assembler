@@ -1,0 +1,50 @@
+From c62e555202eaa3d2e6f460a97b39c37a0a7b3a39 Mon Sep 17 00:00:00 2001
+From: Dusty Mabe <dusty@dustymabe.com>
+Date: Fri, 5 Jan 2024 00:53:52 -0500
+Subject: [PATCH] tools/osbuild-mpp: run _process_format() for mpp-embed dict
+
+So we can use something like mpp-format-string inside of mpp-embed. An
+example would be below where we want to substitute the ociarchive var
+in using `mpp-format-string: 'file://{ociarchive}'`.
+
+```
+version: '2'
+mpp-vars:
+  ociarchive: /path/to/fedora-coreos-39.20240104.dev.2-ostree.x86_64.ociarchive
+pipelines:
+  - name: oci-archive
+    stages:
+      - type: org.osbuild.copy
+        inputs:
+          inlinefile:
+            type: org.osbuild.files
+            origin: org.osbuild.source
+            mpp-embed:
+              id: fcos.ociarchive
+              url:
+                mpp-format-string: 'file://{ociarchive}'
+        options:
+          paths:
+            - from:
+                mpp-format-string: input://inlinefile/{embedded['fcos.ociarchive']}
+              to: tree:///fcos.ociarchive
+```
+---
+ tools/osbuild-mpp | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/tools/osbuild-mpp b/tools/osbuild-mpp
+index 018cfa01..6d5ebddd 100755
+--- a/tools/osbuild-mpp
++++ b/tools/osbuild-mpp
+@@ -1545,6 +1545,7 @@ class ManifestFileV2(ManifestFile):
+                 return self.checksum
+ 
+         def embed_data(ip, mpp):
++            self._process_format(mpp)
+             uid = mpp["id"]
+             path = mpp.get("path")
+             url = mpp.get("url")
+-- 
+2.43.0
+
