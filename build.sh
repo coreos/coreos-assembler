@@ -176,8 +176,11 @@ patch_osbuild() {
     mv /usr/bin/osbuild-mpp /usr/lib/osbuild/tools/
 
     # Now all the software is under the /usr/lib/osbuild dir and we can patch
-    cat /usr/lib/coreos-assembler/0001-create-org.osbuild.bootupd-stage.patch                       \
-        /usr/lib/coreos-assembler/0001-tools-osbuild-mpp-run-_process_format-for-mpp-embed-.patch   \
+    cat /usr/lib/coreos-assembler/0001-create-org.osbuild.bootupd-stage.patch                     \
+        /usr/lib/coreos-assembler/0002-stages-bootupd-add-schema-test.patch                       \
+        /usr/lib/coreos-assembler/0003-stages-bootupd-add-test-for-existing-behavior-and-re.patch \
+        /usr/lib/coreos-assembler/0004-stages-bootupd-refactor-test-to-test-bind_mounts-and.patch \
+        /usr/lib/coreos-assembler/0001-tools-osbuild-mpp-run-_process_format-for-mpp-embed-.patch \
             | patch -d /usr/lib/osbuild -p1
 
     # And then move the files back; supermin appliance creation will need it back
