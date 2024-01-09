@@ -1,0 +1,100 @@
+From 63f8e8e5d340513ca4a5dc0abe6c2d269ee57be3 Mon Sep 17 00:00:00 2001
+From: Michael Vogt <michael.vogt@gmail.com>
+Date: Tue, 9 Jan 2024 11:12:06 +0100
+Subject: [PATCH 2/4] stages(bootupd): add schema test
+
+---
+ stages/org.osbuild.bootupd  |  4 ++-
+ stages/test/test_bootupd.py | 56 +++++++++++++++++++++++++++++++++++++
+ 2 files changed, 59 insertions(+), 1 deletion(-)
+ create mode 100644 stages/test/test_bootupd.py
+
+diff --git a/stages/org.osbuild.bootupd b/stages/org.osbuild.bootupd
+index a7ffe610..2371900e 100755
+--- a/stages/org.osbuild.bootupd
++++ b/stages/org.osbuild.bootupd
+@@ -25,9 +25,10 @@ SCHEMA_2 = r"""
+   "type": "array"
+ },
+ "options": {
+-  "additionalProperties": true,
++  "additionalProperties": false,
+   "properties": {
+     "deployment": {
++      "type": "object",
+       "additionalProperties": false,
+       "required": ["osname", "ref"],
+       "properties": {
+@@ -52,6 +53,7 @@ SCHEMA_2 = r"""
+     },
+     "bios": {
+       "additionalProperties": false,
++      "type": "object",
+       "required": ["disk"],
+       "properties": {
+         "disk": {
+diff --git a/stages/test/test_bootupd.py b/stages/test/test_bootupd.py
+new file mode 100644
+index 00000000..bddd69dd
+--- /dev/null
++++ b/stages/test/test_bootupd.py
+@@ -0,0 +1,56 @@
++#!/usr/bin/python3
++
++import os.path
++import subprocess
++from unittest import mock
++
++import pytest
++
++import osbuild.meta
++from osbuild.testutil import has_executable, make_fake_input_tree
++from osbuild.testutil.imports import import_module_from_path
++
++
++@pytest.mark.parametrize("test_data,expected_err", [
++    # bad
++    ({"deployment": "totally"}, "'totally' is not of type 'object'"),
++    ({"deployment": {"osname": "some-os"}}, "'ref' is a required property"),
++    ({"deployment": {"ref": "some-ref"}}, "'osname' is a required property"),
++    ({"deployment": {"osname": "some-os", "ref": "some-ref", "serial": "yo"}}, "'yo' is not of type 'number'"),
++    ({"random": "property"}, "Additional properties are not allowed"),
++    ({"bios": {}}, "'disk' is a required property"),
++    ({"bios": "yes"}, "'yes' is not of type 'object'"),
++    # good
++    ({}, ""),
++    ({"deployment": {
++          "osname": "some-os",
++          "ref": "some-ref",
++          "serial": 1,
++      },
++      "static-configs": True,
++      "bios": {
++          "disk": "/dev/sda",
++      }}, "")
++
++])
++def test_schema_validation_bootupd(test_data, expected_err):
++    name = "org.osbuild.bootupd"
++    root = os.path.join(os.path.dirname(__file__), "../..")
++    mod_info = osbuild.meta.ModuleInfo.load(root, "Stage", name)
++    schema = osbuild.meta.Schema(mod_info.get_schema(version="2"), name)
++
++    test_input = {
++        "type": "org.osbuild.bootupd",
++        "options": {
++        }
++    }
++    test_input["options"].update(test_data)
++    res = schema.validate(test_input)
++
++    if expected_err == "":
++        assert res.valid is True, f"err: {[e.as_dict() for e in res.errors]}"
++    else:
++        assert res.valid is False
++        assert len(res.errors) == 1, [e.as_dict() for e in res.errors]
++        err_msgs = [e.as_dict()["message"] for e in res.errors]
++        assert expected_err in err_msgs[0]
+-- 
+2.43.0
+

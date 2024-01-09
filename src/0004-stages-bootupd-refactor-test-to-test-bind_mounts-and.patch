@@ -1,0 +1,101 @@
+From 0b1ce7ce40ab504d70f2ff49a5902cf36bb4c818 Mon Sep 17 00:00:00 2001
+From: Michael Vogt <michael.vogt@gmail.com>
+Date: Tue, 9 Jan 2024 12:05:13 +0100
+Subject: [PATCH 4/4] stages(bootupd): refactor test to test bind_mounts and
+ bootupd behavior separately
+
+---
+ stages/org.osbuild.bootupd  |  2 +-
+ stages/test/test_bootupd.py | 47 ++++++++++++++++++++++++++++++-------
+ 2 files changed, 39 insertions(+), 10 deletions(-)
+
+diff --git a/stages/org.osbuild.bootupd b/stages/org.osbuild.bootupd
+index 84483861..2d30f3a5 100755
+--- a/stages/org.osbuild.bootupd
++++ b/stages/org.osbuild.bootupd
+@@ -76,7 +76,7 @@ def bind_mounts(sources, dest_root):
+     try:
+         yield
+     finally:
+-        for src in sources:
++        for src in reversed(sources):
+             dst = os.path.join(dest_root, src.lstrip("/"))
+             subprocess.run(["umount", "--recursive", dst], check=False)
+ 
+diff --git a/stages/test/test_bootupd.py b/stages/test/test_bootupd.py
+index 026c8d8d..5facd510 100644
+--- a/stages/test/test_bootupd.py
++++ b/stages/test/test_bootupd.py
+@@ -59,8 +59,13 @@ def test_bootupd_schema_validation(test_data, expected_err):
+         assert expected_err in err_msgs[0]
+ 
+ 
++@pytest.mark.parametrize("test_options,expected_bootupd_opts", [
++    ({}, []),
++    ({"bios": {"disk": "/dev/sda"}}, ["--device=/mapped/dev/sda"]),
++    ({"static-configs": True}, ["--with-static-configs"]),
++])
+ @patch("subprocess.run")
+-def test_bootupd_defaults(mocked_run):
++def test_bootupd_defaults(mocked_run, test_options, expected_bootupd_opts):
+     stage_path = os.path.join(os.path.dirname(__file__), "../org.osbuild.bootupd")
+     stage = import_module_from_path("bootupd_stage", stage_path)
+ 
+@@ -68,10 +73,34 @@ def test_bootupd_defaults(mocked_run):
+         "paths": {
+             "mounts": "/run/osbuild/mounts",
+         },
++        "devices": {
++            "/dev/sda": {
++                "path": "/mapped/dev/sda",
++            },
++        },
+     }
+-    options = {}
+-    stage.main(args, options)
++    options = test_options
++    with patch.object(stage, "bind_mounts") as mocked_bind_mounts:
++        stage.main(args, options)
++
++    assert len(mocked_bind_mounts.call_args_list) == 1
++    assert mocked_run.call_args_list == [call(["chroot",
++                                               "/run/osbuild/mounts",
++                                               "/usr/bin/bootupctl",
++                                               "backend",
++                                               "install"] + expected_bootupd_opts + ["/run/osbuild/mounts"],
++                                              check=True),
++                                         ]
+ 
++
++@patch("subprocess.run")
++def test_bootupd_bind_mounts(mocked_run):
++    stage_path = os.path.join(os.path.dirname(__file__), "../org.osbuild.bootupd")
++    stage = import_module_from_path("bootupd_stage", stage_path)
++
++    dst = "/run/osbuild/mounts/"
++    with stage.bind_mounts(['/dev', '/proc', '/sys', '/run', '/var', '/tmp'], dst):
++        pass
+     assert mocked_run.call_args_list == [
+         call(["mount", "--rbind", "/dev", "/run/osbuild/mounts/dev"], check=True),
+         call(["mount", "--rbind", "/proc", "/run/osbuild/mounts/proc"], check=True),
+@@ -79,11 +108,11 @@ def test_bootupd_defaults(mocked_run):
+         call(["mount", "--rbind", "/run", "/run/osbuild/mounts/run"], check=True),
+         call(["mount", "--rbind", "/var", "/run/osbuild/mounts/var"], check=True),
+         call(["mount", "--rbind", "/tmp", "/run/osbuild/mounts/tmp"], check=True),
+-        call(["chroot", "/run/osbuild/mounts", "/usr/bin/bootupctl", "backend", "install", "/run/osbuild/mounts"], check=True),
+-        call(["umount", "--recursive", "/run/osbuild/mounts/dev"], check=False),
+-        call(["umount", "--recursive", "/run/osbuild/mounts/proc"], check=False),
+-        call(["umount", "--recursive", "/run/osbuild/mounts/sys"], check=False),
+-        call(["umount", "--recursive", "/run/osbuild/mounts/run"], check=False),
+-        call(["umount", "--recursive", "/run/osbuild/mounts/var"], check=False),
++        # and umount in reverse order
+         call(["umount", "--recursive", "/run/osbuild/mounts/tmp"], check=False),
++        call(["umount", "--recursive", "/run/osbuild/mounts/var"], check=False),
++        call(["umount", "--recursive", "/run/osbuild/mounts/run"], check=False),
++        call(["umount", "--recursive", "/run/osbuild/mounts/sys"], check=False),
++        call(["umount", "--recursive", "/run/osbuild/mounts/proc"], check=False),
++        call(["umount", "--recursive", "/run/osbuild/mounts/dev"], check=False),
+     ]
+-- 
+2.43.0
+
