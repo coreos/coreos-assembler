@@ -531,15 +531,6 @@ if [[ ${secure_execution} -eq 1 ]] && [[ ! -e /dev/disk/by-id/virtio-genprotimg 
 fi
 touch $rootfs/boot/ignition.firstboot
 
-# Finally, add the immutable bit to the physical root; we don't
-# expect people to be creating anything there.  A use case for
-# OSTree in general is to support installing *inside* the existing
-# root of a deployed OS, so OSTree doesn't do this by default, but
-# we have no reason not to enable it here.  Administrators should
-# generally expect that state data is in /etc and /var; if anything
-# else is in /sysroot it's probably by accident.
-chattr +i $rootfs
-
 fstrim -a -v
 # Ensure the filesystem journals are flushed
 for fs in $rootfs/boot $rootfs; do
