@@ -1,0 +1,102 @@
+From 8cce659ec5cf25f66f78fa7027f6bad5a7dd57cf Mon Sep 17 00:00:00 2001
+From: Dusty Mabe <dusty@dustymabe.com>
+Date: Tue, 9 Jan 2024 15:32:33 -0500
+Subject: [PATCH 5/5] stages/bootupd: support installing to a partition of a
+ device
+
+For ppc64le we need to pass in a partition (i.e. /dev/loop0p1) rather
+than the root device (/dev/loop0) to the --device argument of bootupctl.
+Let's add a partition field and find the device node based on the user
+specified partition.
+
+On ppc64le this would look something like:
+
+```
+      - type: org.osbuild.bootupd
+        options:
+          bios:
+            device: disk
+            partition:
+              mpp-format-int: '{image.layout[''POWERPC-PREP-BOOT''].partnum}'
+          static-configs: true
+          deployment:
+            osname: fedora-coreos
+            ref: ostree/1/1/0
+        devices:
+          disk:
+            type: org.osbuild.loopback
+            options:
+              filename: disk.img
+              partscan: true
+        mounts:
+          - name: root
+            type: org.osbuild.xfs
+            source: disk
+            partition:
+              mpp-format-int: '{image.layout[''root''].partnum}'
+            target: /
+          - name: boot
+            type: org.osbuild.ext4
+            source: disk
+            partition:
+              mpp-format-int: '{image.layout[''boot''].partnum}'
+            target: /boot
+```
+---
+ stages/org.osbuild.bootupd | 19 +++++++++++++++++++
+ 1 file changed, 19 insertions(+)
+
+diff --git a/stages/org.osbuild.bootupd b/stages/org.osbuild.bootupd
+index f220cc52..224bd6d4 100755
+--- a/stages/org.osbuild.bootupd
++++ b/stages/org.osbuild.bootupd
+@@ -10,6 +10,7 @@ The project is deployed in Fedora CoreOS and derivatives
+ """
+ 
+ import contextlib
++import json
+ import os
+ import subprocess
+ import sys
+@@ -60,6 +61,10 @@ SCHEMA_2 = r"""
+         "device": {
+             "description": "Name of stage device to install GRUB for BIOS-based systems.",
+             "type": "string"
++        },
++        "partition": {
++            "description": "The partition on the stage device to install to, if installing to a partition",
++            "type": "number"
+         }
+       }
+     }
+@@ -86,6 +91,7 @@ def main(args, options):
+     static_configs = options.get("static-configs", False)
+     bios = options.get("bios", {})
+     device = bios.get("device", "")
++    partition = bios.get("partition", None)
+ 
+     # Get the path where the filesystems are mounted
+     mounts = args["paths"]["mounts"]
+@@ -107,6 +113,19 @@ def main(args, options):
+         # user). Let's map that name to the actual loopback device
+         # that now backs it.
+         target = args["devices"][device]["path"]
++        # If we are targeting a partition on the device rather than
++        # the whole device itself (i.e. MBR) then let's find that
++        # partition's device.
++        if partition:
++            cp = subprocess.run(["sfdisk", "--json", target],
++                                stdout=subprocess.PIPE,
++                                stderr=subprocess.STDOUT,
++                                encoding='utf8',
++                                check=True)
++            disk_table = json.loads(cp.stdout)["partitiontable"]
++            disk_parts = disk_table["partitions"]
++            index = partition - 1  # partition index starts at 0
++            target = disk_parts[index]["node"]
+         bootupd_args.append(f"--device={target}")
+     if static_configs:
+         bootupd_args.append("--with-static-configs")
+-- 
+2.43.0
+

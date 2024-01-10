@@ -1,16 +1,17 @@
-From 0b1ce7ce40ab504d70f2ff49a5902cf36bb4c818 Mon Sep 17 00:00:00 2001
+From 492dc6021c69141ff4e6a06068fc7a6fc029dfe7 Mon Sep 17 00:00:00 2001
 From: Michael Vogt <michael.vogt@gmail.com>
 Date: Tue, 9 Jan 2024 12:05:13 +0100
-Subject: [PATCH 4/4] stages(bootupd): refactor test to test bind_mounts and
- bootupd behavior separately
+Subject: [PATCH 4/5] stages(bootupd): refactor test to separately test
+ behaviors
 
+It now tests  bind_mounts and bootupd behavior separately.
 ---
  stages/org.osbuild.bootupd  |  2 +-
  stages/test/test_bootupd.py | 47 ++++++++++++++++++++++++++++++-------
  2 files changed, 39 insertions(+), 10 deletions(-)
 
 diff --git a/stages/org.osbuild.bootupd b/stages/org.osbuild.bootupd
-index 84483861..2d30f3a5 100755
+index b4d96828..f220cc52 100755
 --- a/stages/org.osbuild.bootupd
 +++ b/stages/org.osbuild.bootupd
 @@ -76,7 +76,7 @@ def bind_mounts(sources, dest_root):
@@ -23,7 +24,7 @@ index 84483861..2d30f3a5 100755
              subprocess.run(["umount", "--recursive", dst], check=False)
  
 diff --git a/stages/test/test_bootupd.py b/stages/test/test_bootupd.py
-index 026c8d8d..5facd510 100644
+index e35a1d84..9df845d3 100644
 --- a/stages/test/test_bootupd.py
 +++ b/stages/test/test_bootupd.py
 @@ -59,8 +59,13 @@ def test_bootupd_schema_validation(test_data, expected_err):
@@ -32,7 +33,7 @@ index 026c8d8d..5facd510 100644
  
 +@pytest.mark.parametrize("test_options,expected_bootupd_opts", [
 +    ({}, []),
-+    ({"bios": {"disk": "/dev/sda"}}, ["--device=/mapped/dev/sda"]),
++    ({"bios": {"device": "/dev/sda"}}, ["--device=/mapped/dev/sda"]),
 +    ({"static-configs": True}, ["--with-static-configs"]),
 +])
  @patch("subprocess.run")

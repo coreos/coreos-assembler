@@ -1,41 +1,16 @@
-From 63f8e8e5d340513ca4a5dc0abe6c2d269ee57be3 Mon Sep 17 00:00:00 2001
+From eb657b08b35f576ce0410cb1c44dc1107de50231 Mon Sep 17 00:00:00 2001
 From: Michael Vogt <michael.vogt@gmail.com>
 Date: Tue, 9 Jan 2024 11:12:06 +0100
-Subject: [PATCH 2/4] stages(bootupd): add schema test
+Subject: [PATCH 2/5] stages(bootupd): add schema test
 
 ---
- stages/org.osbuild.bootupd  |  4 ++-
  stages/test/test_bootupd.py | 56 +++++++++++++++++++++++++++++++++++++
- 2 files changed, 59 insertions(+), 1 deletion(-)
+ 1 file changed, 56 insertions(+)
  create mode 100644 stages/test/test_bootupd.py
 
-diff --git a/stages/org.osbuild.bootupd b/stages/org.osbuild.bootupd
-index a7ffe610..2371900e 100755
---- a/stages/org.osbuild.bootupd
-+++ b/stages/org.osbuild.bootupd
-@@ -25,9 +25,10 @@ SCHEMA_2 = r"""
-   "type": "array"
- },
- "options": {
--  "additionalProperties": true,
-+  "additionalProperties": false,
-   "properties": {
-     "deployment": {
-+      "type": "object",
-       "additionalProperties": false,
-       "required": ["osname", "ref"],
-       "properties": {
-@@ -52,6 +53,7 @@ SCHEMA_2 = r"""
-     },
-     "bios": {
-       "additionalProperties": false,
-+      "type": "object",
-       "required": ["disk"],
-       "properties": {
-         "disk": {
 diff --git a/stages/test/test_bootupd.py b/stages/test/test_bootupd.py
 new file mode 100644
-index 00000000..bddd69dd
+index 00000000..d7d2423e
 --- /dev/null
 +++ b/stages/test/test_bootupd.py
 @@ -0,0 +1,56 @@
@@ -59,7 +34,7 @@ index 00000000..bddd69dd
 +    ({"deployment": {"ref": "some-ref"}}, "'osname' is a required property"),
 +    ({"deployment": {"osname": "some-os", "ref": "some-ref", "serial": "yo"}}, "'yo' is not of type 'number'"),
 +    ({"random": "property"}, "Additional properties are not allowed"),
-+    ({"bios": {}}, "'disk' is a required property"),
++    ({"bios": {}}, "'device' is a required property"),
 +    ({"bios": "yes"}, "'yes' is not of type 'object'"),
 +    # good
 +    ({}, ""),
@@ -70,7 +45,7 @@ index 00000000..bddd69dd
 +      },
 +      "static-configs": True,
 +      "bios": {
-+          "disk": "/dev/sda",
++          "device": "/dev/sda",
 +      }}, "")
 +
 +])
