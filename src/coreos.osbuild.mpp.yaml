@@ -217,7 +217,7 @@ pipelines:
       - type: org.osbuild.bootupd
         options:
           bios:
-            disk: disk
+            device: disk
           static-configs: true
           deployment:
             osname: fedora-coreos

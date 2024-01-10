@@ -1,23 +1,23 @@
-From e06d65754ae9c5d0ae1e7525ef009c04fa11d14a Mon Sep 17 00:00:00 2001
+From cdcb4598bb557e46a7c4a6a6eccbdcae2757f837 Mon Sep 17 00:00:00 2001
 From: Renata Ravanelli <rravanel@redhat.com>
 Date: Thu, 16 Nov 2023 09:41:18 -0500
-Subject: [PATCH 1/4] create org.osbuild.bootupd stage
+Subject: [PATCH 1/5] create org.osbuild.bootupd stage
 
 Add the bootupd stage to install GRUB on both BIOS and UEFI systems,
 ensuring that your bootloader stays up-to-date.
 
 Signed-off-by: Renata Ravanelli <rravanel@redhat.com>
 ---
- stages/org.osbuild.bootupd | 125 +++++++++++++++++++++++++++++++++++++
- 1 file changed, 125 insertions(+)
+ stages/org.osbuild.bootupd | 127 +++++++++++++++++++++++++++++++++++++
+ 1 file changed, 127 insertions(+)
  create mode 100755 stages/org.osbuild.bootupd
 
 diff --git a/stages/org.osbuild.bootupd b/stages/org.osbuild.bootupd
 new file mode 100755
-index 00000000..a7ffe610
+index 00000000..22da890d
 --- /dev/null
 +++ b/stages/org.osbuild.bootupd
-@@ -0,0 +1,125 @@
+@@ -0,0 +1,127 @@
 +#!/usr/bin/python3
 +"""
 +Install GRUB on both BIOS and UEFI systems,
@@ -45,9 +45,10 @@ index 00000000..a7ffe610
 +  "type": "array"
 +},
 +"options": {
-+  "additionalProperties": true,
++  "additionalProperties": false,
 +  "properties": {
 +    "deployment": {
++      "type": "object",
 +      "additionalProperties": false,
 +      "required": ["osname", "ref"],
 +      "properties": {
@@ -72,10 +73,11 @@ index 00000000..a7ffe610
 +    },
 +    "bios": {
 +      "additionalProperties": false,
-+      "required": ["disk"],
++      "type": "object",
++      "required": ["device"],
 +      "properties": {
-+        "disk": {
-+            "description": "Disk to install GRUB for BIOS-based systems",
++        "device": {
++            "description": "Name of stage device to install GRUB for BIOS-based systems.",
 +            "type": "string"
 +        }
 +      }
@@ -89,7 +91,7 @@ index 00000000..a7ffe610
 +    deployment = options.get("deployment", None)
 +    static_configs = options.get("static-configs", False)
 +    bios = options.get("bios", {})
-+    disk = bios.get("disk", "")
++    device = bios.get("device", "")
 +
 +    # Get the path where the filesystems are mounted
 +    mounts = args["paths"]["mounts"]
@@ -105,13 +107,13 @@ index 00000000..a7ffe610
 +        root = ostree.deployment_path(mounts, osname, ref, serial)
 +
 +    bootupd_args = []
-+    if disk:
++    if device:
 +        # The value passed by the user is the name of the device
 +        # as specified in the devices array (also passed in by the
 +        # user). Let's map that name to the actual loopback device
 +        # that now backs it.
-+        dev = args["devices"][disk]["path"]
-+        bootupd_args.append(f"--device={dev}")
++        target = args["devices"][device]["path"]
++        bootupd_args.append(f"--device={target}")
 +    if static_configs:
 +        bootupd_args.append("--with-static-configs")
 +

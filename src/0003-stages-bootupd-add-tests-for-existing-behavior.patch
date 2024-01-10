@@ -1,16 +1,16 @@
-From de97cbe05ea187d32a0ad4cacdfd70103cc7eb1f Mon Sep 17 00:00:00 2001
+From dacf5733ea8169b5273dfc1663ac04b348a59057 Mon Sep 17 00:00:00 2001
 From: Michael Vogt <michael.vogt@gmail.com>
 Date: Tue, 9 Jan 2024 11:54:37 +0100
-Subject: [PATCH 3/4] stages(bootupd): add test for existing behavior and
- refactor bind mounts into a helper
+Subject: [PATCH 3/5] stages(bootupd): add tests for existing behavior
 
+Also refactor bind mounts into a helper.
 ---
  stages/org.osbuild.bootupd  | 27 ++++++++-------
  stages/test/test_bootupd.py | 65 ++++++++++++++++++++++++++++---------
  2 files changed, 64 insertions(+), 28 deletions(-)
 
 diff --git a/stages/org.osbuild.bootupd b/stages/org.osbuild.bootupd
-index 2371900e..84483861 100755
+index 22da890d..b4d96828 100755
 --- a/stages/org.osbuild.bootupd
 +++ b/stages/org.osbuild.bootupd
 @@ -9,6 +9,7 @@ and GRUB for BIOS firmware on x86_64.
@@ -66,7 +66,7 @@ index 2371900e..84483861 100755
      return 0
  
 diff --git a/stages/test/test_bootupd.py b/stages/test/test_bootupd.py
-index bddd69dd..026c8d8d 100644
+index d7d2423e..e35a1d84 100644
 --- a/stages/test/test_bootupd.py
 +++ b/stages/test/test_bootupd.py
 @@ -1,39 +1,42 @@
@@ -94,7 +94,7 @@ index bddd69dd..026c8d8d 100644
 +    ({"deployment": {"osname": "some-os", "ref": "some-ref", "serial": "must-be-number"}},
 +     "'must-be-number' is not of type 'number'"),
      ({"random": "property"}, "Additional properties are not allowed"),
-     ({"bios": {}}, "'disk' is a required property"),
+     ({"bios": {}}, "'device' is a required property"),
 -    ({"bios": "yes"}, "'yes' is not of type 'object'"),
 +    ({"bios": "must-be-object"}, "'must-be-object' is not of type 'object'"),
      # good
@@ -106,7 +106,7 @@ index bddd69dd..026c8d8d 100644
 -      },
 -      "static-configs": True,
 -      "bios": {
--          "disk": "/dev/sda",
+-          "device": "/dev/sda",
 -      }}, "")
 +    ({
 +        "deployment":
@@ -118,7 +118,7 @@ index bddd69dd..026c8d8d 100644
 +        "static-configs": True,
 +        "bios":
 +        {
-+            "disk": "/dev/sda",
++            "device": "/dev/sda",
 +        },
 +    }, "")
  
