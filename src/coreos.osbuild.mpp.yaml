@@ -22,22 +22,18 @@ mpp-define-images:
         - name: BIOS-BOOT
           type: 21686148-6449-6E6F-744E-656564454649
           bootable: true
-          uuid: FAC7F1FB-3E8D-4137-A512-961DE09A5549
           size:
             mpp-format-int: "{bios_boot_size_mb * 1024 * 1024 / sector_size}"
         - name: EFI-SYSTEM
           type: C12A7328-F81F-11D2-BA4B-00A0C93EC93B
-          uuid: 68B2905B-DF3E-4FB3-80FA-49D1E773AA33
           size:
             mpp-format-int: "{efi_system_size_mb * 1024 * 1024 / sector_size}"
         - name: boot
           type: 0FC63DAF-8483-4772-8E79-3D69D8477DE4
-          uuid: 61B2905B-DF3E-4FB3-80FA-49D1E773AA32
           size:
             mpp-format-int: "{boot_size_mb * 1024 * 1024 / sector_size}"
         - name: root
           type: 0FC63DAF-8483-4772-8E79-3D69D8477DE4
-          uuid: CA7D7CCB-63ED-4C53-861C-1742536059CC
           size:
             mpp-format-int: "{root_size_mb * 1024 * 1024 / sector_size}"
   - id: image4k
@@ -52,22 +48,18 @@ mpp-define-images:
         - name: BIOS-BOOT
           type: 21686148-6449-6E6F-744E-656564454649
           bootable: true
-          uuid: FAC7F1FB-3E8D-4137-A512-961DE09A5549
           size:
             mpp-format-int: "{bios_boot_size_mb * 1024 * 1024 / four_k_sector_size}"
         - name: EFI-SYSTEM
           type: C12A7328-F81F-11D2-BA4B-00A0C93EC93B
-          uuid: 68B2905B-DF3E-4FB3-80FA-49D1E773AA33
           size:
             mpp-format-int: "{efi_system_size_mb * 1024 * 1024 / four_k_sector_size}"
         - name: boot
           type: 0FC63DAF-8483-4772-8E79-3D69D8477DE4
-          uuid: 61B2905B-DF3E-4FB3-80FA-49D1E773AA32
           size:
             mpp-format-int: "{boot_size_mb * 1024 * 1024 / four_k_sector_size}"
         - name: root
           type: 0FC63DAF-8483-4772-8E79-3D69D8477DE4
-          uuid: CA7D7CCB-63ED-4C53-861C-1742536059CC
           size:
             mpp-format-int: "{root_size_mb * 1024 * 1024 / four_k_sector_size}"
 pipelines:
