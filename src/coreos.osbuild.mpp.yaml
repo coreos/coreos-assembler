@@ -84,6 +84,8 @@ pipelines:
             sysroot:
               readonly: true
               bootloader: none
+              # https://github.com/coreos/fedora-coreos-tracker/issues/1333
+              bls-append-except-default: grub_users=""
       - type: org.osbuild.mkdir
         options:
           paths:

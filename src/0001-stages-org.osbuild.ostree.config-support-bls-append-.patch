@@ -1,0 +1,42 @@
+From 925ba57cf3393f56be74fd60b177441ac6091162 Mon Sep 17 00:00:00 2001
+From: Luke Yang <luyang@redhat.com>
+Date: Wed, 10 Jan 2024 11:18:21 -0500
+Subject: [PATCH] stages/org.osbuild.ostree.config: support
+ bls-append-except-default
+
+Support setting the sysroot.bls-append-except-default value in the
+OSTree config. This is used by CoreOS to support configuration used
+for GRUB password support https://github.com/coreos/fedora-coreos-tracker/issues/1333
+---
+ stages/org.osbuild.ostree.config | 8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+diff --git a/stages/org.osbuild.ostree.config b/stages/org.osbuild.ostree.config
+index 91df555d..7d5bb71d 100755
+--- a/stages/org.osbuild.ostree.config
++++ b/stages/org.osbuild.ostree.config
+@@ -42,6 +42,10 @@ SCHEMA = """
+           "readonly": {
+             "description": "Read only sysroot and boot",
+             "type": "boolean"
++          },
++          "bls-append-except-default": {
++            "description": "Set value for bls-append-except-default",
++            "type": "string"
+           }
+         }
+       }
+@@ -64,6 +68,10 @@ def main(tree, options):
+         ro = "true" if readonly else "false"
+         ostree.cli("config", "set", "sysroot.readonly", ro, repo=repo)
+ 
++    bls_append_except_default = sysroot_options.get("bls-append-except-default")
++    if bls_append_except_default:
++        ostree.cli("config", "set", "sysroot.bls-append-except-default", bls_append_except_default, repo=repo)
++
+ 
+ if __name__ == '__main__':
+     stage_args = osbuild.api.arguments()
+-- 
+2.43.0
+
