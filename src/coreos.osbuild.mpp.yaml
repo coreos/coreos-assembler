@@ -9,6 +9,13 @@ mpp-vars:
   root_size_mb: 2048
   sector_size: 512
   four_k_sector_size: 4096
+  # Filesystem UUID and label definitions. These UUIDs
+  # are looked for on boot and if found replaced with
+  # a new random UUID to make each install unique.
+  boot_fs_uuid: 96d15588-3596-4b3c-adca-a2ff7279ea63
+  boot_fs_label: boot
+  root_fs_uuid: 910678ff-f77e-4a7d-8d53-86f2ac47a823
+  root_fs_label: root
 mpp-define-images:
   - id: image
     sector_size:
@@ -154,8 +161,10 @@ pipelines:
                 mpp-format-int: '{image.layout[''boot''].size}'
               lock: true
         options:
-          uuid: 96d15588-3596-4b3c-adca-a2ff7279ea63
-          label: boot
+          uuid:
+            mpp-format-string: '{boot_fs_uuid}'
+          label:
+            mpp-format-string: '{boot_fs_label}'
       - type: org.osbuild.mkfs.xfs
         devices:
           device:
@@ -168,8 +177,10 @@ pipelines:
                 mpp-format-int: '{image.layout[''root''].size}'
               lock: true
         options:
-          uuid: 910678ff-f77e-4a7d-8d53-86f2ac47a823
-          label: root
+          uuid:
+            mpp-format-string: '{root_fs_uuid}'
+          label:
+            mpp-format-string: '{root_fs_label}'
       - type: org.osbuild.copy
         inputs:
           tree:
@@ -286,8 +297,10 @@ pipelines:
               sector-size:
                   mpp-format-int: "{four_k_sector_size}"
         options:
-          uuid: 96d15588-3596-4b3c-adca-a2ff7279ea63
-          label: boot
+          uuid:
+            mpp-format-string: '{boot_fs_uuid}'
+          label:
+            mpp-format-string: '{boot_fs_label}'
       - type: org.osbuild.mkfs.xfs
         devices:
           device:
@@ -302,8 +315,10 @@ pipelines:
               sector-size:
                   mpp-format-int: "{four_k_sector_size}"
         options:
-          uuid: 910678ff-f77e-4a7d-8d53-86f2ac47a823
-          label: root
+          uuid:
+            mpp-format-string: '{root_fs_uuid}'
+          label:
+            mpp-format-string: '{root_fs_label}'
       - type: org.osbuild.copy
         inputs:
           tree:
