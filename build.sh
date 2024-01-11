@@ -182,6 +182,7 @@ patch_osbuild() {
         /usr/lib/coreos-assembler/0004-stages-bootupd-refactor-test-to-separately-test-beha.patch \
         /usr/lib/coreos-assembler/0005-stages-bootupd-support-installing-to-a-partition-of-.patch \
         /usr/lib/coreos-assembler/0001-tools-osbuild-mpp-run-_process_format-for-mpp-embed-.patch \
+        /usr/lib/coreos-assembler/0001-stages-org.osbuild.ostree.config-support-bls-append-.patch \
             | patch -d /usr/lib/osbuild -p1
 
     # And then move the files back; supermin appliance creation will need it back
