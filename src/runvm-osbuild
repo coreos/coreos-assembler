@@ -1,12 +1,55 @@
 #!/bin/bash
 set -eux -o pipefail
 
-repo=$1
-ref=$2
-platform=$3
-mppyaml=$4
-path=$5
-filename=$(basename "$path")
+usage() {
+    cat <<EOC
+${0} creates a supermin virtual machine that then
+runs OSBuild to build a CoreOS style disk image.
+
+Options:
+    --config: JSON-formatted image.yaml
+    --help: show this help
+    --mpp: the path to the OSBuild mpp.yaml file
+    --filepath: where to write the created image file
+
+You probably don't want to run this script by hand. This script is
+run as part of 'coreos-assembler build'.
+EOC
+}
+
+# Parse the passed config JSON and extract a mandatory value
+getconfig() {
+    k=$1
+    jq -re .\""$k"\" < "${config}"
+}
+# Return a configuration value, or default if not set
+getconfig_def() {
+    k=$1
+    shift
+    default=$1
+    shift
+    jq -re .\""$k"\"//\""${default}"\" < "${config}"
+}
+
+while [ $# -gt 0 ];
+do
+    flag="${1}"; shift;
+    case "${flag}" in
+        --config)                  config="${1}"; shift;;
+        --help)                    usage; exit;;
+        --mpp)                     mppyaml="${1}"; shift;;
+        --filepath)                filepath="${1}"; shift;;
+         *) echo "${flag} is not understood."; usage; exit 10;;
+     esac;
+done
+
+# Get the base filename of the desired file output path
+filename=$(basename "$filepath")
+
+ostree_repo=$(getconfig "ostree-repo")
+ostree_ref=$(getconfig "ostree-ref")
+platform=$(getconfig "image-type")
+
 
 # Since it doesn't exist create loop-control
 mknod /dev/loop-control c 10 237
@@ -17,11 +60,11 @@ mkdir /var/osbuild
 outdir=/var/osbuild/out
 
 # Run through the preprocessor
-osbuild-mpp                         \
-    -D ref=\""${ref}"\"             \
-    -D repourl=\""file://${repo}"\" \
-    -D filename=\""${filename}"\"   \
-    "${mppyaml}"                    \
+osbuild-mpp                                \
+    -D ref=\""${ostree_ref}"\"             \
+    -D repourl=\""file://${ostree_repo}"\" \
+    -D filename=\""${filename}"\"          \
+    "${mppyaml}"                           \
     processed.json
 
 # Build the image
@@ -35,4 +78,4 @@ osbuild \
 
 
 # Copy it out to the specified location
-cp "${outdir}/${platform}/${filename}" "${path}"
+cp "${outdir}/${platform}/${filename}" "${filepath}"
