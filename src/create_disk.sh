@@ -121,6 +121,7 @@ bootfs=$(getconfig "bootfs")
 composefs=$(getconfig_def "composefs" "")
 grub_script=$(getconfig "grub-script")
 ostree_container=$(getconfig "ostree-container")
+ostree_container_spec="ostree-unverified-image:oci-archive:${ostree_container}"
 commit=$(getconfig "ostree-commit")
 ref=$(getconfig "ostree-ref")
 # We support not setting a remote name (used by RHCOS)
@@ -337,7 +338,7 @@ if test -n "${deploy_via_container}"; then
         kargsargs+="--karg=$karg "
     done
     # shellcheck disable=SC2086
-    ostree container image deploy --imgref "${ostree_container}" \
+    ostree container image deploy --imgref "${ostree_container_spec}" \
         ${container_imgref:+--target-imgref $container_imgref} \
         --write-commitid-to /tmp/commit.txt \
         --stateroot "$os_name" --sysroot $rootfs $kargsargs
@@ -345,7 +346,7 @@ if test -n "${deploy_via_container}"; then
     rm /tmp/commit.txt
 else
     # Pull the container image...
-    time ostree container image pull $rootfs/ostree/repo "${ostree_container}"
+    time ostree container image pull $rootfs/ostree/repo "${ostree_container_spec}"
     # But we default to not leaving a ref for the image around, so the
     # layers will get GC'd on the first update if the
     # user doesn't switch to a container image.
