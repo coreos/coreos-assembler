@@ -240,12 +240,12 @@ cat >image-dynamic.yaml << EOF
 # Used by create_disk.sh
 buildid: "${build}"
 container-imgref: "${container_imgref}"
-deploy-via-container: "${deploy_via_container}"
 imgid: "${img}"
 osname: "${name}"
 ostree-commit: "${commit}"
-ostree-container: "${ostree_container}"
 # Used by both create_disk.sh and runvm-osbuild
+deploy-via-container: "${deploy_via_container}"
+ostree-container: "${ostree_container}"
 ostree-ref: "${ref}"
 # Used by runvm-osbuild
 image-type: "${image_type}"

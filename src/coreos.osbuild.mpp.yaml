@@ -1,6 +1,7 @@
 version: '2'
 mpp-vars:
   filename: $filename
+  ociarchive: $ociarchive
   disk_size_gb: 10
   bios_boot_size_mb: 1
   efi_system_size_mb: 127
@@ -72,6 +73,27 @@ mpp-define-images:
           size:
             mpp-format-int: "{root_size_mb * 1024 * 1024 / four_k_sector_size}"
 pipelines:
+  # If installing from container then let's pull the container file into a pipeline
+  - name: oci-archive
+    stages:
+      - mpp-if: ociarchive != ''
+        then:
+          type: org.osbuild.copy
+          inputs:
+            inlinefile:
+              type: org.osbuild.files
+              origin: org.osbuild.source
+              mpp-embed:
+                id: coreos.ociarchive
+                url:
+                  mpp-format-string: 'file://{ociarchive}'
+          options:
+            paths:
+              - from:
+                  mpp-format-string: input://inlinefile/{embedded['coreos.ociarchive']}
+                to: tree:///coreos.ociarchive
+        else:
+          type: org.osbuild.noop
   - name: tree
     source-epoch: 1659397331
     stages:
@@ -95,26 +117,48 @@ pipelines:
             - path: /boot/efi
               mode: 448
       - type: org.osbuild.ignition
-      - type: org.osbuild.ostree.deploy
-        options:
-          osname:
-            mpp-format-string: '{osname}'
-          remote: fedora
-          mounts:
-            - /boot
-            - /boot/efi
-          kernel_opts:
-            - rw
-            - '$ignition_firstboot'
-        inputs:
-          commits:
-            type: org.osbuild.ostree
-            origin: org.osbuild.source
-            mpp-resolve-ostree-commits:
-              commits:
-                - ref: $ref
-                  remote:
-                    url: $repourl
+      # Deploy via container if we have a container ociarchive, else from repo.
+      - mpp-if: ociarchive != ''
+        then:
+          type: org.osbuild.ostree.deploy.container
+          options:
+            osname:
+              mpp-format-string: '{osname}'
+            target_imgref: ostree-remote-registry:fedora:quay.io/fedora/fedora-coreos:stable
+            mounts:
+              - /boot
+              - /boot/efi
+            kernel_opts:
+              - rw
+              - '$ignition_firstboot'
+          inputs:
+            images:
+              type: org.osbuild.containers
+              origin: org.osbuild.pipeline
+              references:
+                name:oci-archive:
+                  name: coreos.ociarchive
+        else:
+          type: org.osbuild.ostree.deploy
+          options:
+            osname:
+              mpp-format-string: '{osname}'
+            remote: fedora
+            mounts:
+              - /boot
+              - /boot/efi
+            kernel_opts:
+              - rw
+              - '$ignition_firstboot'
+          inputs:
+            commits:
+              type: org.osbuild.ostree
+              origin: org.osbuild.source
+              mpp-resolve-ostree-commits:
+                commits:
+                  - ref: $ref
+                    remote:
+                      url: $repourl
       - type: org.osbuild.ostree.aleph
         options:
           coreos_compat: true
