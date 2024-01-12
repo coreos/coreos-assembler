@@ -49,7 +49,14 @@ filename=$(basename "$filepath")
 ostree_repo=$(getconfig "ostree-repo")
 ostree_ref=$(getconfig "ostree-ref")
 platform=$(getconfig "image-type")
+deploy_via_container=$(getconfig_def "deploy-via-container" "")
 
+# If we are deploying via container let's go ahead and pull
+# the oci archive path from the config
+ostree_container=""
+if [ -n "${deploy_via_container}" ]; then
+    ostree_container=$(getconfig "ostree-container")
+fi
 
 # Since it doesn't exist create loop-control
 mknod /dev/loop-control c 10 237
@@ -60,11 +67,12 @@ mkdir /var/osbuild
 outdir=/var/osbuild/out
 
 # Run through the preprocessor
-osbuild-mpp                                \
-    -D ref=\""${ostree_ref}"\"             \
-    -D repourl=\""file://${ostree_repo}"\" \
-    -D filename=\""${filename}"\"          \
-    "${mppyaml}"                           \
+osbuild-mpp                                 \
+    -D ref=\""${ostree_ref}"\"              \
+    -D repourl=\""file://${ostree_repo}"\"  \
+    -D filename=\""${filename}"\"           \
+    -D ociarchive=\""${ostree_container}"\" \
+    "${mppyaml}"                            \
     processed.json
 
 # Build the image
