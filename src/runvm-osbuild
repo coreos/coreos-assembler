@@ -48,6 +48,7 @@ filename=$(basename "$filepath")
 
 ostree_repo=$(getconfig "ostree-repo")
 ostree_ref=$(getconfig "ostree-ref")
+osname=$(getconfig "osname")
 platform=$(getconfig "image-type")
 deploy_via_container=$(getconfig_def "deploy-via-container" "")
 
@@ -72,6 +73,7 @@ osbuild-mpp                                 \
     -D repourl=\""file://${ostree_repo}"\"  \
     -D filename=\""${filename}"\"           \
     -D ociarchive=\""${ostree_container}"\" \
+    -D osname=\""${osname}"\"               \
     "${mppyaml}"                            \
     processed.json
 
