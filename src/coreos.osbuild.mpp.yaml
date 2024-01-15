@@ -207,10 +207,24 @@ pipelines:
                 mpp-format-int: '{image.layout[''boot''].size}'
               lock: true
         options:
-          uuid:
-            mpp-format-string: '{boot_fs_uuid}'
-          label:
-            mpp-format-string: '{boot_fs_label}'
+          # If we are on RHCOS then set manually some FS options
+          # to the values we want in order to not depend on the
+          # defaults in the version of mkfs.ext4 in the build root.
+          # This is mostly useful right now because COSA is based
+          # on Fedora.
+          mpp-if: osname == 'rhcos'
+          then:
+            orphan_file: false
+            metadata_csum_seed: true
+            uuid:
+              mpp-format-string: '{boot_fs_uuid}'
+            label:
+              mpp-format-string: '{boot_fs_label}'
+          else:
+            uuid:
+              mpp-format-string: '{boot_fs_uuid}'
+            label:
+              mpp-format-string: '{boot_fs_label}'
       - type: org.osbuild.mkfs.xfs
         devices:
           device:
@@ -344,10 +358,24 @@ pipelines:
               sector-size:
                   mpp-format-int: "{four_k_sector_size}"
         options:
-          uuid:
-            mpp-format-string: '{boot_fs_uuid}'
-          label:
-            mpp-format-string: '{boot_fs_label}'
+          # If we are on RHCOS then set manually some FS options
+          # to the values we want in order to not depend on the
+          # defaults in the version of mkfs.ext4 in the build root.
+          # This is mostly useful right now because COSA is based
+          # on Fedora.
+          mpp-if: osname == 'rhcos'
+          then:
+            orphan_file: false
+            metadata_csum_seed: true
+            uuid:
+              mpp-format-string: '{boot_fs_uuid}'
+            label:
+              mpp-format-string: '{boot_fs_label}'
+          else:
+            uuid:
+              mpp-format-string: '{boot_fs_uuid}'
+            label:
+              mpp-format-string: '{boot_fs_label}'
       - type: org.osbuild.mkfs.xfs
         devices:
           device:
