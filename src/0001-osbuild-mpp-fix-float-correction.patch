@@ -1,0 +1,30 @@
+From d50705249afe2f2e789649987e17a694047cb8c7 Mon Sep 17 00:00:00 2001
+From: Dusty Mabe <dusty@dustymabe.com>
+Date: Sun, 14 Jan 2024 22:44:38 -0500
+Subject: [PATCH] osbuild-mpp: fix float correction
+
+I mistakenly thought the .strip('.0') would strip off just '.0` but
+in reality it strips off all instances of `.` or `0` on the end so
+'4075520.0'.strip('.0') => '407552', which is clearly wrong.
+
+This is a fixup for 5207e92.
+---
+ tools/osbuild-mpp | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/tools/osbuild-mpp b/tools/osbuild-mpp
+index 6d5ebddd..cf74488e 100755
+--- a/tools/osbuild-mpp
++++ b/tools/osbuild-mpp
+@@ -1288,7 +1288,7 @@ class ManifestFile:
+                 # some math that ended up converting the value to a
+                 # float. Just trim it off in that case.
+                 if res.endswith('.0'):
+-                    res = res.strip('.0')
++                    res = res[0:-2]
+                 res = int(res)
+             elif res_type == "json":
+                 res = json.loads(res)
+-- 
+2.43.0
+
