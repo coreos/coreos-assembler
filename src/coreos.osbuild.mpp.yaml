@@ -2,13 +2,12 @@ version: '2'
 mpp-vars:
   filename: $filename
   ociarchive: $ociarchive
-  disk_size_gb: 10
   osname: $osname
+  metal_image_size_mb: $metal_image_size_mb
+  cloud_image_size_mb: $cloud_image_size_mb
   bios_boot_size_mb: 1
   efi_system_size_mb: 127
   boot_size_mb: 384
-  # XXX: Dynamically set this size in the future
-  root_size_mb: 2048
   sector_size: 512
   four_k_sector_size: 4096
   # Filesystem UUID and label definitions. These UUIDs
@@ -23,7 +22,7 @@ mpp-define-images:
     sector_size:
         mpp-format-int: "{sector_size}"
     size:
-      mpp-format-string: "{disk_size_gb * 1024 * 1024 * 1024}"
+      mpp-format-string: "{metal_image_size_mb * 1024 * 1024}"
     table:
       uuid: 00000000-0000-4000-a000-000000000001
       label: gpt
@@ -43,13 +42,11 @@ mpp-define-images:
             mpp-format-int: "{boot_size_mb * 1024 * 1024 / sector_size}"
         - name: root
           type: 0FC63DAF-8483-4772-8E79-3D69D8477DE4
-          size:
-            mpp-format-int: "{root_size_mb * 1024 * 1024 / sector_size}"
   - id: image4k
     sector_size:
         mpp-format-int: "{four_k_sector_size}"
     size:
-      mpp-format-string: "{disk_size_gb * 1024 * 1024 * 1024}"
+      mpp-format-string: "{metal_image_size_mb * 1024 * 1024}"
     table:
       uuid: 00000000-0000-4000-a000-000000000001
       label: gpt
@@ -69,8 +66,6 @@ mpp-define-images:
             mpp-format-int: "{boot_size_mb * 1024 * 1024 / four_k_sector_size}"
         - name: root
           type: 0FC63DAF-8483-4772-8E79-3D69D8477DE4
-          size:
-            mpp-format-int: "{root_size_mb * 1024 * 1024 / four_k_sector_size}"
 pipelines:
   # If installing from container then let's pull the container file into a pipeline
   - name: oci-archive
@@ -522,6 +517,12 @@ pipelines:
           paths:
             - from: input://tree/disk.img
               to: tree:///disk.img
+      # Increase the size to the cloud image size
+      - type: org.osbuild.truncate
+        options:
+          filename: disk.img
+          size:
+            mpp-format-string: "{cloud_image_size_mb * 1024 * 1024}"
       - type: org.osbuild.kernel-cmdline.bls-append
         options:
           bootpath: mount:///

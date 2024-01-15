@@ -51,6 +51,8 @@ ostree_ref=$(getconfig "ostree-ref")
 osname=$(getconfig "osname")
 platform=$(getconfig "image-type")
 deploy_via_container=$(getconfig_def "deploy-via-container" "")
+metal_image_size_mb=$(getconfig "metal-image-size")
+cloud_image_size_mb=$(getconfig "cloud-image-size")
 
 # If we are deploying via container let's go ahead and pull
 # the oci archive path from the config
@@ -68,13 +70,16 @@ mkdir /var/osbuild
 outdir=/var/osbuild/out
 
 # Run through the preprocessor
-osbuild-mpp                                 \
-    -D ref=\""${ostree_ref}"\"              \
-    -D repourl=\""file://${ostree_repo}"\"  \
-    -D filename=\""${filename}"\"           \
-    -D ociarchive=\""${ostree_container}"\" \
-    -D osname=\""${osname}"\"               \
-    "${mppyaml}"                            \
+# Note: don't quote the size arguements since they are numbers, not strings
+osbuild-mpp                                             \
+    -D ref=\""${ostree_ref}"\"                          \
+    -D repourl=\""file://${ostree_repo}"\"              \
+    -D filename=\""${filename}"\"                       \
+    -D ociarchive=\""${ostree_container}"\"             \
+    -D osname=\""${osname}"\"                           \
+    -D metal_image_size_mb="${metal_image_size_mb}"     \
+    -D cloud_image_size_mb="${cloud_image_size_mb}"     \
+    "${mppyaml}"                                        \
     processed.json
 
 # Build the image
