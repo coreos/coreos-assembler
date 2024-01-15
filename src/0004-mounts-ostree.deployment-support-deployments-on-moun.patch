@@ -1,0 +1,150 @@
+From e0cdf8699c38f113eff8f94b54a2376aea855ce6 Mon Sep 17 00:00:00 2001
+From: Dusty Mabe <dusty@dustymabe.com>
+Date: Wed, 10 Jan 2024 11:07:14 -0500
+Subject: [PATCH 4/5] mounts/ostree.deployment: support deployments on mount
+
+Instead of operating directly on the tree for a stage we can operate
+on a mount too. This is useful in the case where operating on the
+directory tree of files isn't sufficient and the modifications need
+to be made directly to the filesystems on the disk image that we are
+creating.
+
+One such example of this is we are having a problem right now where
+the immutable bit being set on an OSTree deployment root doesn't
+survive the `cp -a --reflink=auto` in the org.osbuild.copy stage when
+being copied from the directory tree into the mounted XFS filesystem
+we created on the disk image. Thus we have to workaround this loss
+of attribute by applying the attribute directly on the mounted
+filesystem from the disk.
+
+In this change here we also add a check in osbuild/mounts.py to not
+attempt a umount of the root of the mounts directory if that path
+is no longer a mountpoint, which can happen when the umount -R
+from the mounts/org.osbuild.ostree.deployment also removes the
+overmount.
+
+Here is an example of how this would be used:
+
+```
+  - type: org.osbuild.chattr
+    options:
+      immutable: true
+      path: mount://root/
+    devices:
+      disk:
+        type: org.osbuild.loopback
+        options:
+          filename: disk.img
+          partscan: true
+    mounts:
+      - name: root
+        type: org.osbuild.xfs
+        source: disk
+        partition:
+          mpp-format-int: '{image.layout[''root''].partnum}'
+        target: /
+      - name: ostree.deployment
+        type: org.osbuild.ostree.deployment
+        options:
+          source: mount
+          deployment:
+            osname: fedora-coreos
+            ref: ostree/1/1/0
+```
+
+The initial mount on `/` is the filesystem from the root partition
+on the disk. The second mount (of type org.osbuild.ostree.deployment)
+then reconfigures things similar to how an OSTree system is set up.
+---
+ mounts/org.osbuild.ostree.deployment | 18 +++++++++++++++---
+ osbuild/mounts.py                    | 13 +++++++++++--
+ 2 files changed, 26 insertions(+), 5 deletions(-)
+
+diff --git a/mounts/org.osbuild.ostree.deployment b/mounts/org.osbuild.ostree.deployment
+index fecdf44c..0845b19a 100755
+--- a/mounts/org.osbuild.ostree.deployment
++++ b/mounts/org.osbuild.ostree.deployment
+@@ -32,6 +32,12 @@ SCHEMA_2 = """
+     "type": "object",
+     "required": ["deployment"],
+     "properties": {
++      "source": {
++        "type": "string",
++        "pattern": "^(mount|tree)$",
++        "default": "tree",
++        "description": "The source of the OSTree filesystem tree"
++      },
+       "deployment": {
+         "type": "object",
+         "additionalProperties": false,
+@@ -75,16 +81,21 @@ class OSTreeDeploymentMount(mounts.MountService):
+     def mount(self, args: Dict):
+ 
+         tree = args["tree"]
++        mountroot = args["root"]
+         options = args["options"]
+ 
++        source = options.get("source", "tree")
+         deployment = options["deployment"]
+         osname = deployment["osname"]
+         ref = deployment["ref"]
+         serial = deployment.get("serial", 0)
+ 
+-        # The target path where we want the deployment to be mounted
+-        # is the root of the tree.
+-        target = tree
++        # The user could specify either the tree or mountroot as the
++        # place where we want the deployment to be mounted.
++        if source == "mount":
++            target = mountroot
++        else:
++            target = tree
+ 
+         # create a private mountpoint for the target path, which is
+         # needed in order to be able to move the deployment `root`
+@@ -97,6 +108,7 @@ class OSTreeDeploymentMount(mounts.MountService):
+         deploy_root = ostree.deployment_path(target, osname, ref, serial)
+ 
+         print(f"Deployment root at '{os.path.relpath(deploy_root, target)}'")
++        print(f"mounting {deploy_root} -> {target}")
+ 
+         var = os.path.join(target, "ostree", "deploy", osname, "var")
+         boot = os.path.join(target, "boot")
+diff --git a/osbuild/mounts.py b/osbuild/mounts.py
+index 86576ad0..3e63c873 100644
+--- a/osbuild/mounts.py
++++ b/osbuild/mounts.py
+@@ -180,6 +180,8 @@ class FileSystemMountService(MountService):
+         os.makedirs(mountpoint, exist_ok=True)
+         self.mountpoint = mountpoint
+ 
++        print(f"mounting {source} -> {mountpoint}")
++
+         try:
+             subprocess.run(
+                 ["mount"] +
+@@ -202,12 +204,19 @@ class FileSystemMountService(MountService):
+         if not self.mountpoint:
+             return
+ 
++        # It's possible this mountpoint has already been unmounted
++        # if a umount -R was run by another process, as is done in
++        # mounts/org.osbuild.ostree.deployment.
++        if not os.path.ismount(self.mountpoint):
++            print(f"already unmounted: {self.mountpoint}")
++            return
++
+         self.sync()
+ 
+-        print("umounting")
++        print(f"unmounting {self.mountpoint}")
+ 
+         # We ignore errors here on purpose
+-        subprocess.run(["umount", self.mountpoint],
++        subprocess.run(["umount", "-v", self.mountpoint],
+                        check=self.check)
+         self.mountpoint = None
+ 
+-- 
+2.43.0
+

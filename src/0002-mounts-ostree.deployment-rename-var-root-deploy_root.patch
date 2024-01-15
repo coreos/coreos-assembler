@@ -1,0 +1,49 @@
+From f7380f5327dc2764ae2e8dec6bc1e4351f8c17f7 Mon Sep 17 00:00:00 2001
+From: Dusty Mabe <dusty@dustymabe.com>
+Date: Wed, 10 Jan 2024 00:02:38 -0500
+Subject: [PATCH 2/5] mounts/ostree.deployment: rename var root -> deploy_root
+
+It makes things a little more clear to know the variable is pointing
+to the path of the deployment.
+---
+ mounts/org.osbuild.ostree.deployment | 16 ++++++++--------
+ 1 file changed, 8 insertions(+), 8 deletions(-)
+
+diff --git a/mounts/org.osbuild.ostree.deployment b/mounts/org.osbuild.ostree.deployment
+index 1da0f46a..ddd48f8f 100755
+--- a/mounts/org.osbuild.ostree.deployment
++++ b/mounts/org.osbuild.ostree.deployment
+@@ -89,22 +89,22 @@ class OSTreeDeploymentMount(mounts.MountService):
+         #                                              - `mount(8)`
+         self.bind_mount(tree, tree)
+ 
+-        root = ostree.deployment_path(tree, osname, ref, serial)
++        deploy_root = ostree.deployment_path(tree, osname, ref, serial)
+ 
+-        print(f"Deployment root at '{os.path.relpath(root, tree)}'")
++        print(f"Deployment root at '{os.path.relpath(deploy_root, tree)}'")
+ 
+         var = os.path.join(tree, "ostree", "deploy", osname, "var")
+         boot = os.path.join(tree, "boot")
+ 
+-        self.mountpoint = root
+-        self.bind_mount(root, root)  # prepare to move it later
++        self.mountpoint = deploy_root
++        self.bind_mount(deploy_root, deploy_root)  # prepare to move it later
+ 
+-        self.bind_mount(tree, os.path.join(root, "sysroot"))
+-        self.bind_mount(var, os.path.join(root, "var"))
+-        self.bind_mount(boot, os.path.join(root, "boot"))
++        self.bind_mount(tree, os.path.join(deploy_root, "sysroot"))
++        self.bind_mount(var, os.path.join(deploy_root, "var"))
++        self.bind_mount(boot, os.path.join(deploy_root, "boot"))
+ 
+         subprocess.run([
+-            "mount", "--move", root, tree,
++            "mount", "--move", deploy_root, tree,
+         ], check=True)
+ 
+         self.mountpoint = tree
+-- 
+2.43.0
+

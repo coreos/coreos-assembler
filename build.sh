@@ -185,6 +185,11 @@ patch_osbuild() {
         /usr/lib/coreos-assembler/0001-stages-org.osbuild.ostree.config-support-bls-append-.patch \
         /usr/lib/coreos-assembler/0001-osbuild-mpp-fix-float-correction.patch                     \
         /usr/lib/coreos-assembler/0001-stages-org.osbuild.mkfs.ext4-add-ext4-options.patch        \
+        /usr/lib/coreos-assembler/0001-mounts-ostree.deployment-rework-unmounting.patch           \
+        /usr/lib/coreos-assembler/0002-mounts-ostree.deployment-rename-var-root-deploy_root.patch \
+        /usr/lib/coreos-assembler/0003-mounts-ostree.deployment-use-target-instead-of-tree.patch  \
+        /usr/lib/coreos-assembler/0004-mounts-ostree.deployment-support-deployments-on-moun.patch \
+        /usr/lib/coreos-assembler/0005-Create-stages-org.osbuild.chattr-stage.patch               \
             | patch -d /usr/lib/osbuild -p1
 
     # And then move the files back; supermin appliance creation will need it back

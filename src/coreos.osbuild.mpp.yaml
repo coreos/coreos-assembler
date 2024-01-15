@@ -311,6 +311,31 @@ pipelines:
             partition:
               mpp-format-int: '{image.layout[''EFI-SYSTEM''].partnum}'
             target: /boot/efi
+      - type: org.osbuild.chattr
+        options:
+          immutable: true
+          path: mount://root/
+        devices:
+          disk:
+            type: org.osbuild.loopback
+            options:
+              filename: disk.img
+              partscan: true
+        mounts:
+          - name: root
+            type: org.osbuild.xfs
+            source: disk
+            partition:
+              mpp-format-int: '{image.layout[''root''].partnum}'
+            target: /
+          - name: ostree.deployment
+            type: org.osbuild.ostree.deployment
+            options:
+              source: mount
+              deployment:
+                ref: ostree/1/1/0
+                osname:
+                  mpp-format-string: '{osname}'
   - name: raw-4k-image
     stages:
       - type: org.osbuild.truncate
@@ -466,6 +491,33 @@ pipelines:
             partition:
               mpp-format-int: '{image4k.layout[''EFI-SYSTEM''].partnum}'
             target: /boot/efi
+      - type: org.osbuild.chattr
+        options:
+          immutable: true
+          path: mount://root/
+        devices:
+          disk:
+            type: org.osbuild.loopback
+            options:
+              filename: disk.img
+              partscan: true
+              sector-size:
+                  mpp-format-int: "{four_k_sector_size}"
+        mounts:
+          - name: root
+            type: org.osbuild.xfs
+            source: disk
+            partition:
+              mpp-format-int: '{image4k.layout[''root''].partnum}'
+            target: /
+          - name: ostree.deployment
+            type: org.osbuild.ostree.deployment
+            options:
+              source: mount
+              deployment:
+                ref: ostree/1/1/0
+                osname:
+                  mpp-format-string: '{osname}'
   - name: raw-metal-image
     stages:
       - type: org.osbuild.copy
