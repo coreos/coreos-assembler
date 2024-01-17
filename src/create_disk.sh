@@ -173,14 +173,19 @@ case "$arch" in
         ;;
     s390x)
         sgdisk_args=()
+        rootp_end=0
         if [[ ${secure_execution} -eq 1 ]]; then
             # shellcheck disable=SC2206
             sgdisk_args+=(-n ${SDPART}:0:+200M -c ${SDPART}:se -t ${SDPART}:0FC63DAF-8483-4772-8E79-3D69D8477DE4)
+            # we need to leave space for the verity hash partitions (and add 1MB otherwise sgdisk can't fit them for some reason)
+            rootp_end=-$((128+256+1))M
         fi
+
         # shellcheck disable=SC2206
         sgdisk_args+=(-n ${BOOTPN}:0:+384M -c ${BOOTPN}:boot \
-                      -n ${ROOTPN}:0:0 -c ${ROOTPN}:root -t ${ROOTPN}:0FC63DAF-8483-4772-8E79-3D69D8477DE4)
+                      -n ${ROOTPN}:0:${rootp_end} -c ${ROOTPN}:root -t ${ROOTPN}:0FC63DAF-8483-4772-8E79-3D69D8477DE4)
         if [[ ${secure_execution} -eq 1 ]]; then
+            # note these length values are hardcoded in both rootp_end above and in `cmd-buildextend-metal`
             # shellcheck disable=SC2206
             sgdisk_args+=(-n ${BOOTVERITYHASHPN}:0:+128M -c ${BOOTVERITYHASHPN}:boothash \
                           -n ${ROOTVERITYHASHPN}:0:+256M -c ${ROOTVERITYHASHPN}:roothash)
