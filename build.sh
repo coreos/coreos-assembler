@@ -182,6 +182,10 @@ patch_osbuild() {
         /usr/lib/coreos-assembler/0003-mounts-ostree.deployment-use-target-instead-of-tree.patch  \
         /usr/lib/coreos-assembler/0004-mounts-ostree.deployment-support-deployments-on-moun.patch \
         /usr/lib/coreos-assembler/0005-Create-stages-org.osbuild.chattr-stage.patch               \
+        /usr/lib/coreos-assembler/0001-fscache-add-new-FsCache._last_used_objs-helper.patch       \
+        /usr/lib/coreos-assembler/0002-fscache-add-FsCache._remove_lru-to-remove-entries.patch    \
+        /usr/lib/coreos-assembler/0003-fscache-use-remove_lru-to-reclaim-space-when-the-cac.patch \
+        /usr/lib/coreos-assembler/0004-fscache-add-eviction-log-statement.patch                   \
             | patch -d /usr/lib/osbuild -p1
 
     # And then move the files back; supermin appliance creation will need it back

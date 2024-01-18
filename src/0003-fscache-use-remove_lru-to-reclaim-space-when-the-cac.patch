@@ -1,0 +1,103 @@
+From d33447368180a414f17a9a08346857129caf2556 Mon Sep 17 00:00:00 2001
+From: Michael Vogt <michael.vogt@gmail.com>
+Date: Wed, 13 Dec 2023 17:39:55 +0100
+Subject: [PATCH 3/4] fscache: use remove_lru() to reclaim space when the cache
+ is full
+
+This commit adds code that will remove the least recently used
+entries when a store() operation does not succeeds because the
+cache is full.
+---
+ osbuild/util/fscache.py | 48 ++++++++++++++++++++++++++++++-----------
+ 1 file changed, 36 insertions(+), 12 deletions(-)
+
+diff --git a/osbuild/util/fscache.py b/osbuild/util/fscache.py
+index 21e03f95..9057d53c 100644
+--- a/osbuild/util/fscache.py
++++ b/osbuild/util/fscache.py
+@@ -941,20 +941,31 @@ class FsCache(contextlib.AbstractContextManager, os.PathLike):
+             info: Dict[str, Any] = {}
+             info["creation-boot-id"] = self._bootid
+             info["size"] = self._calculate_space(path_data)
++            # account for the extra block of the object-information file
++            # (find a better way to account for the block size)
++            info["size"] += 4096
+ 
+-            # Update the total cache-size. If it exceeds the limits, bail out
+-            # but do not trigger an error. It behaves as if the entry was
+-            # committed and immediately deleted by racing cache management. No
+-            # need to tell the caller about it (if that is ever needed, we can
+-            # provide for it).
++            # Exit early if it never is going to fit
++            if self._info_maximum_size > -1 and info["size"] > self._info_maximum_size:
++                return
++
++            # Update the total cache-size. If it exceeds the limits, remove
++            # least recently used objects until there is enough space.
+             #
+             # Note that if we crash after updating the total cache size, but
+             # before committing the object information, the total cache size
+-            # will be out of sync. However, it is never overcommitted, so we
+-            # will never violate any cache invariants. The cache-size will be
+-            # re-synchronized by any full cache-management operation.
++            # will be out of sync.
++            #
++            # However, it is never overcommitted, so we will never
++            # violate any cache invariants. Future code needs to resync
++            # the cache (e.g. on open with some simple journal strategy).
+             if not self._update_cache_size(info["size"]):
+-                return
++                # try to free space
++                self._remove_lru(info["size"])
++                # and see if the update can happen now
++                if not self._update_cache_size(info["size"]):
++                    # stil could not free enough space
++                    return
+ 
+             try:
+                 # Commit the object-information, thus marking it as fully
+@@ -1086,8 +1097,12 @@ class FsCache(contextlib.AbstractContextManager, os.PathLike):
+             objs.append(FsCacheObjectInfo(name=name, last_used=last_used))
+         return sorted(objs, key=lambda obj: obj.last_used)
+ 
+-    def _remove_lru(self):
+-        """"Remove the least recently used entry from the cache."""
++    def _remove_lru(self, required_size):
++        """"
++        Make room in the cache for "required_size" by remove the least
++        recently used entry from the cache. Note that the cache may
++        clear more than required_size.
++        """
+         # To avoid having to take a global cache lock the strategy is:
+         # 1. Get list of (object, last_used) sorted from oldest to newest.
+         #    This is racy so we need to take care of that in step(2).
+@@ -1101,6 +1116,11 @@ class FsCache(contextlib.AbstractContextManager, os.PathLike):
+         # Note that there is a risk to get out-of-sync in (3). If the
+         # process dies while removing and before updating the cache
+         # size the cache will be over reported.
++        #
++        # try to clean at least twice the requested size to avoid having
++        # to do this all over again
++        try_to_free = required_size * 2
++        freed_so_far = 0
+         for name, last_used in self._last_used_objs():
+             # take write lock for the indivdual object
+             rpath = os.path.join(self._dirname_objects, name)
+@@ -1126,9 +1146,13 @@ class FsCache(contextlib.AbstractContextManager, os.PathLike):
+                     size = self._calculate_space(self._path(rpath))
+                     self._rm_r_object(rpath)
+                     self._update_cache_size(-size)
+-                    return
++                    freed_so_far += size
++                    if freed_so_far >= try_to_free:
++                        break
+             except BlockingIOError:
+                 continue
++        # return if at least the required size got freed
++        return freed_so_far > required_size
+ 
+     @property
+     def info(self) -> FsCacheInfo:
+-- 
+2.43.0
+
