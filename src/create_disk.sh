@@ -491,7 +491,7 @@ x86_64)
         chroot_run /sbin/grub2-install \
             --target i386-pc \
             --boot-directory $rootfs/boot \
-            --modules mdraid1x \
+            --modules "mdraid1x part_gpt" \
             "$disk"
     fi
     ;;
