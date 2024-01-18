@@ -45,7 +45,7 @@ install_rpms() {
     frozendeps=""
 
     # We freeze the version for now since we're carrying patches.
-    frozendeps+=" $(echo osbuild{,-ostree,-selinux,-tools}-103-1.fc39.noarch)"
+    frozendeps+=" $(echo osbuild{,-ostree,-selinux,-tools}-104-1.fc39.noarch)"
 
     # First, a general update; this is best practice.  We also hit an issue recently
     # where qemu implicitly depended on an updated libusbx but didn't have a versioned
@@ -176,15 +176,7 @@ patch_osbuild() {
     mv /usr/bin/osbuild-mpp /usr/lib/osbuild/tools/
 
     # Now all the software is under the /usr/lib/osbuild dir and we can patch
-    cat /usr/lib/coreos-assembler/0001-create-org.osbuild.bootupd-stage.patch                     \
-        /usr/lib/coreos-assembler/0002-stages-bootupd-add-schema-test.patch                       \
-        /usr/lib/coreos-assembler/0003-stages-bootupd-add-tests-for-existing-behavior.patch       \
-        /usr/lib/coreos-assembler/0004-stages-bootupd-refactor-test-to-separately-test-beha.patch \
-        /usr/lib/coreos-assembler/0005-stages-bootupd-support-installing-to-a-partition-of-.patch \
-        /usr/lib/coreos-assembler/0001-tools-osbuild-mpp-run-_process_format-for-mpp-embed-.patch \
-        /usr/lib/coreos-assembler/0001-stages-org.osbuild.ostree.config-support-bls-append-.patch \
-        /usr/lib/coreos-assembler/0001-osbuild-mpp-fix-float-correction.patch                     \
-        /usr/lib/coreos-assembler/0001-stages-org.osbuild.mkfs.ext4-add-ext4-options.patch        \
+    cat /usr/lib/coreos-assembler/0001-stages-org.osbuild.mkfs.ext4-add-ext4-options.patch        \
         /usr/lib/coreos-assembler/0001-mounts-ostree.deployment-rework-unmounting.patch           \
         /usr/lib/coreos-assembler/0002-mounts-ostree.deployment-rename-var-root-deploy_root.patch \
         /usr/lib/coreos-assembler/0003-mounts-ostree.deployment-use-target-instead-of-tree.patch  \

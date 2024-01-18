@@ -711,7 +711,6 @@ runvm() {
     # https://github.com/osbuild/osbuild/pull/1519
     # https://github.com/osbuild/osbuild/pull/1535
     # shellcheck disable=SC2129
-    echo /usr/lib/osbuild/stages/org.osbuild.bootupd >> "${vmpreparedir}/hostfiles"
     echo /usr/lib/osbuild/stages/org.osbuild.chattr >> "${vmpreparedir}/hostfiles"
 
     # and include all GPG keys
