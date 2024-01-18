@@ -1,4 +1,4 @@
-From 97e013f3a956fb6ad90d337e42e795c2a187c9a6 Mon Sep 17 00:00:00 2001
+From 3eaffe169c1c99ef65bb2a8b24f867416e0de4d2 Mon Sep 17 00:00:00 2001
 From: Dusty Mabe <dusty@dustymabe.com>
 Date: Wed, 10 Jan 2024 11:12:51 -0500
 Subject: [PATCH 5/5] Create stages/org.osbuild.chattr stage

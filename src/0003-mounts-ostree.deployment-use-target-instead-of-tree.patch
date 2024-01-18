@@ -1,4 +1,4 @@
-From 39b650c5f3c41b02c088b25b1160173db7c950f0 Mon Sep 17 00:00:00 2001
+From b60e4d8cb4827d3f7cf2aa2158ba94ec00092520 Mon Sep 17 00:00:00 2001
 From: Dusty Mabe <dusty@dustymabe.com>
 Date: Wed, 10 Jan 2024 00:12:01 -0500
 Subject: [PATCH 3/5] mounts/ostree.deployment: use target instead of tree
@@ -13,10 +13,10 @@ We also update the comment to try to enhance clarity.
  1 file changed, 17 insertions(+), 12 deletions(-)
 
 diff --git a/mounts/org.osbuild.ostree.deployment b/mounts/org.osbuild.ostree.deployment
-index ddd48f8f..fecdf44c 100755
+index f23a44da..b200eca3 100755
 --- a/mounts/org.osbuild.ostree.deployment
 +++ b/mounts/org.osbuild.ostree.deployment
-@@ -82,32 +82,37 @@ class OSTreeDeploymentMount(mounts.MountService):
+@@ -98,32 +98,37 @@ class OSTreeDeploymentMount(mounts.MountService):
          ref = deployment["ref"]
          serial = deployment.get("serial", 0)
  

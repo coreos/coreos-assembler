@@ -1,4 +1,4 @@
-From 93a79a3741bcba9ada37cea2673e8b8b5b72eb16 Mon Sep 17 00:00:00 2001
+From a16da49474762d09ebf909651ec68633b799b6fe Mon Sep 17 00:00:00 2001
 From: Dusty Mabe <dusty@dustymabe.com>
 Date: Tue, 9 Jan 2024 23:23:25 -0500
 Subject: [PATCH 1/5] mounts/ostree.deployment: rework unmounting
@@ -49,11 +49,11 @@ workaround.
 [1] https://github.com/karelzak/util-linux/commit/a04149fbb7c1952da1194d1514e298ff07dbc7ca
 [2] https://github.com/karelzak/util-linux/commit/8cf6c5075780598fe3b30e7a7753d8323d093e22
 ---
- mounts/org.osbuild.ostree.deployment | 28 ++++++++++++++++++----------
- 1 file changed, 18 insertions(+), 10 deletions(-)
+ mounts/org.osbuild.ostree.deployment | 44 +++++++++++++++++++++-------
+ 1 file changed, 34 insertions(+), 10 deletions(-)
 
 diff --git a/mounts/org.osbuild.ostree.deployment b/mounts/org.osbuild.ostree.deployment
-index 5571cc1f..1da0f46a 100755
+index 5571cc1f..9046fb05 100755
 --- a/mounts/org.osbuild.ostree.deployment
 +++ b/mounts/org.osbuild.ostree.deployment
 @@ -63,7 +63,6 @@ class OSTreeDeploymentMount(mounts.MountService):
@@ -64,15 +64,31 @@ index 5571cc1f..1da0f46a 100755
          self.mountpoint = None
          self.check = False
  
-@@ -72,7 +71,6 @@ class OSTreeDeploymentMount(mounts.MountService):
+@@ -72,7 +71,22 @@ class OSTreeDeploymentMount(mounts.MountService):
          subprocess.run([
              "mount", "--bind", "--make-private", source, target,
          ], check=True)
 -        return target
++
++    def is_mounted(self):
++        # Use `mountpoint` command here to determine if the mountpoint is mounted.
++        # We would use os.path.ismount() here but that only works if a device is
++        # mounted (i.e. it doesn't use the mountinfo file in the heuristic and
++        # thus things like `mount --move` wouldn't show up). The exit codes from
++        # `mountpoint` are:
++        #
++        #  0 success; the directory is a mountpoint, or device is block device on --devno
++        #  1 failure; incorrect invocation, permissions or system error
++        #  32 failure; the directory is not a mountpoint, or device is not a block device on --devno
++        #
++        cp = subprocess.run(["mountpoint", "-q", self.mountpoint], check=False)
++        if cp.returncode not in [0, 32]:
++            cp.check_returncode()  # will raise error
++        return cp.returncode == 0
  
      def mount(self, args: Dict):
  
-@@ -89,7 +87,7 @@ class OSTreeDeploymentMount(mounts.MountService):
+@@ -89,7 +103,7 @@ class OSTreeDeploymentMount(mounts.MountService):
          # is contained inside tree, since "moving a mount residing
          # under a shared mount is invalid and unsupported."
          #                                              - `mount(8)`
@@ -81,7 +97,7 @@ index 5571cc1f..1da0f46a 100755
  
          root = ostree.deployment_path(tree, osname, ref, serial)
  
-@@ -116,15 +114,25 @@ class OSTreeDeploymentMount(mounts.MountService):
+@@ -116,15 +130,25 @@ class OSTreeDeploymentMount(mounts.MountService):
          if self.mountpoint:
              subprocess.run(["sync", "-f", self.mountpoint],
                             check=self.check)
@@ -106,7 +122,7 @@ index 5571cc1f..1da0f46a 100755
 +            # moved to v2.39+.
 +            # [1] https://github.com/karelzak/util-linux/commit/a04149fbb7c1952da1194d1514e298ff07dbc7ca
 +            # [2] https://github.com/karelzak/util-linux/commit/8cf6c5075780598fe3b30e7a7753d8323d093e22
-+            while os.path.ismount(self.mountpoint):
++            while self.is_mounted():
 +                print(f"extra unmount {self.mountpoint}")
 +                subprocess.run(["umount", "-v", self.mountpoint],
 +                               check=self.check)
