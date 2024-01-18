@@ -1029,6 +1029,8 @@ func testLiveInstalliscsi(ctx context.Context, inst platform.Install, outdir str
 	// enable network
 	builder.EnableUsermodeNetworking([]platform.HostForwardPort{}, "")
 
+	// keep auto-login enabled for easier debug when running console
+	config.AddAutoLogin()
 	builder.SetConfig(config)
 
 	mach, err := builder.Exec()
