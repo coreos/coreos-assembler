@@ -32,8 +32,11 @@ Usage: coreos-assembler build --help
   --strict              Only allow installing locked packages when using lockfiles
   --prepare-only        Do not actually build, only set things up so that `rpm-ostree compose image` works.
   --tag TAG             Set the given tag in the build metadata
-  --version VERSION     Use the given version instead of generating one based on current time
+  --version=VERSION     Use the given version instead of generating one based on current time
   --skip-config-archive Disable creating a tar.gz archive of the config repo.
+  --autolock=VERSION    If no base lockfile used, create one from any arch build of `VERSION`.
+                        Note this is automatically enabled when adding to an existing multi-arch
+                        non-strict build.
 
   Additional environment variables supported:
 
@@ -56,8 +59,9 @@ PARENT_BUILD=
 TAG=
 STRICT=
 CONFIG_ARCHIVE=1
+AUTOLOCK_VERSION=
 rc=0
-options=$(getopt --options hfFt: --longoptions tag:,help,fetch,force,version:,parent:,parent-build:,delay-meta-merge,force-nocache,force-image,skip-prune,prepare-only,strict,skip-config-archive -- "$@") || rc=$?
+options=$(getopt --options hfFt: --longoptions tag:,help,fetch,force,version:,parent:,parent-build:,delay-meta-merge,force-nocache,force-image,skip-prune,prepare-only,strict,skip-config-archive,autolock: -- "$@") || rc=$?
 [ $rc -eq 0 ] || {
     print_help
     exit 1
@@ -105,6 +109,10 @@ while true; do
         --parent-build)
             shift
             PARENT_BUILD=$1
+            ;;
+        --autolock)
+            shift;
+            AUTOLOCK_VERSION=$1
             ;;
         -t | --tag)
             shift
@@ -279,12 +287,13 @@ prepare_git_artifacts "${configdir_gitrepo}" "${PWD}/coreos-assembler-config-git
 
 extra_compose_args=()
 
-# Apply autolock from another build for this version if no base lockfile exists.
+# Apply autolock from another build for this version (or for another version if
+# explicitly provided via --autolock) if no base lockfile exists.
 # Do this before so that overrides come after. Don't do this if in strict mode.
 # They're theoretically independent, but in practice it's unlikely that an
 # autolockfile will include all the packages needed to satisfy --strict.
-if [ ! -f "${manifest_lock}" ] && [ -n "${VERSION}" ] && [ -z "${STRICT}" ]; then
-    autolockfile=$(generate_autolock "${VERSION}")
+if [ ! -f "${manifest_lock}" ] && { [ -n "${VERSION}" ] || [ -n "${AUTOLOCK_VERSION}" ]; } && [ -z "${STRICT}" ]; then
+    autolockfile=$(generate_autolock "${AUTOLOCK_VERSION:-${VERSION}}")
     if [ -n "${autolockfile}" ]; then
         extra_compose_args+=("--ex-lockfile=${autolockfile}")
     fi
