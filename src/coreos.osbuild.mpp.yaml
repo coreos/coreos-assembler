@@ -3,6 +3,7 @@ mpp-vars:
   filename: $filename
   ociarchive: $ociarchive
   osname: $osname
+  container_imgref: $container_imgref
   metal_image_size_mb: $metal_image_size_mb
   cloud_image_size_mb: $cloud_image_size_mb
   bios_boot_size_mb: 1
@@ -118,7 +119,8 @@ pipelines:
           options:
             osname:
               mpp-format-string: '{osname}'
-            target_imgref: ostree-remote-registry:fedora:quay.io/fedora/fedora-coreos:stable
+            target_imgref:
+              mpp-format-string: '{container_imgref}'
             mounts:
               - /boot
               - /boot/efi

@@ -251,10 +251,10 @@ qemu_args+=("-drive" "if=none,id=target,format=${image_format},file=${path}.tmp,
 cat >image-dynamic.yaml << EOF
 # Used by create_disk.sh
 buildid: "${build}"
-container-imgref: "${container_imgref}"
 imgid: "${img}"
 ostree-commit: "${commit}"
 # Used by both create_disk.sh and runvm-osbuild
+container-imgref: "${container_imgref}"
 deploy-via-container: "${deploy_via_container}"
 osname: "${name}"
 ostree-container: "${ostree_container}"
