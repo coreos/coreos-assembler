@@ -170,9 +170,14 @@ deploy_via_container=""
 if jq -re '.["deploy-via-container"]' < "${image_json}"; then
     deploy_via_container="true"
 fi
-container_imgref=$(jq -r '.["container-imgref"]//""' < "${image_json}")
 # OStree container ociarchive file path
 ostree_container="${builddir}/$(meta_key images.ostree.path)"
+container_imgref=$(jq -r '.["container-imgref"]//""' < "${image_json}")
+if [ -z "${container_imgref}" ]; then
+    # If no container_imgref was set let's just set it to some professional
+    # looking default. The name of the ociarchive file should suffice.
+    container_imgref="ostree-image-signed:oci-archive:/$(basename "${ostree_container}")"
+fi
 
 # fs-verity requires block size = page size. We need to take that into account
 # in the disk size estimation due to higher fragmentation on larger blocks.
