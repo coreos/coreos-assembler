@@ -38,9 +38,7 @@ VARIANTS = {
         "image_suffix": "ova.gz",
         "platform": "powervs",
         "compression": "gzip",
-        "tar_members": [
-            "disk.raw"
-        ]
+        "tar_members": []  # disk image is added as part of write_ova() function.
     },
 }
 
@@ -99,6 +97,7 @@ class IBMCloudImage(QemuVariantImage):
         log.debug(ovf_xml)
         # OVF descriptor must come first, then the manifest, then the meta file
         self.tar_members.append(self.ovf_path)
+        self.tar_members.append(f'{ovf_params["image"]}-disk.raw')
 
 
 @retry(reraise=True, stop=stop_after_attempt(3))
