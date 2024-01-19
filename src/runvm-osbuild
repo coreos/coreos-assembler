@@ -53,6 +53,7 @@ platform=$(getconfig "image-type")
 deploy_via_container=$(getconfig_def "deploy-via-container" "")
 metal_image_size_mb=$(getconfig "metal-image-size")
 cloud_image_size_mb=$(getconfig "cloud-image-size")
+container_imgref=$(getconfig "container-imgref")
 
 # If we are deploying via container let's go ahead and pull
 # the oci archive path from the config
@@ -77,6 +78,7 @@ osbuild-mpp                                             \
     -D filename=\""${filename}"\"                       \
     -D ociarchive=\""${ostree_container}"\"             \
     -D osname=\""${osname}"\"                           \
+    -D container_imgref=\""${container_imgref}"\"       \
     -D metal_image_size_mb="${metal_image_size_mb}"     \
     -D cloud_image_size_mb="${cloud_image_size_mb}"     \
     "${mppyaml}"                                        \
