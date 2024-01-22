@@ -393,13 +393,23 @@ func newQemuBuilder(outdir string) (*platform.QemuBuilder, *conf.Conf, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	journalPipe, err := builder.VirtioJournal(config, "")
+
+	err = forwardJournal(outdir, builder, config)
 	if err != nil {
 		return nil, nil, err
 	}
+
+	return builder, config, nil
+}
+
+func forwardJournal(outdir string, builder *platform.QemuBuilder, config *conf.Conf) error {
+	journalPipe, err := builder.VirtioJournal(config, "")
+	if err != nil {
+		return err
+	}
 	journalOut, err := os.OpenFile(filepath.Join(outdir, "journal.txt"), os.O_WRONLY|os.O_CREATE, 0644)
 	if err != nil {
-		return nil, nil, err
+		return err
 	}
 
 	go func() {
@@ -409,7 +419,7 @@ func newQemuBuilder(outdir string) (*platform.QemuBuilder, *conf.Conf, error) {
 		}
 	}()
 
-	return builder, config, nil
+	return nil
 }
 
 func newQemuBuilderWithDisk(outdir string) (*platform.QemuBuilder, *conf.Conf, error) {
@@ -1023,11 +1033,19 @@ func testLiveInstalliscsi(ctx context.Context, inst platform.Install, outdir str
 	if err != nil {
 		return 0, err
 	}
+	err = forwardJournal(outdir, builder, config)
+	if err != nil {
+		return 0, err
+	}
+
 	// Add a failure target to stop the test if something go wrong rather than waiting for the 10min timeout
 	config.AddSystemdUnit("coreos-test-entered-emergency-target.service", signalFailureUnit, conf.Enable)
 
 	// enable network
 	builder.EnableUsermodeNetworking([]platform.HostForwardPort{}, "")
+
+	// keep auto-login enabled for easier debug when running console
+	config.AddAutoLogin()
 
 	builder.SetConfig(config)
 
