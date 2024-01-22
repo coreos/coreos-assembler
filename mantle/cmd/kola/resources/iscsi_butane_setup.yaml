@@ -9,7 +9,7 @@ storage:
       label: var
       with_mount_unit: true
   files:
-    - path: /etc/containers/systemd/target.container
+    - path: /etc/containers/systemd/targetd.container
       contents:
         inline: |
             [Unit]
@@ -20,12 +20,16 @@ storage:
             OnFailure=emergency.target
             [Container]
             Image=quay.io/jbtrystram/targetcli:latest
-            ContainerName=target
+            ContainerName=targetd
             Network=host
             Volume=/dev/disk/by-id/virtio-target:/dev/disk/by-id/virtio-target
             Volume=/lib/modules:/lib/modules
             Volume=/sys/kernel/config:/sys/kernel/config
             PodmanArgs=--privileged
+            # FIXME this requires podman 4.9.0
+            #HealthCmd=/usr/bin/targetcli pwd
+            #HealthStartPeriod=15s
+            #Notify=healthy
             [Install]
             # Start by default on boot
             WantedBy=multi-user.target
@@ -35,7 +39,10 @@ storage:
           inline: |
             #!/bin/bash
             set -xeuo pipefail
-            podman exec target bash -exc "
+            podman exec targetd bash -exc "
+            # wait until the targetcli socket is ready
+            # FIXME: use RestartMode=direct instead in the systemd unit but we need systemd v254
+            while ! test -S /var/run/targetclid.sock; do sleep 1; done
             targetcli /backstores/block create name=coreos dev=/dev/disk/by-id/virtio-target
             targetcli iscsi/ create iqn.2023-10.coreos.target.vm:coreos
             targetcli iscsi/iqn.2023-10.coreos.target.vm:coreos/tpg1/luns create /backstores/block/coreos
@@ -82,16 +89,16 @@ storage:
           Image=quay.io/coreos-assembler/coreos-assembler
           ContainerName=iscsiboot
           Volume=/mnt/workdir-tmp/:/mnt/workdir-tmp/
-          Volume=/dev/virtio-ports/testiscsicompletion:/mnt/serial
+          Volume=/dev/virtio-ports/testisocompletion:/mnt/serial
           PodmanArgs=--privileged
           Network=host
-          Exec=shell -- kola qemuexec --netboot /mnt/workdir-tmp/boot.ipxe --usernet-addr 10.0.3.0/24 -- -device virtio-serial -chardev file,id=iscsi-completion-virtio,path=/mnt/serial,append=on -device virtserialport,chardev=iscsi-completion-virtio,name=testiscsicompletion
+          Exec=shell -- kola qemuexec --netboot /mnt/workdir-tmp/boot.ipxe --usernet-addr 10.0.3.0/24 -- -device virtio-serial -chardev file,id=iscsi-completion-virtio,path=/mnt/serial,append=on -device virtserialport,chardev=iscsi-completion-virtio,name=testisocompletion
           [Install]
           # Start by default on boot
           WantedBy=multi-user.target
           [Service]
           # fix permissions on the serial device before passing it as a volume
-          ExecStartPre=chmod 777 /dev/virtio-ports/testiscsicompletion
+          ExecStartPre=chmod 777 /dev/virtio-ports/testisocompletion
     - path: /mnt/workdir-tmp/nested-ign.json
       contents:
         inline: | 
@@ -102,7 +109,7 @@ storage:
             "systemd": {
               "units": [
                 {
-                  "contents": "[Unit]\nDescription=iSCSI Boot Signal Completion\nAfter=multi-user.target\nOnFailureJobMode=isolate\n[Service]\nType=oneshot\nRemainAfterExit=yes\nExecStart=/bin/sh -c '/usr/bin/echo \"iscsi-boot-ok\" \u003e/dev/virtio-ports/testiscsicompletion \u0026\u0026 systemctl poweroff'\n[Install]\nRequiredBy=multi-user.target\n",
+                  "contents": "[Unit]\nDescription=iSCSI Boot Signal Completion\nAfter=multi-user.target\nOnFailureJobMode=isolate\n[Service]\nType=oneshot\nRemainAfterExit=yes\nExecStart=/bin/sh -c '/usr/bin/echo \"iscsi-boot-ok\" \u003e/dev/virtio-ports/testisocompletion \u0026\u0026 systemctl poweroff'\n[Install]\nRequiredBy=multi-user.target\n",
                   "enabled": true,
                   "name": "successful-boot-signal.service"
                 }
@@ -116,14 +123,15 @@ systemd:
       contents: |
         [Unit]
         Description=Setup targetcli
-        Requires=target.service
-        After=target.service
+        Requires=targetd.service
+        After=targetd.service
         ConditionFirstBoot=true
         OnFailure=emergency.target
         [Service]
         Type=oneshot
         RemainAfterExit=yes
         ExecStart=/usr/local/bin/targetcli_script
+        Restart=on-failure
         [Install]
         WantedBy=multi-user.target
     - name: install-coreos-to-iscsi-target.service
