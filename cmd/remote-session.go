@@ -13,6 +13,7 @@ type RemoteSessionOptions struct {
 	CreateImage      string
 	CreateExpiration string
 	CreateWorkdir    string
+	CreateEnv        []string
 	SyncQuiet        bool
 }
 
@@ -144,9 +145,14 @@ func runCreate(c *cobra.Command, args []string) error {
 		"--volume=secex-data:/data.secex:ro",
 		"--uidmap=1000:0:1", "--uidmap=0:1:1000", "--uidmap=1001:1001:64536",
 		"--device=/dev/kvm", "--device=/dev/fuse", "--tmpfs=/tmp",
-		"--init", "--entrypoint=/usr/bin/sleep",
+		"--init", "--entrypoint=/usr/bin/sleep"}
+	// Add in any env vars that were specified.
+	for _, env := range remoteSessionOpts.CreateEnv {
+		podmanargs = append(podmanargs, "--env", env)
+	}
+	podmanargs = append(podmanargs,
 		remoteSessionOpts.CreateImage,
-		remoteSessionOpts.CreateExpiration}
+		remoteSessionOpts.CreateExpiration)
 	cmd := exec.Command("podman", podmanargs...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -257,6 +263,9 @@ func init() {
 	cmdRemoteSessionCreate.Flags().StringVarP(
 		&remoteSessionOpts.CreateWorkdir, "workdir", "", "/srv",
 		"The COSA working directory to use inside the container")
+	cmdRemoteSessionCreate.Flags().StringArrayVarP(
+		&remoteSessionOpts.CreateEnv, "env", "", []string{},
+		"Environment variables to set inside the container")
 
 	// cmdRemoteSessionSync options
 	cmdRemoteSessionSync.Flags().BoolVarP(
