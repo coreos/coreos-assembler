@@ -15,7 +15,7 @@ storage:
             [Unit]
             Description=Targetd container
             Documentation=https://github.com/jbtrystram/targetcli-containers
-            After=local-fs.target network-online.target After=nss-lookup.target dev-disk-by\x2did-virtio\x2dtarget.device
+            After=local-fs.target network-online.target nss-lookup.target dev-disk-by\x2did-virtio\x2dtarget.device
             Wants=network-online.target
             OnFailure=emergency.target
             [Container]
@@ -74,7 +74,7 @@ storage:
         inline: |
           [Unit]
           Description=Boot VM over iSCSI
-          After=network-online.target After=nss-lookup.target install-coreos-to-iscsi-target.service 
+          After=network-online.target nss-lookup.target install-coreos-to-iscsi-target.service 
           Wants=network-online.target install-coreos-to-iscsi-target.service 
           Requires=install-coreos-to-iscsi-target.service
           OnFailure=emergency.target
