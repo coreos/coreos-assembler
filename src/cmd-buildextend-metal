@@ -272,14 +272,17 @@ yaml2json "${configdir}/platforms.yaml" "${platforms_json}"
 
 # Currently we only support OSBuild for qemu and metal disk images
 if [ "${image_type}" == "qemu" ] || [ "${image_type}" == "metal" ] || [ "${image_type}" == "metal4k" ]; then
-    OSBUILD_SUPPORTED=1
+    # Right now we don't have support fully fleshed out for s390x
+    if [ "$basearch" != "s390x" ]; then
+        OSBUILD_SUPPORTED=1
+    fi
 fi
 
 # Run with OSBuild if it's supported and requested, otherwise use create_disk
 if [ "${OSBUILD_SUPPORTED:-}" != "" ] && [ "${COSA_USE_OSBUILD:-}" != "" ]; then
     runvm_with_cache -- /usr/lib/coreos-assembler/runvm-osbuild   \
                 --config "$(pwd)"/image-for-disk.json \
-                --mpp /usr/lib/coreos-assembler/coreos.osbuild.mpp.yaml \
+                --mpp "/usr/lib/coreos-assembler/coreos.osbuild.${basearch}.mpp.yaml" \
                 --filepath "${path}.tmp"
 else
     runvm "${qemu_args[@]}" -- \

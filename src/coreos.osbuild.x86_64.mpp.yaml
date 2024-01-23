@@ -1,0 +1,674 @@
+version: '2'
+mpp-vars:
+  filename: $filename
+  ociarchive: $ociarchive
+  osname: $osname
+  container_imgref: $container_imgref
+  metal_image_size_mb: $metal_image_size_mb
+  cloud_image_size_mb: $cloud_image_size_mb
+  bios_boot_size_mb: 1
+  ppc_prep_size_mb: 4
+  reserved_part_size_mb: 1
+  efi_system_size_mb: 127
+  boot_size_mb: 384
+  sector_size: 512
+  four_k_sector_size: 4096
+  # Filesystem UUID and label definitions. These UUIDs
+  # are looked for on boot and if found replaced with
+  # a new random UUID to make each install unique.
+  boot_fs_uuid: 96d15588-3596-4b3c-adca-a2ff7279ea63
+  boot_fs_label: boot
+  root_fs_uuid: 910678ff-f77e-4a7d-8d53-86f2ac47a823
+  root_fs_label: root
+mpp-define-images:
+  - id: image
+    sector_size:
+        mpp-format-int: "{sector_size}"
+    size:
+      mpp-format-string: "{metal_image_size_mb * 1024 * 1024}"
+    table:
+      uuid: 00000000-0000-4000-a000-000000000001
+      label: gpt
+      partitions:
+        - name: BIOS-BOOT
+          type: 21686148-6449-6E6F-744E-656564454649
+          bootable: true
+          size:
+            mpp-format-int: "{bios_boot_size_mb * 1024 * 1024 / sector_size}"
+        - name: EFI-SYSTEM
+          type: C12A7328-F81F-11D2-BA4B-00A0C93EC93B
+          size:
+            mpp-format-int: "{efi_system_size_mb * 1024 * 1024 / sector_size}"
+        - name: boot
+          type: 0FC63DAF-8483-4772-8E79-3D69D8477DE4
+          size:
+            mpp-format-int: "{boot_size_mb * 1024 * 1024 / sector_size}"
+        - name: root
+          type: 0FC63DAF-8483-4772-8E79-3D69D8477DE4
+  - id: image4k
+    sector_size:
+        mpp-format-int: "{four_k_sector_size}"
+    size:
+      mpp-format-string: "{metal_image_size_mb * 1024 * 1024}"
+    table:
+      uuid: 00000000-0000-4000-a000-000000000001
+      label: gpt
+      partitions:
+        - name: BIOS-BOOT
+          type: 21686148-6449-6E6F-744E-656564454649
+          bootable: true
+          size:
+            mpp-format-int: "{bios_boot_size_mb * 1024 * 1024 / four_k_sector_size}"
+        - name: EFI-SYSTEM
+          type: C12A7328-F81F-11D2-BA4B-00A0C93EC93B
+          size:
+            mpp-format-int: "{efi_system_size_mb * 1024 * 1024 / four_k_sector_size}"
+        - name: boot
+          type: 0FC63DAF-8483-4772-8E79-3D69D8477DE4
+          size:
+            mpp-format-int: "{boot_size_mb * 1024 * 1024 / four_k_sector_size}"
+        - name: root
+          type: 0FC63DAF-8483-4772-8E79-3D69D8477DE4
+pipelines:
+  # If installing from container then let's pull the container file into a pipeline
+  - name: oci-archive
+    stages:
+      - mpp-if: ociarchive != ''
+        then:
+          type: org.osbuild.copy
+          inputs:
+            inlinefile:
+              type: org.osbuild.files
+              origin: org.osbuild.source
+              mpp-embed:
+                id: coreos.ociarchive
+                url:
+                  mpp-format-string: 'file://{ociarchive}'
+          options:
+            paths:
+              - from:
+                  mpp-format-string: input://inlinefile/{embedded['coreos.ociarchive']}
+                to: tree:///coreos.ociarchive
+        else:
+          type: org.osbuild.noop
+  - name: tree
+    source-epoch: 1659397331
+    stages:
+      - type: org.osbuild.ostree.init-fs
+      - type: org.osbuild.ostree.os-init
+        options:
+          osname:
+            mpp-format-string: '{osname}'
+      - type: org.osbuild.ostree.config
+        options:
+          repo: /ostree/repo
+          config:
+            sysroot:
+              readonly: true
+              bootloader: none
+              # https://github.com/coreos/fedora-coreos-tracker/issues/1333
+              bls-append-except-default: grub_users=""
+      - type: org.osbuild.mkdir
+        options:
+          paths:
+            - path: /boot/efi
+              mode: 448
+      - type: org.osbuild.ignition
+      # Deploy via container if we have a container ociarchive, else from repo.
+      - mpp-if: ociarchive != ''
+        then:
+          type: org.osbuild.ostree.deploy.container
+          options:
+            osname:
+              mpp-format-string: '{osname}'
+            target_imgref:
+              mpp-format-string: '{container_imgref}'
+            mounts:
+              - /boot
+              - /boot/efi
+            kernel_opts:
+              - rw
+              - '$ignition_firstboot'
+          inputs:
+            images:
+              type: org.osbuild.containers
+              origin: org.osbuild.pipeline
+              references:
+                name:oci-archive:
+                  name: coreos.ociarchive
+        else:
+          type: org.osbuild.ostree.deploy
+          options:
+            osname:
+              mpp-format-string: '{osname}'
+            remote: fedora
+            mounts:
+              - /boot
+              - /boot/efi
+            kernel_opts:
+              - rw
+              - '$ignition_firstboot'
+          inputs:
+            commits:
+              type: org.osbuild.ostree
+              origin: org.osbuild.source
+              mpp-resolve-ostree-commits:
+                commits:
+                  - ref: $ref
+                    remote:
+                      url: $repourl
+      - type: org.osbuild.ostree.aleph
+        options:
+          coreos_compat: true
+          deployment:
+            ref: ostree/1/1/0
+            osname:
+              mpp-format-string: '{osname}'
+      - type: org.osbuild.ostree.selinux
+        options:
+          deployment:
+            ref: ostree/1/1/0
+            osname:
+              mpp-format-string: '{osname}'
+  - name: raw-image
+    stages:
+      - type: org.osbuild.truncate
+        options:
+          filename: disk.img
+          size:
+            mpp-format-string: '{image.size}'
+      - type: org.osbuild.sfdisk
+        devices:
+          device:
+            type: org.osbuild.loopback
+            options:
+              filename: disk.img
+        options:
+          mpp-format-json: '{image.layout}'
+      - type: org.osbuild.mkfs.fat
+        devices:
+          device:
+            type: org.osbuild.loopback
+            options:
+              filename: disk.img
+              start:
+                mpp-format-int: '{image.layout[''EFI-SYSTEM''].start}'
+              size:
+                mpp-format-int: '{image.layout[''EFI-SYSTEM''].size}'
+              lock: true
+        options:
+          label: EFI-SYSTEM
+          volid: 7B7795E7
+      - type: org.osbuild.mkfs.ext4
+        devices:
+          device:
+            type: org.osbuild.loopback
+            options:
+              filename: disk.img
+              start:
+                mpp-format-int: '{image.layout[''boot''].start}'
+              size:
+                mpp-format-int: '{image.layout[''boot''].size}'
+              lock: true
+        options:
+          # If we are on RHCOS then set manually some FS options
+          # to the values we want in order to not depend on the
+          # defaults in the version of mkfs.ext4 in the build root.
+          # This is mostly useful right now because COSA is based
+          # on Fedora.
+          mpp-if: osname == 'rhcos'
+          then:
+            orphan_file: false
+            metadata_csum_seed: true
+            uuid:
+              mpp-format-string: '{boot_fs_uuid}'
+            label:
+              mpp-format-string: '{boot_fs_label}'
+          else:
+            uuid:
+              mpp-format-string: '{boot_fs_uuid}'
+            label:
+              mpp-format-string: '{boot_fs_label}'
+      - type: org.osbuild.mkfs.xfs
+        devices:
+          device:
+            type: org.osbuild.loopback
+            options:
+              filename: disk.img
+              start:
+                mpp-format-int: '{image.layout[''root''].start}'
+              size:
+                mpp-format-int: '{image.layout[''root''].size}'
+              lock: true
+        options:
+          uuid:
+            mpp-format-string: '{root_fs_uuid}'
+          label:
+            mpp-format-string: '{root_fs_label}'
+      - type: org.osbuild.copy
+        inputs:
+          tree:
+            type: org.osbuild.tree
+            origin: org.osbuild.pipeline
+            references:
+              - name:tree
+        options:
+          paths:
+            - from: input://tree/
+              to: mount://root/
+        devices:
+          disk:
+            type: org.osbuild.loopback
+            options:
+              filename: disk.img
+              partscan: true
+        mounts:
+          - name: root
+            type: org.osbuild.xfs
+            source: disk
+            partition:
+              mpp-format-int: '{image.layout[''root''].partnum}'
+            target: /
+          - name: boot
+            type: org.osbuild.ext4
+            source: disk
+            partition:
+              mpp-format-int: '{image.layout[''boot''].partnum}'
+            target: /boot
+          - name: efi
+            type: org.osbuild.fat
+            source: disk
+            partition:
+              mpp-format-int: '{image.layout[''EFI-SYSTEM''].partnum}'
+            target: /boot/efi
+      - type: org.osbuild.bootupd
+        options:
+          bios:
+            device: disk
+          static-configs: true
+          deployment:
+            ref: ostree/1/1/0
+            osname:
+              mpp-format-string: '{osname}'
+        devices:
+          disk:
+            type: org.osbuild.loopback
+            options:
+              filename: disk.img
+              partscan: true
+        mounts:
+          - name: root
+            type: org.osbuild.xfs
+            source: disk
+            partition:
+              mpp-format-int: '{image.layout[''root''].partnum}'
+            target: /
+          - name: boot
+            type: org.osbuild.ext4
+            source: disk
+            partition:
+              mpp-format-int: '{image.layout[''boot''].partnum}'
+            target: /boot
+          - name: efi
+            type: org.osbuild.fat
+            source: disk
+            partition:
+              mpp-format-int: '{image.layout[''EFI-SYSTEM''].partnum}'
+            target: /boot/efi
+      - type: org.osbuild.chattr
+        options:
+          immutable: true
+          path: mount://root/
+        devices:
+          disk:
+            type: org.osbuild.loopback
+            options:
+              filename: disk.img
+              partscan: true
+        mounts:
+          - name: root
+            type: org.osbuild.xfs
+            source: disk
+            partition:
+              mpp-format-int: '{image.layout[''root''].partnum}'
+            target: /
+          - name: ostree.deployment
+            type: org.osbuild.ostree.deployment
+            options:
+              source: mount
+              deployment:
+                ref: ostree/1/1/0
+                osname:
+                  mpp-format-string: '{osname}'
+  - name: raw-4k-image
+    stages:
+      - type: org.osbuild.truncate
+        options:
+          filename: disk.img
+          size:
+            mpp-format-string: '{image4k.size}'
+      - type: org.osbuild.sfdisk
+        devices:
+          device:
+            type: org.osbuild.loopback
+            options:
+              filename: disk.img
+              sector-size:
+                  mpp-format-int: "{four_k_sector_size}"
+        options:
+          mpp-format-json: '{image4k.layout}'
+      - type: org.osbuild.mkfs.fat
+        devices:
+          device:
+            type: org.osbuild.loopback
+            options:
+              filename: disk.img
+              start:
+                mpp-format-int: '{image4k.layout[''EFI-SYSTEM''].start}'
+              size:
+                mpp-format-int: '{image4k.layout[''EFI-SYSTEM''].size}'
+              lock: true
+              sector-size:
+                  mpp-format-int: "{four_k_sector_size}"
+        options:
+          label: EFI-SYSTEM
+          volid: 7B7795E7
+      - type: org.osbuild.mkfs.ext4
+        devices:
+          device:
+            type: org.osbuild.loopback
+            options:
+              filename: disk.img
+              start:
+                mpp-format-int: '{image4k.layout[''boot''].start}'
+              size:
+                mpp-format-int: '{image4k.layout[''boot''].size}'
+              lock: true
+              sector-size:
+                  mpp-format-int: "{four_k_sector_size}"
+        options:
+          # If we are on RHCOS then set manually some FS options
+          # to the values we want in order to not depend on the
+          # defaults in the version of mkfs.ext4 in the build root.
+          # This is mostly useful right now because COSA is based
+          # on Fedora.
+          mpp-if: osname == 'rhcos'
+          then:
+            orphan_file: false
+            metadata_csum_seed: true
+            uuid:
+              mpp-format-string: '{boot_fs_uuid}'
+            label:
+              mpp-format-string: '{boot_fs_label}'
+          else:
+            uuid:
+              mpp-format-string: '{boot_fs_uuid}'
+            label:
+              mpp-format-string: '{boot_fs_label}'
+      - type: org.osbuild.mkfs.xfs
+        devices:
+          device:
+            type: org.osbuild.loopback
+            options:
+              filename: disk.img
+              start:
+                mpp-format-int: '{image4k.layout[''root''].start}'
+              size:
+                mpp-format-int: '{image4k.layout[''root''].size}'
+              lock: true
+              sector-size:
+                  mpp-format-int: "{four_k_sector_size}"
+        options:
+          uuid:
+            mpp-format-string: '{root_fs_uuid}'
+          label:
+            mpp-format-string: '{root_fs_label}'
+      - type: org.osbuild.copy
+        inputs:
+          tree:
+            type: org.osbuild.tree
+            origin: org.osbuild.pipeline
+            references:
+              - name:tree
+        options:
+          paths:
+            - from: input://tree/
+              to: mount://root/
+        devices:
+          disk:
+            type: org.osbuild.loopback
+            options:
+              filename: disk.img
+              partscan: true
+              sector-size:
+                  mpp-format-int: "{four_k_sector_size}"
+        mounts:
+          - name: root
+            type: org.osbuild.xfs
+            source: disk
+            partition:
+              mpp-format-int: '{image4k.layout[''root''].partnum}'
+            target: /
+          - name: boot
+            type: org.osbuild.ext4
+            source: disk
+            partition:
+              mpp-format-int: '{image4k.layout[''boot''].partnum}'
+            target: /boot
+          - name: efi
+            type: org.osbuild.fat
+            source: disk
+            partition:
+              mpp-format-int: '{image4k.layout[''EFI-SYSTEM''].partnum}'
+            target: /boot/efi
+      - type: org.osbuild.bootupd
+        options:
+          static-configs: true
+          deployment:
+            ref: ostree/1/1/0
+            osname:
+              mpp-format-string: '{osname}'
+        devices:
+          disk:
+            type: org.osbuild.loopback
+            options:
+              filename: disk.img
+              partscan: true
+              sector-size:
+                  mpp-format-int: "{four_k_sector_size}"
+        mounts:
+          - name: root
+            type: org.osbuild.xfs
+            source: disk
+            partition:
+              mpp-format-int: '{image4k.layout[''root''].partnum}'
+            target: /
+          - name: boot
+            type: org.osbuild.ext4
+            source: disk
+            partition:
+              mpp-format-int: '{image4k.layout[''boot''].partnum}'
+            target: /boot
+          - name: efi
+            type: org.osbuild.fat
+            source: disk
+            partition:
+              mpp-format-int: '{image4k.layout[''EFI-SYSTEM''].partnum}'
+            target: /boot/efi
+      - type: org.osbuild.chattr
+        options:
+          immutable: true
+          path: mount://root/
+        devices:
+          disk:
+            type: org.osbuild.loopback
+            options:
+              filename: disk.img
+              partscan: true
+              sector-size:
+                  mpp-format-int: "{four_k_sector_size}"
+        mounts:
+          - name: root
+            type: org.osbuild.xfs
+            source: disk
+            partition:
+              mpp-format-int: '{image4k.layout[''root''].partnum}'
+            target: /
+          - name: ostree.deployment
+            type: org.osbuild.ostree.deployment
+            options:
+              source: mount
+              deployment:
+                ref: ostree/1/1/0
+                osname:
+                  mpp-format-string: '{osname}'
+  - name: raw-metal-image
+    stages:
+      - type: org.osbuild.copy
+        inputs:
+          tree:
+            type: org.osbuild.tree
+            origin: org.osbuild.pipeline
+            references:
+              - name:raw-image
+        options:
+          paths:
+            - from: input://tree/disk.img
+              to: tree:///disk.img
+      - type: org.osbuild.kernel-cmdline.bls-append
+        options:
+          bootpath: mount:///
+          kernel_opts:
+            - ignition.platform.id=metal
+        devices:
+          boot:
+            type: org.osbuild.loopback
+            options:
+              filename: disk.img
+              start:
+                mpp-format-int: '{image.layout[''boot''].start}'
+              size:
+                mpp-format-int: '{image.layout[''boot''].size}'
+        mounts:
+          - name: boot
+            type: org.osbuild.ext4
+            source: boot
+            target: /
+  - name: raw-metal4k-image
+    stages:
+      - type: org.osbuild.copy
+        inputs:
+          tree:
+            type: org.osbuild.tree
+            origin: org.osbuild.pipeline
+            references:
+              - name:raw-4k-image
+        options:
+          paths:
+            - from: input://tree/disk.img
+              to: tree:///disk.img
+      - type: org.osbuild.kernel-cmdline.bls-append
+        options:
+          bootpath: mount:///
+          kernel_opts:
+            - ignition.platform.id=metal
+        devices:
+          boot:
+            type: org.osbuild.loopback
+            options:
+              filename: disk.img
+              start:
+                mpp-format-int: '{image4k.layout[''boot''].start}'
+              size:
+                mpp-format-int: '{image4k.layout[''boot''].size}'
+              sector-size:
+                  mpp-format-int: "{four_k_sector_size}"
+        mounts:
+          - name: boot
+            type: org.osbuild.ext4
+            source: boot
+            target: /
+  - name: raw-qemu-image
+    stages:
+      - type: org.osbuild.copy
+        inputs:
+          tree:
+            type: org.osbuild.tree
+            origin: org.osbuild.pipeline
+            references:
+              - name:raw-image
+        options:
+          paths:
+            - from: input://tree/disk.img
+              to: tree:///disk.img
+      # Increase the size to the cloud image size
+      - type: org.osbuild.truncate
+        options:
+          filename: disk.img
+          size:
+            mpp-format-string: "{cloud_image_size_mb * 1024 * 1024}"
+      - type: org.osbuild.kernel-cmdline.bls-append
+        options:
+          bootpath: mount:///
+          kernel_opts:
+            - console=tty0
+            - console=ttyS0,115200n8
+            - ignition.platform.id=qemu
+        devices:
+          boot:
+            type: org.osbuild.loopback
+            options:
+              filename: disk.img
+              start:
+                mpp-format-int: '{image.layout[''boot''].start}'
+              size:
+                mpp-format-int: '{image.layout[''boot''].size}'
+        mounts:
+          - name: boot
+            type: org.osbuild.ext4
+            source: boot
+            target: /
+  - name: metal
+    stages:
+      - type: org.osbuild.copy
+        inputs:
+          tree:
+            type: org.osbuild.tree
+            origin: org.osbuild.pipeline
+            references:
+              - name:raw-metal-image
+        options:
+          paths:
+            - from: input://tree/disk.img
+              to:
+                mpp-format-string: 'tree:///{filename}'
+  - name: metal4k
+    stages:
+      - type: org.osbuild.copy
+        inputs:
+          tree:
+            type: org.osbuild.tree
+            origin: org.osbuild.pipeline
+            references:
+              - name:raw-metal4k-image
+        options:
+          paths:
+            - from: input://tree/disk.img
+              to:
+                mpp-format-string: 'tree:///{filename}'
+  - name: qemu
+    stages:
+      - type: org.osbuild.qemu
+        inputs:
+          image:
+            type: org.osbuild.files
+            origin: org.osbuild.pipeline
+            references:
+              name:raw-qemu-image:
+                file: disk.img
+        options:
+          filename:
+            mpp-format-string: '{filename}'
+          format:
+            type: qcow2
+            compat: '1.1'
