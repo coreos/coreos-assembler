@@ -7,6 +7,8 @@ mpp-vars:
   metal_image_size_mb: $metal_image_size_mb
   cloud_image_size_mb: $cloud_image_size_mb
   bios_boot_size_mb: 1
+  ppc_prep_size_mb: 4
+  reserved_part_size_mb: 1
   efi_system_size_mb: 127
   boot_size_mb: 384
   sector_size: 512
@@ -28,15 +30,15 @@ mpp-define-images:
       uuid: 00000000-0000-4000-a000-000000000001
       label: gpt
       partitions:
-        - name: BIOS-BOOT
-          type: 21686148-6449-6E6F-744E-656564454649
+        - name: PowerPC-PReP-boot
+          type: 9E1A2D38-C612-4316-AA26-8B49521E5A8B
           bootable: true
           size:
-            mpp-format-int: "{bios_boot_size_mb * 1024 * 1024 / sector_size}"
-        - name: EFI-SYSTEM
-          type: C12A7328-F81F-11D2-BA4B-00A0C93EC93B
+            mpp-format-int: "{ppc_prep_size_mb * 1024 * 1024 / sector_size}"
+        - name: reserved
+          type: 8DA63339-0007-60C0-C436-083AC8230908
           size:
-            mpp-format-int: "{efi_system_size_mb * 1024 * 1024 / sector_size}"
+            mpp-format-int: "{reserved_part_size_mb * 1024 * 1024 / sector_size}"
         - name: boot
           type: 0FC63DAF-8483-4772-8E79-3D69D8477DE4
           size:
@@ -52,15 +54,15 @@ mpp-define-images:
       uuid: 00000000-0000-4000-a000-000000000001
       label: gpt
       partitions:
-        - name: BIOS-BOOT
-          type: 21686148-6449-6E6F-744E-656564454649
+        - name: PowerPC-PReP-boot
+          type: 9E1A2D38-C612-4316-AA26-8B49521E5A8B
           bootable: true
           size:
-            mpp-format-int: "{bios_boot_size_mb * 1024 * 1024 / four_k_sector_size}"
-        - name: EFI-SYSTEM
-          type: C12A7328-F81F-11D2-BA4B-00A0C93EC93B
+            mpp-format-int: "{ppc_prep_size_mb * 1024 * 1024 / four_k_sector_size}"
+        - name: reserved
+          type: 8DA63339-0007-60C0-C436-083AC8230908
           size:
-            mpp-format-int: "{efi_system_size_mb * 1024 * 1024 / four_k_sector_size}"
+            mpp-format-int: "{reserved_part_size_mb * 1024 * 1024 / four_k_sector_size}"
         - name: boot
           type: 0FC63DAF-8483-4772-8E79-3D69D8477DE4
           size:
@@ -106,11 +108,6 @@ pipelines:
               bootloader: none
               # https://github.com/coreos/fedora-coreos-tracker/issues/1333
               bls-append-except-default: grub_users=""
-      - type: org.osbuild.mkdir
-        options:
-          paths:
-            - path: /boot/efi
-              mode: 448
       - type: org.osbuild.ignition
       # Deploy via container if we have a container ociarchive, else from repo.
       - mpp-if: ociarchive != ''
@@ -123,7 +120,6 @@ pipelines:
               mpp-format-string: '{container_imgref}'
             mounts:
               - /boot
-              - /boot/efi
             kernel_opts:
               - rw
               - '$ignition_firstboot'
@@ -142,7 +138,6 @@ pipelines:
             remote: fedora
             mounts:
               - /boot
-              - /boot/efi
             kernel_opts:
               - rw
               - '$ignition_firstboot'
@@ -183,20 +178,6 @@ pipelines:
               filename: disk.img
         options:
           mpp-format-json: '{image.layout}'
-      - type: org.osbuild.mkfs.fat
-        devices:
-          device:
-            type: org.osbuild.loopback
-            options:
-              filename: disk.img
-              start:
-                mpp-format-int: '{image.layout[''EFI-SYSTEM''].start}'
-              size:
-                mpp-format-int: '{image.layout[''EFI-SYSTEM''].size}'
-              lock: true
-        options:
-          label: EFI-SYSTEM
-          volid: 7B7795E7
       - type: org.osbuild.mkfs.ext4
         devices:
           device:
@@ -273,16 +254,13 @@ pipelines:
             partition:
               mpp-format-int: '{image.layout[''boot''].partnum}'
             target: /boot
-          - name: efi
-            type: org.osbuild.fat
-            source: disk
-            partition:
-              mpp-format-int: '{image.layout[''EFI-SYSTEM''].partnum}'
-            target: /boot/efi
       - type: org.osbuild.bootupd
         options:
           bios:
             device: disk
+            # ppc install to the prep partition and not the root of the disk
+            partition:
+              mpp-format-int: '{image.layout[''PowerPC-PReP-boot''].partnum}'
           static-configs: true
           deployment:
             ref: ostree/1/1/0
@@ -307,12 +285,6 @@ pipelines:
             partition:
               mpp-format-int: '{image.layout[''boot''].partnum}'
             target: /boot
-          - name: efi
-            type: org.osbuild.fat
-            source: disk
-            partition:
-              mpp-format-int: '{image.layout[''EFI-SYSTEM''].partnum}'
-            target: /boot/efi
       - type: org.osbuild.chattr
         options:
           immutable: true
@@ -355,22 +327,6 @@ pipelines:
                   mpp-format-int: "{four_k_sector_size}"
         options:
           mpp-format-json: '{image4k.layout}'
-      - type: org.osbuild.mkfs.fat
-        devices:
-          device:
-            type: org.osbuild.loopback
-            options:
-              filename: disk.img
-              start:
-                mpp-format-int: '{image4k.layout[''EFI-SYSTEM''].start}'
-              size:
-                mpp-format-int: '{image4k.layout[''EFI-SYSTEM''].size}'
-              lock: true
-              sector-size:
-                  mpp-format-int: "{four_k_sector_size}"
-        options:
-          label: EFI-SYSTEM
-          volid: 7B7795E7
       - type: org.osbuild.mkfs.ext4
         devices:
           device:
@@ -453,12 +409,6 @@ pipelines:
             partition:
               mpp-format-int: '{image4k.layout[''boot''].partnum}'
             target: /boot
-          - name: efi
-            type: org.osbuild.fat
-            source: disk
-            partition:
-              mpp-format-int: '{image4k.layout[''EFI-SYSTEM''].partnum}'
-            target: /boot/efi
       - type: org.osbuild.bootupd
         options:
           static-configs: true
@@ -487,12 +437,6 @@ pipelines:
             partition:
               mpp-format-int: '{image4k.layout[''boot''].partnum}'
             target: /boot
-          - name: efi
-            type: org.osbuild.fat
-            source: disk
-            partition:
-              mpp-format-int: '{image4k.layout[''EFI-SYSTEM''].partnum}'
-            target: /boot/efi
       - type: org.osbuild.chattr
         options:
           immutable: true
@@ -609,8 +553,8 @@ pipelines:
         options:
           bootpath: mount:///
           kernel_opts:
+            - console=hvc0
             - console=tty0
-            - console=ttyS0,115200n8
             - ignition.platform.id=qemu
         devices:
           boot:
