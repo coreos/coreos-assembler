@@ -150,6 +150,21 @@ pipelines:
                   - ref: $ref
                     remote:
                       url: $repourl
+      # Drop the immutable bit here (we add it back later) because it
+      # causes failures when cleaning up tmp dirs.
+      - type: org.osbuild.chattr
+        options:
+          items:
+            tree:///:
+              immutable: false
+        mounts:
+          - name: ostree.deployment
+            type: org.osbuild.ostree.deployment
+            options:
+              deployment:
+                ref: ostree/1/1/0
+                osname:
+                  mpp-format-string: '{osname}'
       - type: org.osbuild.ostree.aleph
         options:
           coreos_compat: true
