@@ -317,8 +317,9 @@ pipelines:
             target: /boot/efi
       - type: org.osbuild.chattr
         options:
-          immutable: true
-          path: mount://root/
+          items:
+            mount://root/:
+              immutable: true
         devices:
           disk:
             type: org.osbuild.loopback
@@ -497,8 +498,9 @@ pipelines:
             target: /boot/efi
       - type: org.osbuild.chattr
         options:
-          immutable: true
-          path: mount://root/
+          items:
+            mount://root/:
+              immutable: true
         devices:
           disk:
             type: org.osbuild.loopback
