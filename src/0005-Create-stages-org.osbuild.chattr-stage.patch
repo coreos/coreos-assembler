@@ -1,6 +1,6 @@
-From 3eaffe169c1c99ef65bb2a8b24f867416e0de4d2 Mon Sep 17 00:00:00 2001
-From: Dusty Mabe <dusty@dustymabe.com>
-Date: Wed, 10 Jan 2024 11:12:51 -0500
+From 98f472f05d02d6364d390d345ba133fa63e70284 Mon Sep 17 00:00:00 2001
+From: Luke Yang <luyang@redhat.com>
+Date: Mon, 22 Jan 2024 10:28:01 -0500
 Subject: [PATCH 5/5] Create stages/org.osbuild.chattr stage
 
 Add or remove the immutable bit to the specified mount directory.
@@ -13,16 +13,16 @@ we created on the disk image. Thus we have to workaround this loss
 of attribute by applying the attribute directly on the mounted
 filesystem from the disk.
 ---
- stages/org.osbuild.chattr | 101 ++++++++++++++++++++++++++++++++++++++
- 1 file changed, 101 insertions(+)
+ stages/org.osbuild.chattr | 95 +++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 95 insertions(+)
  create mode 100755 stages/org.osbuild.chattr
 
 diff --git a/stages/org.osbuild.chattr b/stages/org.osbuild.chattr
 new file mode 100755
-index 00000000..6e4cf03c
+index 00000000..0bc8aa0e
 --- /dev/null
 +++ b/stages/org.osbuild.chattr
-@@ -0,0 +1,101 @@
+@@ -0,0 +1,95 @@
 +#!/usr/bin/python3
 +"""
 +Runs `chattr` to set file/directory attributes.
@@ -39,26 +39,23 @@ index 00000000..6e4cf03c
 +SCHEMA_2 = r"""
 +"options": {
 +  "additionalProperties": false,
-+  "required": ["path", "immutable"],
 +  "properties": {
-+    "immutable": {
-+      "type": "boolean",
-+      "description": "Make the file/directory immutable",
-+      "default": true
-+    },
-+    "path": {
-+      "oneOf": [
-+        {
-+          "type": "string",
-+          "description": "The destination, if a mount",
-+          "pattern": "^mount:\/\/[^\/]+\/"
-+        },
-+        {
-+          "type": "string",
-+          "description": "The destination, if a tree",
-+          "pattern": "^tree:\/\/\/"
++    "items": {
++      "type": "object",
++      "additionalProperties": false,
++      "patternProperties": {
++        "^mount:\/\/[^\/]+\/|^tree:\/\/\/": {
++          "type": "object",
++          "required": ["immutable"],
++          "properties": {
++            "immutable": {
++              "type": "boolean",
++              "description": "Make the file/directory immutable",
++              "default": true
++            }
++          }
 +        }
-+      ]
++      }
 +    }
 +  }
 +},
@@ -108,14 +105,11 @@ index 00000000..6e4cf03c
 +
 +
 +def main(args, options):
-+    path = options["path"]
-+    immutable = options["immutable"]
-+
-+    dst = parse_location(path, args)
-+    if immutable:
-+        subprocess.run(["chattr", "+i", dst], check=True)
-+    elif not immutable:
-+        subprocess.run(["chattr", "-i", dst], check=True)
++    for path, cmdargs in options["items"].items():
++        immutable = cmdargs["immutable"]
++        dst = parse_location(path, args)
++        op = '+' if immutable else '-'
++        subprocess.run(["chattr", f"{op}i", dst], check=True)
 +
 +    return 0
 +
