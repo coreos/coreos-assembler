@@ -1,0 +1,250 @@
+From d84df08668b1e7350f9f151eff9d79817a1847ab Mon Sep 17 00:00:00 2001
+From: Nikita Dubrovskii <nikita@linux.ibm.com>
+Date: Fri, 26 Jan 2024 14:18:21 +0100
+Subject: [PATCH 1/2] support user-defined partition numbers for GPT disks
+
+Partitions by default are indexed starting at 1, but in
+some cases, such as CoreOS for IBM Z, it may be usefull
+to set the 'partnum' for GPT disks explicitly, without
+creating dummy partitions.
+
+Now user can define an image:
+
+```
+    mpp-define-images:
+      - id: image
+        size: 10737418240
+        table:
+          uuid: 00000000-0000-4000-a000-000000000001
+          label: gpt
+          partitions:
+            - name: boot
+              type: 0FC63DAF-8483-4772-8E79-3D69D8477DE4
+	      partnum: 3
+              size: 786432
+            - name: root
+              type: 0FC63DAF-8483-4772-8E79-3D69D8477DE4
+	      partnum: 4
+              size: 4194304
+```
+
+So target disk would look like:
+
+```
+    Disklabel type: gpt
+    Disk identifier: 00000000-0000-4000-A000-000000000001
+    Device        Start     End Sectors  Size Type
+    /dev/loop0p3   2048  788479  786432  384M Linux filesystem
+    /dev/loop0p4 788480 4982783 4194304    2G Linux filesystem
+```
+
+This patch updates the osbuild-mpp tool and the sgdisk and sfdisk
+stages to support this.
+
+Co-authored-by: Dusty Mabe <dusty@dustymabe.com>
+---
+ stages/org.osbuild.sfdisk | 19 ++++++++++++++++---
+ stages/org.osbuild.sgdisk |  9 ++++++++-
+ tools/osbuild-mpp         | 18 +++++++++++++-----
+ 3 files changed, 37 insertions(+), 9 deletions(-)
+
+diff --git a/stages/org.osbuild.sfdisk b/stages/org.osbuild.sfdisk
+index 9887a02e..108866c4 100755
+--- a/stages/org.osbuild.sfdisk
++++ b/stages/org.osbuild.sfdisk
+@@ -4,6 +4,7 @@ Partition a target using sfdisk(8)
+ """
+ 
+ import json
++import re
+ import subprocess
+ import sys
+ from typing import Optional
+@@ -50,6 +51,10 @@ SCHEMA_2 = r"""
+             "description": "The partition name (GPT)",
+             "type": "string"
+           },
++          "partnum": {
++            "description": "The partition number",
++            "type": "integer"
++          },
+           "size": {
+             "description": "The size of this partition",
+             "type": "integer"
+@@ -88,6 +93,7 @@ SCHEMA_2 = r"""
+ class Partition:
+     def __init__(self,
+                  pttype: str = None,
++                 partnum: int = None,
+                  start: int = None,
+                  size: int = None,
+                  bootable: bool = False,
+@@ -95,13 +101,15 @@ class Partition:
+                  uuid: str = None,
+                  attrs: int = None):
+         self.type = pttype
++        self.partnum = partnum
+         self.start = start
+         self.size = size
+         self.bootable = bootable
+         self.name = name
+         self.uuid = uuid
+-        self.index = None
+         self.attrs = attrs
++        self.index = partnum - 1 if partnum else None
++        self.partnum = partnum if partnum else None
+ 
+     @property
+     def start_in_bytes(self):
+@@ -167,7 +175,10 @@ class PartitionTable:
+                 fields += [f'{field}="{value}"']
+             if partition.bootable:
+                 fields += ["bootable"]
+-            command += "\n" + ", ".join(fields)
++            if partition.partnum:
++                command += "\n" + f'{target}p{partition.partnum}: ' + ", ".join(fields)
++            else:
++                command += "\n" + ", ".join(fields)
+ 
+         print(command)
+ 
+@@ -190,7 +201,8 @@ class PartitionTable:
+ 
+         assert len(disk_parts) == len(self.partitions)
+         for i, part in enumerate(self.partitions):
+-            part.index = i
++            part.partnum = int(re.findall(r'\d+$', disk_parts[i]["node"])[0])
++            part.index = part.partnum - 1
+             part.start = disk_parts[i]["start"]
+             part.size = disk_parts[i]["size"]
+             part.type = disk_parts[i].get("type")
+@@ -200,6 +212,7 @@ class PartitionTable:
+ 
+ def partition_from_json(js) -> Partition:
+     p = Partition(pttype=js.get("type"),
++                  partnum=js.get("partnum"),
+                   start=js.get("start"),
+                   size=js.get("size"),
+                   bootable=js.get("bootable"),
+diff --git a/stages/org.osbuild.sgdisk b/stages/org.osbuild.sgdisk
+index e11e0119..1627a90f 100755
+--- a/stages/org.osbuild.sgdisk
++++ b/stages/org.osbuild.sgdisk
+@@ -50,6 +50,10 @@ SCHEMA_2 = r"""
+             "description": "The partition name",
+             "type": "string"
+           },
++          "partnum": {
++            "description": "The partition number",
++            "type": "integer"
++          },
+           "size": {
+             "description": "The size of this partition",
+             "type": "integer"
+@@ -88,6 +92,7 @@ SCHEMA_2 = r"""
+ class Partition:
+     def __init__(self,
+                  pttype: str = None,
++                 partnum: int = None,
+                  start: int = None,
+                  size: int = None,
+                  bootable: bool = False,
+@@ -95,6 +100,7 @@ class Partition:
+                  uuid: str = None,
+                  attrs: int = None):
+         self.type = pttype
++        self.partnum = partnum
+         self.start = start
+         self.size = size
+         self.name = name
+@@ -129,7 +135,7 @@ class PartitionTable:
+             command += ["-U", self.uuid]
+ 
+         for i, part in enumerate(self.partitions):
+-            idx = i + 1  # partitions are 1-indexed
++            idx = part.partnum if part.partnum else i + 1  # partitions are 1-indexed
+ 
+             # format is 'partnum:start:end'
+             size = "0"
+@@ -173,6 +179,7 @@ class PartitionTable:
+ 
+ def partition_from_json(js) -> Partition:
+     p = Partition(pttype=js.get("type"),
++                  partnum=js.get("partnum"),
+                   start=js.get("start"),
+                   size=js.get("size"),
+                   bootable=js.get("bootable"),
+diff --git a/tools/osbuild-mpp b/tools/osbuild-mpp
+index cf74488e..7bf93a18 100755
+--- a/tools/osbuild-mpp
++++ b/tools/osbuild-mpp
+@@ -357,6 +357,7 @@ import hashlib
+ import json
+ import os
+ import pathlib
++import re
+ import string
+ import subprocess
+ import sys
+@@ -815,6 +816,7 @@ class Partition:
+     def __init__(self,
+                  uid: str = None,
+                  pttype: str = None,
++                 partnum: int = None,
+                  start: int = None,
+                  size: int = None,
+                  bootable: bool = False,
+@@ -830,8 +832,8 @@ class Partition:
+         self.name = name
+         self.uuid = uuid
+         self.attrs = attrs
+-        self.index = None
+-        self.partnum = None
++        self.index = partnum - 1 if partnum else None
++        self.partnum = partnum if partnum else None
+ 
+     @property
+     def start_in_bytes(self):
+@@ -845,6 +847,7 @@ class Partition:
+     def from_dict(cls, js):
+         p = cls(uid=js.get("id"),
+                 pttype=js.get("type"),
++                partnum=js.get("partnum"),
+                 start=js.get("start"),
+                 size=js.get("size"),
+                 bootable=js.get("bootable"),
+@@ -858,6 +861,8 @@ class Partition:
+ 
+         if self.start:
+             data["start"] = self.start
++        if self.partnum:
++            data["partnum"] = self.partnum
+         if self.size:
+             data["size"] = self.size
+         if self.type:
+@@ -915,7 +920,10 @@ class PartitionTable:
+                 fields += [f'{field}="{value}"']
+             if partition.bootable:
+                 fields += ["bootable"]
+-            command += "\n" + ", ".join(fields)
++            if partition.partnum:
++                command += "\n" + f'{target}p{partition.partnum}: ' + ", ".join(fields)
++            else:
++                command += "\n" + ", ".join(fields)
+ 
+         subprocess.run(["sfdisk", "-q", "--no-tell-kernel", target],
+                        input=command,
+@@ -936,8 +944,8 @@ class PartitionTable:
+ 
+         assert len(disk_parts) == len(self.partitions)
+         for i, part in enumerate(self.partitions):
+-            part.index = i
+-            part.partnum = i + 1
++            part.partnum = int(re.findall(r'\d+$', disk_parts[i]["node"])[0])
++            part.index = part.partnum - 1
+             part.start = disk_parts[i]["start"]
+             part.size = disk_parts[i]["size"]
+             part.type = disk_parts[i].get("type")
+-- 
+2.43.0
+
