@@ -187,6 +187,8 @@ patch_osbuild() {
         /usr/lib/coreos-assembler/0003-fscache-use-remove_lru-to-reclaim-space-when-the-cac.patch \
         /usr/lib/coreos-assembler/0004-fscache-add-eviction-log-statement.patch                   \
         /usr/lib/coreos-assembler/0001-stages-ostree.aleph-don-t-manipulate-image-name-from.patch \
+        /usr/lib/coreos-assembler/0001-support-user-defined-partition-numbers-for-GPT-disks.patch \
+        /usr/lib/coreos-assembler/0002-stages-sgdisk-support-label-option.patch                   \
             | patch -d /usr/lib/osbuild -p1
 
     # And then move the files back; supermin appliance creation will need it back
