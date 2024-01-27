@@ -272,8 +272,8 @@ yaml2json "${configdir}/platforms.yaml" "${platforms_json}"
 
 # Currently we only support OSBuild for qemu and metal disk images
 if [ "${image_type}" == "qemu" ] || [ "${image_type}" == "metal" ] || [ "${image_type}" == "metal4k" ]; then
-    # Right now we don't have support fully fleshed out for s390x
-    if [ "$basearch" != "s390x" ]; then
+    # Right now we don't have support fully fleshed out for secex on s390x
+    if [[ $secure_execution -ne "1" ]]; then
         OSBUILD_SUPPORTED=1
     fi
 fi
