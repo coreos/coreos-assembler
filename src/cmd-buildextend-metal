@@ -280,8 +280,15 @@ fi
 
 # Run with OSBuild if it's supported and requested, otherwise use create_disk
 if [ "${OSBUILD_SUPPORTED:-}" != "" ] && [ "${COSA_USE_OSBUILD:-}" != "" ]; then
-    runvm_with_cache -- /usr/lib/coreos-assembler/runvm-osbuild   \
-                --config "$(pwd)"/image-for-disk.json \
+    # In the jenkins pipelines we build the qemu image first and that operation
+    # will do a lot of the same work required for later artifacts (metal, metal4k, etc)
+    # so we want the cached output from that run to persist. The later artifacts get
+    # built in parallel, so we need to be able to access the cache by multiple processes,
+    # so for those we'll set `snapshot=on` so that each will get their own disk image.
+    # This is OK because we don't checkpoint (cache) any of those stages.
+    [ "${image_type}" == "qemu" ] && snapshot="off" || snapshot="on"
+    runvm_with_cache_snapshot "$snapshot" -- /usr/lib/coreos-assembler/runvm-osbuild  \
+                --config "$(pwd)"/image-for-disk.json                                 \
                 --mpp "/usr/lib/coreos-assembler/coreos.osbuild.${basearch}.mpp.yaml" \
                 --filepath "${path}.tmp"
 else
