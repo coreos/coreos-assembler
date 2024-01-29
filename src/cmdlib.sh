@@ -196,6 +196,16 @@ prepare_build() {
     manifest_lock_arch_overrides=$(pick_yaml_or_else_json "${configdir}/manifest-lock.overrides.${basearch}")
     fetch_stamp="${workdir}"/cache/fetched-stamp
 
+    # We also need the platform.yaml as JSON
+    platforms="${configdir}/platforms.yaml"
+    export platforms_json="${workdir}/tmp/platforms.json"
+    yaml2json "${platforms}" "${platforms_json}"
+    # Copy platforms table if it's non-empty for this arch
+    if jq -e ".$basearch" < "$platforms_json" > /dev/null; then
+        jq ".$basearch" < "$platforms_json" > "${platforms_json}.${basearch}"
+        mv "${platforms_json}.${basearch}" "$platforms_json"
+    fi
+
     export image_json="${workdir}/tmp/image.json"
     write_image_json "${image}" "${image_json}"
     # These need to be absolute paths right now for rpm-ostree
@@ -417,15 +427,15 @@ EOF
         done
     fi
 
-    # Store the fully rendered disk image config (image.json) inside
+    # Store the fully rendered disk image config (image.json)
+    # and the platform (platforms.json) inside
     # the ostree commit, so it can later be extracted by disk image
     # builds.
-    local imagejsondir="${tmp_overridesdir}/imagejson"
-    export ostree_image_json="/usr/share/coreos-assembler/image.json"
-    mkdir -p "${imagejsondir}/usr/share/coreos-assembler/"
-    cp "${image_json}" "${imagejsondir}${ostree_image_json}"
-    commit_overlay cosa-image-json "${imagejsondir}"
-    layers="${layers} overlay/cosa-image-json"
+    local jsondir="${tmp_overridesdir}/jsons"
+    mkdir -p "${jsondir}/usr/share/coreos-assembler/"
+    cp "${image_json}" "${platforms_json}" "${jsondir}/usr/share/coreos-assembler/"
+    commit_overlay cosa-json "${jsondir}"
+    layers="${layers} overlay/cosa-json"
 
     local_overrides_lockfile="${tmp_overridesdir}/local-overrides.json"
     if [ -n "${with_cosa_overrides}" ] && [[ -n $(ls "${overridesdir}/rpm/"*.rpm 2> /dev/null) ]]; then
