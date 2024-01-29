@@ -593,8 +593,7 @@ runvm_with_cache() {
     fi
     # And remove the old one
     rm -vf "${workdir}"/cache/cache.qcow2
-    local cachedriveargs="discard=unmap"
-    cache_args+=("-drive" "if=none,id=cache,$cachedriveargs,file=${workdir}/cache/cache2.qcow2" \
+    cache_args+=("-drive" "if=none,id=cache,discard=unmap,file=${workdir}/cache/cache2.qcow2" \
                         "-device" "virtio-blk,drive=cache")
     runvm "${cache_args[@]}" "$@"
 }
