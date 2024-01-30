@@ -118,7 +118,7 @@ if [ -e "${build_semaphore}" ]; then
     fatal "${build_semaphore} found: another process is building ${image_type}"
 fi
 touch "${build_semaphore}"
-trap 'rm -rf ${build_semaphore}' EXIT
+trap 'rm -f ${build_semaphore}' EXIT
 
 # check if the image already exists in the meta.json
 if [ -z "${force}" ]; then
