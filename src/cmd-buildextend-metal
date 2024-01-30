@@ -248,7 +248,10 @@ qemu_args+=("-drive" "if=none,id=target,format=${image_format},file=${path}.tmp,
               "-device" "virtio-blk,serial=target,drive=target${extra_target_device_opts}")
 
 # Generate the JSON describing the disk we want to build
-cat >image-dynamic.yaml << EOF
+image_dynamic_yaml="${tmp_builddir}/image-dynamic.yaml"
+image_dynamic_json="${tmp_builddir}/image-dynamic.json"
+image_for_disk_json="${tmp_builddir}/image-for-disk.json"
+cat >"${image_dynamic_yaml}" << EOF
 # Used by create_disk.sh
 buildid: "${build}"
 imgid: "${img}"
@@ -265,9 +268,9 @@ ostree-repo: "${ostree_repo}"
 metal-image-size: "${metal_image_size_mb}"
 cloud-image-size: "${cloud_image_size_mb}"
 EOF
-yaml2json image-dynamic.yaml image-dynamic.json
-cat "${image_json}" image-dynamic.json | jq -s add > image-for-disk.json
-platforms_json="${workdir}/tmp/platforms.json"
+yaml2json "${image_dynamic_yaml}" "${image_dynamic_json}"
+cat "${image_json}" "${image_dynamic_json}" | jq -s add > "${image_for_disk_json}"
+platforms_json="${tmp_builddir}/platforms.json"
 yaml2json "${configdir}/platforms.yaml" "${platforms_json}"
 
 # Currently we only support OSBuild for qemu and metal disk images
@@ -288,13 +291,13 @@ if [ "${OSBUILD_SUPPORTED:-}" != "" ] && [ "${COSA_USE_OSBUILD:-}" != "" ]; then
     # This is OK because we don't checkpoint (cache) any of those stages.
     [ "${image_type}" == "qemu" ] && snapshot="off" || snapshot="on"
     runvm_with_cache_snapshot "$snapshot" -- /usr/lib/coreos-assembler/runvm-osbuild  \
-                --config "$(pwd)"/image-for-disk.json                                 \
+                --config "${image_for_disk_json}"                                     \
                 --mpp "/usr/lib/coreos-assembler/coreos.osbuild.${basearch}.mpp.yaml" \
                 --filepath "${path}.tmp"
 else
     runvm "${qemu_args[@]}" -- \
             /usr/lib/coreos-assembler/create_disk.sh \
-                --config "$(pwd)"/image-for-disk.json \
+                --config "${image_for_disk_json}" \
                 --kargs "${kargs}" \
                 --platform "${ignition_platform_id}" \
                 --platforms-json "${platforms_json}" \
