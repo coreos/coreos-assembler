@@ -82,7 +82,7 @@ osbuild-mpp                                             \
     -D metal_image_size_mb="${metal_image_size_mb}"     \
     -D cloud_image_size_mb="${cloud_image_size_mb}"     \
     "${mppyaml}"                                        \
-    processed.json
+    /var/osbuild/processed.json
 
 # Build the image
 osbuild \
@@ -91,7 +91,7 @@ osbuild \
     --cache-max-size 9GiB        \
     --checkpoint tree            \
     --checkpoint raw-image       \
-    --export "$platform" processed.json
+    --export "$platform" /var/osbuild/processed.json
 
 
 # Copy it out to the specified location
