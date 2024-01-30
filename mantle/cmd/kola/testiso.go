@@ -111,7 +111,8 @@ var (
 		"miniso-install.s390fw",
 		"miniso-install.nm.s390fw",
 		"miniso-install.4k.nm.s390fw",
-		"iso-offline-install-iscsi.bios",
+		// FIXME https://github.com/coreos/fedora-coreos-tracker/issues/1657
+		//"iso-offline-install-iscsi.bios",
 	}
 	tests_ppc64le = []string{
 		"iso-live-login.ppcfw",
@@ -124,7 +125,8 @@ var (
 		"miniso-install.4k.nm.ppcfw",
 		"pxe-online-install.ppcfw",
 		"pxe-offline-install.4k.ppcfw",
-		"iso-offline-install-iscsi.bios",
+		// FIXME https://github.com/coreos/fedora-coreos-tracker/issues/1657
+		//"iso-offline-install-iscsi.bios",
 	}
 	tests_aarch64 = []string{
 		"iso-live-login.uefi",
@@ -140,7 +142,8 @@ var (
 		"pxe-offline-install.4k.uefi",
 		"pxe-online-install.uefi",
 		"pxe-online-install.4k.uefi",
-		"iso-offline-install-iscsi.bios",
+		// FIXME https://github.com/coreos/fedora-coreos-tracker/issues/1657
+		//"iso-offline-install-iscsi.bios",
 	}
 )
 
