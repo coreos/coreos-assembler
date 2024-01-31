@@ -539,8 +539,10 @@ func filterTests(tests map[string]*register.Test, patterns []string, pltfrm stri
 		}
 
 		if t.RequiredTag != "" && // if the test has a required tag...
-			!HasString(t.RequiredTag, positiveTags) && // and that tag was not provided by the user...
-			(!userTypedPattern || !nameMatch) { // and the user didn't request it by name...
+			!HasString(t.RequiredTag, positiveTags) { // and that tag was not provided by the user
+			if userTypedPattern && nameMatch {
+				fmt.Printf("⏭️  Skipping kola test \"%s\" with required tag \"%s\"\n", t.Name, t.RequiredTag)
+			}
 			continue // then skip it
 		}
 
