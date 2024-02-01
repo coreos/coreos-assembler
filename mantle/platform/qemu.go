@@ -32,6 +32,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"math/rand"
@@ -477,6 +478,10 @@ type QemuBuilder struct {
 	ignitionSet      bool
 	ignitionRendered bool
 
+	// sshAuthorizedKeysForRootViaSMBIOS is a public SSH key that will be rendered as a credential (https://systemd.io/CREDENTIALS)
+	// if set.
+	sshAuthorizedKeysForRootViaSMBIOS string
+
 	UsermodeNetworking        bool
 	usermodeNetworkingAddr    string
 	RestrictNetworking        bool
@@ -573,6 +578,28 @@ func (builder *QemuBuilder) renderIgnition() error {
 	builder.ignition = nil
 	builder.ignitionRendered = true
 	return nil
+}
+
+// encodedSystemdTmpfilesForSSH implements the bit from systemd.io/CREDENTIALS
+// to inject a public SSH key into authorized_keys for the target user.
+func encodedSystemdTmpfilesForSSH(user, pubKey string) (string, error) {
+	pubKeyEnc := base64.StdEncoding.EncodeToString([]byte(pubKey))
+
+	userHomeDir := "/root"
+	if user != "root" {
+		userHomeDir = filepath.Join("/home", user)
+	}
+
+	tmpFileCmd := fmt.Sprintf("d %[1]s/.ssh 0700 %[2]s %[2]s -\nf+~ %[1]s/.ssh/authorized_keys 600 %[2]s %[2]s - %[3]s", userHomeDir, user, pubKeyEnc)
+
+	tmpFileCmdEnc := base64.StdEncoding.EncodeToString([]byte(tmpFileCmd))
+	return tmpFileCmdEnc, nil
+}
+
+// InjectSSHAuthorizedKeysViaSMBIOS writes the `authorized_keys` file for the `root` user
+// injected via SMBIOS and systemd credentials.
+func (builder *QemuBuilder) InjectSSHAuthorizedKeysViaSMBIOS(authorizedKeys string) {
+	builder.sshAuthorizedKeysForRootViaSMBIOS = authorizedKeys
 }
 
 // AddFd appends a file descriptor that will be passed to qemu,
@@ -1775,6 +1802,16 @@ func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 		if err := builder.setupAdditionalNetworking(); err != nil {
 			return nil, err
 		}
+	}
+
+	if builder.sshAuthorizedKeysForRootViaSMBIOS != "" {
+		// Right now we hardcode root for simplicity
+		tmpFilesCmd, err := encodedSystemdTmpfilesForSSH("root", builder.sshAuthorizedKeysForRootViaSMBIOS)
+		if err != nil {
+			return nil, err
+		}
+		oemString := fmt.Sprintf("type=11,value=io.systemd.credential.binary:tmpfiles.extra=%s", tmpFilesCmd)
+		argv = append(argv, "-smbios", oemString)
 	}
 
 	// Handle Software TPM
