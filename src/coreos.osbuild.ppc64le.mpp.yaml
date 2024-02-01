@@ -427,6 +427,12 @@ pipelines:
             target: /boot
       - type: org.osbuild.bootupd
         options:
+          # ppc 4k disk needs bootloader installed
+          bios:
+            device: disk
+            # ppc install to the prep partition and not the root of the disk
+            partition:
+              mpp-format-int: '{image4k.layout[''PowerPC-PReP-boot''].partnum}'
           static-configs: true
           deployment:
             ref: ostree/1/1/0
