@@ -1,4 +1,4 @@
-From 056d2fd5a419ab5f5974864b513230d3d133f7cf Mon Sep 17 00:00:00 2001
+From fff7dd5e1ab967165c16edec66b989adc70e39b7 Mon Sep 17 00:00:00 2001
 From: Michael Vogt <michael.vogt@gmail.com>
 Date: Wed, 13 Dec 2023 10:07:32 +0100
 Subject: [PATCH 2/4] fscache: add FsCache._remove_lru() to remove entries
@@ -6,19 +6,23 @@ Subject: [PATCH 2/4] fscache: add FsCache._remove_lru() to remove entries
 The FsCache._remove_lru() removes the least recently used entry
 from the cache.
 ---
- osbuild/util/fscache.py | 44 +++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 44 insertions(+)
+ osbuild/util/fscache.py | 64 +++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 64 insertions(+)
 
 diff --git a/osbuild/util/fscache.py b/osbuild/util/fscache.py
-index 58c9a310..21e03f95 100644
+index 58c9a310..32056a35 100644
 --- a/osbuild/util/fscache.py
 +++ b/osbuild/util/fscache.py
-@@ -1086,6 +1086,50 @@ class FsCache(contextlib.AbstractContextManager, os.PathLike):
+@@ -1086,6 +1086,70 @@ class FsCache(contextlib.AbstractContextManager, os.PathLike):
              objs.append(FsCacheObjectInfo(name=name, last_used=last_used))
          return sorted(objs, key=lambda obj: obj.last_used)
  
-+    def _remove_lru(self):
-+        """"Remove the least recently used entry from the cache."""
++    def _remove_lru(self, required_size):
++        """"
++        Make room in the cache for "required_size" by remove the least
++        recently used entry from the cache. Note that the cache may
++        clear more than required_size.
++        """
 +        # To avoid having to take a global cache lock the strategy is:
 +        # 1. Get list of (object, last_used) sorted from oldest to newest.
 +        #    This is racy so we need to take care of that in step(2).
@@ -32,6 +36,11 @@ index 58c9a310..21e03f95 100644
 +        # Note that there is a risk to get out-of-sync in (3). If the
 +        # process dies while removing and before updating the cache
 +        # size the cache will be over reported.
++
++        # Try to clean at least twice the requested size to avoid having
++        # to do this all over again
++        try_to_free = required_size * 2
++        freed_so_far = 0
 +        for name, last_used in self._last_used_objs():
 +            # take write lock for the indivdual object
 +            rpath = os.path.join(self._dirname_objects, name)
@@ -48,18 +57,29 @@ index 58c9a310..21e03f95 100644
 +                ):
 +                    if last_used != self._last_used(name):
 +                        continue
-+                    # This is racy right now. To fix it we need to (atomic)
-+                    # rename the "object.info" file in _rm_r_object() to
-+                    # something like "object.removing". Then when opening
-+                    # the cache scan for leftover "object.removing" files
-+                    # and finish the cleanup and update the cache size
-+                    # based on the size recorded inside "object.removing".
++                    # This is racy right now if the process is killed
++                    # during "_rm_r_object(rpath)" because then the
++                    # cache size is never reduced by the amount that
++                    # was about to be deleted.
++                    #
++                    # To fix it we need to (atomic) rename the
++                    # "object.info" file in _rm_r_object() to
++                    # something like "object.removing". Then when
++                    # opening the cache scan for leftover
++                    # "object.removing" files and finish the cleanup
++                    # and update the cache size based on the size
++                    # recorded inside "object.removing".
 +                    size = self._calculate_space(self._path(rpath))
 +                    self._rm_r_object(rpath)
 +                    self._update_cache_size(-size)
-+                    return
++                    freed_so_far += size
++                    if freed_so_far >= try_to_free:
++                        break
 +            except BlockingIOError:
 +                continue
++
++        # return True if at least the required size got freed
++        return freed_so_far > required_size
 +
      @property
      def info(self) -> FsCacheInfo:
