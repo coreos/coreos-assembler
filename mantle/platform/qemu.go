@@ -1071,6 +1071,8 @@ func (disk *Disk) prepare(builder *QemuBuilder) error {
 			// on our own.
 			if strings.HasSuffix(backingFile, "qcow2") {
 				format = "qcow2"
+			} else if strings.HasSuffix(backingFile, "raw") {
+				format = "raw"
 			}
 		}
 		if format != "" {
