@@ -45,7 +45,7 @@ install_rpms() {
     frozendeps=""
 
     # We freeze the version for now since we're carrying patches.
-    frozendeps+=" $(echo osbuild{,-ostree,-selinux,-tools}-104-1.fc39.noarch)"
+    frozendeps+=" $(echo osbuild{,-ostree,-selinux,-tools}-106-1.fc39.noarch)"
 
     # First, a general update; this is best practice.  We also hit an issue recently
     # where qemu implicitly depended on an updated libusbx but didn't have a versioned
@@ -176,8 +176,7 @@ patch_osbuild() {
     mv /usr/bin/osbuild-mpp /usr/lib/osbuild/tools/
 
     # Now all the software is under the /usr/lib/osbuild dir and we can patch
-    cat /usr/lib/coreos-assembler/0001-stages-org.osbuild.mkfs.ext4-add-ext4-options.patch        \
-        /usr/lib/coreos-assembler/0001-mounts-ostree.deployment-rework-unmounting.patch           \
+    cat /usr/lib/coreos-assembler/0001-mounts-ostree.deployment-rework-unmounting.patch           \
         /usr/lib/coreos-assembler/0002-mounts-ostree.deployment-rename-var-root-deploy_root.patch \
         /usr/lib/coreos-assembler/0003-mounts-ostree.deployment-use-target-instead-of-tree.patch  \
         /usr/lib/coreos-assembler/0004-mounts-ostree.deployment-support-deployments-on-moun.patch \
@@ -186,7 +185,6 @@ patch_osbuild() {
         /usr/lib/coreos-assembler/0002-fscache-add-FsCache._remove_lru-to-remove-entries.patch    \
         /usr/lib/coreos-assembler/0003-fscache-use-remove_lru-to-reclaim-space-when-the-cac.patch \
         /usr/lib/coreos-assembler/0004-fscache-add-eviction-log-statement.patch                   \
-        /usr/lib/coreos-assembler/0001-stages-ostree.aleph-don-t-manipulate-image-name-from.patch \
         /usr/lib/coreos-assembler/0001-support-user-defined-partition-numbers-for-GPT-disks.patch \
         /usr/lib/coreos-assembler/0002-stages-sgdisk-support-label-option.patch                   \
         /usr/lib/coreos-assembler/0001-stages-zipl.inst-improve-kernel-initrd-path-resoluti.patch \
