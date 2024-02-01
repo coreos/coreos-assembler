@@ -95,6 +95,12 @@ pipelines:
               bootloader: none
              ## no grub_users="" on s390x
              #bls-append-except-default: grub_users=""
+      # platforms.json will live here
+      - type: org.osbuild.mkdir
+        options:
+          paths:
+            - path: /boot/coreos
+              mode: 644
       - type: org.osbuild.ignition
       # Deploy via container if we have a container ociarchive, else from repo.
       - mpp-if: ociarchive != ''
@@ -176,6 +182,21 @@ pipelines:
             ref: ostree/1/1/0
             osname:
               mpp-format-string: '{osname}'
+      # Copy in the platforms.json that was baked into the OSTree into /boot
+      # so tools like coreos-installer can use the information.
+      - type: org.osbuild.copy
+        options:
+          paths:
+            - from: tree:///usr/share/coreos-assembler/platforms.json
+              to: tree:///boot/coreos/platforms.json
+        mounts:
+          - name: ostree.deployment
+            type: org.osbuild.ostree.deployment
+            options:
+              deployment:
+                ref: ostree/1/1/0
+                osname:
+                  mpp-format-string: '{osname}'
   - name: raw-image
     stages:
       - type: org.osbuild.truncate
