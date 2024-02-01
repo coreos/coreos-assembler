@@ -1,4 +1,4 @@
-From 32835637fe28ddbbf4ff1b1da6321a4e1a45884f Mon Sep 17 00:00:00 2001
+From bd6b8ffb83384e7f9e78dc42a9cee626830b990f Mon Sep 17 00:00:00 2001
 From: Dusty Mabe <dusty@dustymabe.com>
 Date: Wed, 10 Jan 2024 11:07:14 -0500
 Subject: [PATCH 4/5] mounts/ostree.deployment: support deployments on mount
@@ -57,11 +57,11 @@ on the disk. The second mount (of type org.osbuild.ostree.deployment)
 then reconfigures things similar to how an OSTree system is set up.
 ---
  mounts/org.osbuild.ostree.deployment | 18 +++++++++++++++---
- osbuild/mounts.py                    | 13 +++++++++++--
- 2 files changed, 26 insertions(+), 5 deletions(-)
+ osbuild/mounts.py                    | 13 ++++++++++---
+ 2 files changed, 25 insertions(+), 6 deletions(-)
 
 diff --git a/mounts/org.osbuild.ostree.deployment b/mounts/org.osbuild.ostree.deployment
-index b200eca3..e19ac525 100755
+index b200eca3..24df7731 100755
 --- a/mounts/org.osbuild.ostree.deployment
 +++ b/mounts/org.osbuild.ostree.deployment
 @@ -32,6 +32,12 @@ SCHEMA_2 = """
@@ -72,7 +72,7 @@ index b200eca3..e19ac525 100755
 +        "type": "string",
 +        "pattern": "^(mount|tree)$",
 +        "default": "tree",
-+        "description": "The source of the OSTree filesystem tree"
++        "description": "The source of the OSTree filesystem tree. If 'mount', there should be a preceding mount defined that's mounted at /."
 +      },
        "deployment": {
          "type": "object",
@@ -111,10 +111,10 @@ index b200eca3..e19ac525 100755
          var = os.path.join(target, "ostree", "deploy", osname, "var")
          boot = os.path.join(target, "boot")
 diff --git a/osbuild/mounts.py b/osbuild/mounts.py
-index 86576ad0..3e63c873 100644
+index b938d21d..42b556ba 100644
 --- a/osbuild/mounts.py
 +++ b/osbuild/mounts.py
-@@ -180,6 +180,8 @@ class FileSystemMountService(MountService):
+@@ -181,6 +181,8 @@ class FileSystemMountService(MountService):
          os.makedirs(mountpoint, exist_ok=True)
          self.mountpoint = mountpoint
  
@@ -123,21 +123,20 @@ index 86576ad0..3e63c873 100644
          try:
              subprocess.run(
                  ["mount"] +
-@@ -202,12 +204,19 @@ class FileSystemMountService(MountService):
+@@ -203,12 +205,17 @@ class FileSystemMountService(MountService):
          if not self.mountpoint:
              return
  
+-        self.sync()
 +        # It's possible this mountpoint has already been unmounted
 +        # if a umount -R was run by another process, as is done in
 +        # mounts/org.osbuild.ostree.deployment.
 +        if not os.path.ismount(self.mountpoint):
 +            print(f"already unmounted: {self.mountpoint}")
 +            return
-+
-         self.sync()
  
 -        print("umounting")
-+        print(f"unmounting {self.mountpoint}")
++        self.sync()
  
          # We ignore errors here on purpose
 -        subprocess.run(["umount", self.mountpoint],

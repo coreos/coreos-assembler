@@ -1,4 +1,4 @@
-From 98f472f05d02d6364d390d345ba133fa63e70284 Mon Sep 17 00:00:00 2001
+From 477a21043eeb55468b1f75a9574e46e77cb5fdef Mon Sep 17 00:00:00 2001
 From: Luke Yang <luyang@redhat.com>
 Date: Mon, 22 Jan 2024 10:28:01 -0500
 Subject: [PATCH 5/5] Create stages/org.osbuild.chattr stage
