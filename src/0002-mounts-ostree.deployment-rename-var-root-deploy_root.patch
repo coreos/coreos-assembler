@@ -1,4 +1,4 @@
-From 34f74cfb33d7fd6994ec2a7b53aa45c262b69b78 Mon Sep 17 00:00:00 2001
+From e43abe1a9cbff3508eebc31d33efdc2fa44306aa Mon Sep 17 00:00:00 2001
 From: Dusty Mabe <dusty@dustymabe.com>
 Date: Wed, 10 Jan 2024 00:02:38 -0500
 Subject: [PATCH 2/5] mounts/ostree.deployment: rename var root -> deploy_root
