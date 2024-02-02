@@ -70,12 +70,17 @@ fi
 coreos_gf upload "${tmpd}"/bls.conf "${blscfg_path}"
 
 if [ -n "$rewrite_grub_cmds" ]; then
-    # Remove qemu-specific grub.cfg commands and inject any new ones
-    coreos_gf download /boot/grub2/grub.cfg "${tmpd}"/grub-orig.cfg
-    awk '/^# CONSOLE-SETTINGS-START$/ {suspend=1; print} {if (!suspend) print} /^# CONSOLE-SETTINGS-END$/ {suspend=0; print}' "${tmpd}"/grub-orig.cfg | \
+    # Use the new console config written out by bootupd if it exists
+    if [ "$(coreos_gf exists /boot/grub2/30_console.cfg)" = "true" ]; then
+        grub_console_config_path='/boot/grub2/30_console.cfg'
+    else
+        grub_console_config_path='/boot/grub2/grub.cfg'
+    fi
+    coreos_gf download "${grub_console_config_path}" "${tmpd}"/grub-console-orig.cfg
+    awk '/^# CONSOLE-SETTINGS-START$/ {suspend=1; print} {if (!suspend) print} /^# CONSOLE-SETTINGS-END$/ {suspend=0; print}' "${tmpd}"/grub-console-orig.cfg | \
         sed -E 's@(^# CONSOLE-SETTINGS-START$)@\1'"${extra_grub_cmds:+\\n${extra_grub_cmds}}"'@' \
-        > "${tmpd}"/grub.cfg
-    coreos_gf upload "${tmpd}"/grub.cfg /boot/grub2/grub.cfg
+        > "${tmpd}"/grub-console.cfg
+    coreos_gf upload "${tmpd}"/grub-console.cfg "${grub_console_config_path}"
 fi
 
 if [ "$basearch" = "s390x" ] ; then
