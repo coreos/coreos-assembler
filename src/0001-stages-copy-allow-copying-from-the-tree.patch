@@ -1,0 +1,72 @@
+From 3ecec2e2848a51803e4a9953b132a6eaf4e5043c Mon Sep 17 00:00:00 2001
+From: Dusty Mabe <dusty@dustymabe.com>
+Date: Thu, 1 Feb 2024 23:14:06 -0500
+Subject: [PATCH] stages(copy): allow copying from the tree
+
+It seems like an artifical limitation to prevent copying from one
+location in the tree to another. It just so happens we need this
+functionality when building CoreOS images because we want to take
+a file embedded in the OSTree at a location and copy it to another
+location in the tree. The particular example here is we want to copy
+/usr/share/coreos-assembler/platforms.json -> /boot/coreos/platforms.json
+See https://github.com/coreos/coreos-assembler/pull/3709
+
+Allowing to copy from/to the tree we can now do something like:
+
+```
+- type: org.osbuild.copy
+  options:
+    paths:
+      - from: tree:///usr/share/coreos-assembler/platforms.json
+        to: tree:///boot/coreos/platforms.json
+  mounts:
+    - name: ostree.deployment
+      type: org.osbuild.ostree.deployment
+      options:
+        deployment:
+          ref: ostree/1/1/0
+          osname:
+            fedora-coreos
+```
+---
+ stages/org.osbuild.copy | 17 +++++++++++++----
+ 1 file changed, 13 insertions(+), 4 deletions(-)
+
+diff --git a/stages/org.osbuild.copy b/stages/org.osbuild.copy
+index 3c137af5..d476efdb 100755
+--- a/stages/org.osbuild.copy
++++ b/stages/org.osbuild.copy
+@@ -45,9 +45,18 @@ SCHEMA_2 = r"""
+         "required": ["from", "to"],
+         "properties": {
+           "from": {
+-            "type": "string",
+-            "description": "The source",
+-            "pattern": "^input:\/\/[^\/]+\/"
++            "oneOf": [
++              {
++                "type": "string",
++                "description": "The source, if an input",
++                "pattern": "^input:\/\/[^\/]+\/"
++              },
++              {
++                "type": "string",
++                "description": "The source, if the tree",
++                "pattern": "^tree:\/\/\/"
++              }
++            ]
+           },
+           "to": {
+             "oneOf": [
+@@ -58,7 +67,7 @@ SCHEMA_2 = r"""
+               },
+               {
+                 "type": "string",
+-                "description": "The destination, if a tree",
++                "description": "The destination, if the tree",
+                 "pattern": "^tree:\/\/\/"
+               }
+             ]
+-- 
+2.43.0
+

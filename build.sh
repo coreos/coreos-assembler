@@ -189,6 +189,7 @@ patch_osbuild() {
         /usr/lib/coreos-assembler/0002-stages-sgdisk-support-label-option.patch                   \
         /usr/lib/coreos-assembler/0001-stages-zipl.inst-improve-kernel-initrd-path-resoluti.patch \
         /usr/lib/coreos-assembler/0002-stages-zipl.inst-support-appending-kernel-options.patch    \
+        /usr/lib/coreos-assembler/0001-stages-copy-allow-copying-from-the-tree.patch              \
             | patch -d /usr/lib/osbuild -p1
 
     # And then move the files back; supermin appliance creation will need it back
