@@ -40,9 +40,9 @@ storage:
             #!/bin/bash
             set -xeuo pipefail
             podman exec targetd bash -exc "
-            # wait until the targetcli socket is ready
+            # wait until targetcli is ready to accept commands
             # FIXME: use RestartMode=direct instead in the systemd unit but we need systemd v254
-            while ! test -S /var/run/targetclid.sock; do sleep 1; done
+            while ! targetcli ls; do sleep 1; done
             targetcli /backstores/block create name=coreos dev=/dev/disk/by-id/virtio-target
             targetcli iscsi/ create iqn.2023-10.coreos.target.vm:coreos
             targetcli iscsi/iqn.2023-10.coreos.target.vm:coreos/tpg1/luns create /backstores/block/coreos
