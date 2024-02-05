@@ -1,0 +1,30 @@
+From 372df8e1adb3c76f092ed47a45ee8637a247c786 Mon Sep 17 00:00:00 2001
+From: Dusty Mabe <dusty@dustymabe.com>
+Date: Mon, 5 Feb 2024 17:38:41 -0500
+Subject: [PATCH] stages(qemu): don't use internal compression for now
+
+Until this is an option in the stage let's disable it for now
+https://github.com/coreos/fedora-coreos-tracker/issues/1653#issuecomment-1928342241
+---
+ stages/org.osbuild.qemu | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/stages/org.osbuild.qemu b/stages/org.osbuild.qemu
+index 98a04f00..07172b3d 100755
+--- a/stages/org.osbuild.qemu
++++ b/stages/org.osbuild.qemu
+@@ -140,7 +140,10 @@ SCHEMA_2 = r"""
+ 
+ 
+ def qcow2_arguments(options):
+-    argv = ["-c"]
++    # No internal compression in CoreOS for now.
++    # https://github.com/coreos/fedora-coreos-tracker/issues/1653#issuecomment-1928342241
++    # argv = ["-c"]
++    argv = []
+     compat = options.get("compat")
+ 
+     if compat:
+-- 
+2.43.0
+
