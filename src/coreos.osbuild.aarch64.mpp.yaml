@@ -116,13 +116,13 @@ pipelines:
         options:
           paths:
             - path: /boot/efi
-              mode: 448
+              mode: 493
       # platforms.json will live here
       - type: org.osbuild.mkdir
         options:
           paths:
             - path: /boot/coreos
-              mode: 644
+              mode: 493
       - type: org.osbuild.ignition
       # Deploy via container if we have a container ociarchive, else from repo.
       - mpp-if: ociarchive != ''
