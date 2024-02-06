@@ -316,6 +316,12 @@ ostree config --repo $rootfs/ostree/repo set sysroot.bootloader none
 # Opt-in to https://github.com/ostreedev/ostree/pull/1767 AKA
 # https://github.com/ostreedev/ostree/issues/1265
 ostree config --repo $rootfs/ostree/repo set sysroot.readonly true
+# Opt-in to https://github.com/ostreedev/ostree/pull/2705 which will
+# add /boot as the prefix on top of BLS config entries. This is OK
+# because there is a symlink that is created in the root of the boot
+# filesystem by OSTree (boot -> .) that makes it so that /boot paths
+# will always work.
+ostree config --repo $rootfs/ostree/repo set sysroot.bootprefix true
 if test -n "${composefs}"; then
     ostree config --repo $rootfs/ostree/repo set ex-integrity.composefs true
 fi
