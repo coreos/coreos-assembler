@@ -197,16 +197,15 @@ prepare_build() {
     fetch_stamp="${workdir}"/cache/fetched-stamp
 
     # We also need the platform.yaml as JSON
-    platforms="${configdir}/platforms.yaml"
-    export platforms_json="${workdir}/tmp/platforms.json"
-    yaml2json "${platforms}" "${platforms_json}"
+    platforms_yaml="${configdir}/platforms.yaml"
+    platforms_json="${tmp_builddir}/platforms.json"
+    yaml2json "${platforms_yaml}" "${platforms_json}.all"
     # Copy platforms table if it's non-empty for this arch
-    if jq -e ".$basearch" < "$platforms_json" > /dev/null; then
-        jq ".$basearch" < "$platforms_json" > "${platforms_json}.${basearch}"
-        mv "${platforms_json}.${basearch}" "$platforms_json"
+    if jq -e ".$basearch" < "$platforms_json.all" > /dev/null; then
+        jq ".$basearch" < "$platforms_json.all" > "${platforms_json}"
     fi
 
-    export image_json="${workdir}/tmp/image.json"
+    export image_json="${tmp_builddir}/image.json"
     write_image_json "${image}" "${image_json}"
     # These need to be absolute paths right now for rpm-ostree
     composejson="$(readlink -f "${workdir}"/tmp/compose.json)"
@@ -428,12 +427,15 @@ EOF
     fi
 
     # Store the fully rendered disk image config (image.json)
-    # and the platform (platforms.json) inside
+    # and the platform (platforms.json) if it exists inside
     # the ostree commit, so it can later be extracted by disk image
     # builds.
     local jsondir="${tmp_overridesdir}/jsons"
     mkdir -p "${jsondir}/usr/share/coreos-assembler/"
-    cp "${image_json}" "${platforms_json}" "${jsondir}/usr/share/coreos-assembler/"
+    cp "${image_json}" "${jsondir}/usr/share/coreos-assembler/"
+    if [ -f "${platforms_json}" ]; then
+        cp "${platforms_json}" "${jsondir}/usr/share/coreos-assembler/"
+    fi
     commit_overlay cosa-json "${jsondir}"
     layers="${layers} overlay/cosa-json"
 
