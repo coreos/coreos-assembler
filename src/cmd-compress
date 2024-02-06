@@ -119,7 +119,7 @@ def compress_one_builddir(builddir):
                 if args.compressor == 'xz':
                     runcmd(['xz', '-c9', f'-T{t}', filepath], stdout=f)
                 elif args.compressor == 'zstd':
-                    runcmd(['zstd', '-19', '-c', f'-T{t}', filepath], stdout=f)
+                    runcmd(['zstd', '-10', '-c', f'-T{t}', filepath], stdout=f)
                 else:
                     runcmd(['gzip', f'-{gzip_level}', '-c', filepath], stdout=f)
             file_with_ext = file + ext
