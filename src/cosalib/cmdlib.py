@@ -18,7 +18,8 @@ from botocore.exceptions import (
     ConnectionClosedError,
     ConnectTimeoutError,
     IncompleteReadError,
-    ReadTimeoutError)
+    ReadTimeoutError,
+    EndpointConnectionError)
 
 from flufl.lock import Lock
 
@@ -41,7 +42,8 @@ retry_stop = (stop_after_delay(10) | stop_after_attempt(5))
 retry_boto_exception = (retry_if_exception_type(ConnectionClosedError) |
                       retry_if_exception_type(ConnectTimeoutError) |
                       retry_if_exception_type(IncompleteReadError) |
-                      retry_if_exception_type(ReadTimeoutError))
+                      retry_if_exception_type(ReadTimeoutError) |
+                      retry_if_exception_type(EndpointConnectionError))
 
 THISDIR = os.path.dirname(os.path.abspath(__file__))
 
