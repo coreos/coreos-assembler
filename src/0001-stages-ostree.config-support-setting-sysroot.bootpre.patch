@@ -1,0 +1,41 @@
+From 612d3abd2ba05072a27142d5197645b4049561ae Mon Sep 17 00:00:00 2001
+From: Dusty Mabe <dusty@dustymabe.com>
+Date: Mon, 5 Feb 2024 23:27:59 -0500
+Subject: [PATCH] stages(ostree.config): support setting sysroot.bootprefix
+
+See https://github.com/ostreedev/ostree/pull/2705 and also
+https://github.com/osbuild/osbuild/issues/1566.
+---
+ stages/org.osbuild.ostree.config | 9 +++++++++
+ 1 file changed, 9 insertions(+)
+
+diff --git a/stages/org.osbuild.ostree.config b/stages/org.osbuild.ostree.config
+index 7d5bb71d..5a91a8ae 100755
+--- a/stages/org.osbuild.ostree.config
++++ b/stages/org.osbuild.ostree.config
+@@ -39,6 +39,10 @@ SCHEMA = """
+             "type": "string",
+             "enum": ["none", "auto", "grub2", "syslinux", "uboot", "zipl", "aboot"]
+           },
++          "bootprefix": {
++            "description": "If set to true, the bootloader entries generated will include /boot as a prefix.",
++            "type": "boolean"
++          },
+           "readonly": {
+             "description": "Read only sysroot and boot",
+             "type": "boolean"
+@@ -63,6 +67,11 @@ def main(tree, options):
+     if bootloader:
+         ostree.cli("config", "set", "sysroot.bootloader", bootloader, repo=repo)
+ 
++    bootprefix = sysroot_options.get("bootprefix")
++    if bootprefix is not None:  # can be False, which we would want to set
++        bp = "true" if bootprefix else "false"
++        ostree.cli("config", "set", "sysroot.bootprefix", bp, repo=repo)
++
+     readonly = sysroot_options.get("readonly")
+     if readonly is not None:  # can be False, which we would want to set
+         ro = "true" if readonly else "false"
+-- 
+2.43.0
+
