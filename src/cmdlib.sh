@@ -563,7 +563,7 @@ runcompose_tree() {
         (umask 0022 && sudo -E "$@")
         sudo chown -R -h "${USER}":"${USER}" "${tmprepo}"
     else
-        runvm_with_cache -- "$@" --repo "${repo}" --write-composejson-to "${composejson}"
+        runvm -- "$@" --repo "${repo}" --write-composejson-to "${composejson}"
     fi
 }
 
@@ -587,7 +587,7 @@ runcompose_extensions() {
         (umask 0022 && sudo -E "$@")
         sudo chown -R -h "${USER}":"${USER}" "${outputdir}"
     else
-        runvm_with_cache -- "$@"
+        runvm -- "$@"
     fi
 }
 
