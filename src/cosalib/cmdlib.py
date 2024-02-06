@@ -24,7 +24,7 @@ from botocore.exceptions import (
 from flufl.lock import Lock
 
 from tenacity import (
-    stop_after_delay, stop_after_attempt, retry_if_exception_type)
+    stop_after_delay, stop_after_attempt, retry_if_exception_type, wait_exponential)
 
 gi.require_version("RpmOstree", "1.0")
 from gi.repository import RpmOstree
@@ -39,6 +39,9 @@ logging.basicConfig(level=logging.INFO,
 LOCK_DEFAULT_LIFETIME = datetime.timedelta(weeks=52)
 
 retry_stop = (stop_after_delay(10) | stop_after_attempt(5))
+# for operations that want to be more persistent
+retry_stop_long = (stop_after_delay(60 * 5))  # 5 minutes
+retry_wait_long = (wait_exponential(max=10))
 retry_boto_exception = (retry_if_exception_type(ConnectionClosedError) |
                       retry_if_exception_type(ConnectTimeoutError) |
                       retry_if_exception_type(IncompleteReadError) |
