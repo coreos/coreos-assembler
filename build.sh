@@ -176,7 +176,8 @@ patch_osbuild() {
     mv /usr/bin/osbuild-mpp /usr/lib/osbuild/tools/
 
     # Now all the software is under the /usr/lib/osbuild dir and we can patch
-    cat /usr/lib/coreos-assembler/0001-mounts-ostree.deployment-rework-unmounting.patch           \
+    cat /usr/lib/coreos-assembler/0001-stages-ostree.config-support-setting-sysroot.bootpre.patch \
+        /usr/lib/coreos-assembler/0001-mounts-ostree.deployment-rework-unmounting.patch           \
         /usr/lib/coreos-assembler/0002-mounts-ostree.deployment-rename-var-root-deploy_root.patch \
         /usr/lib/coreos-assembler/0003-mounts-ostree.deployment-use-target-instead-of-tree.patch  \
         /usr/lib/coreos-assembler/0004-mounts-ostree.deployment-support-deployments-on-moun.patch \
