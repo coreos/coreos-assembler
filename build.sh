@@ -188,6 +188,7 @@ patch_osbuild() {
         /usr/lib/coreos-assembler/0004-fscache-add-eviction-log-statement.patch                   \
         /usr/lib/coreos-assembler/0001-support-user-defined-partition-numbers-for-GPT-disks.patch \
         /usr/lib/coreos-assembler/0002-stages-sgdisk-support-label-option.patch                   \
+        /usr/lib/coreos-assembler/0001-stages-zipl.inst-improve-kernel-initrd-path-resoluti.patch \
         /usr/lib/coreos-assembler/0002-stages-zipl.inst-support-appending-kernel-options.patch    \
         /usr/lib/coreos-assembler/0001-stages-copy-allow-copying-from-the-tree.patch              \
         /usr/lib/coreos-assembler/0001-stages-qemu-don-t-use-internal-compression-for-now.patch   \

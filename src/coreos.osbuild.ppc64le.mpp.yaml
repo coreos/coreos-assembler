@@ -108,12 +108,6 @@ pipelines:
               bootloader: none
               # https://github.com/coreos/fedora-coreos-tracker/issues/1333
               bls-append-except-default: grub_users=""
-              # Opt-in to https://github.com/ostreedev/ostree/pull/2705 which will
-              # add /boot as the prefix on top of BLS config entries. This is OK
-              # because there is a symlink that is created in the root of the boot
-              # filesystem by OSTree (boot -> .) that makes it so that /boot paths
-              # will always work.
-              bootprefix: true
       # platforms.json will live here
       - type: org.osbuild.mkdir
         options:
