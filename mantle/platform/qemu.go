@@ -1626,6 +1626,8 @@ func createVirtiofsCmd(directory, socketPath string) exec.Cmd {
 	// We don't need seccomp filtering; we trust our workloads. This incidentally
 	// works around issues like https://gitlab.com/virtio-fs/virtiofsd/-/merge_requests/200.
 	args = append(args, "--seccomp=none")
+	// OSTree composes use xattrs
+	args = append(args, "--xattr")
 	cmd := exec.Command("/usr/libexec/virtiofsd", args...)
 	// This sets things up so that the `.` we passed in the arguments is the target directory
 	cmd.Dir = directory
