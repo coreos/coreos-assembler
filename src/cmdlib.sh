@@ -589,7 +589,11 @@ runcompose_extensions() {
         (umask 0022 && sudo -E "$@")
         sudo chown -R -h "${USER}":"${USER}" "${outputdir}"
     else
-        runvm_with_cache -- "$@"
+        # Use a snapshot version of the cache qcow2 to allow multiple users
+        # of the cache at the same time. This is needed because the extensions
+        # and other artifacts are built in parallel.
+        local snapshot='on'
+        runvm_with_cache_snapshot "${snapshot}" -- "$@"
     fi
 }
 
