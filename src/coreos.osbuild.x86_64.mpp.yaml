@@ -680,4 +680,5 @@ pipelines:
             mpp-format-string: '{filename}'
           format:
             type: qcow2
+            compression: true
             compat: '1.1'
