@@ -1,0 +1,437 @@
+From e1cbf92673fa6aa52209d091150097a5961a0b21 Mon Sep 17 00:00:00 2001
+From: Dusty Mabe <dusty@dustymabe.com>
+Date: Thu, 25 Jan 2024 13:57:51 -0500
+Subject: [PATCH] ostree: add convenience function for using default OSTree
+ deployment
+
+This adds a `default: true` option for all cases where OSTree
+information is specified in schemas and allows for the information
+to be picked up from the filesystem.
+
+This is a safe operation because when building disk images there is
+no known case where having two deployments makes sense. In the case
+there ever were a case then the osname, ref, and serial options still
+exist and can be used.
+
+Co-authored-by: Luke Yang <luyang@redhat.com>
+Co-authored-by: Michael Vogt <michael.vogt@gmail.com>
+---
+ mounts/org.osbuild.ostree.deployment | 31 ++++++++++++++++----
+ osbuild/util/ostree.py               | 42 ++++++++++++++++++++++++++--
+ stages/org.osbuild.bootupd           | 30 +++++++++++++++++---
+ stages/org.osbuild.fstab             | 30 +++++++++++++++++---
+ stages/org.osbuild.ostree.aleph      | 31 +++++++++++++++++---
+ stages/org.osbuild.ostree.fillvar    | 30 +++++++++++++++++---
+ stages/org.osbuild.ostree.selinux    | 30 +++++++++++++++++---
+ 8 files changed, 217 insertions(+), 29 deletions(-)
+
+diff --git a/mounts/org.osbuild.ostree.deployment b/mounts/org.osbuild.ostree.deployment
+index 24df7731..9637b5b2 100755
+--- a/mounts/org.osbuild.ostree.deployment
++++ b/mounts/org.osbuild.ostree.deployment
+@@ -41,7 +41,26 @@ SCHEMA_2 = """
+       "deployment": {
+         "type": "object",
+         "additionalProperties": false,
+-        "required": ["osname", "ref"],
++        "oneOf": [
++          {
++            "properties": {
++              "default": {"enum": [false]}
++            },
++            "required": ["osname", "ref"]
++          },
++          {
++            "properties": {
++              "default": {"enum": [true]}
++            },
++            "not": {
++              "anyOf": [
++                {"required": ["osname"]},
++                {"required": ["ref"]},
++                {"required": ["serial"]}
++              ]
++            }
++          }
++        ],
+         "properties": {
+           "osname": {
+             "description": "Name of the stateroot to be used in the deployment",
+@@ -55,6 +74,11 @@ SCHEMA_2 = """
+             "description": "The deployment serial (usually '0')",
+             "type": "number",
+             "default": 0
++          },
++          "default": {
++            "description": "Find and use the default ostree deployment",
++            "type": "boolean",
++            "default": false
+           }
+         }
+       }
+@@ -99,12 +123,9 @@ class OSTreeDeploymentMount(mounts.MountService):
+         tree = args["tree"]
+         mountroot = args["root"]
+         options = args["options"]
+-
+         source = options.get("source", "tree")
+         deployment = options["deployment"]
+-        osname = deployment["osname"]
+-        ref = deployment["ref"]
+-        serial = deployment.get("serial", 0)
++        osname, ref, serial = ostree.parse_deployment_option(tree, deployment)
+ 
+         # The user could specify either the tree or mountroot as the
+         # place where we want the deployment to be mounted.
+diff --git a/osbuild/util/ostree.py b/osbuild/util/ostree.py
+index 173a9676..4c0344d1 100644
+--- a/osbuild/util/ostree.py
++++ b/osbuild/util/ostree.py
+@@ -1,13 +1,15 @@
+ import collections
+ import contextlib
++import glob
+ import json
+ import os
++import re
+ import subprocess
+ import sys
+ import tempfile
+ import typing
+ # pylint doesn't understand the string-annotation below
+-from typing import Any, List  # pylint: disable=unused-import
++from typing import Any, Dict, List, Tuple  # pylint: disable=unused-import
+ 
+ from osbuild.util.rhsm import Subscriptions
+ 
+@@ -214,7 +216,43 @@ def parse_input_commits(commits):
+     return commits["path"], data["refs"]
+ 
+ 
+-def deployment_path(root: PathLike, osname: str, ref: str, serial: int):
++def parse_deployment_option(root: PathLike, deployment: Dict) -> Tuple[str, str, str]:
++    """Parse the deployment option and return the osname, ref, and serial
++
++    The `deployment` arg contains the following sub fields:
++    - osname: Name of the stateroot used in the deployment (ie. fedora-coreos)
++    - ref: OStree ref to used for the deployment (ie. fedora/aarch64/coreos/next)
++    - serial: The deployment serial (ie. 0)
++    - default: Boolean to determine whether the default ostree deployment should be used
++    """
++
++    default_deployment = deployment.get("default")
++    if default_deployment:
++        filenames = glob.glob(os.path.join(root, 'ostree/deploy/*/deploy/*.0'))
++        if len(filenames) < 1:
++            raise ValueError("Could not find deployment")
++        if len(filenames) > 1:
++            raise ValueError(f"More than one deployment found: {filenames}")
++
++        # We pick up the osname, commit, and serial from the filesystem
++        # here. We'll return the detected commit as the ref in this
++        # since it's a valid substitute for all subsequent uses in
++        # the code base.
++        f = re.search("/ostree/deploy/(.*)/deploy/(.*)\\.([0-9])", filenames[0])
++        if not f:
++            raise ValueError("cannot find ostree deployment in {filenames[0]}")
++        osname = f.group(1)
++        commit = f.group(2)
++        serial = f.group(3)
++        return osname, commit, serial
++
++    osname = deployment["osname"]
++    ref = deployment["ref"]
++    serial = deployment.get("serial", 0)
++    return osname, ref, serial
++
++
++def deployment_path(root: PathLike, osname: str = "", ref: str = "", serial: int = 0):
+     """Return the path to a deployment given the parameters"""
+ 
+     base = os.path.join(root, "ostree")
+diff --git a/stages/org.osbuild.bootupd b/stages/org.osbuild.bootupd
+index 224bd6d4..5663ea3e 100755
+--- a/stages/org.osbuild.bootupd
++++ b/stages/org.osbuild.bootupd
+@@ -32,7 +32,26 @@ SCHEMA_2 = r"""
+     "deployment": {
+       "type": "object",
+       "additionalProperties": false,
+-      "required": ["osname", "ref"],
++      "oneOf": [
++        {
++          "properties": {
++          "default": {"enum": [false]}
++          },
++          "required": ["osname", "ref"]
++        },
++        {
++          "properties": {
++          "default": {"enum": [true]}
++          },
++          "not": {
++            "anyOf": [
++              {"required": ["osname"]},
++              {"required": ["ref"]},
++              {"required": ["serial"]}
++            ]
++          }
++        }
++      ],
+       "properties": {
+         "osname": {
+           "description": "Name of the stateroot to be used in the deployment",
+@@ -46,6 +65,11 @@ SCHEMA_2 = r"""
+           "description": "The deployment serial (usually '0')",
+           "type": "number",
+           "default": 0
++        },
++        "default": {
++          "description": "Find and use the default ostree deployment",
++            "type": "boolean",
++            "default": false
+         }
+       }
+     },
+@@ -101,9 +125,7 @@ def main(args, options):
+     # we'll call ostree.deployment_path() helper to find it for us.
+     root = mounts
+     if deployment:
+-        osname = deployment["osname"]
+-        ref = deployment["ref"]
+-        serial = deployment.get("serial", 0)
++        osname, ref, serial = ostree.parse_deployment_option(mounts, deployment)
+         root = ostree.deployment_path(mounts, osname, ref, serial)
+ 
+     bootupd_args = []
+diff --git a/stages/org.osbuild.fstab b/stages/org.osbuild.fstab
+index eb5ac2b0..a9af5ffe 100755
+--- a/stages/org.osbuild.fstab
++++ b/stages/org.osbuild.fstab
+@@ -29,7 +29,26 @@ SCHEMA = """
+       "deployment": {
+         "type": "object",
+         "additionalProperties": false,
+-        "required": ["osname","ref"],
++        "oneOf": [
++          {
++            "properties": {
++              "default": {"enum": [false]}
++            },
++            "required": ["osname", "ref"]
++          },
++          {
++            "properties": {
++              "default": {"enum": [true]}
++            },
++            "not": {
++              "anyOf": [
++                {"required": ["osname"]},
++                {"required": ["ref"]},
++                {"required": ["serial"]}
++              ]
++            }
++          }
++        ],
+         "properties": {
+           "osname": {
+             "description": "Name of the stateroot to be used in the deployment",
+@@ -43,6 +62,11 @@ SCHEMA = """
+             "description": "The deployment serial (usually '0')",
+             "type": "number",
+             "default": 0
++          },
++          "default": {
++            "description": "Find and use the default ostree deployment",
++            "type": "boolean",
++            "default": false
+           }
+         }
+       }
+@@ -118,9 +142,7 @@ def main(tree, options):
+ 
+     if ostree_options:
+         deployment = ostree_options["deployment"]
+-        osname = deployment["osname"]
+-        ref = deployment["ref"]
+-        serial = deployment.get("serial", 0)
++        osname, ref, serial = ostree.parse_deployment_option(tree, deployment)
+ 
+         root = ostree.deployment_path(tree, osname, ref, serial)
+ 
+diff --git a/stages/org.osbuild.ostree.aleph b/stages/org.osbuild.ostree.aleph
+index 6baedeb0..bcef1fe3 100755
+--- a/stages/org.osbuild.ostree.aleph
++++ b/stages/org.osbuild.ostree.aleph
+@@ -19,6 +19,7 @@ COREOS_ALEPH_FILENAME = ".coreos-aleph-version.json"
+ SCHEMA_2 = """
+ "options": {
+   "additionalProperties": false,
++  "required": ["deployment"],
+   "properties": {
+     "coreos_compat": {
+       "description": "boolean to allow for CoreOS aleph version backwards compatibility",
+@@ -26,7 +27,26 @@ SCHEMA_2 = """
+     },
+     "deployment": {
+       "additionalProperties": false,
+-      "required": ["osname", "ref"],
++      "oneOf": [
++        {
++          "properties": {
++            "default": {"enum": [false]}
++          },
++          "required": ["osname", "ref"]
++        },
++        {
++          "properties": {
++            "default": {"enum": [true]}
++          },
++          "not": {
++            "anyOf": [
++              {"required": ["osname"]},
++              {"required": ["ref"]},
++              {"required": ["serial"]}
++            ]
++          }
++        }
++      ],
+       "properties": {
+         "osname": {
+           "description": "Name of the stateroot to be used in the deployment",
+@@ -40,6 +60,11 @@ SCHEMA_2 = """
+           "description": "The deployment serial (usually '0')",
+           "type": "number",
+           "default": 0
++        },
++        "default": {
++          "description": "Find and use the default ostree deployment",
++          "type": "boolean",
++          "default": false
+         }
+       }
+     }
+@@ -131,9 +156,7 @@ def construct_aleph_json(tree, origin):
+ def main(tree, options):
+     coreos_compat = options.get("coreos_compat", False)
+     dep = options["deployment"]
+-    osname = dep["osname"]
+-    ref = dep["ref"]
+-    serial = dep.get("serial", 0)
++    osname, ref, serial = ostree.parse_deployment_option(tree, dep)
+ 
+     origin = ostree.deployment_path(tree, osname, ref, serial) + ".origin"
+     data = construct_aleph_json(tree, origin)
+diff --git a/stages/org.osbuild.ostree.fillvar b/stages/org.osbuild.ostree.fillvar
+index e5b5eacd..dfb706e8 100755
+--- a/stages/org.osbuild.ostree.fillvar
++++ b/stages/org.osbuild.ostree.fillvar
+@@ -18,7 +18,26 @@ SCHEMA = """
+ "properties": {
+   "deployment": {
+     "additionalProperties": false,
+-    "required": ["osname", "ref"],
++    "oneOf": [
++      {
++        "properties": {
++          "default": {"enum": [false]}
++        },
++        "required": ["osname", "ref"]
++      },
++      {
++        "properties": {
++          "default": {"enum": [true]}
++        },
++        "not": {
++          "anyOf": [
++            {"required": ["osname"]},
++            {"required": ["ref"]},
++            {"required": ["serial"]}
++          ]
++        }
++      }
++    ],
+     "properties": {
+       "osname": {
+         "description": "Name of the stateroot to be used in the deployment",
+@@ -32,6 +51,11 @@ SCHEMA = """
+         "description": "The deployment serial (usually '0')",
+         "type": "number",
+         "default": 0
++      },
++      "default": {
++        "description": "Find and use the default ostree deployment",
++        "type": "boolean",
++        "default": false
+       }
+     }
+   }
+@@ -71,9 +95,7 @@ def populate_var(sysroot):
+ 
+ def main(tree, options):
+     dep = options["deployment"]
+-    osname = dep["osname"]
+-    ref = dep["ref"]
+-    serial = dep.get("serial", 0)
++    osname, ref, serial = ostree.parse_deployment_option(tree, dep)
+ 
+     deployment = ostree.deployment_path(tree, osname, ref, serial)
+     var = os.path.join(tree, "ostree", "deploy", osname, "var")
+diff --git a/stages/org.osbuild.ostree.selinux b/stages/org.osbuild.ostree.selinux
+index d990a5e5..58663e34 100755
+--- a/stages/org.osbuild.ostree.selinux
++++ b/stages/org.osbuild.ostree.selinux
+@@ -21,7 +21,26 @@ SCHEMA = """
+ "properties": {
+   "deployment": {
+     "additionalProperties": false,
+-    "required": ["osname", "ref"],
++    "oneOf": [
++      {
++        "properties": {
++          "default": {"enum": [false]}
++        },
++        "required": ["osname", "ref"]
++      },
++      {
++        "properties": {
++          "default": {"enum": [true]}
++        },
++        "not": {
++          "anyOf": [
++            {"required": ["osname"]},
++            {"required": ["ref"]},
++            {"required": ["serial"]}
++          ]
++        }
++      }
++    ],
+     "properties": {
+       "osname": {
+         "description": "Name of the stateroot to be used in the deployment",
+@@ -35,6 +54,11 @@ SCHEMA = """
+         "description": "The deployment serial (usually '0')",
+         "type": "number",
+         "default": 0
++      },
++      "default": {
++        "description": "Find and use the default ostree deployment",
++        "type": "boolean",
++        "default": false
+       }
+     }
+   }
+@@ -44,9 +68,7 @@ SCHEMA = """
+ 
+ def main(tree, options):
+     dep = options["deployment"]
+-    osname = dep["osname"]
+-    ref = dep["ref"]
+-    serial = dep.get("serial", 0)
++    osname, ref, serial = ostree.parse_deployment_option(tree, dep)
+ 
+     # this created a state root at `osname`
+     stateroot = f"{tree}/ostree/deploy/{osname}"
+-- 
+2.43.0
+

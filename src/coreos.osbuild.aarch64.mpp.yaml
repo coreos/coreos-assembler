@@ -165,15 +165,11 @@ pipelines:
         options:
           coreos_compat: true
           deployment:
-            ref: ostree/1/1/0
-            osname:
-              mpp-format-string: '{osname}'
+            default: true
       - type: org.osbuild.ostree.selinux
         options:
           deployment:
-            ref: ostree/1/1/0
-            osname:
-              mpp-format-string: '{osname}'
+            default: true
       # Copy in the platforms.json that was baked into the OSTree into /boot
       # so tools like coreos-installer can use the information.
       - type: org.osbuild.copy
@@ -186,9 +182,7 @@ pipelines:
             type: org.osbuild.ostree.deployment
             options:
               deployment:
-                ref: ostree/1/1/0
-                osname:
-                  mpp-format-string: '{osname}'
+                default: true
   - name: raw-image
     stages:
       - type: org.osbuild.truncate
@@ -304,9 +298,7 @@ pipelines:
         options:
           static-configs: true
           deployment:
-            ref: ostree/1/1/0
-            osname:
-              mpp-format-string: '{osname}'
+            default: true
         devices:
           disk:
             type: org.osbuild.loopback
@@ -355,9 +347,7 @@ pipelines:
             options:
               source: mount
               deployment:
-                ref: ostree/1/1/0
-                osname:
-                  mpp-format-string: '{osname}'
+                default: true
   - name: raw-4k-image
     stages:
       - type: org.osbuild.truncate
@@ -483,9 +473,7 @@ pipelines:
         options:
           static-configs: true
           deployment:
-            ref: ostree/1/1/0
-            osname:
-              mpp-format-string: '{osname}'
+            default: true
         devices:
           disk:
             type: org.osbuild.loopback
@@ -538,9 +526,7 @@ pipelines:
             options:
               source: mount
               deployment:
-                ref: ostree/1/1/0
-                osname:
-                  mpp-format-string: '{osname}'
+                default: true
   - name: raw-metal-image
     stages:
       - type: org.osbuild.copy
