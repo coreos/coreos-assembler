@@ -192,6 +192,7 @@ patch_osbuild() {
         /usr/lib/coreos-assembler/0002-stages-zipl.inst-support-appending-kernel-options.patch    \
         /usr/lib/coreos-assembler/0001-stages-copy-allow-copying-from-the-tree.patch              \
         /usr/lib/coreos-assembler/0001-ostree-add-convenience-function-for-using-default-OS.patch \
+        /usr/lib/coreos-assembler/0001-stages-org.osbuild.qemu-make-qcow2-compression-optio.patch \
             | patch -d /usr/lib/osbuild -p1
 
     # And then move the files back; supermin appliance creation will need it back
