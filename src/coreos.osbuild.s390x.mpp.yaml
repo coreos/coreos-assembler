@@ -151,9 +151,7 @@ pipelines:
             type: org.osbuild.ostree.deployment
             options:
               deployment:
-                ref: ostree/1/1/0
-                osname:
-                  mpp-format-string: '{osname}'
+                default: true
       # On s390x set the bootloader to zipl. We need to do it here
       # rather than in the ostree.config stage above because we don't want
       # OSTree to invoke zipl during the deploy. It's done later in zipl.inst.
@@ -167,15 +165,11 @@ pipelines:
         options:
           coreos_compat: true
           deployment:
-            ref: ostree/1/1/0
-            osname:
-              mpp-format-string: '{osname}'
+            default: true
       - type: org.osbuild.ostree.selinux
         options:
           deployment:
-            ref: ostree/1/1/0
-            osname:
-              mpp-format-string: '{osname}'
+            default: true
   - name: raw-image
     stages:
       - type: org.osbuild.truncate
@@ -290,9 +284,7 @@ pipelines:
             options:
               source: mount
               deployment:
-                ref: ostree/1/1/0
-                osname:
-                  mpp-format-string: '{osname}'
+                default: true
   - name: raw-4k-image
     stages:
       - type: org.osbuild.truncate
@@ -417,9 +409,7 @@ pipelines:
             options:
               source: mount
               deployment:
-                ref: ostree/1/1/0
-                osname:
-                  mpp-format-string: '{osname}'
+                default: true
   - name: raw-metal-image
     stages:
       - type: org.osbuild.copy
