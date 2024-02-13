@@ -753,17 +753,24 @@ export USER=$(id -u)
 export RUNVM_NONET=${RUNVM_NONET:-}
 $(cat "${DIR}"/supermin-init-prelude.sh)
 rc=0
-# tee to the virtio port so its output is also part of the supermin output in
-# case e.g. a key msg happens in dmesg when the command does a specific operation
+# - tee to the virtio port so its output is also part of the supermin output in
+#   case e.g. a key msg happens in dmesg when the command does a specific operation.
+# - Use a subshell because otherwise init will use workdir as its cwd and we won't
+#   be able to unmount the virtiofs mount cleanly. This leads to consistency issues.
 if [ -z "${RUNVM_SHELL:-}" ]; then
-  bash ${tmp_builddir}/cmd.sh |& tee /dev/virtio-ports/cosa-cmdout || rc=\$?
+  (cd ${workdir}; bash ${tmp_builddir}/cmd.sh |& tee /dev/virtio-ports/cosa-cmdout) || rc=\$?
 else
-  bash; poweroff -f -f; sleep infinity
+  (cd ${workdir}; bash)
 fi
 echo \$rc > ${rc_file}
 if [ -n "\${cachedev}" ]; then
     /sbin/fstrim -v ${workdir}/cache
+    mount -o remount,ro ${workdir}/cache
+    fsfreeze -f ${workdir}/cache
+    fsfreeze -u ${workdir}/cache
+    umount ${workdir}/cache
 fi
+umount ${workdir}
 /sbin/reboot -f
 EOF
     chmod a+x "${vmpreparedir}"/init
