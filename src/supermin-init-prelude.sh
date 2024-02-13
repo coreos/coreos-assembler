@@ -69,6 +69,3 @@ touch /etc/cosa-supermin
 # the missing link.  Hehe.
 update-alternatives --install /etc/alternatives/iptables iptables /usr/sbin/iptables-legacy 1
 update-alternatives --install /etc/alternatives/ip6tables ip6tables /usr/sbin/ip6tables-legacy 1
-
-# https://github.com/koalaman/shellcheck/wiki/SC2164
-cd "${workdir}" || exit
