@@ -1,0 +1,9 @@
+FROM quay.io/centos/centos:stream9
+
+RUN dnf install -y targetcli kmod && dnf clean all
+RUN systemctl enable target
+
+EXPOSE 3260
+
+HEALTHCHECK --start-period=10s CMD targetcli pwd
+CMD [ "/sbin/init" ]
