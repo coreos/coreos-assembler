@@ -178,6 +178,7 @@ patch_osbuild() {
     # Now all the software is under the /usr/lib/osbuild dir and we can patch
     cat /usr/lib/coreos-assembler/0004-fscache-add-eviction-log-statement.patch                   \
         /usr/lib/coreos-assembler/0001-stages-zipl.inst-improve-kernel-initrd-path-resoluti.patch \
+        /usr/lib/coreos-assembler/0001-stages-qemu-sanity-check-created-image.patch               \
             | patch -d /usr/lib/osbuild -p1
 
     # And then move the files back; supermin appliance creation will need it back
