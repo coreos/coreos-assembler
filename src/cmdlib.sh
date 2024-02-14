@@ -729,13 +729,6 @@ runvm() {
     # include COSA in the image
     find /usr/lib/coreos-assembler/ -type f > "${vmpreparedir}/hostfiles"
 
-    # include new patched in osbuild stage in the image.
-    # can drop this once the upstream PRs are merged:
-    # https://github.com/osbuild/osbuild/pull/1519
-    # https://github.com/osbuild/osbuild/pull/1535
-    # shellcheck disable=SC2129
-    echo /usr/lib/osbuild/stages/org.osbuild.chattr >> "${vmpreparedir}/hostfiles"
-
     # and include all GPG keys
     find /etc/pki/rpm-gpg/ -type f >> "${vmpreparedir}/hostfiles"
 
