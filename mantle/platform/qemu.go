@@ -1620,7 +1620,7 @@ func (builder *QemuBuilder) VirtioJournal(config *conf.Conf, queryArguments stri
 
 // createVirtiofsCmd returns a new command instance configured to launch virtiofsd.
 func createVirtiofsCmd(directory, socketPath string) exec.Cmd {
-	args := []string{"--sandbox", "none", "--socket-path", socketPath, "--shared-dir", "."}
+	args := []string{"--sandbox=none", "--cache=never", "--socket-path", socketPath, "--shared-dir", "."}
 	// Work around https://gitlab.com/virtio-fs/virtiofsd/-/merge_requests/197
 	if os.Getuid() == 0 {
 		args = append(args, "--modcaps=-mknod:-setfcap")
