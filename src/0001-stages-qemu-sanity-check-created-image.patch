@@ -1,0 +1,39 @@
+From 4c73f0b53b23e694c9f031951cc0509e3687966f Mon Sep 17 00:00:00 2001
+From: Dusty Mabe <dusty@dustymabe.com>
+Date: Wed, 14 Feb 2024 15:24:36 -0500
+Subject: [PATCH] stages/qemu: sanity check created image
+
+I'm having a lot of trouble investigating [1]. Let's add this here
+as a small sanity check for now.
+
+[1] https://github.com/coreos/coreos-assembler/issues/3728
+---
+ stages/org.osbuild.qemu | 12 ++++++++++++
+ 1 file changed, 12 insertions(+)
+
+diff --git a/stages/org.osbuild.qemu b/stages/org.osbuild.qemu
+index 642b5146..54e707d4 100755
+--- a/stages/org.osbuild.qemu
++++ b/stages/org.osbuild.qemu
+@@ -231,6 +231,18 @@ def main(inputs, output, options):
+         cmd, check=True
+     )
+ 
++    # Sanity check that the image is 100%
++    cmd = [
++        "qemu-img", "compare",
++        "-f", "raw",
++        "-F", fmt["type"],
++        source, target
++    ]
++    subprocess.run(
++        cmd, check=True
++    )
++
++
+     return 0
+ 
+ 
+-- 
+2.43.0
+
