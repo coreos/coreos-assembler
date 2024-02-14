@@ -65,10 +65,11 @@ fi
 # Since it doesn't exist create loop-control
 mknod /dev/loop-control c 10 237
 
-# Tell osbuild to write out artifacts into a file in the root
-# filesystem of the supermin VM, which is ephemeral.
-mkdir /var/osbuild
-outdir=/var/osbuild/out
+# Put the store and the output dir on the cache. At the end we'll mv
+# out the created artifact from the output dir to the place it's supposed
+# to go.
+outdir=cache/osbuild/out
+storedir=cache/osbuild/store
 
 # Run through the preprocessor
 # Note: don't quote the size arguements since they are numbers, not strings
@@ -82,17 +83,18 @@ osbuild-mpp                                             \
     -D metal_image_size_mb="${metal_image_size_mb}"     \
     -D cloud_image_size_mb="${cloud_image_size_mb}"     \
     "${mppyaml}"                                        \
-    /var/osbuild/processed.json
+    /processed.json
 
 # Build the image
 osbuild \
-    --out "$outdir"            \
-    --store cache/osbuild/store/ \
+    --out "$outdir"              \
+    --store "$storedir"          \
     --cache-max-size 9GiB        \
     --checkpoint tree            \
     --checkpoint raw-image       \
-    --export "$platform" /var/osbuild/processed.json
+    --export "$platform" /processed.json
 
 
-# Copy it out to the specified location
-cp "${outdir}/${platform}/${filename}" "${filepath}"
+# Copy it out to the specified location. Use mv here so we remove it
+# from the cache qcow2 so we don't cache it.
+mv "${outdir}/${platform}/${filename}" "${filepath}"
