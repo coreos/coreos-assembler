@@ -607,7 +607,7 @@ runvm_with_cache_snapshot() {
         (
          # shellcheck source=src/libguestfish.sh
          source /usr/lib/coreos-assembler/libguestfish.sh
-         virt-format --filesystem=xfs --label=cosa-cache -a cache2.qcow2.tmp)
+         virt-format --filesystem=ext4 --label=cosa-cache -a cache2.qcow2.tmp)
         mv -T cache2.qcow2.tmp "${workdir}"/cache/cache2.qcow2
     fi
     # And remove the old one
