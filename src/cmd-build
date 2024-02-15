@@ -335,24 +335,6 @@ if test "${PREPARE_ONLY}" = 1; then
     exit 0
 fi
 
-# See https://github.com/coreos/coreos-assembler/pull/1379 - we want the local
-# dev case to explicitly fetch updates when they want them, plus CI pipelines
-# generally want to react to "changed or not" with a separate `fetch`.
-# The fetched-stamp is new, in order to not break existing workdirs we assume
-# a fetch was done if a successful build was done.
-if [ ! -f "${workdir}"/builds/builds.json ] && [ ! -f "${fetch_stamp}" ] ; then
-    fatal "Must fetch before building"
-fi
-composefs="$(jq -r .composefs < "${image_json}")"
-case "${composefs}" in
-    false) 
-    ;;
-    true)
-        ostree config --repo="${tmprepo}" set ex-integrity.composefs "true"
-    ;;
-    *) fatal "Unhandled composefs setting: ${composefs}" ;;
-esac
-
 # --cache-only is here since `fetch` is a separate verb
 # shellcheck disable=SC2086
 if test -n "${previous_commit}"; then
