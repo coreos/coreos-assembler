@@ -46,8 +46,8 @@ done
 # Get the base filename of the desired file output path
 filename=$(basename "$filepath")
 
-ostree_repo=$(getconfig "ostree-repo")
-ostree_ref=$(getconfig "ostree-ref")
+ostree_repo=$(getconfig_def "ostree-repo" "")
+ostree_ref=$(getconfig_def "ostree-ref" "")
 osname=$(getconfig "osname")
 platform=$(getconfig "image-type")
 deploy_via_container=$(getconfig_def "deploy-via-container" "")
