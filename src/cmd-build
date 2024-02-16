@@ -33,6 +33,7 @@ Usage: coreos-assembler build --help
   --prepare-only        Do not actually build, only set things up so that `rpm-ostree compose image` works.
   --tag TAG             Set the given tag in the build metadata
   --version=VERSION     Use the given version instead of following the manifest's `automatic-version-prefix`.
+  --versionary          Use the versionary script from the source config to drive version.
   --skip-config-archive Disable creating a tar.gz archive of the config repo.
   --autolock=VERSION    If no base lockfile used, create one from any arch build of `VERSION`.
                         Note this is automatically enabled when adding to an existing multi-arch
@@ -54,6 +55,7 @@ FETCH=
 SKIP_PRUNE=0
 PREPARE_ONLY=0
 VERSION=
+VERSIONARY=
 PARENT=
 PARENT_BUILD=
 TAG=
@@ -61,7 +63,7 @@ STRICT=
 CONFIG_ARCHIVE=1
 AUTOLOCK_VERSION=
 rc=0
-options=$(getopt --options hfFt: --longoptions tag:,help,fetch,force,version:,parent:,parent-build:,delay-meta-merge,force-nocache,force-image,skip-prune,prepare-only,strict,skip-config-archive,autolock: -- "$@") || rc=$?
+options=$(getopt --options hfFt: --longoptions tag:,help,fetch,force,version:,parent:,parent-build:,delay-meta-merge,force-nocache,force-image,skip-prune,prepare-only,strict,skip-config-archive,autolock:,versionary -- "$@") || rc=$?
 [ $rc -eq 0 ] || {
     print_help
     exit 1
@@ -100,6 +102,9 @@ while true; do
         --version)
             shift
             VERSION=$1
+            ;;
+        --versionary)
+            VERSIONARY=1
             ;;
         # XXX: to remove once --parent-build is plumbed through
         --parent)
@@ -141,6 +146,12 @@ fi
 
 if [ $# -eq 0 ]; then
     set -- qemu
+fi
+
+if [ -z "${VERSION}" ] && [ -n "${VERSIONARY}" ]; then
+    # let error out if file does not exist
+    VERSION=$(src/config/versionary)
+    echo "New version will be ${VERSION}"
 fi
 
 # sanity check the targets and aggregate into a set
