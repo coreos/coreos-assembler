@@ -682,3 +682,5 @@ pipelines:
             type: qcow2
             compression: false
             compat: '1.1'
+  - mpp-import-pipelines:
+      path: platform.hyperv.ipp.yaml
