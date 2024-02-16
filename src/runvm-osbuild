@@ -63,7 +63,7 @@ if [ -n "${deploy_via_container}" ]; then
 fi
 
 # Since it doesn't exist create loop-control
-mknod /dev/loop-control c 10 237
+[ ! -e /dev/loop-control ] && mknod /dev/loop-control c 10 237
 
 # Put the store and the output dir on the cache. At the end we'll mv
 # out the created artifact from the output dir to the place it's supposed
