@@ -32,7 +32,7 @@ Usage: coreos-assembler build --help
   --strict              Only allow installing locked packages when using lockfiles
   --prepare-only        Do not actually build, only set things up so that `rpm-ostree compose image` works.
   --tag TAG             Set the given tag in the build metadata
-  --version=VERSION     Use the given version instead of generating one based on current time
+  --version=VERSION     Use the given version instead of following the manifest's `automatic-version-prefix`.
   --skip-config-archive Disable creating a tar.gz archive of the config repo.
   --autolock=VERSION    If no base lockfile used, create one from any arch build of `VERSION`.
                         Note this is automatically enabled when adding to an existing multi-arch
