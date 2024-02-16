@@ -71,6 +71,8 @@ fi
 outdir=cache/osbuild/out
 storedir=cache/osbuild/store
 
+processed_json=$(mktemp -t osbuild-XXXX.json)
+
 # Run through the preprocessor
 # Note: don't quote the size arguements since they are numbers, not strings
 osbuild-mpp                                             \
@@ -82,8 +84,7 @@ osbuild-mpp                                             \
     -D container_imgref=\""${container_imgref}"\"       \
     -D metal_image_size_mb="${metal_image_size_mb}"     \
     -D cloud_image_size_mb="${cloud_image_size_mb}"     \
-    "${mppyaml}"                                        \
-    /processed.json
+    "${mppyaml}" "${processed_json}"
 
 # Build the image
 osbuild \
@@ -92,9 +93,11 @@ osbuild \
     --cache-max-size 9GiB        \
     --checkpoint tree            \
     --checkpoint raw-image       \
-    --export "$platform" /processed.json
+    --export "$platform" "${processed_json}"
 
 
 # Copy it out to the specified location. Use mv here so we remove it
 # from the cache qcow2 so we don't cache it.
 mv "${outdir}/${platform}/${filename}" "${filepath}"
+
+rm -f "${processed_json}"
