@@ -683,4 +683,6 @@ pipelines:
             compression: false
             compat: '1.1'
   - mpp-import-pipelines:
+      path: platform.applehv.ipp.yaml
+  - mpp-import-pipelines:
       path: platform.hyperv.ipp.yaml
