@@ -290,9 +290,9 @@ if [ "${OSBUILD_SUPPORTED:-}" != "" ] && [ "${COSA_USE_OSBUILD:-}" != "" ]; then
     # so for those we'll set `snapshot=on` so that each will get their own disk image.
     # This is OK because we don't checkpoint (cache) any of those stages.
     [ "${image_type}" == "qemu" ] && snapshot="off" || snapshot="on"
-    runvm_with_cache_snapshot "$snapshot" -- /usr/lib/coreos-assembler/runvm-osbuild  \
-                --config "${image_for_disk_json}"                                     \
-                --mpp "/usr/lib/coreos-assembler/coreos.osbuild.${basearch}.mpp.yaml" \
+    runvm_with_cache_snapshot "$snapshot" -- /usr/lib/coreos-assembler/runvm-osbuild                    \
+                --config "${image_for_disk_json}"                                                       \
+                --mpp "/usr/lib/coreos-assembler/osbuild-manifests/coreos.osbuild.${basearch}.mpp.yaml" \
                 --filepath "${path}.tmp"
 else
     runvm "${qemu_args[@]}" -- \
