@@ -100,6 +100,8 @@ install:
 	cp -df -t $(DESTDIR)$(PREFIX)/lib/coreos-assembler/ci $$(find ci/ -maxdepth 1 -type f)
 	install -d $(DESTDIR)$(PREFIX)/lib/coreos-assembler/cosalib
 	install -D -t $(DESTDIR)$(PREFIX)/lib/coreos-assembler/cosalib $$(find src/cosalib/ -maxdepth 1 -type f)
+	install -d $(DESTDIR)$(PREFIX)/lib/coreos-assembler/osbuild-manifests
+	install -D -t $(DESTDIR)$(PREFIX)/lib/coreos-assembler/osbuild-manifests $$(find src/osbuild-manifests/ -maxdepth 1 -type f)
 	install -d $(DESTDIR)$(PREFIX)/lib/coreos-assembler/secex-genprotimgvm-scripts
 	install -D -t $(DESTDIR)$(PREFIX)/lib/coreos-assembler/secex-genprotimgvm-scripts $$(find src/secex-genprotimgvm-scripts/ -maxdepth 1 -type f)
 	install -d $(DESTDIR)$(PREFIX)/bin
