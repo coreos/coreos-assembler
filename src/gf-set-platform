@@ -70,9 +70,9 @@ fi
 coreos_gf upload "${tmpd}"/bls.conf "${blscfg_path}"
 
 if [ -n "$rewrite_grub_cmds" ]; then
-    # Use the new console config written out by bootupd if it exists
-    if [ "$(coreos_gf exists /boot/grub2/30_console.cfg)" = "true" ]; then
-        grub_console_config_path='/boot/grub2/30_console.cfg'
+    # Use the new console config written out by OSBuild coreos.platform stage if it exists
+    if [ "$(coreos_gf exists /boot/grub2/console.cfg)" = "true" ]; then
+        grub_console_config_path='/boot/grub2/console.cfg'
     else
         grub_console_config_path='/boot/grub2/grub.cfg'
     fi
