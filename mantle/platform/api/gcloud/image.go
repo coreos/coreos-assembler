@@ -86,12 +86,37 @@ func (a *API) CreateImage(spec *ImageSpec, overwrite bool) (*compute.Operation, 
 		}
 	}
 
+	features := []*compute.GuestOsFeature{
+		// https://cloud.google.com/compute/docs/images/create-delete-deprecate-private-images
+		{
+			Type: "VIRTIO_SCSI_MULTIQUEUE",
+		},
+		// RHEL supports this since 8.4; TODO share logic here with
+		// https://github.com/osbuild/osbuild-composer/blob/c6570f6c94149b47f2f8e2f82d7467d6b96755bb/internal/cloud/gcp/compute.go#L16
+		{
+			Type: "SEV_CAPABLE",
+		},
+		{
+			Type: "GVNIC",
+		},
+		{
+			Type: "UEFI_COMPATIBLE",
+		},
+		// https://cloud.google.com/blog/products/identity-security/rsa-snp-vm-more-confidential
+		{
+			Type: "SEV_SNP_CAPABLE",
+		},
+	}
+
 	if spec.Architecture == "" {
 		spec.Architecture = runtime.GOARCH
 	}
 	switch spec.Architecture {
 	case "amd64", "x86_64":
 		spec.Architecture = "X86_64"
+		// Enables support for live migration of AMD SEV SNP capable images in GCP.
+		// See: https://git.kernel.org/pub/scm/linux/kernel/git/tip/tip.git/commit/?id=ac3f9c9f1b37edaa7d1a9b908bc79d843955a1a2
+		features = append(features, &compute.GuestOsFeature{Type: "SEV_LIVE_MIGRATABLE_V2"})
 	case "arm64", "aarch64":
 		spec.Architecture = "ARM64"
 	default:
@@ -114,28 +139,6 @@ func (a *API) CreateImage(spec *ImageSpec, overwrite bool) (*compute.Operation, 
 		if err != nil && !strings.HasSuffix(err.Error(), "notFound") {
 			return nil, nil, fmt.Errorf("deleting image: %v", err)
 		}
-	}
-
-	features := []*compute.GuestOsFeature{
-		// https://cloud.google.com/compute/docs/images/create-delete-deprecate-private-images
-		{
-			Type: "VIRTIO_SCSI_MULTIQUEUE",
-		},
-		// RHEL supports this since 8.4; TODO share logic here with
-		// https://github.com/osbuild/osbuild-composer/blob/c6570f6c94149b47f2f8e2f82d7467d6b96755bb/internal/cloud/gcp/compute.go#L16
-		{
-			Type: "SEV_CAPABLE",
-		},
-		{
-			Type: "GVNIC",
-		},
-		{
-			Type: "UEFI_COMPATIBLE",
-		},
-		// https://cloud.google.com/blog/products/identity-security/rsa-snp-vm-more-confidential
-		{
-			Type: "SEV_SNP_CAPABLE",
-		},
 	}
 
 	image := &compute.Image{
