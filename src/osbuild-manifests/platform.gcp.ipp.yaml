@@ -1,0 +1,76 @@
+# This file isn't yet being used today but holds an OSBuild image
+# definition for the gcp platform. It currently has the x86_64
+# kernel arguments for console so it is only included in
+# coreos.osbuild.x86_64.mpp.yaml for now.
+version: '2'
+pipelines:
+  - name: raw-gcp-image
+    stages:
+      - type: org.osbuild.copy
+        inputs:
+          tree:
+            type: org.osbuild.tree
+            origin: org.osbuild.pipeline
+            references:
+              - name:raw-image
+        options:
+          paths:
+            - from: input://tree/disk.img
+              to: tree:///disk.raw
+      # Increase the size to the cloud image size
+      - type: org.osbuild.truncate
+        options:
+          filename: disk.raw
+          size:
+            mpp-format-string: "{cloud_image_size_mb * 1024 * 1024}"
+      - type: org.osbuild.kernel-cmdline.bls-append
+        options:
+          bootpath: mount:///
+          kernel_opts:
+            - ignition.platform.id=gcp
+            - console=tty0
+            - console=ttyS0,115200n8
+        devices:
+          boot:
+            type: org.osbuild.loopback
+            options:
+              filename: disk.raw
+              start:
+                mpp-format-int: '{image.layout[''boot''].start}'
+              size:
+                mpp-format-int: '{image.layout[''boot''].size}'
+        mounts:
+          - name: boot
+            type: org.osbuild.ext4
+            source: boot
+            target: /
+  - name: raw-gcp-image-tar
+    stages:
+      - type: org.osbuild.tar
+        inputs:
+          tree:
+            type: org.osbuild.tree
+            origin: org.osbuild.pipeline
+            references:                 
+              - name:raw-gcp-image
+        options:
+          filename: disk.tar
+          format: oldgnu
+          root-node: omit
+          # Set these to false so GCP image upload/create will succeed
+          acls: false
+          selinux: false
+          xattrs: false
+  - name: gcp
+    stages:
+      - type: org.osbuild.gzip
+        inputs:
+          file:
+            type: org.osbuild.files
+            origin: org.osbuild.pipeline
+            references:
+              name:raw-gcp-image-tar:
+                file: disk.tar
+        options:
+          filename:
+            mpp-format-string: '{filename}'
