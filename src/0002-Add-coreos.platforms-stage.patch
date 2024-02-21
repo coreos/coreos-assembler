@@ -1,0 +1,149 @@
+From d26d29a9cfea000418ea1f24127e8697af88e351 Mon Sep 17 00:00:00 2001
+From: Renata Ravanelli <rravanel@redhat.com>
+Date: Wed, 7 Feb 2024 16:43:54 -0300
+Subject: [PATCH 2/2] Add coreos.platforms stage
+
+ - Process all necessary operations related to CoreOS
+platforms is crucial and specific to CoreOS. This step
+is essential for CoreOS exclusively.
+
+- Our approach to handling 'platforms.json' may change as we
+advance with the OSBuild work. However, we don't have a clear
+vision about how it will be in the future yet, particularly as
+we also manage similar components within the osbuild composer
+to configure cloud parameters. We probably will know better
+when we start working with the cloud artifacts.
+
+As a summary, let's add it know to unblock us, and if we find a
+better approach in the future, we can always go back and remove it.
+
+Signed-off-by: Renata Ravanelli <rravanel@redhat.com>
+---
+ stages/org.osbuild.coreos.platform | 115 +++++++++++++++++++++++++++++
+ 1 file changed, 115 insertions(+)
+ create mode 100755 stages/org.osbuild.coreos.platform
+
+diff --git a/stages/org.osbuild.coreos.platform b/stages/org.osbuild.coreos.platform
+new file mode 100755
+index 00000000..9eceac0e
+--- /dev/null
++++ b/stages/org.osbuild.coreos.platform
+@@ -0,0 +1,115 @@
++#!/usr/bin/python3
++"""
++In CoreOS we have the concept of a platform (i.e. AWS, GCP, Metal, QEMU)
++where each platform has its own provided disk image with slightly
++differing settings/behavior. This stage will perform the necessary
++configuration for the given platform. This configuration boils down to
++a few steps:
++1. Locate the source of platform specific information that is provided
++   in the CoreOS filesystem tree already (the platforms.json).
++2. Copy the platforms.json file into the /boot/ partition, which is
++   sometimes used by coreos-installer.
++3. Read the platforms.json to fetch and platform specific kernel
++   arguments or grub configuration to set. These arguments/config
++   are primarily console settings.
++4. Apply any platform specific kernel arguments along with the
++   `ignition.platform.id={platform-name}` kernel argument.
++5. Create the grub console.cfg file and apply any platform
++   specific grub console configuration.
++This stage is highly CoreOS specific and subject to change in the
++future if/when we change the way platform specific information is
++defined in our broader efforts to share more defaults with OSBuild.
++"""
++SCHEMA_2 = r"""
++"options": {
++  "additionalProperties": false,
++  "properties": {
++    "platform": {
++      "description": "The target platform name/ID",
++      "type": "string"
++    }
++  }
++},
++"devices": {
++  "type": "object",
++  "additionalProperties": true
++},
++"mounts": {
++  "type": "array"
++}
++"""
++import json
++import os
++import osbuild.api
++import shutil
++import sys
++
++from osbuild.util import bls
++
++# Constants
++#For console.cfg see https://github.com/coreos/bootupd/pull/620
++#For platforms.json see https://github.com/coreos/coreos-assembler/pull/3709
++GRUB_CONSOLE_CFG = "boot/grub2/console.cfg"
++PLATFORMS_JSON_DEST= "boot/coreos/platforms.json"
++PLATFORMS_JSON_SOURCE = "usr/share/coreos-assembler/platforms.json"
++
++def generate_console_settings_file(console_settings, file_path):
++    settings_content = ""
++    if console_settings is not None:
++        settings_content = "\n".join(console_settings)
++    file_content = f"""
++# Any non-default console settings will be inserted here.
++# CONSOLE-SETTINGS-START
++{settings_content}
++# CONSOLE-SETTINGS-END
++"""
++    with open(file_path, 'w') as file:
++        file.write(file_content)
++
++
++def process_platforms_json(json_file_path, platform):
++    keys = ["grub_commands", "kernel_arguments"]
++    result = {}
++    with open(json_file_path, 'r') as file:
++        data = json.load(file)
++        if platform in data:
++            for key in keys:
++                if key in data[platform]:
++                    result[key] = data[platform][key]
++
++    return result.get("grub_commands", []),\
++           result.get("kernel_arguments", [])
++
++
++def main(paths, tree, options):
++
++    deployment = options.get("deployment")
++    platform = options.get("platform")
++
++    root = args["paths"]["mounts"]
++    boot_path = os.path.join(root, "boot")
++    platforms_source_path = os.path.join(root, PLATFORMS_JSON_SOURCE.lstrip())
++    platforms_dest_path = os.path.join(root, PLATFORMS_JSON_DEST.lstrip())
++    grub_console_cfg_path = os.path.join(root, GRUB_CONSOLE_CFG.lstrip())
++
++    kernel_arguments = [f"ignition.platform.id={platform}"]
++
++    json_grub_args, json_kargs = None, None
++    if os.path.exists(platforms_source_path):
++        os.makedirs(os.path.dirname(platforms_dest_path), mode=0o755, exist_ok=True)
++        # Copy platforms.json to the boot partition
++        shutil.copy2(platforms_source_path, platforms_dest_path)
++        json_grub_args, json_kargs = process_platforms_json(platforms_dest_path, platform)
++    if json_kargs:
++        kernel_arguments.extend(json_kargs)
++
++    # Write out the GRUB2 console.cfg on all platforms where grub is being used
++    if os.path.exists(os.dirname(grub_console_cfg_path)):
++        generate_console_settings_file(json_grub_args, grub_console_cfg_path)
++    # Append kernel arguments in bls entries
++    bls.options_append(f"{boot_path}", kernel_arguments)
++
++if __name__ == "__main__":
++    args = osbuild.api.arguments()
++    r = main(args["paths"], args["tree"], args["options"])
++    sys.exit(r)
+-- 
+2.43.0
+

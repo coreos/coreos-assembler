@@ -1,0 +1,100 @@
+From a16a27938627d0f16d7a9f09daa889ec29ec9740 Mon Sep 17 00:00:00 2001
+From: Renata Ravanelli <rravanel@redhat.com>
+Date: Mon, 19 Feb 2024 10:30:34 -0300
+Subject: [PATCH 1/2] util: Add bls module
+
+ - Add functions for appending kernel parameters to the
+Boot Loader Specification (BLS) as needed.
+
+Signed-off-by: Renata Ravanelli <rravanel@redhat.com>
+---
+ osbuild/util/bls.py                          | 38 ++++++++++++++++++++
+ stages/org.osbuild.kernel-cmdline.bls-append | 20 ++---------
+ 2 files changed, 40 insertions(+), 18 deletions(-)
+ create mode 100644 osbuild/util/bls.py
+
+diff --git a/osbuild/util/bls.py b/osbuild/util/bls.py
+new file mode 100644
+index 00000000..4168bd71
+--- /dev/null
++++ b/osbuild/util/bls.py
+@@ -0,0 +1,38 @@
++import glob
++import os
++import re
++
++"""
++Function for appending parameters to
++Boot Loader Specification (BLS).
++"""
++
++def options_append(root_path, kernel_arguments):
++    """
++    Add kernel arguments to the Boot Loader Specification (BLS) configuration files.
++    There is unlikely to be more than one BLS config, but just in case, we'll iterate over them.
++
++    Parameters
++    ----------
++
++    root_path (str): The root path for locating BLS configuration files.
++    kernel_arguments (list): A list of kernel arguments to be added.
++
++    """
++    # There is unlikely to be more than one bls config, but just
++    # in case we'll iterate over them.
++    entries = []
++    for entry in glob.glob(f"{root_path}/loader/entries/*.conf"):
++        entries.append(entry)
++        # Read in the file and then append to the options line.
++        with open(entry, encoding="utf8") as f:
++            lines = f.read().splitlines()
++        with open(entry, "w", encoding="utf8") as f:
++            for line in lines:
++                if line.startswith('options '):
++                    f.write(f"{line} {' '.join(kernel_arguments)}\n")
++                else:
++                    f.write(f"{line}\n")
++    assert len(entries) != 0
++    print(f"Added {','.join(kernel_arguments)} to: {','.join(entries)}")
++    return 0
+diff --git a/stages/org.osbuild.kernel-cmdline.bls-append b/stages/org.osbuild.kernel-cmdline.bls-append
+index dd166624..7404032d 100755
+--- a/stages/org.osbuild.kernel-cmdline.bls-append
++++ b/stages/org.osbuild.kernel-cmdline.bls-append
+@@ -10,6 +10,7 @@ the tree or in a mount.
+ import glob
+ import sys
+ from urllib.parse import urlparse
++from osbuild.util import bls
+ 
+ import osbuild.api
+ 
+@@ -60,24 +61,7 @@ def main(paths, tree, options):
+ 
+     assert url.path.startswith("/")
+     bootroot = root + url.path
+-
+-    # There is unlikely to be more than one bls config, but just
+-    # in case we'll iterate over them.
+-    entries = []
+-    for entry in glob.glob(f"{bootroot}/loader/entries/*.conf"):
+-        entries.append(entry)
+-        # Read in the file and then append to the options line.
+-        with open(entry, encoding="utf8") as f:
+-            lines = f.read().splitlines()
+-        with open(entry, "w", encoding="utf8") as f:
+-            for line in lines:
+-                if line.startswith('options '):
+-                    f.write(f"{line} {' '.join(kopts)}\n")
+-                else:
+-                    f.write(f"{line}\n")
+-    assert len(entries) != 0
+-    print(f"Added {','.join(kopts)} to: {','.join(entries)}")
+-    return 0
++    bls.options_append(bootroot, kopts)
+ 
+ 
+ if __name__ == '__main__':
+-- 
+2.43.0
+

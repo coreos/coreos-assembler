@@ -113,12 +113,6 @@ pipelines:
           paths:
             - path: /boot/efi
               mode: 493
-      # platforms.json will live here
-      - type: org.osbuild.mkdir
-        options:
-          paths:
-            - path: /boot/coreos
-              mode: 493
       - type: org.osbuild.ignition
       # Deploy via container if we have a container ociarchive, else from repo.
       - mpp-if: ociarchive != ''
@@ -172,19 +166,6 @@ pipelines:
         options:
           deployment:
             default: true
-      # Copy in the platforms.json that was baked into the OSTree into /boot
-      # so tools like coreos-installer can use the information.
-      - type: org.osbuild.copy
-        options:
-          paths:
-            - from: tree:///usr/share/coreos-assembler/platforms.json
-              to: tree:///boot/coreos/platforms.json
-        mounts:
-          - name: ostree.deployment
-            type: org.osbuild.ostree.deployment
-            options:
-              deployment:
-                default: true
   - name: raw-image
     stages:
       - type: org.osbuild.truncate
@@ -544,25 +525,35 @@ pipelines:
           paths:
             - from: input://tree/disk.img
               to: tree:///disk.img
-      - type: org.osbuild.kernel-cmdline.bls-append
+      - type: org.osbuild.coreos.platform
         options:
-          bootpath: mount:///
-          kernel_opts:
-            - ignition.platform.id=metal
+          platform: metal
         devices:
-          boot:
+          disk:
             type: org.osbuild.loopback
             options:
               filename: disk.img
-              start:
-                mpp-format-int: '{image.layout[''boot''].start}'
-              size:
-                mpp-format-int: '{image.layout[''boot''].size}'
+              partscan: true
         mounts:
-          - name: boot
-            type: org.osbuild.ext4
-            source: boot
-            target: /
+           - name: root
+             type: org.osbuild.xfs
+             source: disk
+             partition:
+               mpp-format-int: '{image.layout[''root''].partnum}'
+             target: /
+           - name: ostree.deployment
+             type: org.osbuild.ostree.deployment
+             options:
+               source: mount
+               deployment:
+                 default: true
+           - name: boot
+             type: org.osbuild.ext4
+             source: disk
+             partition:
+               mpp-format-int: '{image.layout[''boot''].partnum}'
+             target: /boot
+
   - name: raw-metal4k-image
     stages:
       - type: org.osbuild.copy
@@ -576,27 +567,36 @@ pipelines:
           paths:
             - from: input://tree/disk.img
               to: tree:///disk.img
-      - type: org.osbuild.kernel-cmdline.bls-append
+      - type: org.osbuild.coreos.platform
         options:
-          bootpath: mount:///
-          kernel_opts:
-            - ignition.platform.id=metal
+          platform: metal
         devices:
-          boot:
+          disk:
             type: org.osbuild.loopback
             options:
               filename: disk.img
-              start:
-                mpp-format-int: '{image4k.layout[''boot''].start}'
-              size:
-                mpp-format-int: '{image4k.layout[''boot''].size}'
+              partscan: true
               sector-size:
                   mpp-format-int: "{four_k_sector_size}"
         mounts:
-          - name: boot
-            type: org.osbuild.ext4
-            source: boot
-            target: /
+           - name: root
+             type: org.osbuild.xfs
+             source: disk
+             partition:
+               mpp-format-int: '{image4k.layout[''root''].partnum}'
+             target: /
+           - name: ostree.deployment
+             type: org.osbuild.ostree.deployment
+             options:
+               source: mount
+               deployment:
+                 default: true
+           - name: boot
+             type: org.osbuild.ext4
+             source: disk
+             partition:
+               mpp-format-int: '{image4k.layout[''boot''].partnum}'
+             target: /boot
   - name: raw-qemu-image
     stages:
       - type: org.osbuild.copy
@@ -616,27 +616,34 @@ pipelines:
           filename: disk.img
           size:
             mpp-format-string: "{cloud_image_size_mb * 1024 * 1024}"
-      - type: org.osbuild.kernel-cmdline.bls-append
+      - type: org.osbuild.coreos.platform
         options:
-          bootpath: mount:///
-          kernel_opts:
-            - console=tty0
-            - console=ttyS0,115200n8
-            - ignition.platform.id=qemu
+          platform: qemu
         devices:
-          boot:
+          disk:
             type: org.osbuild.loopback
             options:
               filename: disk.img
-              start:
-                mpp-format-int: '{image.layout[''boot''].start}'
-              size:
-                mpp-format-int: '{image.layout[''boot''].size}'
+              partscan: true
         mounts:
-          - name: boot
-            type: org.osbuild.ext4
-            source: boot
-            target: /
+           - name: root
+             type: org.osbuild.xfs
+             source: disk
+             partition:
+               mpp-format-int: '{image.layout[''root''].partnum}'
+             target: /
+           - name: ostree.deployment
+             type: org.osbuild.ostree.deployment
+             options:
+               source: mount
+               deployment:
+                 default: true
+           - name: boot
+             type: org.osbuild.ext4
+             source: disk
+             partition:
+               mpp-format-int: '{image.layout[''boot''].partnum}'
+             target: /boot
   - name: metal
     stages:
       - type: org.osbuild.copy
