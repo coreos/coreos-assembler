@@ -1,4 +1,4 @@
-From d26d29a9cfea000418ea1f24127e8697af88e351 Mon Sep 17 00:00:00 2001
+From 00edf67a4ec9a909919e8fa480f04c823b75ab63 Mon Sep 17 00:00:00 2001
 From: Renata Ravanelli <rravanel@redhat.com>
 Date: Wed, 7 Feb 2024 16:43:54 -0300
 Subject: [PATCH 2/2] Add coreos.platforms stage
@@ -25,7 +25,7 @@ Signed-off-by: Renata Ravanelli <rravanel@redhat.com>
 
 diff --git a/stages/org.osbuild.coreos.platform b/stages/org.osbuild.coreos.platform
 new file mode 100755
-index 00000000..9eceac0e
+index 00000000..f064fde0
 --- /dev/null
 +++ b/stages/org.osbuild.coreos.platform
 @@ -0,0 +1,115 @@
@@ -133,12 +133,12 @@ index 00000000..9eceac0e
 +        json_grub_args, json_kargs = process_platforms_json(platforms_dest_path, platform)
 +    if json_kargs:
 +        kernel_arguments.extend(json_kargs)
-+
 +    # Write out the GRUB2 console.cfg on all platforms where grub is being used
-+    if os.path.exists(os.dirname(grub_console_cfg_path)):
++    if os.path.exists(os.path.dirname(grub_console_cfg_path)):
++        # We add console.cfg file in grub.cfg, that's how the grubconfigs are added
 +        generate_console_settings_file(json_grub_args, grub_console_cfg_path)
 +    # Append kernel arguments in bls entries
-+    bls.options_append(f"{boot_path}", kernel_arguments)
++    bls.options_append(boot_path, kernel_arguments)
 +
 +if __name__ == "__main__":
 +    args = osbuild.api.arguments()
