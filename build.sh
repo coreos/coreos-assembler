@@ -177,7 +177,6 @@ patch_osbuild() {
 
     # Now all the software is under the /usr/lib/osbuild dir and we can patch
     cat /usr/lib/coreos-assembler/0004-fscache-add-eviction-log-statement.patch                   \
-        /usr/lib/coreos-assembler/0001-stages-zipl.inst-improve-kernel-initrd-path-resoluti.patch \
         /usr/lib/coreos-assembler/0001-stages-qemu-sanity-check-created-image.patch               \
         /usr/lib/coreos-assembler/0001-util-Add-bls-module.patch                                  \
         /usr/lib/coreos-assembler/0002-Add-coreos.platforms-stage.patch                           \
