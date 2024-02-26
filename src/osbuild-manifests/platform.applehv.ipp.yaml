@@ -21,25 +21,34 @@ pipelines:
           filename: disk.img
           size:
             mpp-format-string: "{cloud_image_size_mb * 1024 * 1024}"
-      - type: org.osbuild.kernel-cmdline.bls-append
+      - type: org.osbuild.coreos.platform
         options:
-          bootpath: mount:///
-          kernel_opts:
-            - ignition.platform.id=applehv
+          platform: applehv
         devices:
-          boot:
+          disk:
             type: org.osbuild.loopback
             options:
               filename: disk.img
-              start:
-                mpp-format-int: '{image.layout[''boot''].start}'
-              size:
-                mpp-format-int: '{image.layout[''boot''].size}'
+              partscan: true
         mounts:
-          - name: boot
-            type: org.osbuild.ext4
-            source: boot
-            target: /
+           - name: root
+             type: org.osbuild.xfs
+             source: disk
+             partition:
+               mpp-format-int: '{image.layout[''root''].partnum}'
+             target: /
+           - name: ostree.deployment
+             type: org.osbuild.ostree.deployment
+             options:
+               source: mount
+               deployment:
+                 default: true
+           - name: boot
+             type: org.osbuild.ext4
+             source: disk
+             partition:
+               mpp-format-int: '{image.layout[''boot''].partnum}'
+             target: /boot
   - name: applehv
     stages:
       - type: org.osbuild.copy
