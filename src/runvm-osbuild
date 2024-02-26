@@ -76,6 +76,7 @@ processed_json=$(mktemp -t osbuild-XXXX.json)
 # Run through the preprocessor
 # Note: don't quote the size arguements since they are numbers, not strings
 osbuild-mpp                                             \
+    -D arch=\""$(arch)"\"                               \
     -D ref=\""${ostree_ref}"\"                          \
     -D repourl=\""file://${ostree_repo}"\"              \
     -D filename=\""${filename}"\"                       \
