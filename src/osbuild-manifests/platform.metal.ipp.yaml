@@ -1,0 +1,180 @@
+# This file defines the artifacts to be used for the metal platform,
+# which includes metal4k derivative.
+version: '2'
+pipelines:
+  - name: raw-metal-image
+    stages:
+      - type: org.osbuild.copy
+        inputs:
+          tree:
+            type: org.osbuild.tree
+            origin: org.osbuild.pipeline
+            references:
+              - name:raw-image
+        options:
+          paths:
+            - from: input://tree/disk.img
+              to: tree:///disk.img
+      - type: org.osbuild.coreos.platform
+        options:
+          platform: metal
+        devices:
+          disk:
+            type: org.osbuild.loopback
+            options:
+              filename: disk.img
+              partscan: true
+        mounts:
+           - name: root
+             type: org.osbuild.xfs
+             source: disk
+             partition:
+               mpp-format-int: '{image.layout[''root''].partnum}'
+             target: /
+           - name: ostree.deployment
+             type: org.osbuild.ostree.deployment
+             options:
+               source: mount
+               deployment:
+                 default: true
+           - name: boot
+             type: org.osbuild.ext4
+             source: disk
+             partition:
+               mpp-format-int: '{image.layout[''boot''].partnum}'
+             target: /boot
+      # Must run after the coreos.platform stage, which sets kernel arguments
+      # If on s390x then run zipl, which must run after the kernel
+      # arguments get finalized in the coreos.platform stage above
+      - mpp-if: arch == 's390x'
+        then:
+          type: org.osbuild.zipl.inst
+          options:
+            kernel: "1"
+            kernel_opts_append:
+              - ignition.firstboot
+            location:
+              mpp-format-int: '{image.layout[''boot''].start}'
+          devices:
+            disk:
+              type: org.osbuild.loopback
+              options:
+                filename: disk.img
+                partscan: true
+          mounts:
+            - name: root
+              type: org.osbuild.xfs
+              source: disk
+              partition:
+                mpp-format-int: '{image.layout[''root''].partnum}'
+              target: /
+            - name: boot
+              type: org.osbuild.ext4
+              source: disk
+              partition:
+                mpp-format-int: '{image.layout[''boot''].partnum}'
+              target: /boot
+  - name: metal
+    stages:
+      - type: org.osbuild.copy
+        inputs:
+          tree:
+            type: org.osbuild.tree
+            origin: org.osbuild.pipeline
+            references:
+              - name:raw-metal-image
+        options:
+          paths:
+            - from: input://tree/disk.img
+              to:
+                mpp-format-string: 'tree:///{filename}'
+  - name: raw-metal4k-image
+    stages:
+      - type: org.osbuild.copy
+        inputs:
+          tree:
+            type: org.osbuild.tree
+            origin: org.osbuild.pipeline
+            references:
+              - name:raw-4k-image
+        options:
+          paths:
+            - from: input://tree/disk.img
+              to: tree:///disk.img
+      - type: org.osbuild.coreos.platform
+        options:
+          platform: metal
+        devices:
+          disk:
+            type: org.osbuild.loopback
+            options:
+              filename: disk.img
+              partscan: true
+              sector-size:
+                  mpp-format-int: "{four_k_sector_size}"
+        mounts:
+           - name: root
+             type: org.osbuild.xfs
+             source: disk
+             partition:
+               mpp-format-int: '{image4k.layout[''root''].partnum}'
+             target: /
+           - name: ostree.deployment
+             type: org.osbuild.ostree.deployment
+             options:
+               source: mount
+               deployment:
+                 default: true
+           - name: boot
+             type: org.osbuild.ext4
+             source: disk
+             partition:
+               mpp-format-int: '{image4k.layout[''boot''].partnum}'
+             target: /boot
+      # Must run after the coreos.platform stage, which sets kernel arguments
+      # If on s390x then run zipl, which must run after the kernel
+      # arguments get finalized in the coreos.platform stage above
+      - mpp-if: arch == 's390x'
+        then:
+          type: org.osbuild.zipl.inst
+          options:
+            kernel: "1"
+            kernel_opts_append:
+              - ignition.firstboot
+            location:
+              mpp-format-int: '{image4k.layout[''boot''].start}'
+          devices:
+            disk:
+              type: org.osbuild.loopback
+              options:
+                filename: disk.img
+                partscan: true
+                sector-size:
+                    mpp-format-int: "{four_k_sector_size}"
+          mounts:
+            - name: root
+              type: org.osbuild.xfs
+              source: disk
+              partition:
+                mpp-format-int: '{image4k.layout[''root''].partnum}'
+              target: /
+            - name: boot
+              type: org.osbuild.ext4
+              source: disk
+              partition:
+                mpp-format-int: '{image4k.layout[''boot''].partnum}'
+              target: /boot
+  - name: metal4k
+    stages:
+      - type: org.osbuild.copy
+        inputs:
+          tree:
+            type: org.osbuild.tree
+            origin: org.osbuild.pipeline
+            references:
+              - name:raw-metal4k-image
+        options:
+          paths:
+            - from: input://tree/disk.img
+              to:
+                mpp-format-string: 'tree:///{filename}'
