@@ -1,7 +1,5 @@
 # This file isn't yet being used today but holds an OSBuild image
-# definition for the gcp platform. It currently has the x86_64
-# kernel arguments for console so it is only included in
-# coreos.osbuild.x86_64.mpp.yaml for now.
+# definition for the gcp platform.
 version: '2'
 pipelines:
   - name: raw-gcp-image
@@ -23,27 +21,34 @@ pipelines:
           filename: disk.raw
           size:
             mpp-format-string: "{cloud_image_size_mb * 1024 * 1024}"
-      - type: org.osbuild.kernel-cmdline.bls-append
+      - type: org.osbuild.coreos.platform
         options:
-          bootpath: mount:///
-          kernel_opts:
-            - ignition.platform.id=gcp
-            - console=tty0
-            - console=ttyS0,115200n8
+          platform: gcp
         devices:
-          boot:
+          disk:
             type: org.osbuild.loopback
             options:
-              filename: disk.raw
-              start:
-                mpp-format-int: '{image.layout[''boot''].start}'
-              size:
-                mpp-format-int: '{image.layout[''boot''].size}'
+              filename: disk.img
+              partscan: true
         mounts:
-          - name: boot
-            type: org.osbuild.ext4
-            source: boot
-            target: /
+           - name: root
+             type: org.osbuild.xfs
+             source: disk
+             partition:
+               mpp-format-int: '{image.layout[''root''].partnum}'
+             target: /
+           - name: ostree.deployment
+             type: org.osbuild.ostree.deployment
+             options:
+               source: mount
+               deployment:
+                 default: true
+           - name: boot
+             type: org.osbuild.ext4
+             source: disk
+             partition:
+               mpp-format-int: '{image.layout[''boot''].partnum}'
+             target: /boot
   - name: raw-gcp-image-tar
     stages:
       - type: org.osbuild.tar
