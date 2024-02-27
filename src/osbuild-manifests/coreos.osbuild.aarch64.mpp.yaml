@@ -111,7 +111,9 @@ pipelines:
               # because there is a symlink that is created in the root of the boot
               # filesystem by OSTree (boot -> .) that makes it so that /boot paths
               # will always work.
-              bootprefix: true
+              # XXX disabled for now because of file length BLS issue only observed on aarch64
+              # https://github.com/coreos/fedora-coreos-tracker/issues/1667#issuecomment-1967779592
+              #bootprefix: true
       - type: org.osbuild.mkdir
         options:
           paths:
