@@ -447,20 +447,6 @@ func (t *installerRun) completePxeSetup(kargs []string) error {
 		`, t.kern.kernel, kargsStr, t.kern.initramfs)), 0777); err != nil {
 			return errors.Wrap(err, "writing grub.cfg")
 		}
-
-		// workaround for https://github.com/coreos/coreos-assembler/issues/3370
-		// see: https://bugzilla.redhat.com/show_bug.cgi?id=2209435#c6
-		if coreosarch.CurrentRpmArch() == "ppc64le" {
-			subpath := filepath.Join(t.tftpdir, "boot/grub2/powerpc-ieee1275")
-			cp_cmd := exec.Command("/usr/lib/coreos-assembler/cp-reflink", subpath, subpath+"-2")
-			cp_cmd.Stderr = os.Stderr
-			if err := cp_cmd.Run(); err != nil {
-				return errors.Wrap(err, "running cp-reflink for pcp64le workaround")
-			}
-			if err := os.Rename(subpath+"-2", filepath.Join(subpath, "powerpc-ieee1275")); err != nil {
-				return errors.Wrap(err, "rename() for pcp64le workaround")
-			}
-		}
 	default:
 		panic("Unhandled boottype " + t.pxe.boottype)
 	}
