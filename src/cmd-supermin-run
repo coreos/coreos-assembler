@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+dn=$(dirname "$0")
+# shellcheck source=src/cmdlib.sh
+. "${dn}"/cmdlib.sh
+
+print_help() {
+    echo "Usage: cosa supermin-run [--cache|--snapshot] COMMAND [ARG...]" >&2
+}
+
+if [ $# = 0 ]; then
+    print_help
+    exit 1
+fi
+
+need_cache_dir=0
+case "$1" in
+    --cache)
+        shift
+        set -- runvm_with_cache -- "$@"
+        need_cache_dir=1
+        ;;
+    --snapshot)
+        shift
+        set -- runvm_with_cache_snapshot on -- "$@"
+        need_cache_dir=1
+        ;;
+    --*)
+        echo "unrecognized option: $1"
+        print_help
+        exit 1
+        ;;
+    *)
+        set -- runvm -- "$@"
+        ;;
+esac
+
+# force caller to create tmp/ and possibly cache/ rather than surprisingly
+# auto-create them
+if [ ! -d tmp ]; then
+    echo 'Need tmp/ dir for supermin to work' >&2
+    exit 1
+fi
+if [ $need_cache_dir = 1 ] && [ ! -d cache ]; then
+    echo 'Need cache/ dir for caching' >&2
+    exit 1
+fi
+
+workdir=$(pwd)
+export workdir
+
+"$@"
