@@ -50,7 +50,6 @@ for maybe_symlink in "${workdir}"/{src/config,src/yumrepos,builds}; do
     fi
 done
 
-mkdir -p "${workdir}"/cache
 cachedev=$(blkid -lt LABEL=cosa-cache -o device || true)
 if [ -n "${cachedev}" ]; then
     mount "${cachedev}" "${workdir}"/cache
