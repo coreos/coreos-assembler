@@ -1,0 +1,155 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+dn=$(dirname "$0")
+# shellcheck source=src/cmdlib.sh
+. "${dn}"/cmdlib.sh
+
+print_help() {
+    cat 1>&2 <<EOF
+Usage: coreos-assembler buildextend-layered --help
+       coreos-assembler buildextend-layered [--force] [--build ID] <NAME>
+
+  Build a layered image on top of base oscontainer.
+EOF
+}
+
+if [ ! -f /etc/cosa-supermin ] && [ -z "${COSA_BUILDEXTEND_LAYERED_FORCE_INNER:-}" ]; then
+
+    # This runs outside of supermin
+
+    # Parse options
+    build=
+    force=
+    rc=0
+    options=$(getopt --options h --longoptions help,force,build: -- "$@") || rc=$?
+    [ $rc -eq 0 ] || {
+        print_help
+        exit 1
+    }
+    eval set -- "$options"
+    while true; do
+        case "$1" in
+            -h | --help)
+                print_help
+                exit 0
+                ;;
+            --force)
+                force=1
+                ;;
+            --build)
+                build=$2
+                shift
+                ;;
+            --)
+                shift
+                break
+                ;;
+            -*)
+                fatal "$0: unrecognized option: $1"
+                ;;
+            *)
+                break
+                ;;
+        esac
+        shift
+    done
+
+    if [ $# = 0 ]; then
+      print_help
+      exit 1
+    fi
+
+    name=$1; shift
+
+    containerfile="src/config/Containerfile.${name}"
+    if [ ! -f "${containerfile}" ]; then
+      fatal "Containerfile does not exist: ${containerfile}"
+    fi
+
+    if [ -z "${build}" ]; then
+        build=$(get_latest_build)
+        if [ -z "${build}" ]; then
+            fatal "No build found."
+        fi
+    fi
+
+    osname=$(cosa meta --build="${build}" --get-value name)
+    imgname=${osname}-${build}-layered-${name}.${basearch}.ociarchive
+
+    # check if the image already exists in the meta.json
+    if [ -z "${force}" ]; then
+        path=$(cosa meta --build="${build}" --get-value "layered-images.${name}.path")
+        if [ "${path}" != "None" ]; then
+            echo "layered-${name} image already exists:"
+            echo "$imgname"
+            exit 0
+        fi
+        unset path
+    fi
+
+    builddir=$(get_build_dir "$build")
+    if [ ! -d "${builddir}" ]; then
+        fatal "Build dir ${builddir} does not exist."
+    fi
+
+    oscontainer_meta_path=$(cosa meta --build="${build}" --get-value images.ostree.path)
+    oscontainer="builds/${build}/${basearch}/${oscontainer_meta_path}"
+    tmp_builddir="tmp/buildextend-layered-${name}"
+    rm -rf "${tmp_builddir}" && mkdir -p "${tmp_builddir}"
+    outfile="${tmp_builddir}/${imgname}"
+
+    # A common pattern in the local developer path is to wrap `podman` so that
+    # it actually runs on the host. If privileged (proxy for "developer setup")
+    # and `podman info` works, use podman directly.
+    if has_privileges && podman info &>/dev/null; then
+        COSA_BUILDEXTEND_LAYERED_FORCE_INNER=1 cosa buildextend-layered "${name}" "${containerfile}" "${oscontainer}" "${outfile}"
+    else
+        cosa supermin-run /usr/lib/coreos-assembler/cmd-buildextend-layered "${name}" "${containerfile}" "${oscontainer}" "${outfile}"
+    fi
+
+    # everything below is standard "add to meta.json and mv artifact to builddir"
+
+    sha256=$(sha256sum_str < "${outfile}")
+    cosa meta --build "${build}" --dump | python3 -c "
+import sys, json
+j = json.load(sys.stdin)
+if 'layered-images' not in j:
+    j['layered-images'] = {}
+j['layered-images']['${name}'] = {
+    'path': '${imgname}',
+    'sha256': '${sha256}',
+    'size': $(stat -c '%s' "${outfile}")
+}
+json.dump(j, sys.stdout, indent=4)" | jq -s add > "${tmp_builddir}/meta.json.new"
+
+    cosa meta --build "${build}" --artifact "layered-${name}" --artifact-json "$(readlink -f "${tmp_builddir}/meta.json.new")"
+    /usr/lib/coreos-assembler/finalize-artifact "${outfile}" "${builddir}/${imgname}"
+
+    rm -rf "${tmp_builddir}"
+else
+    # This runs inside supermin (or still outside if
+    # COSA_BUILDEXTEND_LAYERED_FORCE_INNER is set)
+
+    name=$1; shift
+    containerfile=$1; shift
+    oscontainer=$1; shift
+    outfile=$1; shift
+
+    set --
+    # we'll mount in the config and yumrepos dir
+    set -- "$@" --volume "$(pwd)/src/config":/run/src/config:ro
+    if [ -e src/yumrepos ]; then
+        set -- "$@" --volume "$(pwd)/src/yumrepos":/run/src/yumrepos:ro
+    fi
+
+    # mount ca-trust if some repos need a custom root CA.
+    set -- "$@" --volume /etc/pki/ca-trust:/etc/pki/ca-trust:ro
+    
+    # we disable labeling to not require the mounts above to be container_file_t
+    set -- "$@" --security-opt label=disable
+
+    podman build -t "localhost/cosa-layered-${name}" -f "${containerfile}" \
+        --from oci-archive:"${oscontainer}" "$@"
+    skopeo copy containers-storage:"localhost/cosa-layered-${name}" oci-archive:"${outfile}"
+fi
