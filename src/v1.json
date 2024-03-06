@@ -224,6 +224,7 @@
     "ibmcloud",
     "powervs",
     "images",
+    "layered-images",
     "koji",
     "oscontainer",
     "extensions",
@@ -733,6 +734,18 @@
           "type": "object",
           "title": "Manifest"
         }
+      }
+    },
+    "layered-images": {
+      "$id": "#/properties/layered-images",
+      "type": "object",
+      "title": "Layered Images",
+      "propertyNames": {
+        "pattern": "^[a-z][-a-z0-9]*$"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "$ref": "#/definitions/artifact"
       }
     },
     "ostree-commit": {
