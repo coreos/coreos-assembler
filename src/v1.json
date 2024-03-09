@@ -4,7 +4,7 @@
       "type": "object",
       "properties": {
         "path": {
-          "$id": "#/artifact/Path",
+          "$id": "#/artifact/path",
           "type": "string",
           "title": "Path"
         },
@@ -526,7 +526,7 @@
           "title": "Secure Execution Qemu",
           "$ref": "#/definitions/artifact"
         },
-	"ignition-gpg-key": {
+        "ignition-gpg-key": {
           "$id": "#/properties/images/properties/ignition-gpg-key",
           "type": "object",
           "title": "Secure Execution Ignition PubKey",
@@ -712,7 +712,7 @@
       ],
       "properties": {
         "path": {
-          "$id": "#/artifact/Path",
+          "$id": "#/artifact/path",
           "type": "string",
           "title": "Path"
         },
