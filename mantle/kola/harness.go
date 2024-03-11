@@ -1843,9 +1843,26 @@ func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flig
 		if CosaBuild == nil {
 			h.Fatalf("Requested oscontainer pivot, but no cosa build found")
 		}
+		rebase_arg := Options.OSContainer
+		// if it looks like a path to an OCI archive, then copy it into the system
+		if strings.HasSuffix(Options.OSContainer, ".ociarchive") {
+			if err := cluster.DropFile(tcluster.Machines(), Options.OSContainer); err != nil {
+				h.Fatalf("dropping oscontainer file: %v", err)
+			}
+			// put it someplace rpm-ostree can access it; ideally we'd generalize DropFile
+			// to take a destination path instead
+			remote_file := filepath.Base(Options.OSContainer)
+			for _, m := range tcluster.Machines() {
+				tcluster.RunCmdSyncf(m, "mv -Z /home/core/%s /var/tmp/", remote_file)
+			}
+			rebase_arg = fmt.Sprintf("ostree-unverified-image:oci-archive:/var/tmp/%s", remote_file)
+		}
 		for _, m := range tcluster.Machines() {
-			tcluster.RunCmdSyncf(m, "sudo rpm-ostree rebase --experimental %s", Options.OSContainer)
-			m.Reboot()
+			tcluster.RunCmdSyncf(m, "sudo rpm-ostree rebase --experimental %s", rebase_arg)
+			err = m.Reboot()
+			if err != nil {
+				h.Fatalf("failed to reboot machine: %v", err)
+			}
 		}
 	}
 
