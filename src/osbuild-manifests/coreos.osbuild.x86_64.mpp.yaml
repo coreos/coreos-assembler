@@ -4,6 +4,8 @@ mpp-vars:
   ociarchive: $ociarchive
   osname: $osname
   container_imgref: $container_imgref
+  container_repo: $container_repo
+  container_tag: $container_tag
   metal_image_size_mb: $metal_image_size_mb
   cloud_image_size_mb: $cloud_image_size_mb
   bios_boot_size_mb: 1
@@ -120,7 +122,7 @@ pipelines:
             - path: /boot/efi
               mode: 493
       - type: org.osbuild.ignition
-      # Deploy via container if we have a container ociarchive, else from repo.
+      # Deploy via container if we have a container ociarchive or an image, else from repo.
       - mpp-if: ociarchive != ''
         then:
           type: org.osbuild.ostree.deploy.container
@@ -142,6 +144,28 @@ pipelines:
               references:
                 name:oci-archive:
                   name: coreos.ociarchive
+      - mpp-if: container_repo != ''
+        then:
+          type: org.osbuild.ostree.deploy.container
+          options:
+            osname:
+              mpp-format-string: '{osname}'
+            target_imgref:
+              mpp-format-string: '{container_imgref}'
+            mounts:
+              - /boot
+              - /boot/efi
+            kernel_opts:
+              - rw
+              - '$ignition_firstboot'
+          inputs:
+            images:
+              type: org.osbuild.containers
+              origin: org.osbuild.source
+              mpp-resolve-images:
+                images:
+                  - source: $container_repo
+                    tag: $container_tag
         else:
           type: org.osbuild.ostree.deploy
           options:
