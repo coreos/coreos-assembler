@@ -179,6 +179,22 @@ func syncOptionsImpl(useCosa bool) error {
 		}
 		return fmt.Errorf("unsupported %v %q", name, item)
 	}
+	    switch {
+    case kola.AWSOptions.AMI!="":
+        kolaPlatform="aws"
+    case kola.AzureOptions.DiskURI!="":
+        kolaPlatform="azure"
+    case kola.DOOptions.Image:
+        kolaPlatform="do"
+    case kola.ESXOptions.BaseVMName:
+        kolaPlatform="esx"
+    case kola.GCPOptions.Image:
+        kolaPlatform="gcp"
+    case kola.OpenStackOptions.Image:
+        kolaPlatform="openstack"
+    case kola.PacketOptions.ImageURL:
+        kolaPlatform="packet"
+    } 
 
 	if kolaPlatform == "iso" {
 		kolaPlatform = "qemu-iso"
