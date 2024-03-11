@@ -1839,6 +1839,16 @@ func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flig
 		}
 	}
 
+	if Options.OSContainer != "" {
+		if CosaBuild == nil {
+			h.Fatalf("Requested oscontainer pivot, but no cosa build found")
+		}
+		for _, m := range tcluster.Machines() {
+			tcluster.RunCmdSyncf(m, "sudo rpm-ostree rebase --experimental %s", Options.OSContainer)
+			m.Reboot()
+		}
+	}
+
 	if t.ExternalTest != "" {
 		setupExternalTest(h, t, tcluster)
 		// Collect the journal logs after execution is finished

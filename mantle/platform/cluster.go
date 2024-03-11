@@ -272,27 +272,6 @@ func (bc *BaseCluster) RenderUserData(userdata *platformConf.UserData, ignitionV
 		conf.DisableAutomaticUpdates()
 	}
 
-	if bc.bf.baseopts.OSContainer != "" {
-		conf.AddSystemdUnit("kola-container-rebase.service", fmt.Sprintf(`[Unit]
-Description=Rebase to target container
-ConditionPathExists=!/etc/kola-rebase-done
-Before=sshd.service
-Wants=network-online.target
-After=network-online.target
-
-[Service]
-Type=oneshot
-# Newer zincati more explicitly fails on containers; fully disable it
-ExecStart=systemctl mask --now zincati
-ExecStart=rpm-ostree rebase --experimental %s
-ExecStart=touch /etc/kola-rebase-done
-ExecStart=systemctl reboot
-
-[Install]
-WantedBy=multi-user.target
-`, bc.bf.baseopts.OSContainer), platformConf.Enable)
-	}
-
 	if conf.IsIgnition() {
 		if !conf.ValidConfig() {
 			return nil, fmt.Errorf("invalid ignition config")
