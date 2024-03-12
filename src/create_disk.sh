@@ -404,8 +404,7 @@ EOF
 install_uefi() {
     # https://github.com/coreos/fedora-coreos-tracker/issues/510
     # See also https://github.com/ostreedev/ostree/pull/1873#issuecomment-524439883
-    # Unshare mount ns to work around https://github.com/coreos/bootupd/issues/367
-    unshare -m /usr/bin/bootupctl backend install --src-root="${deploy_root}" "${rootfs}"
+    chroot_run bootupctl backend install --src-root="/" "/sysroot"
     # We have a "static" grub config file that basically configures grub to look
     # in the RAID called "md-boot", if it exists, or the partition labeled "boot".
     local target_efi="$rootfs/boot/efi"
@@ -460,7 +459,9 @@ chroot_run() {
     for mnt in dev proc sys run var tmp; do
         mount --rbind "/$mnt" "${deploy_root}/$mnt"
     done
+    mount --rbind "${rootfs}" "${deploy_root}/sysroot"
     chroot "${deploy_root}" "$@"
+    umount --recursive "${deploy_root}/sysroot"
     for mnt in dev proc sys run var tmp; do
         umount --recursive "${deploy_root}/$mnt"
     done
