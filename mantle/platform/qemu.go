@@ -73,6 +73,8 @@ type QemuMachineOptions struct {
 	HostForwardPorts    []HostForwardPort
 	DisablePDeathSig    bool
 	OverrideBackingFile string
+	Firmware            string
+	Nvme                bool
 }
 
 // QEMUMachine represents a qemu instance.

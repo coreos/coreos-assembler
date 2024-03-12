@@ -1823,7 +1823,7 @@ func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flig
 
 	// drop kolet binary on machines
 	if t.ExternalTest != "" || t.NativeFuncs != nil {
-		if err := scpKolet(tcluster.Machines()); err != nil {
+		if err := ScpKolet(tcluster.Machines()); err != nil {
 			h.Fatal(err)
 		}
 	}
@@ -1890,8 +1890,8 @@ func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flig
 	t.Run(tcluster)
 }
 
-// scpKolet searches for a kolet binary and copies it to the machine.
-func scpKolet(machines []platform.Machine) error {
+// ScpKolet searches for a kolet binary and copies it to the machine.
+func ScpKolet(machines []platform.Machine) error {
 	mArch := Options.CosaBuildArch
 	exePath, err := os.Executable()
 	if err != nil {
