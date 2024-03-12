@@ -179,22 +179,23 @@ func syncOptionsImpl(useCosa bool) error {
 		}
 		return fmt.Errorf("unsupported %v %q", name, item)
 	}
-	    switch {
-    case kola.AWSOptions.AMI!="":
-        kolaPlatform="aws"
-    case kola.AzureOptions.DiskURI!="":
-        kolaPlatform="azure"
-    case kola.DOOptions.Image:
-        kolaPlatform="do"
-    case kola.ESXOptions.BaseVMName:
-        kolaPlatform="esx"
-    case kola.GCPOptions.Image:
-        kolaPlatform="gcp"
-    case kola.OpenStackOptions.Image:
-        kolaPlatform="openstack"
-    case kola.PacketOptions.ImageURL:
-        kolaPlatform="packet"
-    } 
+	    
+    switch {
+    case kola.AWSOptions.CredentialsFile != "" || kola.AWSOptions.Region != "" || kola.AWSOptions.Profile != "" || kola.AWSOptions.AMI != "" || kola.AWSOptions.InstanceType != "" || kola.AWSOptions.SecurityGroup != "" || kola.AWSOptions.IAMInstanceProfile != "":
+      kolaPlatform = "aws"
+    case kola.AzureOptions.AzureCredentials != "" || kola.AzureOptions.DiskURI != "" || kola.AzureOptions.Publisher != "" || kola.AzureOptions.Offer != "" || kola.AzureOptions.Sku != "" || kola.AzureOptions.Version != "" || kola.AzureOptions.Location != "" || kola.AzureOptions.Size != "":
+      kolaPlatform = "azure"
+    case kola.DOOptions.ConfigPath != "" || kola.DOOptions.Profile != "" || kola.DOOptions.AccessToken != "" || kola.DOOptions.Region != "" || kola.DOOptions.Size != "" || kola.DOOptions.Image != "":
+      kolaPlatform = "do"
+    case kola.ESXOptions.ConfigPath != "" || kola.ESXOptions.Server != "" || kola.ESXOptions.Profile != "" || kola.ESXOptions.BaseVMName != "":
+      kolaPlatform = "esx"
+    case kola.GCPOptions.Image != "" || kola.GCPOptions.Project != "" || kola.GCPOptions.Zone != "" || kola.GCPOptions.MachineType != "" || kola.GCPOptions.DiskType != "" || kola.GCPOptions.Network != "" || kola.GCPOptions.ServiceAcct != "":
+      kolaPlatform = "gcp"
+    case kola.OpenStackOptions.ConfigPath != "" || kola.OpenStackOptions.Profile != "" || kola.OpenStackOptions.Region != "" || kola.OpenStackOptions.Image != "" || kola.OpenStackOptions.Flavor != "" || kola.OpenStackOptions.Network != "" || kola.OpenStackOptions.Domain != "" || kola.OpenStackOptions.FloatingIPNetwork != "":
+      kolaPlatform = "openstack"
+    case kola.PacketOptions.ConfigPath != "" || kola.PacketOptions.Profile != "" || kola.PacketOptions.ApiKey != "" || kola.PacketOptions.Project != "" || kola.PacketOptions.Facility != "" || kola.PacketOptions.Plan != "" || kola.PacketOptions.Architecture != "" || kola.PacketOptions.IPXEURL != "" || kola.PacketOptions.ImageURL != "":
+      kolaPlatform = "packet"
+    }
 
 	if kolaPlatform == "iso" {
 		kolaPlatform = "qemu-iso"
