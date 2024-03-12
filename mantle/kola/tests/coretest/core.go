@@ -12,13 +12,19 @@ import (
 	"github.com/pborman/uuid"
 
 	"github.com/coreos/coreos-assembler/mantle/kola"
+	"github.com/coreos/coreos-assembler/mantle/kola/cluster"
 	"github.com/coreos/coreos-assembler/mantle/kola/register"
+	"github.com/coreos/coreos-assembler/mantle/platform"
+	"github.com/coreos/coreos-assembler/mantle/platform/machine/qemu"
 	"github.com/coreos/coreos-assembler/mantle/util"
 )
 
 const (
 	DockerTimeout = time.Second * 60
 	PortTimeout   = time.Second * 3
+	uefi          = "uefi"
+	uefiSecure    = "uefi-secure"
+	bios          = "bios"
 )
 
 // RHCOS services we expect disabled/inactive
@@ -37,22 +43,48 @@ var offServices = []string{
 	"tcsd.service",
 }
 
+var nativeFuncs = map[string]register.NativeFuncWrap{
+	"PortSSH":        register.CreateNativeFuncWrap(TestPortSsh),
+	"DbusPerms":      register.CreateNativeFuncWrap(TestDbusPerms),
+	"ServicesActive": register.CreateNativeFuncWrap(TestServicesActive),
+	"ReadOnly":       register.CreateNativeFuncWrap(TestReadOnlyFs),
+	"Useradd":        register.CreateNativeFuncWrap(TestUseradd),
+	"MachineID":      register.CreateNativeFuncWrap(TestMachineID),
+	"RHCOSGrowpart":  register.CreateNativeFuncWrap(TestRHCOSGrowfs, []string{"fcos"}...),
+	"FCOSGrowpart":   register.CreateNativeFuncWrap(TestFCOSGrowfs, []string{"rhcos"}...),
+}
+
 func init() {
 	register.RegisterTest(&register.Test{
 		Name:        "basic",
 		Description: "Verify basic functionalities like SSH, systemd services, useradd, etc.",
 		Run:         LocalTests,
 		ClusterSize: 1,
-		NativeFuncs: map[string]register.NativeFuncWrap{
-			"PortSSH":        register.CreateNativeFuncWrap(TestPortSsh),
-			"DbusPerms":      register.CreateNativeFuncWrap(TestDbusPerms),
-			"ServicesActive": register.CreateNativeFuncWrap(TestServicesActive),
-			"ReadOnly":       register.CreateNativeFuncWrap(TestReadOnlyFs),
-			"Useradd":        register.CreateNativeFuncWrap(TestUseradd),
-			"MachineID":      register.CreateNativeFuncWrap(TestMachineID),
-			"RHCOSGrowpart":  register.CreateNativeFuncWrap(TestRHCOSGrowfs, []string{"fcos"}...),
-			"FCOSGrowpart":   register.CreateNativeFuncWrap(TestFCOSGrowfs, []string{"rhcos"}...),
-		},
+		NativeFuncs: nativeFuncs,
+	})
+	register.RegisterTest(&register.Test{
+		Name:        "basic.uefi",
+		Description: "Verify basic functionalities like SSH, systemd services, useradd, etc, with UEFI enabled",
+		Run:         uefiWithBasicTests,
+		Platforms:   []string{"qemu"},
+		ClusterSize: 0,
+		NativeFuncs: nativeFuncs,
+	})
+	register.RegisterTest(&register.Test{
+		Name:        "basic.uefi-secure",
+		Description: "Verify basic functionalities like SSH, systemd services, useradd, etc, with UEFI Secure Boot enabled",
+		Run:         uefiSecureWithBasicTests,
+		Platforms:   []string{"qemu"},
+		ClusterSize: 0,
+		NativeFuncs: nativeFuncs,
+	})
+	register.RegisterTest(&register.Test{
+		Name:        "basic.nvme",
+		Description: "Verify basic functionalities like SSH, systemd services, useradd, etc, with nvme enabled",
+		Run:         nvmeBasicTests,
+		Platforms:   []string{"qemu"},
+		ClusterSize: 0,
+		NativeFuncs: nativeFuncs,
 	})
 	// TODO: Enable DockerPing/DockerEcho once fixed
 	// TODO: Only enable PodmanPing on non qemu. Needs:
@@ -90,6 +122,47 @@ func init() {
 		},
 		Distros: []string{"rhcos"},
 	})
+}
+
+func uefiWithBasicTests(c cluster.TestCluster) {
+	runBasicTests(c, uefi, false)
+}
+
+func uefiSecureWithBasicTests(c cluster.TestCluster) {
+	runBasicTests(c, uefiSecure, false)
+}
+
+func nvmeBasicTests(c cluster.TestCluster) {
+	runBasicTests(c, bios, true)
+}
+
+func runBasicTests(c cluster.TestCluster, firmware string, nvme bool) {
+	var err error
+	var m platform.Machine
+
+	options := platform.QemuMachineOptions{
+		Firmware: firmware,
+		Nvme:     nvme,
+	}
+	switch pc := c.Cluster.(type) {
+	// These cases have to be separated because when put together to the same case statement
+	// the golang compiler no longer checks that the individual types in the case have the
+	// NewMachineWithQemuOptions function, but rather whether platform.Cluster
+	// does which fails
+	case *qemu.Cluster:
+		m, err = pc.NewMachineWithQemuOptions(nil, options)
+	default:
+		panic("Unsupported cluster type")
+	}
+	if err != nil {
+		c.Fatal(err)
+	}
+
+	// copy over kolet into the machine
+	if err := kola.ScpKolet([]platform.Machine{m}); err != nil {
+		c.Fatal(err)
+	}
+	LocalTests(c)
 }
 
 func TestPortSsh() error {

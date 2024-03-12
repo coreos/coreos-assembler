@@ -141,7 +141,7 @@ func (qc *Cluster) NewMachineWithQemuOptions(userdata *conf.UserData, options pl
 	}
 
 	channel := "virtio"
-	if qc.flight.opts.Nvme {
+	if qc.flight.opts.Nvme || options.Nvme {
 		channel = "nvme"
 	}
 	sectorSize := 0
@@ -193,6 +193,9 @@ func (qc *Cluster) NewMachineWithQemuOptions(userdata *conf.UserData, options pl
 	}
 	if !qc.RuntimeConf().InternetAccess {
 		builder.RestrictNetworking = true
+	}
+	if options.Firmware != "" {
+		builder.Firmware = options.Firmware
 	}
 
 	inst, err := builder.Exec()
