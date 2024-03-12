@@ -47,6 +47,10 @@ install_rpms() {
     # We freeze the version for now since we're carrying patches.
     frozendeps+=" $(echo osbuild{,-ostree,-selinux,-tools}-108-1.fc39.noarch)"
 
+    # Freeze bootupd to v0.2.17
+    # https://github.com/coreos/bootupd/pull/609#issuecomment-1992127440
+    frozendeps+=" bootupd-0.2.17-2.fc39.${arch}"
+
     # First, a general update; this is best practice.  We also hit an issue recently
     # where qemu implicitly depended on an updated libusbx but didn't have a versioned
     # requires https://bugzilla.redhat.com/show_bug.cgi?id=1625641
