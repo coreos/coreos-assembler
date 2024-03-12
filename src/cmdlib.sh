@@ -601,9 +601,10 @@ runcompose_extensions() {
 # the cache disk. `runvm_with_cache_snapshot on` will set snapshotting to on.
 runvm_with_cache_snapshot() {
     local snapshot=$1; shift
+    local cache_size=${RUNVM_CACHE_SIZE:-16G}
     # "cache2" has an explicit label so we can find it in qemu easily
     if [ ! -f "${workdir}"/cache/cache2.qcow2 ]; then
-        qemu-img create -f qcow2 cache2.qcow2.tmp 16G
+        qemu-img create -f qcow2 cache2.qcow2.tmp "$cache_size"
         (
          # shellcheck source=src/libguestfish.sh
          source /usr/lib/coreos-assembler/libguestfish.sh
