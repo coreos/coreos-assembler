@@ -67,11 +67,11 @@ storage:
           iscsiadm -m discovery -t st -p 127.0.0.1
           iscsiadm -m node -T iqn.2023-10.coreos.target.vm:coreos -l
           # Give a bit of time to udev to create the persistent names paths
-          sleep 2 
+          sleep 2
           # Install coreos
           coreos-installer install \
             /dev/disk/by-path/ip-127.0.0.1\:3260-iscsi-iqn.2023-10.coreos.target.vm\:coreos-lun-0 \
-            --append-karg rd.iscsi.firmware=1 --append-karg ip=ibft \
+            COREOS_INSTALLER_KARGS \
             --console ttyS0 \
             -i /mnt/workdir-tmp/nested-ign.json
           # Unmount the disk
@@ -81,8 +81,8 @@ storage:
         inline: |
           [Unit]
           Description=Boot VM over iSCSI
-          After=network-online.target nss-lookup.target install-coreos-to-iscsi-target.service 
-          Wants=network-online.target install-coreos-to-iscsi-target.service 
+          After=network-online.target nss-lookup.target install-coreos-to-iscsi-target.service
+          Wants=network-online.target install-coreos-to-iscsi-target.service
           Requires=install-coreos-to-iscsi-target.service
           OnFailure=emergency.target
           [Container]
@@ -101,7 +101,7 @@ storage:
           ExecStartPre=chmod 777 /dev/virtio-ports/testisocompletion
     - path: /mnt/workdir-tmp/nested-ign.json
       contents:
-        inline: | 
+        inline: |
           {
             "ignition": {
               "version": "3.1.0"
