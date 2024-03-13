@@ -233,9 +233,9 @@ to `qemuexec`. It is currently only supported on `qemu`.
 
 The `injectContainer` boolean if set will cause the framework to inject
 the ostree base image container into the target system; the path can be
-found in the environment variable `KOLA_OSTREE_OCIARCHIVE`.  This will be
+found in the environment variable `KOLA_EXT_OSTREE_OCIARCHIVE`.  This will be
 an `.ociarchive` file that can be e.g. loaded into the containers storage
-via `skopeo copy oci-archive:$KOLA_OSTREE_OCIARCHIVE containers-storage:localhost/os`.
+via `skopeo copy oci-archive:$KOLA_EXT_OSTREE_OCIARCHIVE containers-storage:localhost/os`.
 
 The `minDisk` key takes a size in GB and ensures that an instance type with at
 least the specified amount of primary disk space is used. On QEMU, this is
