@@ -89,7 +89,8 @@ var (
 		"iso-offline-install.bios",
 		"iso-offline-install.mpath.bios",
 		"iso-offline-install-fromram.4k.uefi",
-		"iso-offline-install-iscsi.bios",
+		"iso-offline-install-iscsi.ibft.bios",
+		"iso-offline-install-iscsi.manual.bios",
 		"miniso-install.bios",
 		"miniso-install.nm.bios",
 		"miniso-install.4k.uefi",
@@ -112,7 +113,8 @@ var (
 		"miniso-install.nm.s390fw",
 		"miniso-install.4k.nm.s390fw",
 		// FIXME https://github.com/coreos/fedora-coreos-tracker/issues/1657
-		//"iso-offline-install-iscsi.bios",
+		//"iso-offline-install-iscsi.ibft.bios",
+		//"iso-offline-install-iscsi.manual.bios",
 	}
 	tests_ppc64le = []string{
 		"iso-live-login.ppcfw",
@@ -126,7 +128,8 @@ var (
 		"pxe-online-install.ppcfw",
 		"pxe-offline-install.4k.ppcfw",
 		// FIXME https://github.com/coreos/fedora-coreos-tracker/issues/1657
-		//"iso-offline-install-iscsi.bios",
+		//"iso-offline-install-iscsi.ibft.bios",
+		//"iso-offline-install-iscsi.manual.bios",
 	}
 	tests_aarch64 = []string{
 		"iso-live-login.uefi",
@@ -143,7 +146,8 @@ var (
 		"pxe-online-install.uefi",
 		"pxe-online-install.4k.uefi",
 		// FIXME https://github.com/coreos/fedora-coreos-tracker/issues/1657
-		//"iso-offline-install-iscsi.bios",
+		//"iso-offline-install-iscsi.ibft.bios",
+		//"iso-offline-install-iscsi.manual.bios",
 	}
 )
 
@@ -609,7 +613,16 @@ func runTestIso(cmd *cobra.Command, args []string) (err error) {
 		case "miniso-install":
 			duration, err = testLiveIso(ctx, inst, filepath.Join(outputDir, test), true)
 		case "iso-offline-install-iscsi":
-			duration, err = testLiveInstalliscsi(ctx, inst, filepath.Join(outputDir, test))
+			var butane_config string
+			switch components[1] {
+			case "ibft":
+				butane_config = strings.ReplaceAll(iscsi_butane_config, "COREOS_INSTALLER_KARGS", "--append-karg rd.iscsi.firmware=1 --append-karg ip=ibft")
+			case "manual":
+				butane_config = strings.ReplaceAll(iscsi_butane_config, "COREOS_INSTALLER_KARGS", "--append-karg rd.iscsi.initiator=iqn.2023-11.coreos.diskless:testsetup --append-karg netroot=iscsi:10.0.2.15::::iqn.2023-10.coreos.target.vm:coreos")
+			default:
+				plog.Fatalf("Unknown test name:%s", test)
+			}
+			duration, err = testLiveInstalliscsi(ctx, inst, filepath.Join(outputDir, test), butane_config)
 		default:
 			plog.Fatalf("Unknown test name:%s", test)
 		}
@@ -1003,7 +1016,7 @@ func testAsDisk(ctx context.Context, outdir string) (time.Duration, error) {
 // 6 - /var/nested-ign.json contains an ignition config:
 //   - when the system is booted, write a success string to /dev/virtio-ports/testisocompletion
 //   - as this serial device is mapped to the host serial device, the test concludes
-func testLiveInstalliscsi(ctx context.Context, inst platform.Install, outdir string) (time.Duration, error) {
+func testLiveInstalliscsi(ctx context.Context, inst platform.Install, outdir string, butane string) (time.Duration, error) {
 
 	builddir := kola.CosaBuild.Dir
 	isopath := filepath.Join(builddir, kola.CosaBuild.Meta.BuildArtifacts.LiveIso.Path)
@@ -1050,7 +1063,7 @@ func testLiveInstalliscsi(ctx context.Context, inst platform.Install, outdir str
 	// We need more memory to start another VM within !
 	builder.MemoryMiB = 2048
 
-	var iscsiTargetConfig = conf.Butane(iscsi_butane_config)
+	var iscsiTargetConfig = conf.Butane(butane)
 
 	config, err := iscsiTargetConfig.Render(conf.FailWarnings)
 	if err != nil {
