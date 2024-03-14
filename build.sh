@@ -65,6 +65,11 @@ install_rpms() {
     # Process our base dependencies + build dependencies and install
     (echo "${builddeps}" && echo "${frozendeps}" && "${srcdir}"/src/print-dependencies.sh) | xargs yum -y install
 
+    # Install Buildah from the testing repo until it reaches stable. We need the new manifest feature in order to create
+    # the podman manifests for the podman team.
+    
+    yum -y install "https://kojipkgs.fedoraproject.org//packages/buildah/1.35.0/1.fc39/${arch}/buildah-1.35.0-1.fc39.${arch}.rpm"
+
     # Add fast-tracked packages here.  We don't want to wait on bodhi for rpm-ostree
     # as we want to enable fast iteration there.
     yum -y --enablerepo=updates-testing upgrade rpm-ostree ostree
