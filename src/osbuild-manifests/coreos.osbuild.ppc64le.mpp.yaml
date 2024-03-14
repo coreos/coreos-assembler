@@ -149,7 +149,6 @@ pipelines:
                 mpp-format-string: '{container_imgref}'
               mounts:
                 - /boot
-                - /boot/efi
               kernel_opts:
                 - rw
                 - '$ignition_firstboot'
