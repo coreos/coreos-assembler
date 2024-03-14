@@ -54,8 +54,8 @@ deploy_via_container=$(getconfig_def "deploy-via-container" "")
 metal_image_size_mb=$(getconfig "metal-image-size")
 cloud_image_size_mb=$(getconfig "cloud-image-size")
 container_imgref=$(getconfig "container-imgref")
-container_repo=$(getconfig "container-repo")
-container_tag=$(getconfig "container-tag")
+container_repo=$(getconfig_def "container-repo" "")
+container_tag=$(getconfig_def "container-tag" "")
 # If we are deploying via container let's go ahead and pull
 # the oci archive path from the config
 ostree_container=""
