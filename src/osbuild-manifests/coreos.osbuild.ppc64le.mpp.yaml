@@ -138,48 +138,49 @@ pipelines:
               references:
                 name:oci-archive:
                   name: coreos.ociarchive
-      - mpp-if: container_repo != ''
-        then:
-          type: org.osbuild.ostree.deploy.container
-          options:
-            osname:
-              mpp-format-string: '{osname}'
-            target_imgref:
-              mpp-format-string: '{container_imgref}'
-            mounts:
-              - /boot
-              - /boot/efi
-            kernel_opts:
-              - rw
-              - '$ignition_firstboot'
-          inputs:
-            images:
-              type: org.osbuild.containers
-              origin: org.osbuild.source
-              mpp-resolve-images:
-                images:
-                  - source: $container_repo
-                    tag: $container_tag
-        else:
-          type: org.osbuild.ostree.deploy
-          options:
-            osname:
-              mpp-format-string: '{osname}'
-            remote: fedora
-            mounts:
-              - /boot
-            kernel_opts:
-              - rw
-              - '$ignition_firstboot'
-          inputs:
-            commits:
-              type: org.osbuild.ostree
-              origin: org.osbuild.source
-              mpp-resolve-ostree-commits:
-                commits:
-                  - ref: $ref
-                    remote:
-                      url: $repourl
+        else
+          mpp-if: container_repo != ''
+          then:
+            type: org.osbuild.ostree.deploy.container
+            options:
+              osname:
+                mpp-format-string: '{osname}'
+              target_imgref:
+                mpp-format-string: '{container_imgref}'
+              mounts:
+                - /boot
+                - /boot/efi
+              kernel_opts:
+                - rw
+                - '$ignition_firstboot'
+            inputs:
+              images:
+                type: org.osbuild.containers
+                origin: org.osbuild.source
+                mpp-resolve-images:
+                  images:
+                    - source: $container_repo
+                      tag: $container_tag
+          else:
+            type: org.osbuild.ostree.deploy
+            options:
+              osname:
+                mpp-format-string: '{osname}'
+              remote: fedora
+              mounts:
+                - /boot
+              kernel_opts:
+                - rw
+                - '$ignition_firstboot'
+            inputs:
+              commits:
+                type: org.osbuild.ostree
+                origin: org.osbuild.source
+                mpp-resolve-ostree-commits:
+                  commits:
+                    - ref: $ref
+                      remote:
+                        url: $repourl
       # Drop the immutable bit here (we add it back later) because it
       # causes failures when cleaning up tmp dirs.
       - type: org.osbuild.chattr
