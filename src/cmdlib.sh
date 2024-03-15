@@ -608,7 +608,9 @@ runvm_with_cache_snapshot() {
         (
          # shellcheck source=src/libguestfish.sh
          source /usr/lib/coreos-assembler/libguestfish.sh
-         virt-format --filesystem=ext4 --label=cosa-cache -a cache2.qcow2.tmp)
+         # XXX switch back to XFS here when XFS bugfix has been backported
+         # https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id=4b2f459d86252619448455013f581836c8b1b7da
+         virt-format --filesystem=btrfs --label=cosa-cache -a cache2.qcow2.tmp)
         mv -T cache2.qcow2.tmp "${workdir}"/cache/cache2.qcow2
     fi
     # And remove the old one
