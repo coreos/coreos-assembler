@@ -1840,9 +1840,6 @@ func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flig
 	}
 
 	if Options.OSContainer != "" {
-		if CosaBuild == nil {
-			h.Fatalf("Requested oscontainer pivot, but no cosa build found")
-		}
 		rebase_arg := Options.OSContainer
 		// if it looks like a path to an OCI archive, then copy it into the system
 		if strings.HasSuffix(Options.OSContainer, ".ociarchive") {
