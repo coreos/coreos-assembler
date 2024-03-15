@@ -138,7 +138,7 @@ pipelines:
               references:
                 name:oci-archive:
                   name: coreos.ociarchive
-        else
+        else:
           mpp-if: container_repo != ''
           then:
             type: org.osbuild.ostree.deploy.container
