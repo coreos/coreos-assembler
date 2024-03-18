@@ -67,7 +67,7 @@ storage:
           iscsiadm -m discovery -t st -p 127.0.0.1
           iscsiadm -m node -T iqn.2023-10.coreos.target.vm:coreos -l
           # Give a bit of time to udev to create the persistent names paths
-          sleep 2 
+          sleep 2
           # Install coreos
           coreos-installer install \
             /dev/disk/by-path/ip-127.0.0.1\:3260-iscsi-iqn.2023-10.coreos.target.vm\:coreos-lun-0 \
@@ -81,8 +81,8 @@ storage:
         inline: |
           [Unit]
           Description=Boot VM over iSCSI
-          After=network-online.target nss-lookup.target install-coreos-to-iscsi-target.service 
-          Wants=network-online.target install-coreos-to-iscsi-target.service 
+          After=network-online.target nss-lookup.target install-coreos-to-iscsi-target.service
+          Wants=network-online.target install-coreos-to-iscsi-target.service
           Requires=install-coreos-to-iscsi-target.service
           OnFailure=emergency.target
           [Container]
@@ -92,6 +92,7 @@ storage:
           Volume=/dev/virtio-ports/testisocompletion:/mnt/serial
           PodmanArgs=--privileged
           Network=host
+          LogDriver=passthrough
           Exec=shell -- kola qemuexec --netboot /mnt/workdir-tmp/boot.ipxe --usernet-addr 10.0.3.0/24 -- -device virtio-serial -chardev file,id=iscsi-completion-virtio,path=/mnt/serial,append=on -device virtserialport,chardev=iscsi-completion-virtio,name=testisocompletion
           [Install]
           # Start by default on boot
@@ -99,9 +100,12 @@ storage:
           [Service]
           # fix permissions on the serial device before passing it as a volume
           ExecStartPre=chmod 777 /dev/virtio-ports/testisocompletion
+          # Pipe the logs to a virtio port so kola saves them
+          StandardError=inherit
+          StandardOutput=file:/dev/virtio-ports/nestedvmlogs
     - path: /mnt/workdir-tmp/nested-ign.json
       contents:
-        inline: | 
+        inline: |
           {
             "ignition": {
               "version": "3.1.0"

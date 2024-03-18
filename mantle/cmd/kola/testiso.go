@@ -1020,6 +1020,25 @@ func testLiveInstalliscsi(ctx context.Context, inst platform.Install, outdir str
 		return 0, err
 	}
 
+	// Create a serial channel to read the logs from the nested VM
+	nestedVmLogsChannel, err := builder.VirtioChannelRead("nestedvmlogs")
+	if err != nil {
+		return 0, err
+	}
+
+	// Create a file to write the contents of the serial channel into
+	nestedVMConsole, err := os.OpenFile(filepath.Join(outdir, "nested_vm_console.txt"), os.O_WRONLY|os.O_CREATE, 0644)
+	if err != nil {
+		return 0, err
+	}
+
+	go func() {
+		_, err := io.Copy(nestedVMConsole, nestedVmLogsChannel)
+		if err != nil && err != io.EOF {
+			panic(err)
+		}
+	}()
+
 	// empty disk to use as an iscsi target to install coreOS on and subseqently boot
 	// Also add a 10G disk that we will mount on /var, to increase space available when pulling containers
 	err = builder.AddDisksFromSpecs([]string{"10G:serial=target", "10G:serial=var"})
