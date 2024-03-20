@@ -51,6 +51,7 @@ filename=$(basename "$filepath")
 ostree_repo=$(getconfig_def "ostree-repo" "")
 ostree_ref=$(getconfig_def "ostree-ref" "")
 osname=$(getconfig "osname")
+buildid=$(getconfig "buildid" "")
 platform=$(getconfig "image-type")
 deploy_via_container=$(getconfig_def "deploy-via-container" "")
 metal_image_size_mb=$(getconfig "metal-image-size")
@@ -90,6 +91,7 @@ osbuild-mpp                                             \
     -D container_tag=\""${container_tag}"\"       \
     -D metal_image_size_mb="${metal_image_size_mb}"     \
     -D cloud_image_size_mb="${cloud_image_size_mb}"     \
+    -D buildid=\""${buildid}\""                         \
     "${mppyaml}" "${processed_json}"
 
 # Build the image
