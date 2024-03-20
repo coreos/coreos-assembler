@@ -11,6 +11,7 @@ Options:
     --help: show this help
     --mpp: the path to the OSBuild mpp.yaml file
     --filepath: where to write the created image file
+    --pubkey: where to write the created Ignition GPG public key
 
 You probably don't want to run this script by hand. This script is
 run as part of 'coreos-assembler build'.
@@ -39,6 +40,7 @@ do
         --help)                    usage; exit;;
         --mpp)                     mppyaml="${1}"; shift;;
         --filepath)                filepath="${1}"; shift;;
+        --pubkey)                  pubkey="${1}"; shift;;
          *) echo "${flag} is not understood."; usage; exit 10;;
      esac;
 done
@@ -103,5 +105,10 @@ osbuild \
 # Copy it out to the specified location. Use mv here so we remove it
 # from the cache qcow2 so we don't cache it.
 mv "${outdir}/${platform}/${filename}" "${filepath}"
+
+# In case of IBM Secure Execution there could be one more artifact for Ignition GPG public key
+if [ -f "${outdir}/${platform}/ignition_gpg_pubkey" ] && [ -n "${pubkey}" ]; then
+    cp "${outdir}/${platform}/ignition_gpg_pubkey" "${pubkey}"
+fi
 
 rm -f "${processed_json}"
