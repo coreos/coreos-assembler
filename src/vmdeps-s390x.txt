@@ -2,3 +2,4 @@ s390utils-base
 
 # for Secure Execution
 veritysetup
+python3-libarchive-c
