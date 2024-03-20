@@ -1,8 +1,5 @@
 #!/usr/bin/python3 -u
-# Upload the container to a registry.  Note this
-# is distinct from `upload-oscontainer` which
-# only applies to (hopefully soon only older)
-# versions of RHCOS but not FCOS.
+# Upload the container to a registry.
 
 import argparse
 import json
