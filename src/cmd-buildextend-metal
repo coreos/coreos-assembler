@@ -219,11 +219,11 @@ rootfs_size_mb="$(jq '."estimate-mb".final' "$PWD/tmp/ostree-size.json")"
 # the platforms require and we want a "default" disk size that has some
 # free space.
 nonroot_partition_sizes=513
-# In the Secure Execution case, we need to also include the sizes of the verity
+# In the Secure Execution case, we need to also include the sizes of thes se and verity
 # partitions so that they don't "eat into" the 35% buffer (though note this is
 # all blown away on first boot anyway).
 if [[ $secure_execution -eq "1" ]]; then
-    nonroot_partition_sizes=$((nonroot_partition_sizes + 128 + 256 + 1))
+    nonroot_partition_sizes=$((nonroot_partition_sizes + 200 + 128 + 256 + 1))
 fi
 metal_image_size_mb="$(( rootfs_size_mb + nonroot_partition_sizes ))"
 cloud_image_size_mb="$(jq -r ".size*1024" < "${image_json}")"
