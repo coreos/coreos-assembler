@@ -72,7 +72,7 @@ storage:
           coreos-installer install \
             /dev/disk/by-path/ip-127.0.0.1\:3260-iscsi-iqn.2023-10.coreos.target.vm\:coreos-lun-0 \
             --append-karg rd.iscsi.firmware=1 --append-karg ip=ibft \
-            --console ttyS0 \
+            --console ttyS0,115200n8 \
             -i /mnt/workdir-tmp/nested-ign.json
           # Unmount the disk
           iscsiadm --mode node --logoutall=all
