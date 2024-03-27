@@ -951,6 +951,12 @@ prepare_git_artifacts() {
 
     info "Directory ${gitd}, is from branch ${branch}, commit ${rev}"
 
+    pkglist=$(python3 -c "
+import sys
+sys.path.insert(0, '${DIR}')
+from cosalib import cmdlib
+print(cmdlib.create_cosa_rpm_list())")
+
     # shellcheck disable=SC2046 disable=SC2086
     cat > "${json}" <<EOC
 {
@@ -960,7 +966,8 @@ prepare_git_artifacts() {
         "origin": "${head_url}",
         "branch": "${branch}",
         "dirty": "${is_dirty}"
-    }
+    },
+    "pkglist": $pkglist
 }
 EOC
 

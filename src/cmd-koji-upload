@@ -202,15 +202,13 @@ class Build(_Build):
         if host is None:
             rpms = self.commit["rpmostree.rpmdb.pkglist"]
         else:
-            host_rpms = subprocess.check_output('rpm -qa --qf="%{NAME}:%{EPOCH}:%{RELEASE}:%{VERSION}:%{ARCH}:%{SIGMD5}:%{SIGPGP} \n"', shell=True).strip()
-            rpms = (host_rpms.decode('utf-8')).split("\n")
-
+            rpms = self.config["pkglist"]
         for rpm in rpms:
             if host is None:
                 name, epoch, version, release, arch = rpm
-                sigmd5, sigpgp, epoch = None, None, None
+                sigmd5, sigpgp = None, None
             else:
-                name, epoch, release, version, arch, sigmd5, sigpgp = rpm.split(':')
+                name, epoch, version, release, arch, sigmd5, sigpgp  = rpm
             entry = {
                 "type": "rpm",
                 "name": name,
