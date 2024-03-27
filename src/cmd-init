@@ -192,7 +192,14 @@ if [[ -n "${VARIANT}" ]] && [[ "${VARIANT}" != "default" ]]; then
         fatal "Could not find the manifests (${manifest} & ${image}) for the '${VARIANT}' variant"
     fi
     echo "Using variant: '${VARIANT}'"
-    cat > "src/config.json" <<EOF
+    # Use sudo if we have privileges as we've seen some permissions
+    # issues creating this file when running on local developer workstations
+    if has_privileges; then
+        tee_cmd='sudo tee'
+    else
+        tee_cmd='tee'
+    fi
+    $tee_cmd "src/config.json" <<EOF
 {
   "coreos-assembler.config-variant": "${VARIANT}"
 }
