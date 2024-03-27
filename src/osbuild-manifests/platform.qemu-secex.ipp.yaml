@@ -1,0 +1,115 @@
+# This file defines the artifact to be used for the qemu platform.
+version: '2'
+pipelines:
+  - name: raw-qemu-image
+    stages:
+      - type: org.osbuild.copy
+        inputs:
+          tree:
+            type: org.osbuild.tree
+            origin: org.osbuild.pipeline
+            references:
+              - name:raw-image
+        options:
+          paths:
+            - from: input://tree/disk.img
+              to: tree:///disk.img
+      # Increase the size to the cloud image size
+      - type: org.osbuild.truncate
+        options:
+          filename: disk.img
+          size:
+            mpp-format-string: "{cloud_image_size_mb * 1024 * 1024}"
+      - type: org.osbuild.coreos.platform
+        options:
+          platform: qemu
+        devices:
+          disk:
+            type: org.osbuild.loopback
+            options:
+              filename: disk.img
+              partscan: true
+        mounts:
+           - name: root
+             type: org.osbuild.xfs
+             source: disk
+             partition:
+               mpp-format-int: '{image.layout[''root''].partnum}'
+             target: /
+           - name: ostree.deployment
+             type: org.osbuild.ostree.deployment
+             options:
+               source: mount
+               deployment:
+                 default: true
+           - name: boot
+             type: org.osbuild.ext4
+             source: disk
+             partition:
+               mpp-format-int: '{image.layout[''boot''].partnum}'
+             target: /boot
+      - type: org.osbuild.copy
+        inputs:
+          inlinefile:
+            type: org.osbuild.files
+            origin: org.osbuild.source
+            mpp-embed:
+              id: hostkey
+              path: /srv/secex-hostkey
+        options:
+          paths:
+            - from:
+                mpp-format-string: input://inlinefile/{embedded['hostkey']}
+              to: tree:///hostkey
+      - type: org.osbuild.zipl-secex.inst
+        options:
+          kernel: "1"
+          kernel_opts_append:
+            - ignition.firstboot
+          ignition_gpg_pubkey: "ignition_gpg_pubkey"
+          hostkey: "hostkey"
+          build_id:
+            mpp-format-string: '{buildid}'
+          location:
+            mpp-format-int: '{image.layout[''se''].start}'
+        devices:
+          disk:
+            type: org.osbuild.loopback
+            options:
+              filename: disk.img
+              partscan: true
+        mounts:
+          - name: se
+            type: org.osbuild.ext4
+            source: disk
+            partition:
+              mpp-format-int: '{image.layout[''se''].partnum}'
+            target: /se
+  - name: qemu
+    stages:
+      - type: org.osbuild.qemu
+        inputs:
+          image:
+            type: org.osbuild.files
+            origin: org.osbuild.pipeline
+            references:
+              name:raw-qemu-image:
+                file: disk.img
+        options:
+          filename:
+            mpp-format-string: '{filename}'
+          format:
+            type: qcow2
+            compression: false
+            compat: '1.1'
+      - type: org.osbuild.copy
+        inputs:
+          tree:
+            type: org.osbuild.tree
+            origin: org.osbuild.pipeline
+            references:
+              - name:raw-qemu-image
+        options:
+          paths:
+            - from: input://tree/ignition_gpg_pubkey
+              to: tree:///ignition_gpg_pubkey

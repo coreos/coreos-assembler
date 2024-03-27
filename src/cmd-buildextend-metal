@@ -219,11 +219,11 @@ rootfs_size_mb="$(jq '."estimate-mb".final' "$PWD/tmp/ostree-size.json")"
 # the platforms require and we want a "default" disk size that has some
 # free space.
 nonroot_partition_sizes=513
-# In the Secure Execution case, we need to also include the sizes of the verity
+# In the Secure Execution case, we need to also include the sizes of thes se and verity
 # partitions so that they don't "eat into" the 35% buffer (though note this is
 # all blown away on first boot anyway).
 if [[ $secure_execution -eq "1" ]]; then
-    nonroot_partition_sizes=$((nonroot_partition_sizes + 128 + 256 + 1))
+    nonroot_partition_sizes=$((nonroot_partition_sizes + 200 + 128 + 256 + 1))
 fi
 metal_image_size_mb="$(( rootfs_size_mb + nonroot_partition_sizes ))"
 cloud_image_size_mb="$(jq -r ".size*1024" < "${image_json}")"
@@ -274,10 +274,16 @@ platforms_json="${tmp_builddir}/platforms.json"
 yaml2json "${configdir}/platforms.yaml" "${platforms_json}"
 
 # Currently we only support OSBuild for qemu and metal disk images
+osbuild_extra_args=()
+osbuild_mpp_config="coreos.osbuild.${basearch}.mpp.yaml"
 if [ "${image_type}" == "qemu" ] || [ "${image_type}" == "metal" ] || [ "${image_type}" == "metal4k" ]; then
     # Right now we don't have support fully fleshed out for secex on s390x
     if [[ $secure_execution -ne "1" ]]; then
         OSBUILD_SUPPORTED=1
+    elif [[ -f "${hostkey}" ]]; then
+        OSBUILD_SUPPORTED=1
+        osbuild_mpp_config="coreos.osbuild.s390x.secex.mpp.yaml"
+        osbuild_extra_args+=("--pubkey" "${ignition_pubkey}")
     fi
 fi
 
@@ -292,8 +298,9 @@ if [ "${OSBUILD_SUPPORTED:-}" != "" ] && [ "${COSA_USE_OSBUILD:-}" != "" ]; then
     [ "${image_type}" == "qemu" ] && snapshot="off" || snapshot="on"
     runvm_with_cache_snapshot "$snapshot" -- /usr/lib/coreos-assembler/runvm-osbuild                    \
                 --config "${image_for_disk_json}"                                                       \
-                --mpp "/usr/lib/coreos-assembler/osbuild-manifests/coreos.osbuild.${basearch}.mpp.yaml" \
-                --filepath "${path}.tmp"
+                --mpp "/usr/lib/coreos-assembler/osbuild-manifests/${osbuild_mpp_config}"               \
+                --filepath "${path}.tmp"                                                                \
+                "${osbuild_extra_args[@]}"
 else
     runvm "${qemu_args[@]}" -- \
             /usr/lib/coreos-assembler/create_disk.sh \

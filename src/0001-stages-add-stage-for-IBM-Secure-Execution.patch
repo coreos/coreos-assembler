@@ -1,0 +1,253 @@
+From b12b86b7d40c212301519222883631f41889e3e6 Mon Sep 17 00:00:00 2001
+From: Nikita Dubrovskii <nikita@linux.ibm.com>
+Date: Wed, 20 Mar 2024 10:03:49 +0100
+Subject: [PATCH] stages: add stage for IBM Secure Execution
+
+---
+ stages/org.osbuild.zipl-secex.inst | 234 +++++++++++++++++++++++++++++
+ 1 file changed, 234 insertions(+)
+ create mode 100755 stages/org.osbuild.zipl-secex.inst
+
+diff --git a/stages/org.osbuild.zipl-secex.inst b/stages/org.osbuild.zipl-secex.inst
+new file mode 100755
+index 00000000..5d41b685
+--- /dev/null
++++ b/stages/org.osbuild.zipl-secex.inst
+@@ -0,0 +1,234 @@
++#!/usr/bin/python3
++"""
++Install the Z Initial Program Loader (zipl)
++
++This will install the Z Initial Program Loader for the
++specified `kernel` with "IBM Secure Execution" enabled.
++The other required parameter are
++- `location`, which specifies is the offset of the partition containing `/se`
++within the device that is specified via `disk`.
++- `ignition_gpg_pubkey`, which specifies filename for public GPG key
++- `hostkey`, which specifies Hostkey for given IBM Z machine
++- `build_id`, which specifies CoreOS build
++"""
++
++import libarchive
++import os
++import subprocess
++import sys
++import tempfile
++
++import osbuild.api
++
++SCHEMA_2 = r"""
++"options": {
++  "additionalProperties": false,
++  "required": ["kernel", "location", "ignition_gpg_pubkey", "hostkey", "build_id"],
++  "properties": {
++    "kernel": {
++      "type": "string"
++    },
++    "location": {
++      "type": "number"
++    },
++    "hostkey": {
++      "type": "string"
++    },
++    "ignition_gpg_pubkey": {
++       "type": "string"
++    },
++    "build_id": {
++       "type": "string"
++    },
++    "kernel_opts_append": {
++      "description": "Additional kernel options to add to the discovered options",
++      "type": "array",
++      "items": {
++        "description": "A single kernel command line option",
++        "type": "string"
++      }
++    },
++    "blocksize": {
++      "type": "number",
++      "default": 512
++    }
++  }
++},
++"devices": {
++  "type": "object",
++  "additionalProperties": true,
++  "required": ["disk"],
++  "properties": {
++    "disk": {
++      "type": "object",
++      "additionalProperties": true
++    }
++  }
++},
++"mounts": {
++  "type": "array",
++  "minItems": 1
++}
++"""
++
++def parse_blsfile(blsfile):
++    params = {}
++    with open(blsfile, "r", encoding="utf8") as bls:
++        for line in bls:
++            key, value = line.split(' ', 1)
++            params[key] = value.strip()
++    return params
++
++
++def find_kernel(root, kernel: str):
++    base = f"{root}/boot/loader/entries"
++    for dirent in os.scandir(base):
++        fn, ext = os.path.splitext(dirent.name)
++        if ext != ".conf" or fn.endswith("rescue"):
++            continue
++        blsfile = f"{base}/{dirent.name}"
++        params = parse_blsfile(blsfile)
++
++        version = params["version"]
++        if version != kernel:
++            continue
++
++        linux = root + params["linux"]
++        initrd = root + params["initrd"]
++        options = params.get("options", "")
++        return linux, initrd, options
++
++    raise ValueError(f"Unknown kernel: {kernel}")
++
++
++def generate_gpg_keys(ignition_pubkey, build_id):
++    with tempfile.TemporaryDirectory() as d:
++      subprocess.run(["gpg",
++                      "--homedir", d,
++                      "--batch",
++                      "--passphrase", '',
++                      "--yes",
++                      "--quick-gen-key", f"Secure Execution (secex) {build_id}",
++                      "rsa4096",
++                      "encr",
++                      "none"],
++                     check=True)
++      subprocess.run(["gpg",
++                      "--homedir", d,
++                      "--output", ignition_pubkey,
++                      "--armor",
++                      "--export", "secex"],
++                     check=True)
++      return subprocess.run(["gpg",
++                      "--homedir", d,
++                      "--armor",
++                      "--export-secret-key", "secex"],
++                     check=True, capture_output=True).stdout
++
++
++def append_to_initrd(initrd, path, data):
++    new_initrd = tempfile.NamedTemporaryFile()
++    with open(initrd, "rb") as f:
++        new_initrd.write(f.read())
++
++    with tempfile.NamedTemporaryFile() as archive:
++      with libarchive.file_writer(archive.name, "cpio_newc", "gzip") as writer:
++        writer.add_file_from_memory(path, len(data), data)
++      archive.flush()
++      with open(archive.name, "rb") as f:
++        new_initrd.write(f.read())
++
++    new_initrd.flush()
++    return new_initrd
++
++
++def genprotimg(kernel, initrd, kopts, hostkey, sdboot):
++    with tempfile.NamedTemporaryFile(mode='w') as parmfile:
++      parmfile.write(kopts)
++      parmfile.flush()
++      subprocess.run(["/usr/bin/genprotimg",
++                      "-V",
++                      "--no-verify",
++                      "-i", kernel,
++                      "-r", initrd,
++                      "-p", parmfile.name,
++                      "-k", hostkey,
++                      "-o", sdboot],
++                     check=True)
++
++
++def open_dmverity(blocksize, partlabel, datapart, hashpart, mountpoint):
++    hash = subprocess.run(["/usr/sbin/veritysetup",
++                            "format", datapart, hashpart,
++                            "--data-block-size", f"{blocksize}"],
++                           check=True, capture_output=True)
++    for line in hash.stdout.decode().splitlines():
++      if line.startswith("Root hash:"):
++        hash = line.split(":", 1)[1].strip()
++        break
++
++    subprocess.run(["/usr/sbin/veritysetup",
++                    "open", datapart, partlabel, hashpart, hash],
++                   check=True)
++    subprocess.run(["mount", "-o", "ro", f"/dev/mapper/{partlabel}", mountpoint],
++                   check=True)
++    return hash
++
++
++def close_dmverity(partlabel, mountpoint):
++    subprocess.run(["umount", mountpoint], check=True)
++    subprocess.run(["/usr/sbin/veritysetup", "close", partlabel], check=True)
++
++
++def main(tree, paths, devices, options):
++    kver = options["kernel"]
++    append_kopts = options.get("kernel_opts_append", [])
++    blocksize = options.get("blocksize", 512)
++    build_id = options["build_id"]
++    location = options["location"]
++
++    hostkey = os.path.join(tree, options["hostkey"])
++    public_key = os.path.join(tree, options["ignition_gpg_pubkey"])
++
++    disk = os.path.join(paths["devices"], devices["disk"]["path"])
++    target = f"{paths["mounts"]}/se"
++
++    boot_fs = f"{disk}p3"
++    boothash_fs = f"{disk}p5"
++    root_fs = f"{disk}p4"
++    roothash_fs = f"{disk}p6"
++
++    with tempfile.TemporaryDirectory() as sysroot:
++      try:
++        roothash = open_dmverity(blocksize, "root", root_fs, roothash_fs, sysroot)
++        boothash = open_dmverity(blocksize, "boot", boot_fs, boothash_fs, f"{sysroot}/boot")
++
++        kernel, initrd, kopts = find_kernel(sysroot, kver)
++
++        secret_key = generate_gpg_keys(public_key, build_id)
++        sdboot = os.path.join(target, "sdboot")
++        with append_to_initrd(initrd, "/usr/lib/coreos/ignition.asc", secret_key) as initrd:
++          if append_kopts:
++            kopts = f"{kopts} {' '.join(append_kopts)}"
++          kopts = f"{kopts} rootfs.roothash={roothash}"
++          kopts = f"{kopts} bootfs.roothash={boothash}"
++          genprotimg(kernel, initrd.name, kopts, hostkey, sdboot)
++
++        subprocess.run(["/usr/sbin/zipl",
++                        "--verbose",
++                        "--target", target,
++                        "--image", sdboot,
++                        "--targetbase", disk,
++                        "--targettype", "SCSI",
++                        "--targetblocksize", str(blocksize),
++                        "--targetoffset", str(location)],
++                      check=True)
++      finally:
++        close_dmverity("boot", f"{sysroot}/boot")
++        close_dmverity("root", sysroot)
++
++
++if __name__ == '__main__':
++    args = osbuild.api.arguments()
++    r = main(args["tree"], args["paths"], args["devices"], args["options"])
++    sys.exit(r)
+-- 
+2.44.0
+
