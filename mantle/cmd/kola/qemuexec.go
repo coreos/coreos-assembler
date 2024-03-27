@@ -58,6 +58,8 @@ var (
 	bindro            []string
 	bindrw            []string
 
+	rootSMBIOS bool
+
 	directIgnition            bool
 	forceConfigInjection      bool
 	propagateInitramfsFailure bool
@@ -101,6 +103,7 @@ func init() {
 	cmdQemuExec.Flags().BoolVar(&propagateInitramfsFailure, "propagate-initramfs-failure", false, "Error out if the system fails in the initramfs")
 	cmdQemuExec.Flags().StringVarP(&consoleFile, "console-to-file", "", "", "Filepath in which to save serial console logs")
 	cmdQemuExec.Flags().IntVarP(&additionalNics, "additional-nics", "", 0, "Number of additional NICs to add")
+	cmdQemuExec.Flags().BoolVarP(&rootSMBIOS, "root-ssh-smbios", "S", false, "Inject root login via systemd credentials (SMBIOS), not Ignition")
 	cmdQemuExec.Flags().StringVarP(&sshCommand, "ssh-command", "x", "", "Command to execute instead of spawning a shell")
 	cmdQemuExec.Flags().StringVarP(&netboot, "netboot", "", "", "Filepath to BOOTP program (e.g. PXELINUX/GRUB binary or iPXE script")
 	cmdQemuExec.Flags().StringVarP(&netbootDir, "netboot-dir", "", "", "Directory to serve over TFTP (default: BOOTP parent dir). If specified, --netboot is relative to this dir.")
@@ -216,10 +219,12 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 		if kola.QEMUOptions.DiskImage == "" && kolaPlatform == "qemu" {
 			return fmt.Errorf("No disk image provided")
 		}
-		ignitionFragments = append(ignitionFragments, "autologin")
+		if !rootSMBIOS {
+			ignitionFragments = append(ignitionFragments, "autologin")
+		}
 		cpuCountHost = true
 		usernet = true
-		if kola.Options.CosaWorkdir != "" {
+		if !rootSMBIOS && kola.Options.CosaWorkdir != "" {
 			// Conservatively bind readonly to avoid anything in the guest (stray tests, whatever)
 			// from destroying stuff
 			bindro = append(bindro, fmt.Sprintf("%s,/var/mnt/workdir", kola.Options.CosaWorkdir))
@@ -387,7 +392,12 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 	}
 
 	if devshell && !devshellConsole {
-		return runDevShellSSH(ctx, builder, config, sshCommand)
+		if rootSMBIOS {
+			if config != nil {
+				return fmt.Errorf("cannot perform Ignition configuration when using plain SMBIOS")
+			}
+		}
+		return runDevShellSSH(ctx, builder, config, sshCommand, rootSMBIOS)
 	}
 	if config != nil {
 		if directIgnition {

@@ -65,7 +65,7 @@ func displayStatusMsg(ontty bool, status, msg string, termMaxWidth int) {
 	fmt.Printf("\033[2K\r%s", s)
 }
 
-func runDevShellSSH(ctx context.Context, builder *platform.QemuBuilder, conf *conf.Conf, sshCommand string) error {
+func runDevShellSSH(ctx context.Context, builder *platform.QemuBuilder, conf *conf.Conf, sshCommand string, rootSMBIOS bool) error {
 	ontty := term.IsTerminal(0)
 	if sshCommand == "" {
 		if !ontty {
@@ -95,8 +95,17 @@ func runDevShellSSH(ctx context.Context, builder *platform.QemuBuilder, conf *co
 		return err
 	}
 
-	conf.CopyKeys(keys)
-	builder.SetConfig(conf)
+	if rootSMBIOS {
+		var authorizedKeys string
+		for _, key := range keys {
+			authorizedKeys += key.String()
+			authorizedKeys += "\n"
+		}
+		builder.InjectSSHAuthorizedKeysViaSMBIOS(authorizedKeys)
+	} else {
+		conf.CopyKeys(keys)
+		builder.SetConfig(conf)
+	}
 
 	// errChan communicates errors from go routines
 	errChan := make(chan error)
@@ -105,8 +114,10 @@ func runDevShellSSH(ctx context.Context, builder *platform.QemuBuilder, conf *co
 	// stateChan reports in-instance state such as shutdown, reboot, etc.
 	stateChan := make(chan guestState)
 
-	if err = watchJournal(builder, conf, stateChan, errChan); err != nil {
-		return err
+	if conf != nil {
+		if err = watchJournal(builder, conf, stateChan, errChan); err != nil {
+			return err
+		}
 	}
 
 	// SerialPipe is the pipe output from the serial console.
@@ -186,8 +197,24 @@ func runDevShellSSH(ctx context.Context, builder *platform.QemuBuilder, conf *co
 
 	// Start the SSH client
 	sc := newSshClient(ip, agent.Socket, sshCommand)
+	if rootSMBIOS {
+		sc.user = "root"
+	}
 	sc.ontty = ontty
 	go sc.controlStartStop()
+
+	if rootSMBIOS {
+		go func() {
+			err := util.Retry(6, 5*time.Second, func() error {
+				return sc.check()
+			})
+			if err != nil {
+				errChan <- fmt.Errorf("failed to await ssh: %w", err)
+			} else {
+				stateChan <- guestStateOpenSshStarted
+			}
+		}()
+	}
 
 	ready := false
 	statusMsg := "STARTUP"
@@ -213,7 +240,7 @@ func runDevShellSSH(ctx context.Context, builder *platform.QemuBuilder, conf *co
 				return fmt.Errorf("instance failed in initramfs; try rerunning with --devshell-console")
 			}
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "errchan: %v", err)
+				return err
 			}
 
 		// monitor the instance state
@@ -472,6 +499,7 @@ type sshClient struct {
 	port        string
 	agent       string
 	cmd         string
+	user        string
 	ontty       bool
 	controlChan chan sshControlMessage
 	errChan     chan error
@@ -492,11 +520,37 @@ func newSshClient(host, agent, cmd string) *sshClient {
 		host:        host,
 		port:        port,
 		agent:       agent,
+		user:        "core",
 		controlChan: make(chan sshControlMessage),
 		errChan:     make(chan error),
 		// this could be a []string, but ssh sends it over as a string anyway, so meh...
 		cmd: cmd,
 	}
+}
+
+// baseArgs returns the basic arguments for the SSH command
+func (sc *sshClient) baseArgs() []string {
+	return []string{
+		"ssh", "-t",
+		"-o", "User=" + sc.user,
+		"-o", "StrictHostKeyChecking=no",
+		"-o", "CheckHostIP=no",
+		"-o", "IdentityAgent=" + sc.agent,
+		"-o", "PreferredAuthentications=publickey",
+		"-p", sc.port, sc.host,
+	}
+}
+
+// check queries whether we can successfully execute a command on the remote system
+func (sc *sshClient) check() error {
+	sshArgs := sc.baseArgs()
+	// Relatively fast timeout to ensure we don't get stuck by firewalling, etc.
+	sshArgs = append(sshArgs, "-o", "ConnectTimeout=5", "--", "true")
+	sshCmd := exec.Command(sshArgs[0], sshArgs[1:]...)
+	sshCmd.SysProcAttr = &syscall.SysProcAttr{
+		Pdeathsig: syscall.SIGTERM,
+	}
+	return sshCmd.Run()
 }
 
 // start starts the SSH session and returns the error over the errChan.
@@ -517,15 +571,7 @@ func (sc *sshClient) start() {
 		time.Sleep(1 * time.Second)
 	}()
 
-	sshArgs := []string{
-		"ssh", "-t",
-		"-o", "User=core",
-		"-o", "StrictHostKeyChecking=no",
-		"-o", "CheckHostIP=no",
-		"-o", "IdentityAgent=" + sc.agent,
-		"-o", "PreferredAuthentications=publickey",
-		"-p", sc.port, sc.host,
-	}
+	sshArgs := sc.baseArgs()
 	if sc.cmd != "" {
 		sshArgs = append(sshArgs, "--", sc.cmd)
 	}
