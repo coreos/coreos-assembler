@@ -231,8 +231,8 @@ github.com/containers/image/v5/docker/reference
 # github.com/containers/storage v1.50.1
 ## explicit; go 1.19
 github.com/containers/storage/pkg/regexp
-# github.com/coreos/butane v0.19.0
-## explicit; go 1.18
+# github.com/coreos/butane v0.20.0
+## explicit; go 1.20
 github.com/coreos/butane/base/util
 github.com/coreos/butane/base/v0_1
 github.com/coreos/butane/base/v0_2
@@ -249,6 +249,8 @@ github.com/coreos/butane/config/fcos/v1_3
 github.com/coreos/butane/config/fcos/v1_4
 github.com/coreos/butane/config/fcos/v1_5
 github.com/coreos/butane/config/fcos/v1_6_exp
+github.com/coreos/butane/config/fiot/v1_0
+github.com/coreos/butane/config/fiot/v1_1_exp
 github.com/coreos/butane/config/flatcar/v1_0
 github.com/coreos/butane/config/flatcar/v1_1
 github.com/coreos/butane/config/flatcar/v1_2_exp
@@ -262,8 +264,10 @@ github.com/coreos/butane/config/openshift/v4_13
 github.com/coreos/butane/config/openshift/v4_13/result
 github.com/coreos/butane/config/openshift/v4_14
 github.com/coreos/butane/config/openshift/v4_14/result
-github.com/coreos/butane/config/openshift/v4_15_exp
-github.com/coreos/butane/config/openshift/v4_15_exp/result
+github.com/coreos/butane/config/openshift/v4_15
+github.com/coreos/butane/config/openshift/v4_15/result
+github.com/coreos/butane/config/openshift/v4_16_exp
+github.com/coreos/butane/config/openshift/v4_16_exp/result
 github.com/coreos/butane/config/openshift/v4_8
 github.com/coreos/butane/config/openshift/v4_8/result
 github.com/coreos/butane/config/openshift/v4_9

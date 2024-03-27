@@ -133,6 +133,7 @@ func (c Config) processBootDevice(config *types.Config, ts *translate.Translatio
 		wantEFIPart = true
 	case *layout == "ppc64le":
 		wantPRePPart = true
+	case *layout == "s390x-eckd" || *layout == "s390x-virt" || *layout == "s390x-zfcp":
 	default:
 		// should have failed validation
 		panic("unknown layout")
@@ -239,9 +240,17 @@ func (c Config) processBootDevice(config *types.Config, ts *translate.Translatio
 
 	// encrypted root partition
 	if wantLuks {
-		luksDevice := "/dev/disk/by-partlabel/root"
-		if wantMirror {
+		var luksDevice string
+		switch {
+		//Luks Device for dasd and zFCP-scsi
+		case layout != nil && *layout == "s390x-eckd":
+			luksDevice = *c.BootDevice.Luks.Device + "2"
+		case layout != nil && *layout == "s390x-zfcp":
+			luksDevice = *c.BootDevice.Luks.Device + "4"
+		case wantMirror:
 			luksDevice = "/dev/md/md-root"
+		default:
+			luksDevice = "/dev/disk/by-partlabel/root"
 		}
 		clevis, ts2, r2 := translateBootDeviceLuks(c.BootDevice.Luks, options)
 		rendered.Storage.Luks = []types.Luks{{
