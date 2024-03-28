@@ -179,7 +179,7 @@ mkdir -p src
 # Default paths for manifest.yaml & image.yaml
 manifest="src/config/manifest.yaml"
 image="src/config/image.yaml"
-if [[ ! -f "${manifest}" ]] || [[ ! -f "${image}" ]]; then
+if [[ ! -f $(readlink -f "${manifest}") ]] || [[ ! -f $(readlink -f "${image}") ]]; then
     echo 1>&2 "Could not find default manifests (${manifest} & ${image})"
     fatal "If you are using a custom configuration, be sure it has a manifest.yaml & image.yaml."
 fi
@@ -188,7 +188,7 @@ fi
 if [[ -n "${VARIANT}" ]] && [[ "${VARIANT}" != "default" ]]; then
     manifest="src/config/manifest-${VARIANT}.yaml"
     image="src/config/image-${VARIANT}.yaml"
-    if [[ ! -f "${manifest}" ]] || [[ ! -f "${image}" ]]; then
+    if [[ ! -f $(readlink -f "${manifest}") ]] || [[ ! -f $(readlink -f "${image}") ]]; then
         fatal "Could not find the manifests (${manifest} & ${image}) for the '${VARIANT}' variant"
     fi
     echo "Using variant: '${VARIANT}'"
