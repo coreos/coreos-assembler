@@ -1047,7 +1047,7 @@ func testLiveInstalliscsi(ctx context.Context, inst platform.Install, outdir str
 	}
 
 	// We need more memory to start another VM within !
-	builder.MemoryMiB = 4096
+	builder.MemoryMiB = 2048
 
 	var iscsiTargetConfig = conf.Butane(iscsi_butane_config)
 
