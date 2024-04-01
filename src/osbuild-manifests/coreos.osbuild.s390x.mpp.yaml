@@ -117,6 +117,7 @@ pipelines:
               - rw
              ## '$ignition_firstboot' only works with GRUB, not available on s390x
              #- '$ignition_firstboot'
+              - mpp-format-string: '{extra_kargs}'
           inputs:
             images:
               type: org.osbuild.containers
@@ -138,6 +139,7 @@ pipelines:
               kernel_opts:
                 - rw
                 - '$ignition_firstboot'
+                - mpp-format-string: '{extra_kargs}'
             inputs:
               images:
                 type: org.osbuild.containers
@@ -158,6 +160,7 @@ pipelines:
                 - rw
                ## '$ignition_firstboot' only works with GRUB, not available on s390x
                #- '$ignition_firstboot'
+                - mpp-format-string: '{extra_kargs}'
             inputs:
               commits:
                 type: org.osbuild.ostree
