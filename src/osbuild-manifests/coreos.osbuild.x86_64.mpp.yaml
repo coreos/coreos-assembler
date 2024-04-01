@@ -6,6 +6,7 @@ mpp-vars:
   container_imgref: $container_imgref
   container_repo: $container_repo
   container_tag: $container_tag
+  extra_kargs: $extra_kargs
   metal_image_size_mb: $metal_image_size_mb
   cloud_image_size_mb: $cloud_image_size_mb
   bios_boot_size_mb: 1
@@ -137,6 +138,7 @@ pipelines:
             kernel_opts:
               - rw
               - '$ignition_firstboot'
+              - mpp-format-string: '{extra_kargs}'
           inputs:
             images:
               type: org.osbuild.containers
@@ -159,6 +161,7 @@ pipelines:
               kernel_opts:
                 - rw
                 - '$ignition_firstboot'
+                - mpp-format-string: '{extra_kargs}'
             inputs:
               images:
                 type: org.osbuild.containers
@@ -179,6 +182,7 @@ pipelines:
               kernel_opts:
                 - rw
                 - '$ignition_firstboot'
+                - mpp-format-string: '{extra_kargs}'
             inputs:
               commits:
                 type: org.osbuild.ostree

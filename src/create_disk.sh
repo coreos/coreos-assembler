@@ -29,7 +29,6 @@ Fedora CoreOS style disk image from an OSTree.
 Options:
     --config: JSON-formatted image.yaml
     --help: show this help
-    --kargs: kernel CLI args
     --platform: Ignition platform ID
     --platforms-json: platforms.yaml in JSON format
     --no-x86-bios-bootloader: don't install BIOS bootloader on x86_64
@@ -47,7 +46,6 @@ platforms_json=
 secure_execution=0
 ignition_pubkey=
 x86_bios_bootloader=1
-extrakargs=""
 
 while [ $# -gt 0 ];
 do
@@ -55,7 +53,6 @@ do
     case "${flag}" in
         --config)                   config="${1}"; shift;;
         --help)                     usage; exit;;
-        --kargs)                    extrakargs="${extrakargs} ${1}"; shift;;
         --no-x86-bios-bootloader)   x86_bios_bootloader=0;;
         --platform)                 platform="${1}"; shift;;
         --platforms-json)           platforms_json="${1}"; shift;;
@@ -82,9 +79,6 @@ cp "${platforms_json}" /tmp/platforms.json
 platforms_json=/tmp/platforms.json
 platform_grub_cmds=$(jq -r ".${arch}.${platform}.grub_commands // [] | join(\"\\\\n\")" < "${platforms_json}")
 platform_kargs=$(jq -r ".${arch}.${platform}.kernel_arguments // [] | join(\" \")" < "${platforms_json}")
-if [ -n "${platform_kargs}" ]; then
-    extrakargs="${extrakargs} ${platform_kargs}"
-fi
 
 disk=$(realpath /dev/disk/by-id/virtio-target)
 
@@ -131,6 +125,13 @@ container_imgref=$(getconfig "container-imgref" "")
 os_name=$(getconfig "osname")
 buildid=$(getconfig "buildid")
 imgid=$(getconfig "imgid")
+extra_kargs=$(getconfig "extra-kargs-string" "")
+
+# populate remaining kargs
+extra_kargs+=" ignition.platform.id=${platform}"
+if [ -n "${platform_kargs}" ]; then
+    extra_kargs+=" ${platform_kargs}"
+fi
 
 set -x
 
@@ -148,7 +149,7 @@ if [[ ${secure_execution} -eq 1 ]]; then
     SDPART=1
     BOOTVERITYHASHPN=5
     ROOTVERITYHASHPN=6
-    extrakargs="${extrakargs} swiotlb=262144"
+    extra_kargs="${extra_kargs} swiotlb=262144"
 fi
 # shellcheck disable=SC2031
 case "$arch" in
@@ -328,7 +329,7 @@ if [ "${rootfs_type}" = "ext4verity" ] && [ -z "${composefs}" ]; then
 fi
 
 # Compute kargs
-allkargs="$extrakargs"
+allkargs="$extra_kargs"
 # shellcheck disable=SC2031
 if [ "$arch" != s390x ]; then
     # Note that $ignition_firstboot is interpreted by grub at boot time,

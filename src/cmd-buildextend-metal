@@ -234,8 +234,7 @@ if [ "${image_type}" == metal4k ]; then
 fi
 
 set -x
-kargs="$(python3 -c 'import sys, json; args = json.load(sys.stdin)["extra-kargs"]; print(" ".join(args))' < "${image_json}")"
-kargs="$kargs ignition.platform.id=$ignition_platform_id"
+extra_kargs="$(python3 -c 'import sys, json; args = json.load(sys.stdin)["extra-kargs"]; print(" ".join(args))' < "${image_json}")"
 
 qemu-img create -f ${image_format} "${path}.tmp" "${metal_image_size_mb}M"
 
@@ -262,6 +261,7 @@ deploy-via-container: "${deploy_via_container}"
 osname: "${name}"
 ostree-container: "${ostree_container}"
 ostree-ref: "${ref}"
+extra-kargs-string: "${extra_kargs}"
 # Used by runvm-osbuild
 image-type: "${image_type}"
 ostree-repo: "${ostree_repo}"
@@ -298,7 +298,6 @@ else
     runvm "${qemu_args[@]}" -- \
             /usr/lib/coreos-assembler/create_disk.sh \
                 --config "${image_for_disk_json}" \
-                --kargs "${kargs}" \
                 --platform "${ignition_platform_id}" \
                 --platforms-json "${platforms_json}" \
                 "${disk_args[@]}"

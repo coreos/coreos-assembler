@@ -56,6 +56,7 @@ cloud_image_size_mb=$(getconfig "cloud-image-size")
 container_imgref=$(getconfig "container-imgref")
 container_repo=$(getconfig_def "container-repo" "")
 container_tag=$(getconfig_def "container-tag" "")
+extra_kargs=$(getconfig "extra-kargs-string" "")
 # If we are deploying via container let's go ahead and pull
 # the oci archive path from the config
 ostree_container=""
@@ -84,8 +85,9 @@ osbuild-mpp                                             \
     -D ociarchive=\""${ostree_container}"\"             \
     -D osname=\""${osname}"\"                           \
     -D container_imgref=\""${container_imgref}"\"       \
-    -D container_repo=\""${container_repo}"\"       \
-    -D container_tag=\""${container_tag}"\"       \
+    -D container_repo=\""${container_repo}"\"           \
+    -D container_tag=\""${container_tag}"\"             \
+    -D extra_kargs=\""${extra_kargs}"\"                 \
     -D metal_image_size_mb="${metal_image_size_mb}"     \
     -D cloud_image_size_mb="${cloud_image_size_mb}"     \
     "${mppyaml}" "${processed_json}"
