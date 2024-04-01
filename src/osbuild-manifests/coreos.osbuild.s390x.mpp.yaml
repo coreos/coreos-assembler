@@ -138,7 +138,8 @@ pipelines:
                 - /boot
               kernel_opts:
                 - rw
-                - '$ignition_firstboot'
+               ## '$ignition_firstboot' only works with GRUB, not available on s390x
+               #- '$ignition_firstboot'
                 - mpp-format-string: '{extra_kargs}'
             inputs:
               images:
