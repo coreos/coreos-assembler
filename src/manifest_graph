@@ -1,0 +1,60 @@
+#!/usr/bin/python3 -u
+
+'''
+    Create a tree chart with all the manifest includes
+    symlinks are displayed with a (L) prefix
+'''
+
+import sys
+import yaml
+import os
+from anytree import Node, RenderTree
+
+def collect_included_files(filename, parent):
+    node = None
+
+    if os.path.islink(filename):
+      node = Node("(L)"+filename, parent=parent)
+      dest = os.readlink(filename)
+      collect_included_files(dest, parent=node)
+      return node
+    else:
+      node = Node(filename, parent=parent)
+
+    with open(filename, 'r') as file:
+        try:
+            data = yaml.safe_load(file)
+            if data is None:
+                return
+            include_paths = data.get('include')
+            if include_paths:
+                if not isinstance(include_paths, list):
+                    include_paths = [include_paths]
+
+                for include_path in include_paths:
+                    if not os.path.isabs(include_path):
+                        include_path = os.path.join(os.path.dirname(filename), include_path)
+                    if os.path.exists(include_path):
+                        collect_included_files(include_path, parent=node)
+            return node
+        except yaml.YAMLError as e:
+            print(f"Error parsing YAML file '{filename}': {e}")
+            sys.exit(1)
+        except Exception as e:
+            print(f"Error: {e}")
+            sys.exit(1)
+
+if __name__ == "__main__":
+    if len(sys.argv) != 2:
+        print("Usage: python manifest_graph <yaml_file>")
+        sys.exit(1)
+
+    yaml_file = sys.argv[1]
+    if not os.path.exists(yaml_file):
+        print(f"Error: File '{yaml_file}' not found.")
+        sys.exit(1)
+
+    root = collect_included_files(yaml_file, None)
+
+    for pre, _, node in RenderTree(root):
+        print("%s%s" % (pre, node.name))
