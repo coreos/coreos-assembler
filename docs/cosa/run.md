@@ -87,10 +87,15 @@ Additional disks CLI arguments support optional flags using the `--add-disk
 
 - `mpath`: enables multipathing for the disk (see below for details).
 - `4k`: sets the disk as 4Kn (4096 physical sector size)
-- `channel=CHANNEL`: set the channel type (e.g. `virtio`, `nvme`)
+- `channel=CHANNEL`: set the channel type (e.g. `virtio`, `nvme`, `scsi`)
 - `serial=NAME`: sets the disk serial; this can then be used to customize the
   default `diskN` naming documented above (e.g. `serial=foobar` will make the
   device show up as `/dev/disk/by-id/virtio-foobar`)
+- `wwn=ID`: sets the disk WWN identifier. Must be an integer. This will only
+  be used in with `channel=scsi` or `mpath`. Note that the link will be
+  created with the number converted to it's hexadecimal representation.
+  (e.g. `wwn=11` will make the device show up as
+  `/dev/disk/by-id/wwn-0x000000000000000b`)
 
 ## Additional kernel arguments
 
