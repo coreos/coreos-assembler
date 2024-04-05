@@ -38,6 +38,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -89,12 +90,13 @@ type Disk struct {
 	Size          string   // disk image size in bytes, optional suffixes "K", "M", "G", "T" allowed.
 	BackingFile   string   // raw disk image to use.
 	BackingFormat string   // qcow2, raw, etc.  If unspecified will be autodetected.
-	Channel       string   // virtio (default), nvme
+	Channel       string   // virtio (default), nvme, scsi
 	DeviceOpts    []string // extra options to pass to qemu -device. "serial=XXXX" makes disks show up as /dev/disk/by-id/virtio-<serial>
 	DriveOpts     []string // extra options to pass to -drive
 	SectorSize    int      // if not 0, override disk sector size
 	NbdDisk       bool     // if true, the disks should be presented over nbd:unix socket
 	MultiPathDisk bool     // if true, present multiple paths
+	Wwn           uint64   // Optional World wide name for the SCSI disk. If not set or set to 0, a random one will be generated. Used only with "channel=scsi". Must be an integer
 
 	attachEndPoint string   // qemuPath to attach to
 	dstFileName    string   // the prepared file
@@ -106,6 +108,7 @@ func ParseDisk(spec string) (*Disk, error) {
 	sectorSize := 0
 	serialOpt := []string{}
 	multipathed := false
+	var wwn uint64
 
 	size, diskmap, err := util.ParseDiskSpec(spec)
 	if err != nil {
@@ -123,6 +126,11 @@ func ParseDisk(spec string) (*Disk, error) {
 		case "serial":
 			value = "serial=" + value
 			serialOpt = append(serialOpt, value)
+		case "wwn":
+			wwn, err = strconv.ParseUint(value, 10, 64)
+			if err != nil {
+				return nil, fmt.Errorf("invalid value %s for wwn. Must be an integer", value)
+			}
 		default:
 			return nil, fmt.Errorf("invalid key %q", key)
 		}
@@ -134,6 +142,7 @@ func ParseDisk(spec string) (*Disk, error) {
 		DeviceOpts:    serialOpt,
 		SectorSize:    sectorSize,
 		MultiPathDisk: multipathed,
+		Wwn:           wwn,
 	}, nil
 }
 
@@ -1180,13 +1189,13 @@ func (builder *QemuBuilder) addDiskImpl(disk *Disk, primary bool) error {
 		defaultDiskOpts += "," + strings.Join(disk.DriveOpts, ",")
 	}
 
-	if disk.MultiPathDisk {
-		// Fake a NVME device with a fake WWN. All these attributes are needed in order
-		// to trick multipath-tools that this is a "real" multipath device.
-		// Each disk is presented on its own controller.
-
+	if disk.MultiPathDisk || channel == "scsi" {
+		// Fake a NVME or SCSI device with a fake WWN.
 		// The WWN needs to be a unique uint64 number
-		wwn := rand.Uint64()
+		wwn := disk.Wwn
+		if wwn == 0 {
+			wwn = rand.Uint64()
+		}
 
 		var bus string
 		switch builder.architecture {
@@ -1198,19 +1207,34 @@ func (builder *QemuBuilder) addDiskImpl(disk *Disk, primary bool) error {
 			panic(fmt.Sprintf("Mantle doesn't know which bus type to use on %s", builder.architecture))
 		}
 
-		for i := 0; i < 2; i++ {
-			if i == 1 {
-				opts = strings.Replace(opts, "bootindex=1", "bootindex=2", -1)
+		if disk.MultiPathDisk {
+			// All these attributes are needed in order
+			// to trick multipath-tools that this is a "real" multipath device.
+			// Each disk is presented on its own controller.
+
+			for i := 0; i < 2; i++ {
+				if i == 1 {
+					opts = strings.Replace(opts, "bootindex=1", "bootindex=2", -1)
+				}
+				pID := fmt.Sprintf("mpath%d%d", builder.diskID, i)
+				scsiID := fmt.Sprintf("scsi_%s", pID)
+				builder.Append("-device", fmt.Sprintf("virtio-scsi-%s,id=%s", bus, scsiID))
+				builder.Append("-device",
+					fmt.Sprintf("scsi-hd,bus=%s.0,drive=%s,vendor=NVME,product=VirtualMultipath,wwn=%d%s",
+						scsiID, pID, wwn, opts))
+				builder.Append("-drive", fmt.Sprintf("if=none,id=%s,format=raw,file=%s,media=disk,%s",
+					pID, disk.attachEndPoint, defaultDiskOpts))
 			}
-			pID := fmt.Sprintf("mpath%d%d", builder.diskID, i)
-			scsiID := fmt.Sprintf("scsi_%s", pID)
+		} else {
+			scsiID := fmt.Sprintf("scsi_%d", builder.diskID)
 			builder.Append("-device", fmt.Sprintf("virtio-scsi-%s,id=%s", bus, scsiID))
 			builder.Append("-device",
-				fmt.Sprintf("scsi-hd,bus=%s.0,drive=%s,vendor=NVME,product=VirtualMultipath,wwn=%d%s",
-					scsiID, pID, wwn, opts))
-			builder.Append("-drive", fmt.Sprintf("if=none,id=%s,format=raw,file=%s,media=disk,%s",
-				pID, disk.attachEndPoint, defaultDiskOpts))
+				fmt.Sprintf("scsi-hd,bus=%s.0,drive=%s,wwn=%d%s",
+					scsiID, id, wwn, opts))
+			builder.Append("-drive", fmt.Sprintf("if=none,id=%s,file=%s,media=disk,%s",
+				id, disk.attachEndPoint, defaultDiskOpts))
 		}
+
 	} else {
 		if !disk.NbdDisk {
 			// In the non-multipath/nbd case we can just unlink the disk now
