@@ -98,3 +98,6 @@ bsdtar
 
 # For pulling from the prod OSTree repo, e.g. during release jobs
 fedora-repos-ostree
+
+# For graphing manifest includes using `manifest_graph`
+python-anytree

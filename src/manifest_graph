@@ -3,23 +3,27 @@
 '''
     Create a tree chart with all the manifest includes
     symlinks are displayed with a (L) prefix
+    conditional-include values are displayed under the (condition)
+    arch-include values are displayed under the (arch)
 '''
 
+import os
 import sys
 import yaml
-import os
 from anytree import Node, RenderTree
 
-def collect_included_files(filename, parent):
+
+def collect_included_files(filename, parent, prefix):
     node = None
+    if prefix:
+        node = Node("(" + prefix + ") " + filename, parent)
+    else:
+        node = Node(filename, parent)
 
     if os.path.islink(filename):
-      node = Node("(L)"+filename, parent=parent)
-      dest = os.readlink(filename)
-      collect_included_files(dest, parent=node)
-      return node
-    else:
-      node = Node(filename, parent=parent)
+        dest = os.readlink(filename)
+        collect_included_files(dest, node, "L")
+        return node
 
     with open(filename, 'r') as file:
         try:
@@ -27,22 +31,41 @@ def collect_included_files(filename, parent):
             if data is None:
                 return
             include_paths = data.get('include')
-            if include_paths:
-                if not isinstance(include_paths, list):
-                    include_paths = [include_paths]
+            conditional_paths = data.get('conditional-include')
+            arch_paths = data.get('arch-include')
 
-                for include_path in include_paths:
-                    if not os.path.isabs(include_path):
-                        include_path = os.path.join(os.path.dirname(filename), include_path)
-                    if os.path.exists(include_path):
-                        collect_included_files(include_path, parent=node)
-            return node
+            if arch_paths:
+                for arch in ["x86_64", "aarch64", "s390x", "ppc64le"]:
+                    include = arch_paths.get(arch)
+                    if include:
+                        process_includes(filename, include, node, arch)
+
+            if conditional_paths:
+                for conditional in conditional_paths:
+                    prefix = conditional.get('if')
+                    include = conditional.get('include')
+                    process_includes(filename, include, node, prefix)
+
+            return process_includes(filename, include_paths, node, None)
         except yaml.YAMLError as e:
             print(f"Error parsing YAML file '{filename}': {e}")
             sys.exit(1)
         except Exception as e:
             print(f"Error: {e}")
             sys.exit(1)
+
+
+def process_includes(filename, include_paths, parent, prefix):
+    if include_paths:
+        if not isinstance(include_paths, list):
+            include_paths = [include_paths]
+
+        for include_path in include_paths:
+            include_path = os.path.join(os.path.dirname(filename), include_path)
+            if os.path.exists(include_path):
+                collect_included_files(include_path, parent, prefix)
+    return parent
+
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
@@ -54,7 +77,7 @@ if __name__ == "__main__":
         print(f"Error: File '{yaml_file}' not found.")
         sys.exit(1)
 
-    root = collect_included_files(yaml_file, None)
+    root = collect_included_files(yaml_file, None, None)
 
     for pre, _, node in RenderTree(root):
         print("%s%s" % (pre, node.name))
