@@ -56,6 +56,7 @@ var (
 	spawnSetSSHKeys     bool
 	spawnSSHKeys        []string
 	spawnJSONInfoFd     int
+	spawnSSHCommand     string
 )
 
 func init() {
@@ -71,6 +72,7 @@ func init() {
 	cmdSpawn.Flags().IntVarP(&spawnJSONInfoFd, "json-info-fd", "", -1, "experimental: write JSON information about spawned machines")
 	cmdSpawn.Flags().BoolVarP(&spawnSetSSHKeys, "keys", "k", false, "add SSH keys from --key options")
 	cmdSpawn.Flags().StringSliceVar(&spawnSSHKeys, "key", nil, "path to SSH public key (default: SSH agent + ~/.ssh/id_{rsa,dsa,ecdsa,ed25519}.pub)")
+	cmdSpawn.Flags().StringVarP(&spawnSSHCommand, "ssh-command", "x", "", "Command to execute instead of spawning a shell")
 	root.AddCommand(cmdSpawn)
 }
 
@@ -84,7 +86,7 @@ func runSpawn(cmd *cobra.Command, args []string) error {
 		spawnRemove = false
 	}
 
-	if spawnIdle {
+	if spawnIdle || spawnSSHCommand != "" {
 		spawnShell = false
 	}
 
@@ -200,6 +202,17 @@ func runSpawn(cmd *cobra.Command, args []string) error {
 		}
 
 		someMach = mach
+	}
+
+	if spawnSSHCommand != "" {
+		stdout, stderr, err := someMach.SSH(spawnSSHCommand)
+		fmt.Printf("<<<< STDOUT >>>>\n%s\n", stdout)
+		fmt.Printf("<<<< STDERR >>>>\n%s\n", stderr)
+		fmt.Println("<<<<<<<<>>>>>>>>")
+		if err != nil {
+			return errors.Wrapf(err, "running command failed")
+		}
+		return nil
 	}
 
 	if spawnShell {
