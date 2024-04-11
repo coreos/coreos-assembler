@@ -154,6 +154,8 @@ def aws_run_ore(build, args):
         ore_args.extend(['--grant-user', user])
     for user in args.grant_user_snapshot:
         ore_args.extend(['--grant-user-snapshot', user])
+    for tag in args.tags:
+        ore_args.extend(['--tags', tag])
     if args.public:
         ore_args.extend(['--public'])
 
@@ -191,4 +193,6 @@ def aws_cli(parser):
     parser.add_argument("--grant-user-snapshot", help="Grant user snapshot volume permission",
                         nargs="*", default=[])
     parser.add_argument("--public", action="store_true", help="Mark images as publicly available")
+    parser.add_argument("--tags", help="list of key=value tags to attach to the AMI",
+                        action='append', default=[])
     return parser

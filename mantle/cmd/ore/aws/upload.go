@@ -41,7 +41,7 @@ After a successful run, the final line of output will be a line of JSON describi
 	  --ami-name="CoreOS-stable-1234.5.6" \
 	  --ami-description="CoreOS stable 1234.5.6" \
 	  --file="/home/.../coreos_production_ami_vmdk_image.vmdk" \
-	  --tags="machine=production"`,
+	  --tags=machine=production --tags=FedoraGroup=coreos"`,
 		RunE: runUpload,
 
 		SilenceUsage: true,
