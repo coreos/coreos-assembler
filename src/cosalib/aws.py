@@ -189,9 +189,9 @@ def aws_cli(parser):
                         default=os.environ.get("AWS_CONFIG_FILE"))
     parser.add_argument("--name-suffix", help="Suffix for name")
     parser.add_argument("--grant-user", help="Grant user launch permission",
-                        nargs="*", default=[])
+                        action='append', default=[])
     parser.add_argument("--grant-user-snapshot", help="Grant user snapshot volume permission",
-                        nargs="*", default=[])
+                        action='append', default=[])
     parser.add_argument("--public", action="store_true", help="Mark images as publicly available")
     parser.add_argument("--tags", help="list of key=value tags to attach to the AMI",
                         action='append', default=[])
