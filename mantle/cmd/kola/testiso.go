@@ -979,11 +979,11 @@ func testAsDisk(ctx context.Context, outdir string) (time.Duration, error) {
 	return awaitCompletion(ctx, mach, outdir, completionChannel, nil, []string{liveOKSignal})
 }
 
-// iscsi_butane_setup.yaml contain the full butane config but here is an overview of the setup
+// iscsi_butane_setup.yaml contains the full butane config but here is an overview of the setup
 // 1 - Boot a live ISO with two extra 10G disks with labels "target" and "var"
-//   - Format and mount `virtio-var` to var
+//   - Format and mount `virtio-var` to /var
 //
-// 2 - target.container -> start an iscsi target, using quay.io/jbtrystram/targetcli
+// 2 - target.container -> start an iscsi target, using quay.io/coreos-assembler/targetcli
 // 3 - setup-targetcli.service calls /usr/local/bin/targetcli_script:
 //   - instructs targetcli to serve /dev/disk/by-id/virtio-target as an iscsi target
 //   - disables authentication
@@ -994,14 +994,15 @@ func testAsDisk(ctx context.Context, outdir string) (time.Duration, error) {
 //   - run coreos-installer on the mounted block device
 //   - unmount iscsi
 //
-// 5 - coreos-iscsi-vm.container start a coreos-assemble:
-//   - launch cosa qemuexec instructing it to boot from an iPXE script
+// 5 - coreos-iscsi-vm.container -> start a coreos-assembler conainer:
+//   - launch kola qemuexec instructing it to boot from an iPXE script
 //     wich in turns mount the iscsi target and load kernel
-//   - note the virtserial port device: we pass through the serial port that was created by kola for test completion
+//   - note the virtserial port device: we pass through the serial port
+//     that was created by kola for test completion
 //
 // 6 - /mnt/workdir-tmp/nested-ign.json contains an ignition config:
 //   - when the system is booted, write a success string to /dev/virtio-ports/testisocompletion
-//   - As this serial device is mapped to the host serial device, the test concludes
+//   - as this serial device is mapped to the host serial device, the test concludes
 func testLiveInstalliscsi(ctx context.Context, inst platform.Install, outdir string) (time.Duration, error) {
 
 	builddir := kola.CosaBuild.Dir
