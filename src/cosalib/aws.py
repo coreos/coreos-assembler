@@ -44,14 +44,19 @@ def aws_run_ore_replicate(build, args):
     if not args.source_region:
         args.source_region = buildmeta['amis'][0]['name']
 
+    ore_args = ['ore', 'aws', '--region', args.source_region]
+    if args.log_level:
+        ore_args.extend(['--log-level', args.log_level])
+    if args.credentials_file:
+        ore_args.extend(['--credentials-file', args.credentials_file])
+
     # If no region specified then autodetect the regions to replicate to.
     # Specify --region=args.source_region here so ore knows to talk to
     # a region that exists (i.e. it will talk to govcloud if copying
     # from a govcloud region).
     if not args.region:
-        args.region = subprocess.check_output([
-            'ore', 'aws', '--region', args.source_region, 'list-regions'
-        ]).decode().strip().split()
+        args.region = subprocess.check_output(
+            ore_args + ['list-regions']).decode().strip().split()
 
     # only replicate to regions that don't already exist
     existing_regions = [item['name'] for item in buildmeta['amis']]
@@ -75,13 +80,7 @@ def aws_run_ore_replicate(build, args):
         raise Exception(("Unable to find AMI ID for "
                         f"{args.source_region} region"))
 
-    ore_args = ['ore']
-    if args.log_level:
-        ore_args.extend(['--log-level', args.log_level])
-    ore_args.extend([
-        'aws', 'copy-image', '--image',
-        source_image, '--region', args.source_region
-    ])
+    ore_args.extend(['copy-image', '--image', source_image])
     ore_args.extend(region_list)
     print("+ {}".format(subprocess.list2cmdline(ore_args)))
 
