@@ -1000,7 +1000,7 @@ func testAsDisk(ctx context.Context, outdir string) (time.Duration, error) {
 //   - note the virtserial port device: we pass through the serial port
 //     that was created by kola for test completion
 //
-// 6 - /mnt/workdir-tmp/nested-ign.json contains an ignition config:
+// 6 - /var/nested-ign.json contains an ignition config:
 //   - when the system is booted, write a success string to /dev/virtio-ports/testisocompletion
 //   - as this serial device is mapped to the host serial device, the test concludes
 func testLiveInstalliscsi(ctx context.Context, inst platform.Install, outdir string) (time.Duration, error) {

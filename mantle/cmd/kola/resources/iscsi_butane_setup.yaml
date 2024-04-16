@@ -52,7 +52,7 @@ storage:
             "
             # Will return 0 if the discovery yield a valid portal
             iscsiadm -m discovery -p 127.0.0.1 -t st | grep iqn.2023-10.coreos.target.vm:coreos
-    - path: /mnt/workdir-tmp/boot.ipxe
+    - path: /var/boot.ipxe
       mode: 0644
       contents:
         inline: |
@@ -75,7 +75,7 @@ storage:
             /dev/disk/by-path/ip-127.0.0.1\:3260-iscsi-iqn.2023-10.coreos.target.vm\:coreos-lun-0 \
             --append-karg rd.iscsi.firmware=1 --append-karg ip=ibft \
             --console ttyS0,115200n8 \
-            -i /mnt/workdir-tmp/nested-ign.json
+            -i /var/nested-ign.json
           # Unmount the disk
           iscsiadm --mode node --logoutall=all
     - path: /etc/containers/systemd/coreos-iscsi-vm.container
@@ -90,12 +90,12 @@ storage:
           [Container]
           Image=quay.io/coreos-assembler/coreos-assembler
           ContainerName=iscsiboot
-          Volume=/mnt/workdir-tmp/:/mnt/workdir-tmp/
+          Volume=/var/boot.ipxe:/var/boot.ipxe
           Volume=/dev/virtio-ports/testisocompletion:/mnt/serial
           PodmanArgs=--privileged
           Network=host
           LogDriver=passthrough
-          Exec=shell -- kola qemuexec --netboot /mnt/workdir-tmp/boot.ipxe --usernet-addr 10.0.3.0/24 -- -device virtio-serial -chardev file,id=iscsi-completion-virtio,path=/mnt/serial,append=on -device virtserialport,chardev=iscsi-completion-virtio,name=testisocompletion
+          Exec=shell -- kola qemuexec --netboot /var/boot.ipxe --usernet-addr 10.0.3.0/24 -- -device virtio-serial -chardev file,id=iscsi-completion-virtio,path=/mnt/serial,append=on -device virtserialport,chardev=iscsi-completion-virtio,name=testisocompletion
           [Install]
           # Start by default on boot
           WantedBy=multi-user.target
@@ -105,7 +105,7 @@ storage:
           # Pipe the logs to a virtio port so kola saves them
           StandardError=inherit
           StandardOutput=file:/dev/virtio-ports/nestedvmlogs
-    - path: /mnt/workdir-tmp/nested-ign.json
+    - path: /var/nested-ign.json
       contents:
         inline: |
           {
