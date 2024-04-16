@@ -37,7 +37,7 @@ func init() {
 		Platforms:   []string{"qemu"},
 		Tags:        []string{"ignition"},
 	})
-	// create new partiitons with disk `vda`
+	// create new partitions on disk labeled `coreos-boot-disk
 	register.RegisterTest(&register.Test{
 		Name:        "coreos.ignition.mount.partitions",
 		Description: "Verify that we can create new partitions through Ignition.",
@@ -89,7 +89,7 @@ func testMountPartitions(c cluster.TestCluster) {
 
 	ignDisks := []types.Disk{
 		{
-			Device: "/dev/vda",
+			Device: "/dev/disk/by-id/coreos-boot-disk",
 			Partitions: []types.Partition{
 				{
 					Label:              util.StrToPtr("CONTR"),
@@ -108,7 +108,7 @@ func testMountPartitions(c cluster.TestCluster) {
 	createClusterValidate(c, config, platform.MachineOptions{}, ignDisks, 2097152, 1024)
 }
 
-func createClusterValidate(c cluster.TestCluster, config types.Config, options platform.MachineOptions, ignDisks []types.Disk, v2size int, v3sizeMiB int) {
+func createClusterValidate(c cluster.TestCluster, config types.Config, options platform.MachineOptions, ignDisks []types.Disk, _ int, v3sizeMiB int) {
 	var m platform.Machine
 	var err error
 	config.Storage.Disks = ignDisks
