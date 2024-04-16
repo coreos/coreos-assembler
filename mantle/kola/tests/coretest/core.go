@@ -63,20 +63,22 @@ func init() {
 		NativeFuncs: nativeFuncs,
 	})
 	register.RegisterTest(&register.Test{
-		Name:        "basic.uefi",
-		Description: "Verify basic functionalities like SSH, systemd services, useradd, etc, with UEFI enabled",
-		Run:         uefiWithBasicTests,
-		Platforms:   []string{"qemu"},
-		ClusterSize: 0,
-		NativeFuncs: nativeFuncs,
+		Name:          "basic.uefi",
+		Description:   "Verify basic functionalities like SSH, systemd services, useradd, etc, with UEFI enabled",
+		Run:           uefiWithBasicTests,
+		Platforms:     []string{"qemu"},
+		ClusterSize:   0,
+		NativeFuncs:   nativeFuncs,
+		Architectures: []string{"x86_64", "aarch64"},
 	})
 	register.RegisterTest(&register.Test{
-		Name:        "basic.uefi-secure",
-		Description: "Verify basic functionalities like SSH, systemd services, useradd, etc, with UEFI Secure Boot enabled",
-		Run:         uefiSecureWithBasicTests,
-		Platforms:   []string{"qemu"},
-		ClusterSize: 0,
-		NativeFuncs: nativeFuncs,
+		Name:          "basic.uefi-secure",
+		Description:   "Verify basic functionalities like SSH, systemd services, useradd, etc, with UEFI Secure Boot enabled",
+		Run:           uefiSecureWithBasicTests,
+		Platforms:     []string{"qemu"},
+		ClusterSize:   0,
+		NativeFuncs:   nativeFuncs,
+		Architectures: []string{"x86_64"},
 	})
 	register.RegisterTest(&register.Test{
 		Name:        "basic.nvme",
@@ -133,7 +135,7 @@ func uefiSecureWithBasicTests(c cluster.TestCluster) {
 }
 
 func nvmeBasicTests(c cluster.TestCluster) {
-	runBasicTests(c, bios, true)
+	runBasicTests(c, "", true)
 }
 
 func runBasicTests(c cluster.TestCluster, firmware string, nvme bool) {
