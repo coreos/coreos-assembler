@@ -87,6 +87,9 @@ func init() {
 		Platforms:   []string{"qemu"},
 		ClusterSize: 0,
 		NativeFuncs: nativeFuncs,
+		// NVMe in theory is supported on all arches, but the way we test it seems to
+		// only work on x86_64 and aarch64.
+		Architectures: []string{"x86_64", "aarch64"},
 	})
 	// TODO: Enable DockerPing/DockerEcho once fixed
 	// TODO: Only enable PodmanPing on non qemu. Needs:
