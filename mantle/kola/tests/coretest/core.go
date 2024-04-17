@@ -87,6 +87,7 @@ func init() {
 		Platforms:   []string{"qemu"},
 		ClusterSize: 0,
 		NativeFuncs: nativeFuncs,
+		Architectures: []string{"x86_64", "aarch64"},
 	})
 	// TODO: Enable DockerPing/DockerEcho once fixed
 	// TODO: Only enable PodmanPing on non qemu. Needs:
