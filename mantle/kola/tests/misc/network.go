@@ -62,14 +62,16 @@ func init() {
 	// with a slight change, where the script originally run by MCO is run from
 	// ignition: https://github.com/RHsyseng/rhcos-slb/blob/161a421f8fdcdb4b08fb6366daa8fe1b75cbe095/init-interfaces.sh.
 	register.RegisterTest(&register.Test{
-		Run:         InitInterfacesTest,
-		ClusterSize: 0,
-		Name:        "rhcos.network.init-interfaces-test",
-		Description: "Verify init-interfaces script works in both fresh setup and reboot.",
-		Timeout:     40 * time.Minute,
-		Distros:     []string{"rhcos"},
-		Platforms:   []string{"qemu"},
-		Tags:        []string{"openshift"},
+		Run:            InitInterfacesTest,
+		ClusterSize:    1,
+		Name:           "rhcos.network.init-interfaces-test",
+		Description:    "Verify init-interfaces script works in both fresh setup and reboot.",
+		Timeout:        40 * time.Minute,
+		Distros:        []string{"rhcos"},
+		Platforms:      []string{"qemu"},
+		Tags:           []string{"openshift"},
+		AdditionalNics: 2,
+		UserData:       userdata,
 	})
 }
 
@@ -395,6 +397,44 @@ RequiredBy=multi-user.target
 `
 )
 
+var userdata = conf.Ignition(fmt.Sprintf(`{
+		"ignition": {
+			"version": "3.2.0"
+		},
+		"storage": {
+			"files": [
+				{
+					"path": "/usr/local/bin/capture-macs",
+					"contents": { "source": "data:text/plain;base64,%s" },
+					"mode": 493
+				},
+				{
+					"path": "/var/init-interfaces.sh",
+					"contents": { "source": "data:text/plain;base64,%s" },
+					"mode": 493
+				}
+			]
+		},
+		"systemd": {
+			"units": [
+				{
+					"contents": "%s",
+					"enabled": true,
+					"name": "capture-macs.service"
+				},
+				{
+					"contents": "%s",
+					"enabled": true,
+					"name": "setup-ovs.service"
+				}
+			]
+		}
+	}`,
+	base64.StdEncoding.EncodeToString([]byte(captureMacsScript)),
+	base64.StdEncoding.EncodeToString([]byte(initInterfacesScript)),
+	strings.Replace(captureMacsSystemdContents, "\n", "\\n", -1),
+	strings.Replace(initInterfacesSystemdContents, "\n", "\\n", -1)))
+
 // NetworkAdditionalNics verifies that additional NICs are created on the node
 func NetworkAdditionalNics(c cluster.TestCluster) {
 	primaryMac := "52:55:00:d1:56:00"
@@ -413,8 +453,10 @@ func InitInterfacesTest(c cluster.TestCluster) {
 	primaryMac := "52:55:00:d1:56:00"
 	secondaryMac := "52:55:00:d1:56:01"
 
-	setupWithInterfacesTest(c, primaryMac, secondaryMac)
 	m := c.Machines()[0]
+	// Add karg needed for the ignition to configure the network properly.
+	addKernelArgs(c, m, []string{fmt.Sprintf("macAddressList=%s,%s", primaryMac, secondaryMac)})
+
 	err := simulateNewInstallation(c, m, []string{primaryMac, secondaryMac})
 	if err != nil {
 		c.Fatalf("failed to simulate new setup with no connections: %v", err)
@@ -486,71 +528,6 @@ func setupMultipleNetworkTest(c cluster.TestCluster, primaryMac, secondaryMac st
 		}
 	}`, base64.StdEncoding.EncodeToString([]byte(captureMacsScript))))
 
-	switch pc := c.Cluster.(type) {
-	// These cases have to be separated because when put together to the same case statement
-	// the golang compiler no longer checks that the individual types in the case have the
-	// NewMachineWithQemuOptions function, but rather whether platform.Cluster
-	// does which fails
-	case *qemu.Cluster:
-		m, err = pc.NewMachineWithQemuOptions(userdata, options)
-	default:
-		panic("unreachable")
-	}
-	if err != nil {
-		c.Fatal(err)
-	}
-
-	// Add karg needed for the ignition to configure the network properly.
-	addKernelArgs(c, m, []string{fmt.Sprintf("macAddressList=%s,%s", primaryMac, secondaryMac)})
-}
-
-func setupWithInterfacesTest(c cluster.TestCluster, primaryMac, secondaryMac string) {
-	var userdata = conf.Ignition(fmt.Sprintf(`{
-		"ignition": {
-			"version": "3.2.0"
-		},
-		"storage": {
-			"files": [
-				{
-					"path": "/usr/local/bin/capture-macs",
-					"contents": { "source": "data:text/plain;base64,%s" },
-					"mode": 493
-				},
-				{
-					"path": "/var/init-interfaces.sh",
-					"contents": { "source": "data:text/plain;base64,%s" },
-					"mode": 493
-				}
-			]
-		},
-		"systemd": {
-			"units": [
-				{
-					"contents": "%s",
-					"enabled": true,
-					"name": "capture-macs.service"
-				},
-				{
-					"contents": "%s",
-					"enabled": true,
-					"name": "setup-ovs.service"
-				}
-			]
-		}
-	}`,
-		base64.StdEncoding.EncodeToString([]byte(captureMacsScript)),
-		base64.StdEncoding.EncodeToString([]byte(initInterfacesScript)),
-		strings.Replace(captureMacsSystemdContents, "\n", "\\n", -1),
-		strings.Replace(initInterfacesSystemdContents, "\n", "\\n", -1)))
-
-	options := platform.QemuMachineOptions{
-		MachineOptions: platform.MachineOptions{
-			AdditionalNics: 2,
-		},
-	}
-
-	var m platform.Machine
-	var err error
 	switch pc := c.Cluster.(type) {
 	// These cases have to be separated because when put together to the same case statement
 	// the golang compiler no longer checks that the individual types in the case have the
