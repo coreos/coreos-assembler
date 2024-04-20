@@ -374,6 +374,7 @@ After=NetworkManager.service capture-macs.service
 [Service]
 Type=oneshot
 ExecStart=/bin/sh /var/init-interfaces.sh
+RemainAfterExit=yes
 [Install]
 WantedBy=multi-user.target
 `
@@ -388,6 +389,7 @@ Before=coreos-installer.target
 Type=oneshot
 MountFlags=slave
 ExecStart=/usr/local/bin/capture-macs
+RemainAfterExit=yes
 [Install]
 RequiredBy=multi-user.target
 `
