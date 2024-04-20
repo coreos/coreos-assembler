@@ -591,7 +591,7 @@ func simulateNewInstallation(c cluster.TestCluster, m platform.Machine, macConne
 func flushInterfaceIpByMac(c cluster.TestCluster, m platform.Machine, macInterfaceMap map[string]string, macsList []string) {
 	for _, mac := range macsList {
 		InterfaceToFlush := macInterfaceMap[mac]
-		c.MustSSH(m, fmt.Sprintf("sudo ip addr flush dev '%s'", InterfaceToFlush))
+		c.MustSSH(m, fmt.Sprintf("sudo ip -l 0 addr flush dev '%s'", InterfaceToFlush))
 	}
 }
 
