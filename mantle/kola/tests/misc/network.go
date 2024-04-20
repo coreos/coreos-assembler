@@ -512,12 +512,12 @@ func setupWithInterfacesTest(c cluster.TestCluster, primaryMac, secondaryMac str
 				{
 					"path": "/usr/local/bin/capture-macs",
 					"contents": { "source": "data:text/plain;base64,%s" },
-					"mode": 755
+					"mode": 493
 				},
 				{
 					"path": "/var/init-interfaces.sh",
 					"contents": { "source": "data:text/plain;base64,%s" },
-					"mode": 755
+					"mode": 493
 				}
 			]
 		},
