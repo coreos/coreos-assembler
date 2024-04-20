@@ -166,7 +166,10 @@ var crioContainerTemplate = `{
 	}]
 }`
 
-// RHCOS has the crio service disabled by default, so use Ignition to enable it
+// RHCOS has the crio service disabled by default. In OCP, it's activated via
+// kubelet.service, which `Requires` it. Let's model that too here by having
+// a mock kubelet.service that pulls it in. This also makes it work with
+// `--oscontainer`.
 var enableCrioIgn = conf.Ignition(`{
   "ignition": {
     "version": "3.0.0"
@@ -181,7 +184,8 @@ var enableCrioIgn = conf.Ignition(`{
     "units": [
       {
         "enabled": true,
-        "name": "crio.service"
+        "name": "kubelet.service",
+        "contents": "[Unit]\nRequires=crio.service\n[Service]\nType=oneshot\nExecStart=true\nRemainAfterExit=yes\n[Install]\nWantedBy=multi-user.target"
       }
     ]
   }
