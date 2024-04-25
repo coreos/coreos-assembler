@@ -45,7 +45,7 @@ install_rpms() {
     frozendeps=""
 
     # We freeze the version for now since we're carrying patches.
-    frozendeps+=" $(echo osbuild{,-ostree,-selinux,-tools}-114-1.fc39.noarch)"
+    frozendeps+=" $(echo osbuild{,-ostree,-selinux,-tools}-114-1.fc40.noarch)"
 
     # First, a general update; this is best practice.  We also hit an issue recently
     # where qemu implicitly depended on an updated libusbx but didn't have a versioned
