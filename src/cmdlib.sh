@@ -733,6 +733,9 @@ runvm() {
     # and include all GPG keys
     find /etc/pki/rpm-gpg/ -type f >> "${vmpreparedir}/hostfiles"
 
+    local cmdoutput
+    cmdoutput=${tmp_builddir}/cmd-output.txt
+
     # the reason we do a heredoc here is so that the var substition takes
     # place immediately instead of having to proxy them through to the VM
     cat > "${vmpreparedir}/init" <<EOF
@@ -752,7 +755,7 @@ rc=0
 # - Use a subshell because otherwise init will use workdir as its cwd and we won't
 #   be able to unmount the virtiofs mount cleanly. This leads to consistency issues.
 if [ -z "${RUNVM_SHELL:-}" ]; then
-  (cd ${workdir}; bash ${tmp_builddir}/cmd.sh |& tee /dev/virtio-ports/cosa-cmdout) || rc=\$?
+  (cd ${workdir}; bash ${tmp_builddir}/cmd.sh |& tee ${cmdoutput}) || rc=\$?
 else
   (cd ${workdir}; bash)
 fi
@@ -786,7 +789,9 @@ EOF
         printf '%q ' "$arg" >> "${tmp_builddir}"/cmd.sh
     done
 
-    touch "${runvm_console}"
+    touch "${runvm_console}" "${cmdoutput}"
+    setpriv --pdeathsig SIGTERM -- tail -qF "${cmdoutput}" --pid $$ &
+    local tail_pid=$!
 
     # There seems to be some false positives in shellcheck
     # https://github.com/koalaman/shellcheck/issues/2217
@@ -821,9 +826,7 @@ EOF
 
     if [ -z "${RUNVM_SHELL:-}" ]; then
         if ! "${kola_args[@]}" -- "${base_qemu_args[@]}" \
-            -device virtserialport,chardev=virtioserial0,name=cosa-cmdout \
-            -chardev stdio,id=virtioserial0 \
-            "${qemu_args[@]}" <&-; then # the <&- here closes stdin otherwise qemu waits forever
+            "${qemu_args[@]}"; then
                 cat "${runvm_console}"
                 fatal "Failed to run 'kola qemuexec'"
         fi
@@ -841,6 +844,9 @@ EOF
         fatal "Couldn't find rc file; failure inside supermin init?"
     fi
     rc="$(cat "${rc_file}")"
+
+    # cleanup tail before nuking dir containing file it's following
+    kill "$tail_pid"
 
     if [ -n "${cleanup_tmpdir:-}" ]; then
         rm -rf "${tmp_builddir}"
