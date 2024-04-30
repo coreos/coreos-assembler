@@ -58,7 +58,11 @@ storage:
       contents:
         inline: |
             #!ipxe
-            set initiator-iqn iqn.2023-11.coreos.diskless:testsetup
+            # set some random uuid as the initiator iqn. we can use
+            # a random value here because we don't have ACL's enabled,
+            # but we do need to provide it because otherwise this will
+            # fail pointing to https://ipxe.org/1c0d6502
+            set initiator-iqn iqn.68cc69b9-1b54-4ff1-9d61-eedb570da8fd
             sanboot iscsi:10.0.2.15::::iqn.2023-10.coreos.target.vm:coreos
     - path: /usr/local/bin/install-coreos-iscsi
       mode: 0755
