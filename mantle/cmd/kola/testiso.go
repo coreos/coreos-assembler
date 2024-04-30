@@ -113,8 +113,8 @@ var (
 		"miniso-install.nm.s390fw",
 		"miniso-install.4k.nm.s390fw",
 		// FIXME https://github.com/coreos/fedora-coreos-tracker/issues/1657
-		//"iso-offline-install-iscsi.ibft.bios",
-		//"iso-offline-install-iscsi.manual.bios",
+		//"iso-offline-install-iscsi.ibft.s390fw,
+		//"iso-offline-install-iscsi.manual.s390fw",
 	}
 	tests_ppc64le = []string{
 		"iso-live-login.ppcfw",
@@ -128,8 +128,8 @@ var (
 		"pxe-online-install.ppcfw",
 		"pxe-offline-install.4k.ppcfw",
 		// FIXME https://github.com/coreos/fedora-coreos-tracker/issues/1657
-		//"iso-offline-install-iscsi.ibft.bios",
-		//"iso-offline-install-iscsi.manual.bios",
+		//"iso-offline-install-iscsi.ibft.ppcfw",
+		//"iso-offline-install-iscsi.manual.ppcfw",
 	}
 	tests_aarch64 = []string{
 		"iso-live-login.uefi",
@@ -146,8 +146,8 @@ var (
 		"pxe-online-install.uefi",
 		"pxe-online-install.4k.uefi",
 		// FIXME https://github.com/coreos/fedora-coreos-tracker/issues/1657
-		//"iso-offline-install-iscsi.ibft.bios",
-		//"iso-offline-install-iscsi.manual.bios",
+		//"iso-offline-install-iscsi.ibft.uefi",
+		//"iso-offline-install-iscsi.manual.uefi",
 	}
 )
 
