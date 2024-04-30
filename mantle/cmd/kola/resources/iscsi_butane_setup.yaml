@@ -51,7 +51,8 @@ storage:
             targetcli iscsi/iqn.2023-10.coreos.target.vm:coreos/tpg1/ set attribute authentication=0 demo_mode_write_protect=0 generate_node_acls=1 cache_dynamic_acls=1
             "
             # Will return 0 if the discovery yield a valid portal
-            iscsiadm -m discovery -p 127.0.0.1 -t st | grep iqn.2023-10.coreos.target.vm:coreos
+            iscsiadm --mode discovery --type sendtargets --portal 127.0.0.1 | \
+              grep iqn.2023-10.coreos.target.vm:coreos
     - path: /var/boot.ipxe
       mode: 0644
       contents:
@@ -66,8 +67,8 @@ storage:
           #!/bin/bash
           set -euxo
           # Mount the iscsi target
-          iscsiadm -m discovery -t st -p 127.0.0.1
-          iscsiadm -m node -T iqn.2023-10.coreos.target.vm:coreos -l
+          iscsiadm --mode discovery --type sendtargets --portal 127.0.0.1
+          iscsiadm --mode node --targetname iqn.2023-10.coreos.target.vm:coreos --login
           # Give a bit of time to udev to create the persistent names paths
           sleep 2
           # Install coreos
