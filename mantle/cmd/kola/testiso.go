@@ -89,7 +89,7 @@ var (
 		"iso-offline-install.bios",
 		"iso-offline-install.mpath.bios",
 		"iso-offline-install-fromram.4k.uefi",
-		"iso-offline-install-iscsi.ibft.bios",
+		"iso-offline-install-iscsi.ibft.uefi",
 		"iso-offline-install-iscsi.manual.bios",
 		"miniso-install.bios",
 		"miniso-install.nm.bios",
