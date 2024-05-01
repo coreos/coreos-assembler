@@ -20,6 +20,7 @@ storage:
             After=local-fs.target network-online.target nss-lookup.target dev-disk-by\x2did-virtio\x2dtarget.device
             Wants=network-online.target
             OnFailure=emergency.target
+            OnFailureJobMode=isolate
             [Container]
             Image=quay.io/coreos-assembler/targetcli:latest
             ContainerName=targetd
@@ -91,6 +92,7 @@ storage:
           Wants=network-online.target install-coreos-to-iscsi-target.service
           Requires=install-coreos-to-iscsi-target.service
           OnFailure=emergency.target
+          OnFailureJobMode=isolate
           [Container]
           Image=quay.io/coreos-assembler/coreos-assembler
           ContainerName=iscsiboot
@@ -119,7 +121,7 @@ storage:
             "systemd": {
               "units": [
                 {
-                  "contents": "[Unit]\nDescription=iSCSI Boot Signal Completion\nAfter=multi-user.target\nOnFailureJobMode=isolate\n[Service]\nType=oneshot\nRemainAfterExit=yes\nExecStart=/bin/sh -c '/usr/bin/echo \"iscsi-boot-ok\" \u003e/dev/virtio-ports/testisocompletion \u0026\u0026 systemctl poweroff'\n[Install]\nRequiredBy=multi-user.target\n",
+                  "contents": "[Unit]\nDescription=iSCSI Boot Signal Completion\nAfter=multi-user.target\nOnFailure=emergency.target\nOnFailureJobMode=isolate\n[Service]\nType=oneshot\nRemainAfterExit=yes\nExecStart=/bin/sh -c '/usr/bin/echo \"iscsi-boot-ok\" \u003e/dev/virtio-ports/testisocompletion \u0026\u0026 systemctl poweroff'\n[Install]\nRequiredBy=multi-user.target\n",
                   "enabled": true,
                   "name": "successful-boot-signal.service"
                 }
@@ -137,6 +139,7 @@ systemd:
         After=targetd.service
         ConditionFirstBoot=true
         OnFailure=emergency.target
+        OnFailureJobMode=isolate
         [Service]
         Type=oneshot
         RemainAfterExit=yes
@@ -152,6 +155,7 @@ systemd:
         Requires=setup-targetcli.service
         After=setup-targetcli.service
         OnFailure=emergency.target
+        OnFailureJobMode=isolate
         [Service]
         Type=oneshot
         RemainAfterExit=yes
