@@ -288,6 +288,8 @@ func (inst *QemuInstance) Destroy() {
 		os.Remove(inst.qmpSocketPath) //nolint // Ignore Errors
 	}
 	if inst.journalPipe != nil {
+		plog.Debugf("Sleep 1 to allow for more journal messages to get flushed")
+		time.Sleep(1 * time.Second)
 		inst.journalPipe.Close()
 		inst.journalPipe = nil
 	}
@@ -1629,6 +1631,15 @@ func (builder *QemuBuilder) VirtioJournal(config *conf.Conf, queryArguments stri
 	var streamJournalUnit = fmt.Sprintf(`[Unit]
 	Requires=dev-virtio\\x2dports-mantlejournal.device
 	IgnoreOnIsolate=true
+	# DefaultDependencies=false so that Requires=sysinit.target
+	# won't be added to this unit, which would cause it to get
+	# taken down when isolating to emergency.target
+	DefaultDependencies=no
+	After=systemd.journal.service
+	# After systemd-journal-flush because otherwise the journalctl -f
+	# below will stop when the journal is flushed. Not sure if this is
+	# a bug or intended behavior.
+	After=systemd-journal-flush.service
 	[Service]
 	Type=simple
 	StandardOutput=file:/dev/virtio-ports/mantlejournal
