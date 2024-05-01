@@ -618,7 +618,7 @@ func runTestIso(cmd *cobra.Command, args []string) (err error) {
 			case "ibft":
 				butane_config = strings.ReplaceAll(iscsi_butane_config, "COREOS_INSTALLER_KARGS", "--append-karg rd.iscsi.firmware=1")
 			case "manual":
-				butane_config = strings.ReplaceAll(iscsi_butane_config, "COREOS_INSTALLER_KARGS", "--append-karg netroot=iscsi:10.0.2.15::::iqn.2023-10.coreos.target.vm:coreos")
+				butane_config = strings.ReplaceAll(iscsi_butane_config, "COREOS_INSTALLER_KARGS", "--append-karg netroot=iscsi:10.0.2.15::::iqn.2024-05.com.coreos")
 			default:
 				plog.Fatalf("Unknown test name:%s", test)
 			}
