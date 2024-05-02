@@ -90,6 +90,7 @@ var (
 		"iso-offline-install.mpath.bios",
 		"iso-offline-install-fromram.4k.uefi",
 		"iso-offline-install-iscsi.ibft.uefi",
+		"iso-offline-install-iscsi.ibft-with-mpath.bios",
 		"iso-offline-install-iscsi.manual.bios",
 		"miniso-install.bios",
 		"miniso-install.nm.bios",
@@ -114,6 +115,7 @@ var (
 		"miniso-install.4k.nm.s390fw",
 		// FIXME https://github.com/coreos/fedora-coreos-tracker/issues/1657
 		//"iso-offline-install-iscsi.ibft.s390fw,
+		//"iso-offline-install-iscsi.ibft-with-mpath.s390fw",
 		//"iso-offline-install-iscsi.manual.s390fw",
 	}
 	tests_ppc64le = []string{
@@ -129,6 +131,7 @@ var (
 		"pxe-offline-install.4k.ppcfw",
 		// FIXME https://github.com/coreos/fedora-coreos-tracker/issues/1657
 		//"iso-offline-install-iscsi.ibft.ppcfw",
+		//"iso-offline-install-iscsi.ibft-with-mpath.ppcfw",
 		//"iso-offline-install-iscsi.manual.ppcfw",
 	}
 	tests_aarch64 = []string{
@@ -147,6 +150,7 @@ var (
 		"pxe-online-install.4k.uefi",
 		// FIXME https://github.com/coreos/fedora-coreos-tracker/issues/1657
 		//"iso-offline-install-iscsi.ibft.uefi",
+		//"iso-offline-install-iscsi.ibft-with-mpath.uefi",
 		//"iso-offline-install-iscsi.manual.uefi",
 	}
 )
@@ -618,7 +622,9 @@ func runTestIso(cmd *cobra.Command, args []string) (err error) {
 			case "ibft":
 				butane_config = strings.ReplaceAll(iscsi_butane_config, "COREOS_INSTALLER_KARGS", "--append-karg rd.iscsi.firmware=1")
 			case "manual":
-				butane_config = strings.ReplaceAll(iscsi_butane_config, "COREOS_INSTALLER_KARGS", "--append-karg netroot=iscsi:10.0.2.15::::iqn.2024-05.com.coreos")
+				butane_config = strings.ReplaceAll(iscsi_butane_config, "COREOS_INSTALLER_KARGS", "--append-karg netroot=iscsi:10.0.2.15::::iqn.2024-05.com.coreos:0")
+			case "ibft-with-mpath":
+				butane_config = strings.ReplaceAll(iscsi_butane_config, "COREOS_INSTALLER_KARGS", "--append-karg rd.iscsi.firmware=1 --append-karg rd.multipath=default --append-karg root=/dev/disk/by-label/dm-mpath-root")
 			default:
 				plog.Fatalf("Unknown test name:%s", test)
 			}

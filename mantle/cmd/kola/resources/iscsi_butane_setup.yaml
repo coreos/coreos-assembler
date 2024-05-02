@@ -47,9 +47,12 @@ storage:
             # FIXME: use RestartMode=direct instead in the systemd unit but we need systemd v254
             while ! targetcli ls; do sleep 1; done
             targetcli /backstores/block create name=coreos dev=/dev/disk/by-id/virtio-target
-            targetcli iscsi/ create iqn.2024-05.com.coreos
-            targetcli iscsi/iqn.2024-05.com.coreos/tpg1/luns create /backstores/block/coreos
-            targetcli iscsi/iqn.2024-05.com.coreos/tpg1/ set attribute authentication=0 demo_mode_write_protect=0 generate_node_acls=1 cache_dynamic_acls=1
+            targetcli iscsi/ create iqn.2024-05.com.coreos:0
+            targetcli iscsi/ create iqn.2024-05.com.coreos:1
+            targetcli iscsi/iqn.2024-05.com.coreos:0/tpg1/luns create /backstores/block/coreos
+            targetcli iscsi/iqn.2024-05.com.coreos:1/tpg1/luns create /backstores/block/coreos
+            targetcli iscsi/iqn.2024-05.com.coreos:0/tpg1/ set attribute authentication=0 demo_mode_write_protect=0 generate_node_acls=1 cache_dynamic_acls=1
+            targetcli iscsi/iqn.2024-05.com.coreos:1/tpg1/ set attribute authentication=0 demo_mode_write_protect=0 generate_node_acls=1 cache_dynamic_acls=1
             "
             # Will return 0 if the discovery yield a valid portal
             iscsiadm --mode discovery --type sendtargets --portal 127.0.0.1 | \
@@ -64,7 +67,8 @@ storage:
             # but we do need to provide it because otherwise this will
             # fail pointing to https://ipxe.org/1c0d6502
             set initiator-iqn iqn.68cc69b9-1b54-4ff1-9d61-eedb570da8fd
-            sanboot iscsi:10.0.2.15::::iqn.2024-05.com.coreos
+            sanboot iscsi:10.0.2.15::::iqn.2024-05.com.coreos:0 \
+                    iscsi:10.0.2.15::::iqn.2024-05.com.coreos:1
     - path: /usr/local/bin/install-coreos-iscsi
       mode: 0755
       contents:
@@ -77,7 +81,7 @@ storage:
           sleep 2
           # Install coreos
           coreos-installer install \
-            /dev/disk/by-path/ip-127.0.0.1\:3260-iscsi-iqn.2024-05.com.coreos-lun-0 \
+            /dev/disk/by-path/ip-127.0.0.1\:3260-iscsi-iqn.2024-05.com.coreos\:0-lun-0 \
             COREOS_INSTALLER_KARGS \
             --console ttyS0,115200n8 \
             -i /var/nested-ign.json
