@@ -845,6 +845,10 @@ EOF
     fi
     rc="$(cat "${rc_file}")"
 
+    # XXX: this is for debugging temporarily
+    if [ -n "${TAIL_SLEEP:-}" ]; then
+        sleep "${TAIL_SLEEP}"
+    fi
     # cleanup tail before nuking dir containing file it's following
     kill "$tail_pid"
 
