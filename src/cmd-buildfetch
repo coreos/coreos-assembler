@@ -31,13 +31,39 @@ retry_requests_exception = (retry_if_exception_type(requests.Timeout) |
 
 FCOS_STREAMS_URL = "https://builds.coreos.fedoraproject.org/prod/streams"
 
+# https://github.com/coreos/fedora-coreos-tracker/blob/main/Design.md#version-numbers
+FCOS_VERSION_STREAM_MAPPING = {
+    '1':  'next',
+    '2':  'testing',
+    '3':  'stable',
+    '10': 'next-devel',
+    '20': 'testing-devel',
+    '91': 'rawhide',
+    '92': 'branched',
+    '93': 'bodhi-updates-testing',
+    '94': 'bodhi-updates',
+}
+
+
+def get_stream_for_build(build):
+    z = build.split('.')[2]
+    return FCOS_VERSION_STREAM_MAPPING[z]
+
 
 def main():
     args = parse_args()
     if args.aws_config_file:
         os.environ["AWS_CONFIG_FILE"] = args.aws_config_file
 
-    url = args.url or f'{FCOS_STREAMS_URL}/{args.stream}/builds'
+    url = args.url
+    if not url:
+        if args.build:
+            stream = get_stream_for_build(args.build)
+            if args.stream and stream != args.stream:
+                raise Exception("A conflicting --build and --stream were provided")
+        else:
+            stream = args.stream or 'testing-devel'
+        url = f'{FCOS_STREAMS_URL}/{stream}/builds'
     if url.startswith("s3://"):
         fetcher = S3Fetcher(url)
     elif url.startswith("http://") or url.startswith("https://"):
@@ -166,7 +192,7 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--url", metavar='URL', default="",
                         help="URL from which to fetch metadata")
-    parser.add_argument("--stream", metavar='STREAM', default="testing-devel",
+    parser.add_argument("--stream", metavar='STREAM', action='store',
                         help="stream from which to fetch metadata")
     parser.add_argument("-b", "--build", action='store',
                         help="Fetch specified build instead of latest")
