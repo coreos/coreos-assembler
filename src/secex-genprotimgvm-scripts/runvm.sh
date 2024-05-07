@@ -56,7 +56,7 @@ else
 fi
 
 if ! "${kola_args[@]}" -- "${base_qemu_args[@]}" \
-    "${qemu_args[@]}" <&-; then # the <&- here closes stdin otherwise qemu waits forever
+    "${qemu_args[@]}" < /dev/zero; then # qemu hangs if it has nothing to read on stdin
     cat "${runvm_console}"
     echo "Failed to run 'kola qemuexec'"
     exit 1
