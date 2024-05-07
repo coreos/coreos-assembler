@@ -70,7 +70,7 @@ storage:
       contents:
         inline: |
           #!/bin/bash
-          set -euxo
+          set -euxo pipefail
           # Mount the iscsi target
           iscsiadm --mode discovery --type sendtargets --portal 127.0.0.1 --login
           # Give a bit of time to udev to create the persistent names paths
