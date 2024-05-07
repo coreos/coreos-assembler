@@ -823,7 +823,7 @@ EOF
         if ! "${kola_args[@]}" -- "${base_qemu_args[@]}" \
             -device virtserialport,chardev=virtioserial0,name=cosa-cmdout \
             -chardev stdio,id=virtioserial0 \
-            "${qemu_args[@]}"; then
+            "${qemu_args[@]}" < /dev/zero; then # qemu hangs if it has nothing to read on stdin
                 cat "${runvm_console}"
                 fatal "Failed to run 'kola qemuexec'"
         fi
