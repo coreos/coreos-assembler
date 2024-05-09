@@ -19,6 +19,7 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+	"google.golang.org/api/googleapi"
 
 	"github.com/coreos/coreos-assembler/mantle/platform/api/gcloud"
 )
@@ -46,7 +47,14 @@ func runDeleteImage(cmd *cobra.Command, args []string) {
 	for _, name := range args {
 		pending, err := api.DeleteImage(name)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "%v\n", err)
+			if gErr, ok := err.(*googleapi.Error); ok {
+				// Check if the error code is 404 (Not Found)
+				if gErr.Code == 404 {
+					fmt.Fprintf(os.Stderr, "%v\n", err)
+					continue
+				}
+			}
+			fmt.Fprintf(os.Stderr, "Deleting %q failed: %v\n", name, err)
 			exit = 1
 			continue
 		}

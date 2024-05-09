@@ -26,6 +26,7 @@ def remove_gcp_image(gcp_id, json_key, project):
             '--json-key', json_key,
             '--project', project
         ])
+        print(f"GCP: successfully removed image {gcp_id}")
     except SystemExit:
         raise Exception("Failed to remove image")
 

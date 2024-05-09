@@ -1,0 +1,265 @@
+#!/usr/bin/python3 -u
+
+# This script parses a policy.yaml file, which outlines the specific
+# pruning actions required for each stream and the age threshold for
+# deleting artifacts within them.
+# Example of policy.yaml
+# rawhide:
+#     # all cloud images
+#     cloud-uploads: 2 years
+#     # artifacts in meta.json's `images` key
+#     images: 2 years
+#     images-keep: [qemu, live-iso]
+#     build: 3 years
+
+import argparse
+import json
+import re
+import time
+import pytz
+import yaml
+import collections
+import datetime
+import os
+import boto3
+from dateutil.relativedelta import relativedelta
+from cosalib.gcp import remove_gcp_image
+from cosalib.aws import deregister_aws_resource
+from cosalib.builds import BUILDFILES
+from cosalib.s3 import s3_copy
+
+Build = collections.namedtuple("Build", ["id", "timestamp", "images", "arch"])
+# set metadata caching to 5m
+CACHE_MAX_AGE_METADATA = 60 * 5
+
+
+def main():
+    args = parse_args()
+    bucket, prefix = args.url.split("/", 1)
+    stream = args.stream
+    cloud_config = {
+        "gcp": {
+            "json-key": args.gcp_json_key,
+            "project": args.gcp_project
+        },
+        "aws": {
+            "credentials": args.aws_config_file
+        }
+    }
+    # These lists are up to date as of schema hash
+    # 4c19aed3b3d84af278780bff63728510bb3e70613e4c4eef8cabd7939eb31bd8. If changing
+    # this hash, ensure that the list of supported and unsupported artifacts below
+    # is up to date.
+    supported = ["amis", "gcp"]
+    unsupported = ["aliyun", "azurestack", "digitalocean", "exoscale", "ibmcloud", "powervs"]
+
+    with open(args.policy, "r") as f:
+        policy = yaml.safe_load(f)
+
+    s3_client = boto3.client("s3")
+    # If the build key is set in the policy file, then the cloud-uploads key must
+    # also be present, and the duration of cloud-uploads must be equal or shorter
+    if "build" in policy[stream]:
+        cloud_uploads_check(policy[stream])
+
+    # Base URL for Fedora CoreOS builds
+
+    builds_json_data = get_json_from_s3(s3_client, bucket, prefix + "/builds/builds.json")
+
+    # action is basically whatever is needed to be pruned for the respective stream
+    for action in policy[stream]:
+        duration = policy[stream][action]
+        duration_in_months = get_period_in_months(duration)
+        ref_date = datetime.datetime.now() - relativedelta(months=int(duration_in_months))
+
+        print(f"Pruning resources of type {action} older than {duration_in_months} months ({ref_date.date()}) on stream {stream}")
+        # Enumerating in reverse to go from the oldest build to the newest one
+        for index, build in enumerate(reversed(builds_json_data["builds"])):
+            build_id = build["id"]
+            if "policy-cleanup" in build.keys():
+                # If we have already pruned the specified resources for this
+                # build as per builds.json, we skip through it.
+                if action in build["policy-cleanup"]:
+                    print(f"Build {build_id} has already had {action} pruning completed")
+                    continue
+            # Assuming only FCOS versioning as of now
+            timestamp = parse_fcos_version(build_id)[1]
+            build_date = datetime.datetime(int(timestamp[0:4]), int(timestamp[4:6]), int(timestamp[-2:]))
+
+            if build_date >= ref_date:
+                break
+            for arch in build["arches"]:
+                meta_url = f"/builds/{build_id}/{arch}/meta.json"
+                meta_json = get_json_from_s3(s3_client, bucket, prefix + meta_url)
+                if meta_json is None:
+                    print(f"Failed to get meta.json for {build_id} for {arch}")
+                    return
+                # Check if the build has any cloud platform that are not GC supported yet
+                images = get_supported_images(meta_json, unsupported, supported)
+                currentBuild = Build(
+                    id=build_id,
+                    timestamp=timestamp,
+                    images=images,
+                    arch=arch,
+                )
+                match action:
+                    case "cloud-uploads":
+                        # Prunes only AWS and GCP at the moment
+                        delete_cloud_resources(currentBuild, cloud_config, args.dry_run)
+                        if not args.dry_run:
+                            build.setdefault("policy-cleanup", []).append(action)
+                            builds_json_data["builds"][index] = build
+                            builds_json_data["timestamp"] = datetime.datetime.now(pytz.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+                    # Not implemented yet
+                    case "build":
+                        return NotImplementedError
+                        # print(f"Deleting key {prefix}{build.id} from bucket {bucket}")
+                        # Delete the build's directory in S3
+                        # S3().delete_object(args.bucket, f"{args.prefix}{str(currentBuild.id)}")
+
+    if not args.dry_run:
+        with open("builds/builds.json", "w") as json_file:
+            json.dump(builds_json_data, json_file, indent=2)
+        # This copies the local builds.json and updates the S3 bucket version.
+        if args.upload_builds_json:
+            s3_copy(s3_client, BUILDFILES['list'], bucket, f'{prefix}/builds/builds.json',
+                    CACHE_MAX_AGE_METADATA, args.acl, extra_args={},
+                    dry_run=args.dry_run)
+
+
+def get_supported_images(meta_json, unsupported, supported):
+    images = {}
+    for key in meta_json:
+        if key in unsupported:
+            raise Exception(f"The platform {key} is not supported")
+        if key in supported:
+            images[key] = meta_json.get(key) or []
+    return images
+
+
+def parse_fcos_version(version):
+    m = re.match(r'^([0-9]{2})\.([0-9]{8})\.([0-9]+)\.([0-9]+)$', version)
+    if m is None:
+        raise Exception(f"Incorrect versioning for FCOS build {version}")
+    # sanity-check date
+    try:
+        time.strptime(m.group(2), '%Y%m%d')
+    except ValueError:
+        raise Exception(f"FCOS build {version} has incorrect date format. It should be in (%Y%m%d)")
+    return tuple(map(str, m.groups()))
+
+
+def get_json_from_s3(s3, bucket, key):
+    try:
+        # Fetch the JSON file from S3
+        response = s3.get_object(Bucket=bucket, Key=key)
+        # Read the content of the file
+        content = response["Body"].read().decode("utf-8")
+        # Parse the JSON content
+        json_content = json.loads(content)
+        return json_content
+
+    except Exception as e:
+        raise Exception(f"Error fetching the JSON file from S3 {bucket}/{key}: {e}")
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(prog="coreos-assembler cloud-prune")
+    parser.add_argument("--policy", required=True, type=str,
+                        help="Path to policy YAML file")
+    parser.add_argument("--dry-run", help="Don't actually delete anything",
+                        action='store_true')
+    parser.add_argument("--upload-builds-json", help="Push builds.json",
+                        action='store_true')
+    parser.add_argument("--stream", type=str, help="CoreOS stream", required=True)
+
+    parser.add_argument("--gcp-json-key", help="GCP Service Account JSON Auth",
+                        default=os.environ.get("GCP_JSON_AUTH"))
+    parser.add_argument("--gcp-project", help="GCP Project name",
+                        default=os.environ.get("GCP_PROJECT_NAME"))
+
+    subparsers = parser.add_subparsers(dest="cmd", title="subcommands")
+    subparsers.required = True
+
+    s3 = subparsers.add_parser('s3', help='Prune s3 buckets')
+    s3.add_argument("url", metavar='<BUCKET>[/PREFIX]',
+                    help="Bucket and path prefix in which to upload")
+    s3.add_argument("--acl", help="ACL for objects",
+                    action='store', default='private')
+    s3.add_argument("--aws-config-file", default=os.environ.get("AWS_CONFIG_FILE"),
+                    help="Path to AWS config file")
+    return parser.parse_args()
+
+
+# Handling just AWS and GCP at the moment
+def delete_cloud_resources(build, cloud_config, dry_run):
+    errors = []
+    if not build.images.get("amis", []):
+        print(f"No AMIs for {build.id} for {build.arch}")
+
+    # Deregister AMIs and snapshots
+    for ami in build.images.get("amis", []):
+        region_name = ami.get("name")
+        ami_id = ami.get("hvm")
+        snapshot_id = ami.get("snapshot")
+        if dry_run:
+            print(f"Would delete {ami_id} and {snapshot_id} for {build.id}")
+            break
+        aws_credentials = cloud_config.get("aws", {}).get("credentials")
+        if ami_id and region_name:
+            try:
+                deregister_aws_resource(ami_id, region=region_name, credentials_file=aws_credentials)
+            except Exception as e:
+                errors.append(e)
+        if snapshot_id and region_name:
+            try:
+                deregister_aws_resource(snapshot_id, region=region_name, credentials_file=aws_credentials)
+            except Exception as e:
+                errors.append(e)
+
+    gcp = build.images.get("gcp")
+    if gcp:
+        gcp_image = gcp.get("image")
+        json_key = cloud_config.get("gcp", {}).get("json-key")
+        project = cloud_config.get("gcp", {}).get("project")
+        if dry_run:
+            print(f"Would delete {gcp_image} GCP image for {build.id}")
+        elif gcp_image and json_key and project:
+            try:
+                remove_gcp_image(gcp_image, json_key, project)
+            except Exception as e:
+                errors.append(e)
+        else:
+            errors.append(f"Missing paramaters to remove {gcp_image}")
+    else:
+        print(f"No GCP image for {build.id} for {build.arch}")
+
+    if len(errors) != 0:
+        print(f"Found errors when removing cloud-uploads for {build.id}:")
+        for e in errors:
+            print(e)
+        raise Exception("some errors were encountered")
+
+
+def cloud_uploads_check(actions):
+    if 'cloud-uploads' not in actions:
+        raise Exception("Pruning for cloud-uploads must be set before we prune the builds")
+    cloud_uploads_duration = get_period_in_months(actions["cloud-uploads"])
+    build_duration = get_period_in_months(actions["build"])
+    if cloud_uploads_duration > build_duration:
+        raise Exception("Duration of pruning cloud-uploads must be less than or equal to pruning a build")
+
+
+def get_period_in_months(duration):
+    val, unit = duration.split(" ")
+    if unit in ["years", "year", "y"]:
+        months = int(val) * 12
+    elif unit in ["months", "month", "m"]:
+        months = int(val)
+    else:
+        raise Exception(f"Duration unit provided is {unit}. Pruning duration is only supported in years and months")
+    return months
+
+
+if __name__ == "__main__":
+    main()

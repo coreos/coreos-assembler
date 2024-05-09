@@ -8,7 +8,8 @@ from cosalib.cmdlib import (
     flatten_image_yaml,
     retry_boto_exception,
     retry_callback,
-    retry_stop
+    retry_stop,
+    runcmd
 )
 from tenacity import (
     retry,
@@ -16,20 +17,19 @@ from tenacity import (
 )
 
 
-@retry(stop=retry_stop, retry=retry_boto_exception,
-       before_sleep=retry_callback)
-def deregister_ami(ami_id, region):
-    print(f"AWS: deregistering AMI {ami_id} in {region}")
-    ec2 = boto3.client('ec2', region_name=region)
-    ec2.deregister_image(ImageId=ami_id)
-
-
-@retry(stop=retry_stop, retry=retry_boto_exception,
-       before_sleep=retry_callback)
-def delete_snapshot(snap_id, region):
-    print(f"AWS: removing snapshot {snap_id} in {region}")
-    ec2 = boto3.client('ec2', region_name=region)
-    ec2.delete_snapshot(SnapshotId=snap_id)
+@retry(reraise=True, stop=stop_after_attempt(3))
+def deregister_aws_resource(aws_resource, region, credentials_file):
+    print(f"AWS: deregistering AMI {aws_resource} in {region}")
+    try:
+        runcmd([
+            'ore', 'aws', 'delete-image',
+            '--credentials-file', credentials_file,
+            '--image', aws_resource,
+            "--region", region
+        ])
+        print(f"AWS: successfully removed {aws_resource}")
+    except SystemExit:
+        raise Exception(f"Failed to remove {aws_resource}")
 
 
 @retry(reraise=True, stop=stop_after_attempt(3))
