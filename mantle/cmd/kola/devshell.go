@@ -430,7 +430,7 @@ func watchJournal(builder *platform.QemuBuilder, conf *conf.Conf, stateChan chan
 		},
 	}
 
-	r, err := builder.VirtioJournal(conf, "--system")
+	r, err := builder.VirtioJournal(conf, "-o json --system")
 	if err != nil {
 		return err
 	}
