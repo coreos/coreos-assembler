@@ -281,8 +281,8 @@ if [ "${image_type}" == "qemu" ] || [ "${image_type}" == "metal" ] || [ "${image
     fi
 fi
 
-# Run with OSBuild if it's supported and requested, otherwise use create_disk
-if [ "${OSBUILD_SUPPORTED:-}" != "" ] && [ "${COSA_USE_OSBUILD:-}" != "" ]; then
+# Run with OSBuild if it's supported, unless it is explicitly disabled with COSA_USE_OSBUILD=0
+if [ "${OSBUILD_SUPPORTED:-}" != "" ] && [ "${COSA_USE_OSBUILD:-}" != "0" ]; then
     # In the jenkins pipelines we build the qemu image first and that operation
     # will do a lot of the same work required for later artifacts (metal, metal4k, etc)
     # so we want the cached output from that run to persist. The later artifacts get
