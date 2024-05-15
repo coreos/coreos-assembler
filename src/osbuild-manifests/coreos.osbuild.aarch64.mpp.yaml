@@ -244,7 +244,7 @@ pipelines:
           # defaults in the version of mkfs.ext4 in the build root.
           # This is mostly useful right now because COSA is based
           # on Fedora.
-          mpp-if: osname == 'rhcos'
+          mpp-if: osname in ['rhcos', 'scos']
           then:
             orphan_file: false
             metadata_csum_seed: true
@@ -415,7 +415,7 @@ pipelines:
           # defaults in the version of mkfs.ext4 in the build root.
           # This is mostly useful right now because COSA is based
           # on Fedora.
-          mpp-if: osname == 'rhcos'
+          mpp-if: osname in ['rhcos', 'scos']
           then:
             orphan_file: false
             metadata_csum_seed: true
