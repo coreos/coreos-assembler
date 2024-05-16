@@ -44,9 +44,6 @@ install_rpms() {
 
     frozendeps=""
 
-    # We freeze the version for now since we're carrying patches.
-    frozendeps+=" $(echo osbuild{,-ostree,-selinux,-tools}-114-1.fc40.noarch)"
-
     # First, a general update; this is best practice.  We also hit an issue recently
     # where qemu implicitly depended on an updated libusbx but didn't have a versioned
     # requires https://bugzilla.redhat.com/show_bug.cgi?id=1625641
@@ -176,9 +173,8 @@ patch_osbuild() {
     mv /usr/bin/osbuild-mpp /usr/lib/osbuild/tools/
 
     # Now all the software is under the /usr/lib/osbuild dir and we can patch
-    cat /usr/lib/coreos-assembler/0004-fscache-add-eviction-log-statement.patch                   \
-        /usr/lib/coreos-assembler/0001-stages-qemu-sanity-check-created-image.patch               \
-            | patch -d /usr/lib/osbuild -p1
+   #cat your.patch \
+   #        | patch -d /usr/lib/osbuild -p1
 
     # And then move the files back; supermin appliance creation will need it back
     # in the places delivered by the RPM.
