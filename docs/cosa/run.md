@@ -285,3 +285,52 @@ And point to it and the `core.0` binary:
 ```
 $ cosa run -c --netboot-dir tmp/grub-netboot --netboot boot/grub2/i386-pc/core.0 -m 4096
 ```
+
+### GRUB (Secure Boot)
+
+1. Create a temporary folder
+2. Download a kernel, initramfs, rootfs, shim and GRUB binary
+3. Create an empty disk image (bug in kola): `touch disk.img`
+4. Setup `grub.cfg`
+5. Place your Ignition config
+6. Start a local HTTP server using `cosa kola http-server`
+7. Find and join the existing COSA container
+8. Use `cosa run` to netboot the system
+
+```
+$ tree pxe
+pxe
+├── config.ign
+├── disk.img
+├── grub.cfg
+├── grubx64.efi
+├── rhcos-4.14.0-x86_64-live-initramfs.x86_64.img
+├── rhcos-4.14.0-x86_64-live-kernel-x86_64
+├── rhcos-4.14.0-x86_64-live-rootfs.x86_64.img
+└── shim.efi
+
+$ cat pxe/grub.cfg
+default=0
+timeout=1
+menuentry "CoreOS (UEFI Secure Boot)" {
+        echo "Loading kernel"
+        linux /rhcos-4.14.0-x86_64-live-kernel-x86_64 ignition.firstboot ignition.platform.id=metal console=ttyS0 coreos.live.rootfs_url=http://10.0.2.2:8000/pxe/rhcos-4.14.0-x86_64-live-rootfs.x86_64.img ignition.config.url=http://10.0.2.2:8000/pxe/config.ign
+        echo "Loading initrd"
+        initrd rhcos-4.14.0-x86_64-live-initramfs.x86_64.img rhcos-4.14.0-x86_64-live-rootfs.x86_64.img
+}
+
+$ cosa kola http-server
+...
+Serving HTTP on port: 8000
+
+# In another shell
+$ podman exec -it cosa bash
+
+# Or if you removed `--name cosa` from the cosa alias command to be able to run
+# multiple instances of cosa (see https://coreos.github.io/coreos-assembler/building-fcos/#running-multiple-instances)
+$ podman ps | grep quay.io/coreos-assembler/coreos-assembler
+7fedc84484a6  quay.io/coreos-assembler/coreos-assembler:latest  kola http-server      5 minutes ago  Up 5 minutes              hopeful_haibt
+$ podman exec -ti 7fedc84484a6 bash
+
+$ cosa run -c --netboot pxe/shim.efi -m 4096 --qemu-firmware uefi-secure --qemu-image pxe/disk.img
+```
