@@ -4,6 +4,9 @@ mpp-vars:
   ociarchive: $ociarchive
   osname: $osname
   container_imgref: $container_imgref
+  container_repo: $container_repo
+  container_tag: $container_tag
+  extra_kargs: $extra_kargs
   metal_image_size_mb: $metal_image_size_mb
   cloud_image_size_mb: $cloud_image_size_mb
   bios_boot_size_mb: 1
@@ -102,7 +105,7 @@ pipelines:
               # will always work.
               bootprefix: true
       - type: org.osbuild.ignition
-      # Deploy via container if we have a container ociarchive, else from repo.
+      # Deploy via container if we have a container ociarchive or an image, else from repo.
       - mpp-if: ociarchive != ''
         then:
           type: org.osbuild.ostree.deploy.container
