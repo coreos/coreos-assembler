@@ -292,6 +292,11 @@ pipelines:
             mpp-format-string: '{boot_fs_uuid}'
           label:
             mpp-format-string: '{boot_fs_label}'
+          # Set manually the metadata_csum_seed ext4 option otherwise changing the
+          # filesystem UUID while it's mounted doesn't work. Can remove this when
+          # metadata_csum_seed is default in RHEL, which can be checked by looking
+          # in /etc/mke2fs.conf.
+          metadata_csum_seed: true
       - type: org.osbuild.mkfs.xfs
         devices:
           device:
@@ -453,6 +458,11 @@ pipelines:
             mpp-format-string: '{boot_fs_uuid}'
           label:
             mpp-format-string: '{boot_fs_label}'
+          # Set manually the metadata_csum_seed ext4 option otherwise changing the
+          # filesystem UUID while it's mounted doesn't work. Can remove this when
+          # metadata_csum_seed is default in RHEL, which can be checked by looking
+          # in /etc/mke2fs.conf.
+          metadata_csum_seed: true
       - type: org.osbuild.mkfs.xfs
         devices:
           device:
