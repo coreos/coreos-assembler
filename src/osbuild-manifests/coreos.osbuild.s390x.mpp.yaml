@@ -25,6 +25,21 @@ mpp-vars:
   boot_fs_label: boot
   root_fs_uuid: 910678ff-f77e-4a7d-8d53-86f2ac47a823
   root_fs_label: root
+  # Set the buildroot string to use for most operations here. We create
+  # the buildroot from the target OSTree contents so we have version
+  # matches. Unfortunately for FCOS there is no python so we can't
+  # really use FCOS as the buildroot so we'll set it to "" so that
+  # the host (COSA) gets used as the buildroot there.
+  buildroot:
+    mpp-if: osname in ['rhcos', 'scos']
+    then: "name:build"
+    else: ""
+  # For the qemu stages we'll use the host buildroot (COSA)
+  # because we definitely don't include qemu-img in CoreOS. ""
+  # means to use the host as buildroot. It is worth noting that
+  # the host buildroot is the default if nothing is specified.
+  # We're still defining it here in an attempt to be explicit.
+  qemu_stage_buildroot: ""
 mpp-define-images:
   - id: image
     sector_size:
@@ -82,7 +97,34 @@ pipelines:
                 to: tree:///coreos.ociarchive
         else:
           type: org.osbuild.noop
+  # Construct a buildroot here from the input container reference (either
+  # ociarchive or registry/tag). Note that it won't actually be built
+  # unless used somewhere later in the manifest.
+  - name: build
+    stages:
+      - mpp-if: ociarchive != ''
+        then:
+          type: org.osbuild.container-deploy
+          inputs:
+            images:
+              type: org.osbuild.containers
+              origin: org.osbuild.pipeline
+              references:
+                name:oci-archive:
+                  name: coreos.ociarchive
+        else:
+          type: org.osbuild.container-deploy
+          inputs:
+            images:
+              type: org.osbuild.containers
+              origin: org.osbuild.source
+              mpp-resolve-images:
+                images:
+                  - source: $container_repo
+                    tag: $container_tag
   - name: tree
+    build:
+      mpp-format-string: '{buildroot}'
     source-epoch: 1659397331
     stages:
       - type: org.osbuild.ostree.init-fs
@@ -208,6 +250,8 @@ pipelines:
           deployment:
             default: true
   - name: raw-image
+    build:
+      mpp-format-string: '{buildroot}'
     stages:
       - type: org.osbuild.truncate
         options:
@@ -234,24 +278,10 @@ pipelines:
                 mpp-format-int: '{image.layout[''boot''].size}'
               lock: true
         options:
-          # If we are on RHCOS then set manually some FS options
-          # to the values we want in order to not depend on the
-          # defaults in the version of mkfs.ext4 in the build root.
-          # This is mostly useful right now because COSA is based
-          # on Fedora.
-          mpp-if: osname in ['rhcos', 'scos']
-          then:
-            orphan_file: false
-            metadata_csum_seed: true
-            uuid:
-              mpp-format-string: '{boot_fs_uuid}'
-            label:
-              mpp-format-string: '{boot_fs_label}'
-          else:
-            uuid:
-              mpp-format-string: '{boot_fs_uuid}'
-            label:
-              mpp-format-string: '{boot_fs_label}'
+          uuid:
+            mpp-format-string: '{boot_fs_uuid}'
+          label:
+            mpp-format-string: '{boot_fs_label}'
       - type: org.osbuild.mkfs.xfs
         devices:
           device:
@@ -323,6 +353,8 @@ pipelines:
               deployment:
                 default: true
   - name: raw-4k-image
+    build:
+      mpp-format-string: '{buildroot}'
     stages:
       - type: org.osbuild.truncate
         options:
@@ -353,24 +385,10 @@ pipelines:
               sector-size:
                   mpp-format-int: "{four_k_sector_size}"
         options:
-          # If we are on RHCOS then set manually some FS options
-          # to the values we want in order to not depend on the
-          # defaults in the version of mkfs.ext4 in the build root.
-          # This is mostly useful right now because COSA is based
-          # on Fedora.
-          mpp-if: osname in ['rhcos', 'scos']
-          then:
-            orphan_file: false
-            metadata_csum_seed: true
-            uuid:
-              mpp-format-string: '{boot_fs_uuid}'
-            label:
-              mpp-format-string: '{boot_fs_label}'
-          else:
-            uuid:
-              mpp-format-string: '{boot_fs_uuid}'
-            label:
-              mpp-format-string: '{boot_fs_label}'
+          uuid:
+            mpp-format-string: '{boot_fs_uuid}'
+          label:
+            mpp-format-string: '{boot_fs_label}'
       - type: org.osbuild.mkfs.xfs
         devices:
           device:
