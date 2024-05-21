@@ -103,7 +103,7 @@ osbuild-mpp                                             \
 osbuild \
     --out "$outdir"              \
     --store "$storedir"          \
-    --cache-max-size 9GiB        \
+    --cache-max-size 14GiB       \
     --checkpoint build           \
     --checkpoint tree            \
     --checkpoint raw-image       \
