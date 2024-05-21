@@ -46,8 +46,7 @@ done
 # Get the base filename of the desired file output path
 filename=$(basename "$filepath")
 
-ostree_repo=$(getconfig_def "ostree-repo" "")
-ostree_ref=$(getconfig_def "ostree-ref" "")
+ostree_container=$(getconfig "ostree-container")
 osname=$(getconfig "osname")
 platform=$(getconfig "image-type")
 deploy_via_container=$(getconfig_def "deploy-via-container" "")
@@ -57,11 +56,13 @@ container_imgref=$(getconfig "container-imgref")
 container_repo=$(getconfig_def "container-repo" "")
 container_tag=$(getconfig_def "container-tag" "")
 extra_kargs=$(getconfig "extra-kargs-string" "")
-# If we are deploying via container let's go ahead and pull
-# the oci archive path from the config
-ostree_container=""
-if [ -n "${deploy_via_container}" ]; then
-    ostree_container=$(getconfig "ostree-container")
+# If we are not deploying via container let's go ahead and
+# set the OSTree repo and ref information
+ostree_ref=""
+ostree_repo=""
+if [ -z "${deploy_via_container}" ]; then
+    ostree_ref=$(getconfig "ostree-ref")
+    ostree_repo="file://$(getconfig "ostree-repo")"
 fi
 
 # Since it doesn't exist create loop-control
@@ -79,8 +80,8 @@ processed_json=$(mktemp -t osbuild-XXXX.json)
 # Note: don't quote the size arguements since they are numbers, not strings
 osbuild-mpp                                             \
     -D arch=\""$(arch)"\"                               \
-    -D ref=\""${ostree_ref}"\"                          \
-    -D repourl=\""file://${ostree_repo}"\"              \
+    -D ostree_ref=\""${ostree_ref}"\"                   \
+    -D ostree_repo=\""${ostree_repo}"\"                 \
     -D filename=\""${filename}"\"                       \
     -D ociarchive=\""${ostree_container}"\"             \
     -D osname=\""${osname}"\"                           \
