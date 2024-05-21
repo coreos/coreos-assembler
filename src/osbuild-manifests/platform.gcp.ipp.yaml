@@ -14,6 +14,8 @@ pipelines:
         options:
           paths:
             - from: input://tree/disk.img
+              # to disk.raw here and not disk.img because the file inside
+              # the tarball needs to have a .raw suffix
               to: tree:///disk.raw
       # Increase the size to the cloud image size
       - type: org.osbuild.truncate
@@ -28,7 +30,7 @@ pipelines:
           disk:
             type: org.osbuild.loopback
             options:
-              filename: disk.img
+              filename: disk.raw
               partscan: true
         mounts:
            - name: root
