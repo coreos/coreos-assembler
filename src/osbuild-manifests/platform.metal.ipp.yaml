@@ -3,6 +3,8 @@
 version: '2'
 pipelines:
   - name: raw-metal-image
+    build:
+      mpp-format-string: '{buildroot}'
     stages:
       - type: org.osbuild.copy
         inputs:
@@ -75,6 +77,8 @@ pipelines:
                 mpp-format-int: '{image.layout[''boot''].partnum}'
               target: /boot
   - name: metal
+    build:
+      mpp-format-string: '{buildroot}'
     stages:
       - type: org.osbuild.copy
         inputs:
@@ -89,6 +93,8 @@ pipelines:
               to:
                 mpp-format-string: 'tree:///{filename}'
   - name: raw-metal4k-image
+    build:
+      mpp-format-string: '{buildroot}'
     stages:
       - type: org.osbuild.copy
         inputs:
@@ -165,6 +171,8 @@ pipelines:
                 mpp-format-int: '{image4k.layout[''boot''].partnum}'
               target: /boot
   - name: metal4k
+    build:
+      mpp-format-string: '{buildroot}'
     stages:
       - type: org.osbuild.copy
         inputs:

@@ -3,6 +3,8 @@
 version: '2'
 pipelines:
   - name: raw-gcp-image
+    build:
+      mpp-format-string: '{buildroot}'
     stages:
       - type: org.osbuild.copy
         inputs:
@@ -52,6 +54,8 @@ pipelines:
                mpp-format-int: '{image.layout[''boot''].partnum}'
              target: /boot
   - name: raw-gcp-image-tar
+    build:
+      mpp-format-string: '{buildroot}'
     stages:
       - type: org.osbuild.tar
         inputs:
@@ -69,6 +73,8 @@ pipelines:
           selinux: false
           xattrs: false
   - name: gcp
+    build:
+      mpp-format-string: '{buildroot}'
     stages:
       - type: org.osbuild.gzip
         inputs:

@@ -2,6 +2,8 @@
 version: '2'
 pipelines:
   - name: raw-qemu-image
+    build:
+      mpp-format-string: '{buildroot}'
     stages:
       - type: org.osbuild.copy
         inputs:
@@ -79,6 +81,8 @@ pipelines:
                 mpp-format-int: '{image.layout[''boot''].partnum}'
               target: /boot
   - name: qemu
+    build:
+      mpp-format-string: '{qemu_stage_buildroot}'
     stages:
       - type: org.osbuild.qemu
         inputs:
