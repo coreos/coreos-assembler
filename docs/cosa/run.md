@@ -316,7 +316,7 @@ menuentry "CoreOS (UEFI Secure Boot)" {
         echo "Loading kernel"
         linux /rhcos-4.14.0-x86_64-live-kernel-x86_64 ignition.firstboot ignition.platform.id=metal console=ttyS0 coreos.live.rootfs_url=http://10.0.2.2:8000/pxe/rhcos-4.14.0-x86_64-live-rootfs.x86_64.img ignition.config.url=http://10.0.2.2:8000/pxe/config.ign
         echo "Loading initrd"
-        initrd rhcos-4.14.0-x86_64-live-initramfs.x86_64.img rhcos-4.14.0-x86_64-live-rootfs.x86_64.img
+        initrd rhcos-4.14.0-x86_64-live-initramfs.x86_64.img
 }
 
 $ cosa kola http-server
