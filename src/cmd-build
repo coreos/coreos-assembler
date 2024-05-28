@@ -41,7 +41,7 @@ Usage: coreos-assembler build --help
 
   Additional environment variables supported:
 
-  RPMOSTREE_EXTRA_ARGS         To pass extra arguments to 'rpm-ostree compose tree ...'
+  COSA_RPMOSTREE_ARGS          To pass extra arguments to 'rpm-ostree compose tree ...'
   RPMOSTREE_PRESERVE_TMPDIR    To keep the temporary compose rootfs from 'rpm-ostree compose tree ...'
 
 EOF
@@ -356,7 +356,7 @@ if [ ! -f "${workdir}"/builds/builds.json ] && [ ! -f "${fetch_stamp}" ] ; then
 fi
 composefs="$(jq -r .composefs < "${image_json}")"
 case "${composefs}" in
-    false) 
+    false)
     ;;
     true)
         ostree config --repo="${tmprepo}" set ex-integrity.composefs "true"
@@ -465,7 +465,7 @@ if [ "${commit}" == "${previous_commit}" ] && \
     ostree_tarfile_path=$(jq -r '.images.ostree.path' < "${previous_builddir}/meta.json")
     cp-reflink "${previous_builddir}/${previous_ostree_tarfile_path}" "${ostree_tarfile_path}"
     ostree_tarfile_sha256=$(jq -r '.images.ostree.sha256' < "${previous_builddir}/meta.json")
-    
+
     ostree_oci_manifest_path="${name}-${buildid}-ostree.${basearch}-manifest.json"
     skopeo inspect --raw oci-archive:"${ostree_tarfile_path}" > tmp/manifest.json
     /usr/lib/coreos-assembler/finalize-artifact tmp/manifest.json "${ostree_oci_manifest_path}"
@@ -497,7 +497,7 @@ else
                  "--label=io.openshift.build.versions=machine-os=${buildid}"
                 )
     fi
-    
+
     last_build_manifest=()
     if rpm-ostree compose container-encapsulate --help |grep -q -e "--previous-build-manifest"; then
       # Use the last stable release if buildfetch used
