@@ -227,13 +227,13 @@ pipelines:
                 - '$ignition_firstboot'
                 - mpp-format-string: '{extra_kargs}'
             inputs:
-            images:
-              type: org.osbuild.containers
-              origin: org.osbuild.source
-              mpp-resolve-images:
-                images:
-                  - source: $container_repo
-                    tag: $container_tag
+              images:
+                type: org.osbuild.containers
+                origin: org.osbuild.source
+                mpp-resolve-images:
+                  images:
+                    - source: $container_repo
+                      tag: $container_tag
       - type: org.osbuild.ostree.aleph
         options:
           coreos_compat: true
