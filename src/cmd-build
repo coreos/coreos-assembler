@@ -38,6 +38,8 @@ Usage: coreos-assembler build --help
   --autolock=VERSION    If no base lockfile used, create one from any arch build of `VERSION`.
                         Note this is automatically enabled when adding to an existing multi-arch
                         non-strict build.
+  --sign-composefs      Sign the composeFS metadata and attach the signature to the OSTree commit.
+                        This will also insert the public key into the rootfs for signature verification.
 
   Additional environment variables supported:
 
@@ -62,8 +64,9 @@ TAG=
 STRICT=
 CONFIG_ARCHIVE=1
 AUTOLOCK_VERSION=
+SIGN_COMPOSEFS=
 rc=0
-options=$(getopt --options hfFt: --longoptions tag:,help,fetch,force,version:,parent:,parent-build:,delay-meta-merge,force-nocache,force-image,skip-prune,prepare-only,strict,skip-config-archive,autolock:,versionary -- "$@") || rc=$?
+options=$(getopt --options hfFt: --longoptions tag:,help,fetch,force,version:,parent:,parent-build:,delay-meta-merge,force-nocache,force-image,skip-prune,prepare-only,strict,skip-config-archive,autolock:,versionary,sign-composefs -- "$@") || rc=$?
 [ $rc -eq 0 ] || {
     print_help
     exit 1
@@ -122,6 +125,9 @@ while true; do
         -t | --tag)
             shift
             TAG=$1
+            ;;
+        --sign-composefs)
+            SIGN_COMPOSEFS=true
             ;;
         --)
             shift
@@ -255,6 +261,11 @@ if [ -n "${PARENT_BUILD}" ]; then
         # and mark as partial since we only imported the commit object
         touch "${commitpartial}"
     fi
+fi
+
+# If composeFS signing is enabled, generate the signature key
+if test -n "${SIGN_COMPOSEFS}"; then
+    gen_ed25519_signing_key
 fi
 
 # Calculate image input checksum now and gather previous image build variables if any
@@ -447,6 +458,15 @@ buildid=$(jq -r '.["buildid"]' < tmp/meta.json)
 echo "New build ID: ${buildid}"
 # Also write out a ref with the build ID
 ostree --repo="${tmprepo}" refs --create "${buildid}" "${commit}"
+
+#Not sure if we need to add --generate-composefs-metadata as I couldn't find
+# any references in ostree man pages.
+# is is default since https://github.com/coreos/rpm-ostree/pull/4495/commits/dbe78217c0205dad372c84b2cf0a299003787952 ?
+
+# If composeFS signing is enabled, sign the last commit
+if test -n "${SIGN_COMPOSEFS}"; then
+    ostree sign --keys-file ${TMPDIR}/cosa_key.ed25519 ${commit} --repo=${tmprepo}
+fi
 
 "${dn}"/write-commit-object "${tmprepo}" "${commit}" "$(pwd)"
 
