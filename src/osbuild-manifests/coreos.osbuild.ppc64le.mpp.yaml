@@ -221,13 +221,13 @@ pipelines:
                 - '$ignition_firstboot'
                 - mpp-format-string: '{extra_kargs}'
             inputs:
-            images:
-              type: org.osbuild.containers
-              origin: org.osbuild.source
-              mpp-resolve-images:
-                images:
-                  - source: $container_repo
-                    tag: $container_tag
+              images:
+                type: org.osbuild.containers
+                origin: org.osbuild.source
+                mpp-resolve-images:
+                  images:
+                    - source: $container_repo
+                      tag: $container_tag
       # Drop the immutable bit here (we add it back later) because it
       # causes failures when cleaning up tmp dirs.
       - type: org.osbuild.chattr
