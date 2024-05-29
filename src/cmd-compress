@@ -121,7 +121,7 @@ def compress_one_builddir(builddir):
                 elif args.compressor == 'zstd':
                     runcmd(['zstd', '-19', '-c', f'-T{t}', filepath], stdout=f)
                 else:
-                    runcmd(['gzip', f'-{gzip_level}', '-c', filepath], stdout=f)
+                    runcmd(['gzip', f'-{gzip_level}', '-c', filepath], stdout=f)  # pylint: disable=E0606
             file_with_ext = file + ext
             filepath_with_ext = filepath + ext
             compressed_size = os.path.getsize(tmpfile)

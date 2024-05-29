@@ -229,6 +229,8 @@ def generate_iso():
         raise Exception("Live image generation requires `metal` image")
     img_metal = os.path.join(builddir, img_metal_obj['path'])
     img_metal_checksum = img_metal_obj['sha256']
+    img_metal4k = None
+    img_metal4k_checksum = None
     img_metal4k_obj = buildmeta.get_artifact_meta("metal4k", unmerged=True)["images"].get("metal4k")
     if not img_metal4k_obj:
         if not args.fast:
@@ -319,6 +321,8 @@ def generate_iso():
             '--description', pretty_name, '--checksum', img_metal_checksum,
             '--output', '/var/tmp/coreos-installer-output'] + fast_arg)
     if img_metal4k_obj:
+        assert img_metal4k
+        assert img_metal4k_checksum
         tmp_osmet4k = os.path.join(tmpinitrd_rootfs, img_metal4k_obj['path'] + '.osmet')
         print('Generating osmet file for 4k metal image')
         runcmd(['/usr/lib/coreos-assembler/runvm-coreos-installer',
@@ -695,7 +699,7 @@ boot
     # Write out the igninfo.json file. This is used by coreos-installer to know
     # how to embed the Ignition config.
     with open(os.path.join(tmpisocoreos, igninfo_file), 'w') as fh:
-        json.dump(igninfo_json, fh, indent=2, sort_keys=True)
+        json.dump(igninfo_json, fh, indent=2, sort_keys=True)  # pylint: disable=E0601
         fh.write('\n')
 
     # Define inputs and outputs

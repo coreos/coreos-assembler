@@ -169,10 +169,9 @@ class Build(_Build):
             ftype = (os.path.splitext(base)[1]).replace(".", "")
             ctype = f"{ftype}.{x}"
             if ctype not in KOJI_CG_TYPES and ftype in KOJI_CG_TYPES:
-                if x == "gz":
-                    compressor = gzip
-                elif x == "xz":
+                if x != "gz":
                     raise Exception("not supported yet")
+                compressor = gzip
 
                 new_path = os.path.join(self._tmpdir, base)
                 try:
