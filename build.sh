@@ -43,6 +43,13 @@ install_rpms() {
 
     frozendeps=""
 
+    # freeze edk2 for https://github.com/coreos/coreos-assembler/issues/3815
+    case "${arch}" in
+      x86_64|aarch64) frozendeps=$(echo edk2-{ovmf,aarch64}-20240214-7.fc40);;
+      *) ;;
+    esac
+
+
     # First, a general update; this is best practice.  We also hit an issue recently
     # where qemu implicitly depended on an updated libusbx but didn't have a versioned
     # requires https://bugzilla.redhat.com/show_bug.cgi?id=1625641
