@@ -309,3 +309,110 @@ spec:
 ```
 
 Then `oc rsh pods/cosa` and you should be able to `ls -al /dev/kvm` - and `cosa build` etc!
+
+## I'm a contributor investigating a CoreOS bug. How can I test my fixes?
+
+If you're a contributor unfamiliar with how CoreOS is built or provisioned and
+you're looking at fixing a bug in an RPM component (thank you!), here's the
+minimum you need to know to get started debugging and iterating on CoreOS. This
+requires access to podman and /dev/kvm.
+
+1. First, download the latest QEMU CoreOS image. If you're handling a bug
+   report from someone on the CoreOS team, they may have asked you to download a
+   specific image. Otherwise, for Fedora, you can get the latest from
+   https://fedoraproject.org/coreos/download or by using coreos-installer:
+
+   ```bash
+   # as privileged
+   podman run --privileged --rm -v .:/srv -w /srv quay.io/coreos/coreos-installer:release \
+       download --decompress -p qemu -f qcow2.xz
+   # as unprivileged, but relabeling the working directory
+   podman run --rm -v .:/srv:z -w /srv quay.io/coreos/coreos-installer:release \
+       download --decompress -p qemu -f qcow2.xz
+   ```
+
+   For RHCOS, you can get an image from the OpenShift mirrors at
+   https://mirror.openshift.com/pub/openshift-v4/x86_64/dependencies/rhcos/.
+   If you are a Red Hat employee, you can also access development builds not yet
+   available on the mirrors from the RHCOS release browser.
+
+2. Run the VM:
+
+   ```bash
+   # as privileged
+   podman run --privileged --rm -ti -v .:/srv quay.io/coreos-assembler/coreos-assembler \
+       run --bind-ro /srv,/var/srv fedora-coreos-40.20240519.3.0-qemu.x86_64.qcow2
+   # as unprivileged, but relabeling the working directory and passing /dev/kvm
+   podman run --rm -ti -v .:/srv:z --device /dev/kvm quay.io/coreos-assembler/coreos-assembler \
+       run --bind-ro /srv,/var/srv fedora-coreos-40.20240519.3.0-qemu.x86_64.qcow2
+   ```
+
+   This will mount the working directory at /srv as read-only in the VM so that you
+   can more easily pass data into it.
+
+3. Modifying the OS:
+
+   Once you're in the VM, you can test your changes multiple ways.
+
+   (1) One universal way is to build a custom RPM, and put it in the mounted
+   directory, then use `rpm-ostree override replace /srv/path/to/my.rpm`. You
+   can then either reboot, or `rpm-ostree apply-live` to have the change apply
+   immediately.
+
+   (2) Alternatively, you can do `rpm-ostree usroverlay` to make the rootfs writable. Then
+   you can do e.g. `rpm -Uvh /srv/my.rpm` for example as you would on a traditional system.
+   Or at this point, you can directly rsync over the output from your local
+   project build. E.g. assuming your build system uses a Makefile and it
+   supports `DESTDIR=`, on your host, you can do
+   `make install DESTDIR=/path/to/mounted/dir/subdir`, and in the VM, `rsync -av /srv/subdir/ /`.
+
+   (3) Another [newer approach](https://containers.github.io/bootable/) is to build
+   a derived container image with your changes. For example, to customize the rawhide image,
+   you can build a Containerfile like:
+
+   ```Dockerfile
+   FROM quay.io/fedora/fedora-coreos:rawhide
+   # using a locally built RPM
+   COPY my.rpm /
+   RUN dnf install /my.rpm && dnf clean all
+   # or using project output directly from a `make install DESTDIR=installtree/
+   COPY installtree/ /tmp
+   RUN rsync /tmp/ / && rm -rf /tmp
+   ```
+
+   You can build this image, then copy it to the VM as an OCI archive:
+
+   ```
+   podman build -t localhost/my-image .
+   skopeo copy containers-storage:localhost/my-image oci-archive:/path/to/mounted/dir/my.ociarchive
+   ```
+
+   And then on the VM:
+
+   ```
+   rpm-ostree rebase ostree-unverified-image:oci-archive:/srv/my.ociarchive
+   ```
+
+   (4) That said, sometimes you just have to build FCOS/RHCOS from scratch. In that case, follow
+   the steps in https://coreos.github.io/coreos-assembler/building-fcos/ and see
+   the other sections on this page for ways to modify inputs (e.g. custom RPMs or rootfs content).
+   But roughly, the flow looks something like this:
+
+   ```bash
+   # for building FCOS
+   cosa init https://github.com/coreos/fedora-coreos-config
+   # for building SCOS
+   cosa init --variant c9s https://github.com/openshift/os
+   # copy any modifications in e.g. the overrides/rpm directory
+   cp /path/to/my.rpm overrides/rpm/
+   # or overrides/rootfs directory
+   (cd /path/to/my/project && make install DESTDIR=/path/to/overrides/rootfs)
+   # now we're ready to build
+   cosa fetch && cosa build
+   # to run the freshly built image
+   cosa run
+   # to build the live ISO
+   cosa buildextend-metal && cosa buildextend-live --fast
+   # to run the live ISO
+   cosa run -p qemu-iso
+   ```
