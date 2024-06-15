@@ -143,7 +143,7 @@ func (qc *Cluster) NewMachineWithQemuOptions(userdata *conf.UserData, options pl
 	var primaryDisk platform.Disk
 	if options.PrimaryDisk != "" {
 		var diskp *platform.Disk
-		if diskp, err = platform.ParseDisk(options.PrimaryDisk); err != nil {
+		if diskp, err = platform.ParseDisk(options.PrimaryDisk, true); err != nil {
 			return nil, errors.Wrapf(err, "parsing primary disk spec '%s'", options.PrimaryDisk)
 		}
 		primaryDisk = *diskp
