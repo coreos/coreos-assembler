@@ -70,7 +70,7 @@ type Test struct {
 	RequiredTag          string        // if specified, test is filtered by default unless tag is provided -- defaults to none
 	Description          string        // test description
 
-	// Whether the primary disk is multipathed.
+	// Whether the primary disk is multipathed. Deprecated in favour of PrimaryDisk.
 	MultiPathDisk bool
 
 	// Sizes of additional empty disks to attach to the node, followed by
@@ -78,13 +78,18 @@ type Test struct {
 	// "5G:mpath,foo,bar"]) -- defaults to none.
 	AdditionalDisks []string
 
+	// Size of primary disk to attach to the node, followed by
+	// comma-separated list of optional options (e.g. "20G:mpath"]).
+	PrimaryDisk string
+
 	// InjectContainer will cause the ostree base image to be injected into the target
 	InjectContainer bool
 
 	// Minimum amount of memory in MB required for test.
 	MinMemory int
 
-	// Minimum amount of primary disk in GB required for test.
+	// Minimum amount of primary disk in GB required for test. Deprecated in favour
+	// of PrimaryDisk.
 	MinDiskSize int
 
 	// Additional amount of NICs required for test.
