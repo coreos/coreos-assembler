@@ -41,6 +41,7 @@ type Options struct {
 	NbdDisk       bool
 	MultiPathDisk bool
 	Native4k      bool
+	Disk512e      bool
 	Nvme          bool
 
 	//Option to create a temporary software TPM - true by default

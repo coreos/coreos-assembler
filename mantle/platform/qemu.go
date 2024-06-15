@@ -89,16 +89,17 @@ type QEMUMachine interface {
 
 // Disk holds the details of a virtual disk.
 type Disk struct {
-	Size          string   // disk image size in bytes, optional suffixes "K", "M", "G", "T" allowed.
-	BackingFile   string   // raw disk image to use.
-	BackingFormat string   // qcow2, raw, etc.  If unspecified will be autodetected.
-	Channel       string   // virtio (default), nvme, scsi
-	DeviceOpts    []string // extra options to pass to qemu -device. "serial=XXXX" makes disks show up as /dev/disk/by-id/virtio-<serial>
-	DriveOpts     []string // extra options to pass to -drive
-	SectorSize    int      // if not 0, override disk sector size
-	NbdDisk       bool     // if true, the disks should be presented over nbd:unix socket
-	MultiPathDisk bool     // if true, present multiple paths
-	Wwn           uint64   // Optional World wide name for the SCSI disk. If not set or set to 0, a random one will be generated. Used only with "channel=scsi". Must be an integer
+	Size              string   // disk image size in bytes, optional suffixes "K", "M", "G", "T" allowed.
+	BackingFile       string   // raw disk image to use.
+	BackingFormat     string   // qcow2, raw, etc.  If unspecified will be autodetected.
+	Channel           string   // virtio (default), nvme, scsi
+	DeviceOpts        []string // extra options to pass to qemu -device. "serial=XXXX" makes disks show up as /dev/disk/by-id/virtio-<serial>
+	DriveOpts         []string // extra options to pass to -drive
+	SectorSize        int      // if not 0, override disk sector size
+	LogicalSectorSize int      // if not 0, override disk sector size
+	NbdDisk           bool     // if true, the disks should be presented over nbd:unix socket
+	MultiPathDisk     bool     // if true, present multiple paths
+	Wwn               uint64   // Optional World wide name for the SCSI disk. If not set or set to 0, a random one will be generated. Used only with "channel=scsi". Must be an integer
 
 	attachEndPoint string   // qemuPath to attach to
 	dstFileName    string   // the prepared file
@@ -108,6 +109,7 @@ type Disk struct {
 func ParseDisk(spec string) (*Disk, error) {
 	var channel string
 	sectorSize := 0
+	logicalSectorSize := 0
 	serialOpt := []string{}
 	multipathed := false
 	var wwn uint64
@@ -123,6 +125,9 @@ func ParseDisk(spec string) (*Disk, error) {
 			channel = value
 		case "4k":
 			sectorSize = 4096
+		case "512e":
+			sectorSize = 4096
+			logicalSectorSize = 512
 		case "mpath":
 			multipathed = true
 		case "serial":
@@ -139,12 +144,13 @@ func ParseDisk(spec string) (*Disk, error) {
 	}
 
 	return &Disk{
-		Size:          fmt.Sprintf("%dG", size),
-		Channel:       channel,
-		DeviceOpts:    serialOpt,
-		SectorSize:    sectorSize,
-		MultiPathDisk: multipathed,
-		Wwn:           wwn,
+		Size:              fmt.Sprintf("%dG", size),
+		Channel:           channel,
+		DeviceOpts:        serialOpt,
+		SectorSize:        sectorSize,
+		LogicalSectorSize: logicalSectorSize,
+		MultiPathDisk:     multipathed,
+		Wwn:               wwn,
 	}, nil
 }
 
@@ -1171,7 +1177,11 @@ func (builder *QemuBuilder) addDiskImpl(disk *Disk, primary bool) error {
 		channel = "virtio"
 	}
 	if disk.SectorSize != 0 {
-		diskOpts = append(diskOpts, fmt.Sprintf("physical_block_size=%[1]d,logical_block_size=%[1]d", disk.SectorSize))
+		logical := disk.LogicalSectorSize
+		if logical == 0 {
+			logical = disk.SectorSize
+		}
+		diskOpts = append(diskOpts, fmt.Sprintf("physical_block_size=%d,logical_block_size=%d", disk.SectorSize, logical))
 	}
 	// Primary disk gets bootindex 1, all other disks have unspecified
 	// bootindex, which means lower priority.

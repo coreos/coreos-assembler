@@ -145,8 +145,12 @@ func (qc *Cluster) NewMachineWithQemuOptions(userdata *conf.UserData, options pl
 		channel = "nvme"
 	}
 	sectorSize := 0
+	logicalSectorSize := 0
 	if qc.flight.opts.Native4k {
 		sectorSize = 4096
+	} else if qc.flight.opts.Disk512e {
+		sectorSize = 4096
+		logicalSectorSize = 512
 	}
 	multiPathDisk := options.MultiPathDisk || qc.flight.opts.MultiPathDisk
 	var diskSize string
@@ -156,11 +160,12 @@ func (qc *Cluster) NewMachineWithQemuOptions(userdata *conf.UserData, options pl
 		diskSize = qc.flight.opts.DiskSize
 	}
 	primaryDisk := platform.Disk{
-		BackingFile:   qc.flight.opts.DiskImage,
-		Channel:       channel,
-		Size:          diskSize,
-		SectorSize:    sectorSize,
-		MultiPathDisk: multiPathDisk,
+		BackingFile:       qc.flight.opts.DiskImage,
+		Channel:           channel,
+		Size:              diskSize,
+		SectorSize:        sectorSize,
+		LogicalSectorSize: logicalSectorSize,
+		MultiPathDisk:     multiPathDisk,
 	}
 
 	if options.OverrideBackingFile != "" {
