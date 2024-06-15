@@ -191,6 +191,7 @@ Here's an example `kola.json`:
     "platforms": "qemu",
     "tags": "sometagname needs-internet skip-base-checks othertag",
     "requiredTag": "special",
+    "primaryDisk": ["20G:mpath"],
     "additionalDisks": [ "5G" ],
     "minMemory": 4096,
     "minDisk": 15,
@@ -229,7 +230,8 @@ If a test has a `requiredTag`, it is run only if the required tag is specified.
 In the example above, the test would only run if `--tag special` was provided.
 
 The `additionalDisks` key has the same semantics as the `--add-disk` argument
-to `qemuexec`. It is currently only supported on `qemu`.
+to `qemuexec`. It is currently only supported on `qemu`. The `primaryDisk` key
+also supports the same syntax and controls the primary boot disk.
 
 The `injectContainer` boolean if set will cause the framework to inject
 the ostree base image container into the target system; the path can be
