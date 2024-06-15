@@ -231,7 +231,9 @@ In the example above, the test would only run if `--tag special` was provided.
 
 The `additionalDisks` key has the same semantics as the `--add-disk` argument
 to `qemuexec`. It is currently only supported on `qemu`. The `primaryDisk` key
-also supports the same syntax and controls the primary boot disk.
+also supports the same syntax and controls the primary boot disk. Only for the
+`primaryDisk` key, the size can be omitted (e.g. `:mpath`), in which case the
+qcow2 will not be resized.
 
 The `injectContainer` boolean if set will cause the framework to inject
 the ostree base image container into the target system; the path can be
