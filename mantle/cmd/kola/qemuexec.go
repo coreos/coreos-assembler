@@ -139,8 +139,12 @@ func buildDiskFromOptions() *platform.Disk {
 		channel = "nvme"
 	}
 	sectorSize := 0
+	logicalSectorSize := 0
 	if kola.QEMUOptions.Native4k {
 		sectorSize = 4096
+	} else if kola.QEMUOptions.Disk512e {
+		sectorSize = 4096
+		logicalSectorSize = 512
 	}
 	options := []string{}
 	if kola.QEMUOptions.DriveOpts != "" {
@@ -155,13 +159,14 @@ func buildDiskFromOptions() *platform.Disk {
 	// Build the disk definition. Note that if kola.QEMUOptions.DiskImage is
 	// "" we'll just end up with a blank disk image, which is what we want.
 	disk := &platform.Disk{
-		BackingFile:   kola.QEMUOptions.DiskImage,
-		Channel:       channel,
-		Size:          size,
-		SectorSize:    sectorSize,
-		DriveOpts:     options,
-		MultiPathDisk: kola.QEMUOptions.MultiPathDisk,
-		NbdDisk:       kola.QEMUOptions.NbdDisk,
+		BackingFile:       kola.QEMUOptions.DiskImage,
+		Channel:           channel,
+		Size:              size,
+		SectorSize:        sectorSize,
+		LogicalSectorSize: logicalSectorSize,
+		DriveOpts:         options,
+		MultiPathDisk:     kola.QEMUOptions.MultiPathDisk,
+		NbdDisk:           kola.QEMUOptions.NbdDisk,
 	}
 	return disk
 }
