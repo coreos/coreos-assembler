@@ -140,34 +140,33 @@ func (qc *Cluster) NewMachineWithQemuOptions(userdata *conf.UserData, options pl
 		builder.MemoryMiB = 4096 // SE needs at least 4GB
 	}
 
-	channel := "virtio"
-	if qc.flight.opts.Nvme || options.Nvme {
-		channel = "nvme"
-	}
-	sectorSize := 0
-	logicalSectorSize := 0
-	if qc.flight.opts.Native4k {
-		sectorSize = 4096
-	} else if qc.flight.opts.Disk512e {
-		sectorSize = 4096
-		logicalSectorSize = 512
-	}
-	multiPathDisk := options.MultiPathDisk || qc.flight.opts.MultiPathDisk
-	var diskSize string
-	if options.MinDiskSize > 0 {
-		diskSize = fmt.Sprintf("%dG", options.MinDiskSize)
-	} else {
-		diskSize = qc.flight.opts.DiskSize
-	}
-	primaryDisk := platform.Disk{
-		BackingFile:       qc.flight.opts.DiskImage,
-		Channel:           channel,
-		Size:              diskSize,
-		SectorSize:        sectorSize,
-		LogicalSectorSize: logicalSectorSize,
-		MultiPathDisk:     multiPathDisk,
+	var primaryDisk platform.Disk
+	if options.PrimaryDisk != "" {
+		var diskp *platform.Disk
+		if diskp, err = platform.ParseDisk(options.PrimaryDisk); err != nil {
+			return nil, errors.Wrapf(err, "parsing primary disk spec '%s'", options.PrimaryDisk)
+		}
+		primaryDisk = *diskp
 	}
 
+	if qc.flight.opts.Nvme || options.Nvme {
+		primaryDisk.Channel = "nvme"
+	}
+	if qc.flight.opts.Native4k {
+		primaryDisk.SectorSize = 4096
+	} else if qc.flight.opts.Disk512e {
+		primaryDisk.SectorSize = 4096
+		primaryDisk.LogicalSectorSize = 512
+	}
+	if options.MultiPathDisk || qc.flight.opts.MultiPathDisk {
+		primaryDisk.MultiPathDisk = true
+	}
+	if options.MinDiskSize > 0 {
+		primaryDisk.Size = fmt.Sprintf("%dG", options.MinDiskSize)
+	} else if qc.flight.opts.DiskSize != "" {
+		primaryDisk.Size = qc.flight.opts.DiskSize
+	}
+	primaryDisk.BackingFile = qc.flight.opts.DiskImage
 	if options.OverrideBackingFile != "" {
 		primaryDisk.BackingFile = options.OverrideBackingFile
 	}
