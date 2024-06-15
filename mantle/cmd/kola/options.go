@@ -157,6 +157,7 @@ func init() {
 	bv(&kola.QEMUOptions.NbdDisk, "qemu-nbd-socket", false, "Present the disks over NBD socket to qemu")
 	bv(&kola.QEMUOptions.MultiPathDisk, "qemu-multipath", false, "Enable multiple paths for the main disk")
 	bv(&kola.QEMUOptions.Native4k, "qemu-native-4k", false, "Force 4k sectors for main disk")
+	bv(&kola.QEMUOptions.Disk512e, "qemu-512e", false, "Force 512e layout for main disk")
 	bv(&kola.QEMUOptions.Nvme, "qemu-nvme", false, "Use NVMe for main disk")
 	bv(&kola.QEMUOptions.Swtpm, "qemu-swtpm", true, "Create temporary software TPM")
 	ssv(&kola.QEMUOptions.BindRO, "qemu-bind-ro", nil, "Inject a host directory; this does not automatically mount in the guest")
