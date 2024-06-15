@@ -38,7 +38,7 @@ func (a *API) vmname() string {
 func ParseDisk(spec string, zone string) (*compute.AttachedDisk, error) {
 	var diskInterface string
 
-	size, diskmap, err := util.ParseDiskSpec(spec)
+	size, diskmap, err := util.ParseDiskSpec(spec, false)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse disk spec %q: %w", spec, err)
 	}

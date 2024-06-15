@@ -106,7 +106,7 @@ type Disk struct {
 	nbdServCmd     exec.Cmd // command to serve the disk
 }
 
-func ParseDisk(spec string) (*Disk, error) {
+func ParseDisk(spec string, allowNoSize bool) (*Disk, error) {
 	var channel string
 	sectorSize := 0
 	logicalSectorSize := 0
@@ -114,7 +114,7 @@ func ParseDisk(spec string) (*Disk, error) {
 	multipathed := false
 	var wwn uint64
 
-	size, diskmap, err := util.ParseDiskSpec(spec)
+	size, diskmap, err := util.ParseDiskSpec(spec, allowNoSize)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse disk spec %q: %w", spec, err)
 	}
@@ -143,8 +143,12 @@ func ParseDisk(spec string) (*Disk, error) {
 		}
 	}
 
+	sizeStr := ""
+	if size > 0 {
+		sizeStr = fmt.Sprintf("%dG", size)
+	}
 	return &Disk{
-		Size:              fmt.Sprintf("%dG", size),
+		Size:              sizeStr,
 		Channel:           channel,
 		DeviceOpts:        serialOpt,
 		SectorSize:        sectorSize,
@@ -1302,7 +1306,7 @@ func (builder *QemuBuilder) AddDisk(disk *Disk) error {
 // AddDisksFromSpecs adds multiple secondary disks from their specs.
 func (builder *QemuBuilder) AddDisksFromSpecs(specs []string) error {
 	for _, spec := range specs {
-		if disk, err := ParseDisk(spec); err != nil {
+		if disk, err := ParseDisk(spec, false); err != nil {
 			return errors.Wrapf(err, "parsing additional disk spec '%s'", spec)
 		} else if err = builder.AddDisk(disk); err != nil {
 			return errors.Wrapf(err, "adding additional disk '%s'", spec)
