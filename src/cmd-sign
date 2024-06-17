@@ -71,6 +71,8 @@ def parse_args():
     robosig.add_argument("--gpgkeypath", help="path to directory containing "
                          "public keys to use for signature verification",
                          default="/etc/pki/rpm-gpg")
+    robosig.add_argument("--verify-only", action='store_true',
+                         help="verify only that the sigs are valid and make public")
     robosig.set_defaults(func=cmd_robosignatory)
 
     return parser.parse_args()
@@ -98,6 +100,8 @@ def cmd_robosignatory(args):
 
     # these two are different enough that they deserve separate handlers
     if args.ostree:
+        if args.verify_only:
+            raise Exception("Cannot use --verify-only with --ostree")
         robosign_ostree(args, s3, build, gpgkey)
     else:
         assert args.images
@@ -215,21 +219,22 @@ def robosign_images(args, s3, build, gpgkey):
         'checksum': f'sha256:{img["sha256"]}'
     } for img in build['images'].values()]
 
-    response = send_request_and_wait_for_response(
-        request_type='artifacts-sign',
-        config=args.fedmsg_conf,
-        request_timeout=ROBOSIGNATORY_REQUEST_TIMEOUT_SEC,
-        priority=ROBOSIGNATORY_MESSAGE_PRIORITY,
-        environment=fedenv,
-        body={
-            'build_id': args.build,
-            'basearch': args.arch,
-            'artifacts': artifacts,
-            **args.extra_keys
-        }
-    )
+    if not args.verify_only:
+        response = send_request_and_wait_for_response(
+            request_type='artifacts-sign',
+            config=args.fedmsg_conf,
+            request_timeout=ROBOSIGNATORY_REQUEST_TIMEOUT_SEC,
+            priority=ROBOSIGNATORY_MESSAGE_PRIORITY,
+            environment=fedenv,
+            body={
+                'build_id': args.build,
+                'basearch': args.arch,
+                'artifacts': artifacts,
+                **args.extra_keys
+            }
+        )
 
-    validate_response(response)
+        validate_response(response)
 
     # download sigs and verify (use /tmp to avoid gpg hitting ENAMETOOLONG)
     with tempfile.TemporaryDirectory(prefix="cosa-sign-") as d:
