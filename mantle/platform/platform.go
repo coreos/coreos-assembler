@@ -436,7 +436,7 @@ func checkSystemdUnitStuck(output string, m Machine) error {
 		}
 		NRestarts, _ = strconv.Atoi(string(out))
 		if NRestarts >= 2 {
-			return fmt.Errorf("systemd units %s has %v restarts", unit, NRestarts)
+			return fmt.Errorf("systemd unit %s has %v restarts", unit, NRestarts)
 		}
 	}
 	return nil
@@ -489,7 +489,6 @@ func CheckMachine(ctx context.Context, m Machine) error {
 	// check systemd version on host to see if we can use `busctl --json=short`
 	var systemdVer int
 	var systemdCmd, failedUnitsCmd, activatingUnitsCmd string
-	var systemdFailures bool
 	minSystemdVer := 240
 	out, stderr, err = m.SSH("rpm -q --queryformat='%{VERSION}\n' systemd")
 	if err != nil {
@@ -511,31 +510,23 @@ func CheckMachine(ctx context.Context, m Machine) error {
 	if err != nil {
 		return fmt.Errorf("failed to query systemd for failed units: %s: %v: %s", out, err, stderr)
 	}
-	err = checkSystemdUnitFailures(string(out))
-	if err != nil {
-		plog.Error(err)
-		systemdFailures = true
-	}
+	failed_err := checkSystemdUnitFailures(string(out))
 
 	// Ensure no systemd units stuck in activating state
 	out, stderr, err = m.SSH(activatingUnitsCmd)
 	if err != nil {
 		return fmt.Errorf("failed to query systemd for activating units: %s: %v: %s", out, err, stderr)
 	}
-	err = checkSystemdUnitStuck(string(out), m)
-	if err != nil {
-		plog.Error(err)
-		systemdFailures = true
-	}
+	stuck_err := checkSystemdUnitStuck(string(out), m)
 
-	if systemdFailures && !m.RuntimeConf().AllowFailedUnits {
+	if (failed_err != nil || stuck_err != nil) && !m.RuntimeConf().AllowFailedUnits {
 		if m.RuntimeConf().SSHOnTestFailure {
-			plog.Error("dropping to shell: detected failed or stuck systemd units")
+			plog.Errorf("dropping to shell: detected failed or stuck systemd units: %v; %v", failed_err, stuck_err)
 			if err := Manhole(m); err != nil {
 				plog.Errorf("failed to get terminal via ssh: %v", err)
 			}
 		}
-		return fmt.Errorf("detected failed or stuck systemd units")
+		return fmt.Errorf("detected failed or stuck systemd units: %v; %v", failed_err, stuck_err)
 	}
 
 	return ctx.Err()
