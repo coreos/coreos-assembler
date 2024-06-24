@@ -1,0 +1,303 @@
+#!/usr/bin/python3 -u
+
+# This script parses a policy.yaml file, which outlines the specific
+# pruning actions required for each stream and the age threshold for
+# deleting artifacts within them.
+# Example of policy.yaml
+# rawhide:
+#     # all cloud images
+#     cloud-uploads: 2 years
+#     # artifacts in meta.json's `images` key
+#     images: 2 years
+#     images-keep: [qemu, live-iso]
+#     build: 3 years
+
+import argparse
+import json
+import yaml
+import collections
+import datetime
+import os
+import boto3
+from dateutil.relativedelta import relativedelta
+import requests
+from tenacity import retry, retry_if_exception_type
+
+retry_requests_exception = (
+    retry_if_exception_type(requests.Timeout)
+    | retry_if_exception_type(requests.ReadTimeout)
+    | retry_if_exception_type(requests.ConnectTimeout)
+    | retry_if_exception_type(requests.ConnectionError)
+)
+
+from cosalib.gcp import remove_gcp_image
+from cosalib.aws import deregister_ami, delete_snapshot
+from cosalib.builds import BUILDFILES
+from cosalib.cmdlib import (
+    retry_stop_long,
+    retry_wait_long,
+    retry_boto_exception,
+    retry_callback,
+)
+
+Build = collections.namedtuple("Build", ["id", "timestamp", "images", "arch"])
+# set metadata caching to 5m
+CACHE_MAX_AGE_METADATA = 60 * 5
+
+
+def main():
+    args = parse_args()
+    bucket, prefix = args.url.split("/", 1)
+    stream = args.stream
+    # Boto3 loads credentials from ~/.aws/config by default and we can change
+    # this default location by setting the AWS_CONFIG_FILE environment variable.
+    # The alternative is to manually pass ACCESS_KEY and SECRET_KEY which isn't favourable.
+    if args.aws_config_file:
+        os.environ["AWS_CONFIG_FILE"] = args.aws_config_file
+
+    gcp_cloud_config = {
+        "gcp": {
+            "json-key": args.gcp_json_key,
+            "project": args.gcp_project,
+        }
+    }
+    # These lists are up to date as of schema hash
+    # 4c19aed3b3d84af278780bff63728510bb3e70613e4c4eef8cabd7939eb31bd8. If changing
+    # this hash, ensure that the list of supported and unsupported artifacts below
+    # is up to date.
+    supported = ["amis", "gcp"]
+    unsupported = []
+
+    with open(f"{args.policy}") as f:
+        policy = yaml.safe_load(f)
+
+    if stream not in policy:
+        print(f"No pruning policy specified for {stream} stream in policy.yaml")
+        return
+    else:
+        s3_client = boto3.client("s3")
+        # If the build key is set in the policy file, then the cloud-uploads key must
+        # also be present, and the duration of cloud-uploads must be equal or shorter
+        if "build" in policy[stream].keys():
+            cloud_uploads_check(policy[stream])
+
+        # Base URL for Fedora CoreOS builds
+
+        buildJsonData = get_json_from_s3(bucket, prefix + "/builds/builds.json")
+        if buildJsonData is None:
+            print(f"No builds.json found for {stream} in {bucket} bucket")
+            return
+
+        # action is basically whatever is needed to be pruned for the respective stream
+        for action in policy[stream]:
+            duration = policy[stream][action]
+            duration_in_months = get_months(duration)
+            refDate = datetime.datetime.now() - relativedelta(months=int(duration_in_months))
+
+            print(f"Pruning {duration} old {action} for {stream} builds")
+            # Enumerating in reverse to go from the oldest build to the newest one
+            for index, build in enumerate(reversed(buildJsonData["builds"])):
+                build_id = build["id"]
+                if "policy-cleanup" in build.keys():
+                    # If we have already pruned the spedified resources for this
+                    # build as per builds.json, we skip through it.
+                    if action in build["policy-cleanup"]:
+                        print(f"The {build_id} has already had {action} pruning completed")
+                        continue
+                timestamp = build_id.split('.')[1]
+                buildDate = datetime.datetime(int(timestamp[0:4]), int(timestamp[4:6]), int(timestamp[-2:]))
+                if buildDate < refDate:
+                    for arch in build["arches"]:
+                        meta_url = f"/builds/{build_id}/{arch}/meta.json"
+                        meta_json = get_json_from_s3(bucket, prefix + meta_url)
+                        if meta_json is None:
+                            print(f"Failed to get meta.json for {build_id} for {arch}")
+                            return
+                        images = {
+                            "amis": meta_json.get("amis") or [],
+                            "gcp": meta_json.get("gcp") or [],
+                        }
+                        currentBuild = Build(
+                            id=build_id,
+                            timestamp=timestamp,
+                            images=images,
+                            arch=arch,
+                        )
+                        match action:
+                            case "cloud-uploads":
+                                # Prunes only AWS and GCP at the moment
+                                delete_cloud_resources(currentBuild, gcp_cloud_config, args.dry_run)
+                                if not args.dry_run:
+                                    build.setdefault("policy-cleanup", []).append(action)
+                                    buildJsonData["builds"][index] = build
+                            # Not implemented yet
+                            case "build":
+                                print(f"Deleting key {prefix}{build.id} from bucket {bucket}")
+                                # Delete the build's directory in S3
+                                # S3().delete_object(args.bucket, f"{args.prefix}{str(currentBuild.id)}")
+                else:
+                    break
+        if not args.dry_run:
+            with open("builds/builds.json", "w") as json_file:
+                json_file.write(json.dumps(buildJsonData))
+            # This copies the local builds.json and updates the S3 bucket version.
+            s3_copy(s3_client, BUILDFILES['list'], bucket, f'{prefix}/builds/builds.json',
+                    CACHE_MAX_AGE_METADATA, args.acl, extra_args={},
+                    dry_run=args.dry_run)
+
+
+def get_json_from_s3(bucket, key):
+    # Create an S3 client
+    s3 = boto3.client("s3")
+
+    try:
+        # Fetch the JSON file from S3
+        response = s3.get_object(Bucket=bucket, Key=key)
+
+        # Read the content of the file
+        content = response["Body"].read().decode("utf-8")
+
+        # Parse the JSON content
+        json_content = json.loads(content)
+
+        return json_content
+
+    except Exception as e:
+        print(f"Error fetching the JSON file from S3 {bucket}/{key}: {e}")
+        return None
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(prog="coreos-assembler cloud-prune")
+    parser.add_argument("--policy", default='./policy.yaml', type=str,
+                        help="Path to policy.yaml file")
+    parser.add_argument("--dry-run", help="Don't actually delete anything",
+                        action='store_true')
+    parser.add_argument("--stream", type=str, help="Fedora stream", required=True)
+
+    parser.add_argument("--gcp-json-key", help="GCP Service Account JSON Auth",
+                        default=os.environ.get("GCP_JSON_AUTH"))
+    parser.add_argument("--gcp-project", help="GCP Project name",
+                        default=os.environ.get("GCP_PROJECT_NAME"))
+
+    subparsers = parser.add_subparsers(dest="cmd", title="subcommands")
+    subparsers.required = True
+
+    s3 = subparsers.add_parser('s3', help='Prune s3 buckets')
+    s3.add_argument("url", metavar='<BUCKET>[/PREFIX]',
+                    help="Bucket and path prefix in which to upload")
+    s3.add_argument("--acl", help="ACL for objects",
+                    action='store', default='private')
+    s3.add_argument("--aws-config-file", default=os.environ.get("AWS_CONFIG_FILE"),
+                    help="Path to AWS config file")
+    return parser.parse_args()
+
+
+# Handling just AWS and GCP at the moment
+def delete_cloud_resources(build, gcp_cloud_config, dry_run):
+    errors = []
+    totalBuildAMIs = len(build.images.get("amis") or "")
+    GCPImage = 0
+    # Unregister AMIs and snapshots
+    if not build.images.get("amis", []):
+        print(f"No AMIs for {build.id} for {build.arch}")
+    if not build.images.get("gcp", []):
+        print(f"No GCP image for {build.id} for {build.arch}")
+    else:
+        GCPImage = 1
+
+    if dry_run:
+        print(f"Would delete {totalBuildAMIs} amis/snapshots and {GCPImage} GCP image for {build.id} for {build.arch}")
+        return
+
+    for ami in build.images.get("amis", []):
+        print(f"Deleting cloud uploads for {build.id}")
+        region_name = ami.get("name")
+        ami_id = ami.get("hvm")
+        snapshot_id = ami.get("snapshot")
+        if ami_id and region_name:
+            try:
+                deregister_ami(ami_id, region=region_name)
+            except Exception as e:
+                errors.append(e)
+        if snapshot_id and region_name:
+            try:
+                delete_snapshot(snapshot_id, region=region_name)
+            except Exception as e:
+                errors.append(e)
+
+    gcp = build.images.get("gcp")
+    if gcp:
+        gcp_image = gcp.get("image")
+        json_key = gcp_cloud_config.get("gcp", {}).get("json-key")
+        project = gcp_cloud_config.get("gcp", {}).get("project")
+        if gcp_image and json_key and project:
+            try:
+                remove_gcp_image(gcp_image, json_key, project)
+            except Exception as e:
+                errors.append(e)
+
+    if len(errors) != 0:
+        print(f"Found errors when removing build {build.id}:")
+        for e in errors:
+            raise Exception(e)
+
+
+def cloud_uploads_check(actions):
+    if "cloud-uploads" in actions.keys():
+        cloud_uploads_duration = get_months(actions["cloud-uploads"])
+        build_duration = get_months(actions["build"])
+        assert cloud_uploads_duration < build_duration
+    else:
+        print("cloud-uploads must be set or be less than builds pruning duration in policy.yaml")
+
+
+def get_months(duration):
+    val, unit = duration.split(" ")
+    if unit in ["years" or "year"]:
+        months = int(val) * 12
+    elif unit in ["months" or "month"]:
+        months = int(val)
+    else:
+        print("Duration of pruning for resources is only supported in years or months")
+        raise Exception
+    return months
+
+
+@retry(
+    stop=retry_stop_long,
+    wait=retry_wait_long,
+    retry=retry_boto_exception,
+    retry_error_callback=retry_callback,
+)
+def s3_copy(s3_client, src, bucket, key, max_age, acl, extra_args={}, dry_run=False):
+    extra_args = dict(extra_args)
+    if "ContentType" not in extra_args:
+        if key.endswith(".json"):
+            extra_args["ContentType"] = "application/json"
+        elif key.endswith(".tar"):
+            extra_args["ContentType"] = "application/x-tar"
+        elif key.endswith(".xz"):
+            extra_args["ContentType"] = "application/x-xz"
+        elif key.endswith(".gz"):
+            extra_args["ContentType"] = "application/gzip"
+        elif key.endswith(".iso"):
+            extra_args["ContentType"] = "application/x-iso9660-image"
+        else:
+            # use a standard MIME type for "binary blob" instead of the default
+            # 'binary/octet-stream' AWS slaps on
+            extra_args["ContentType"] = "application/octet-stream"
+    upload_args = {"CacheControl": f"max-age={max_age}", "ACL": acl}
+    upload_args.update(extra_args)
+
+    print((f"{'Would upload' if dry_run else 'Uploading'} {src} to "
+           f"s3://{bucket}/{key} {extra_args if len(extra_args) else ''}"))
+
+    if dry_run:
+        return
+
+    s3_client.upload_file(Filename=src, Bucket=bucket, Key=key, ExtraArgs=upload_args)
+
+
+if __name__ == "__main__":
+    main()
