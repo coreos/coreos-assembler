@@ -5,17 +5,31 @@ pipelines:
     build:
       mpp-format-string: '{buildroot}'
     stages:
-      - type: org.osbuild.copy
-        inputs:
-          tree:
-            type: org.osbuild.tree
-            origin: org.osbuild.pipeline
-            references:
-              - name:raw-image
-        options:
-          paths:
-            - from: input://tree/disk.img
-              to: tree:///disk.img
+      - mpp-if: qemu_secex == ''
+        then:
+          type: org.osbuild.copy
+          inputs:
+            tree:
+              type: org.osbuild.tree
+              origin: org.osbuild.pipeline
+              references:
+                - name:raw-image
+          options:
+            paths:
+              - from: input://tree/disk.img
+                to: tree:///disk.img
+        else:
+          type: org.osbuild.copy
+          inputs:
+            tree:
+              type: org.osbuild.tree
+              origin: org.osbuild.pipeline
+              references:
+                - name:raw-secex-image
+          options:
+            paths:
+              - from: input://tree/disk.img
+                to: tree:///disk.img
       # Increase the size to the cloud image size
       - type: org.osbuild.truncate
         options:
@@ -50,9 +64,9 @@ pipelines:
              partition:
                mpp-format-int: '{image.layout[''boot''].partnum}'
              target: /boot
-      # If on s390x then run zipl, which must run after the kernel
+      # If on s390x without secex then run zipl, which must run after the kernel
       # arguments get finalized in the coreos.platform stage above
-      - mpp-if: arch == 's390x'
+      - mpp-if: arch == 's390x' and qemu_secex == ''
         then:
           type: org.osbuild.zipl.inst
           options:
@@ -80,6 +94,52 @@ pipelines:
               partition:
                 mpp-format-int: '{image.layout[''boot''].partnum}'
               target: /boot
+      # If on s390x with secex then setup dm-verity for 'boot'
+      - mpp-if: arch == 's390x' and qemu_secex != ''
+        then:
+          type: org.osbuild.dmverity
+          options:
+            root_hash_file: "bootfs_hash"
+          devices:
+            data_device:
+              type: org.osbuild.loopback
+              options:
+                filename: disk.img
+                start:
+                  mpp-format-int: '{image_secex.layout[''boot''].start}'
+                size:
+                  mpp-format-int: '{image_secex.layout[''boot''].size}'
+            hash_device:
+              type: org.osbuild.loopback
+              options:
+                filename: disk.img
+                start:
+                  mpp-format-int: '{image_secex.layout[''boothash''].start}'
+                size:
+                  mpp-format-int: '{image_secex.layout[''boothash''].size}'
+      # If on s390x with secex then setup dm-verity for 'root'
+      - mpp-if: arch == 's390x' and qemu_secex != ''
+        then:
+          type: org.osbuild.dmverity
+          options:
+            root_hash_file: "rootfs_hash"
+          devices:
+            data_device:
+              type: org.osbuild.loopback
+              options:
+                filename: disk.img
+                start:
+                  mpp-format-int: '{image_secex.layout[''root''].start}'
+                size:
+                  mpp-format-int: '{image_secex.layout[''root''].size}'
+            hash_device:
+              type: org.osbuild.loopback
+              options:
+                filename: disk.img
+                start:
+                  mpp-format-int: '{image_secex.layout[''roothash''].start}'
+                size:
+                  mpp-format-int: '{image_secex.layout[''roothash''].size}'
   - name: qemu
     build:
       mpp-format-string: '{qemu_stage_buildroot}'
@@ -99,3 +159,31 @@ pipelines:
             type: qcow2
             compression: false
             compat: '1.1'
+      # If on s390x with secex then export hash for 'boot'
+      - mpp-if: arch == 's390x' and qemu_secex != ''
+        then:
+          type: org.osbuild.copy
+          inputs:
+            tree:
+              type: org.osbuild.tree
+              origin: org.osbuild.pipeline
+              references:
+                - name:raw-qemu-image
+          options:
+            paths:
+              - from: input://tree/bootfs_hash
+                to: tree:///bootfs_hash
+      # If on s390x with secex then export hash for 'root'
+      - mpp-if: arch == 's390x' and qemu_secex != ''
+        then:
+          type: org.osbuild.copy
+          inputs:
+            tree:
+              type: org.osbuild.tree
+              origin: org.osbuild.pipeline
+              references:
+                - name:raw-qemu-image
+          options:
+            paths:
+              - from: input://tree/rootfs_hash
+                to: tree:///rootfs_hash

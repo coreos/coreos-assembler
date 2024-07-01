@@ -62,11 +62,10 @@ if ! "${kola_args[@]}" -- "${base_qemu_args[@]}" \
     exit 1
 fi
 
-cat "${runvm_console}"
-
 if ! grep -q "Success, added sdboot to image and executed zipl" "${runvm_console}"; then
-   echo "Could not find success message, genprotimg failed."
-   exit 1
+    echo "Could not find success message, genprotimg failed."
+    cat "${runvm_console}"
+    exit 1
 fi
 
 exit 0

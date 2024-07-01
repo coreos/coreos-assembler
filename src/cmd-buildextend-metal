@@ -34,13 +34,12 @@ EOF
 }
 
 # Parse options
-hostkey=
 genprotimgvm=/data.secex/genprotimgvm.qcow2
 ignition_pubkey=
 rc=0
 build=
 force=
-options=$(getopt --options h --longoptions help,force,build:,hostkey:,genprotimgvm: -- "$@") || rc=$?
+options=$(getopt --options h --longoptions help,force,build:,genprotimgvm: -- "$@") || rc=$?
 [ $rc -eq 0 ] || {
     print_help
     exit 1
@@ -57,10 +56,6 @@ while true; do
             ;;
         --build)
             build=$2
-            shift
-            ;;
-        --hostkey)
-            hostkey=$(realpath "$2")
             shift
             ;;
         --genprotimgvm)
@@ -156,13 +151,6 @@ fi
 img=${name}-${build}-${image_type}${image_suffix}.${basearch}.${image_format}
 path=${PWD}/${img}
 
-ignition_platform_id="${image_type}"
-
-# dasd and metal4k are different disk formats, but they're still metal
-if [ "${image_type}" = dasd ] || [ "${image_type}" = metal4k ]; then
-    ignition_platform_id=metal
-fi
-
 # We do some extra handling of the rootfs here; it feeds into size estimation.
 rootfs_type=$(jq -re .rootfs < "${image_json}")
 
@@ -190,20 +178,9 @@ disk_args=()
 qemu_args=()
 # SecureExecution extra stuff
 if [[ $secure_execution -eq "1" ]]; then
-    ignition_pubkey=$(mktemp -p "${tmp_builddir}")
-    disk_args+=("--with-secure-execution" "--write-ignition-pubkey-to" "${ignition_pubkey}")
-    if [ -z "${hostkey}" ]; then
-        if [ ! -f "${genprotimgvm}" ]; then
-            fatal "No genprotimgvm provided at ${genprotimgvm}"
-        fi
-        genprotimg_img="${PWD}/secex-genprotimg.img"
-        qemu-img create -f raw "${genprotimg_img}" 512M
-        mkfs.ext4 "${genprotimg_img}"
-        qemu_args+=("-drive" "if=none,id=genprotimg,format=raw,file=${genprotimg_img}" \
-                            "-device" "virtio-blk,serial=genprotimg,drive=genprotimg")
-    else
-        qemu_args+=("-drive" "if=none,id=hostkey,format=raw,file=$hostkey,readonly=on" \
-                            "-device" "virtio-blk,serial=hostkey,drive=hostkey")
+    disk_args+=("--with-secure-execution")
+    if [ ! -f "${genprotimgvm}" ]; then
+        fatal "No genprotimgvm provided at ${genprotimgvm}"
     fi
 fi
 
@@ -219,11 +196,13 @@ rootfs_size_mb="$(jq '."estimate-mb".final' "$PWD/tmp/ostree-size.json")"
 # the platforms require and we want a "default" disk size that has some
 # free space.
 nonroot_partition_sizes=513
-# In the Secure Execution case, we need to also include the sizes of the verity
-# partitions so that they don't "eat into" the 35% buffer (though note this is
-# all blown away on first boot anyway).
-if [[ $secure_execution -eq "1" ]]; then
-    nonroot_partition_sizes=$((nonroot_partition_sizes + 128 + 256 + 1))
+# On s390x there is one more build - Secure Execution case, which has
+# different image layout. We add the sizes of the se and verity
+# partitions so that they don't "eat into" the 35% buffer (though note
+# this is all blown away on first boot anyway). For 's390x.mpp.yaml'
+# simplicity all s390x images have same size (of secex image).
+if [[ $basearch == "s390x" ]]; then
+    nonroot_partition_sizes=$((nonroot_partition_sizes + 200 + 128 + 256 + 1))
 fi
 metal_image_size_mb="$(( rootfs_size_mb + nonroot_partition_sizes ))"
 cloud_image_size_mb="$(jq -r ".size*1024" < "${image_json}")"
@@ -255,14 +234,13 @@ cat >"${image_dynamic_yaml}" << EOF
 buildid: "${build}"
 imgid: "${img}"
 ostree-commit: "${commit}"
-# Used by both create_disk.sh and runvm-osbuild
+# Used by runvm-osbuild
 container-imgref: "${container_imgref}"
 deploy-via-container: "${deploy_via_container}"
 osname: "${name}"
 ostree-container: "${ostree_container}"
 ostree-ref: "${ref}"
 extra-kargs-string: "${extra_kargs}"
-# Used by runvm-osbuild
 image-type: "${image_type}"
 ostree-repo: "${ostree_repo}"
 metal-image-size: "${metal_image_size_mb}"
@@ -274,10 +252,11 @@ platforms_json="${tmp_builddir}/platforms.json"
 yaml2json "${configdir}/platforms.yaml" "${platforms_json}"
 
 # Currently we only support OSBuild for qemu and metal disk images
+osbuild_extra_args=()
 if [ "${image_type}" == "qemu" ] || [ "${image_type}" == "metal" ] || [ "${image_type}" == "metal4k" ]; then
-    # Right now we don't have support fully fleshed out for secex on s390x
-    if [[ $secure_execution -ne "1" ]]; then
-        OSBUILD_SUPPORTED=1
+    OSBUILD_SUPPORTED=1
+    if [[ $secure_execution -eq "1" ]]; then
+        osbuild_extra_args+=("--secex" "1")
     fi
 fi
 
@@ -293,25 +272,42 @@ if [ "${OSBUILD_SUPPORTED:-}" != "" ] && [ "${COSA_USE_OSBUILD:-}" != "0" ]; the
     runvm_with_cache_snapshot "$snapshot" -- /usr/lib/coreos-assembler/runvm-osbuild                    \
                 --config "${image_for_disk_json}"                                                       \
                 --mpp "/usr/lib/coreos-assembler/osbuild-manifests/coreos.osbuild.${basearch}.mpp.yaml" \
-                --filepath "${path}.tmp"
+                --filepath "${path}.tmp" "${osbuild_extra_args[@]}"
 else
-    runvm "${qemu_args[@]}" -- \
-            /usr/lib/coreos-assembler/create_disk.sh \
-                --config "${image_for_disk_json}" \
-                --platform "${ignition_platform_id}" \
-                --platforms-json "${platforms_json}" \
-                "${disk_args[@]}"
-
-    # Now that we've created the image let's resize it to the desired
-    # size for qemu (and all images based on it).
-    if [[ $image_type == qemu ]]; then
-        qemu-img resize "${path}.tmp" "${cloud_image_size_mb}M"
-    fi
+    echo "OSBUILD_SUPPORTED is not supported or COSA_USE_OSBUILD is unset"
+    exit 1
 fi
 
-if [[ $secure_execution -eq "1" && -z "${hostkey}" ]]; then
+if [[ $secure_execution -eq "1" ]]; then
+    # SecureVM (holding Universal Key for all IBM Z Mainframes) requires scripts to execute genprotimg
+    se_script_dir="/usr/lib/coreos-assembler/secex-genprotimgvm-scripts"
+    genprotimg_img="${PWD}/secex-genprotimg.img"
+    genprotimg_dir=$(mktemp -p "${tmp_builddir}" -d)
+    cp "${se_script_dir}/genprotimg-script.sh" "${se_script_dir}/post-script.sh" "${genprotimg_dir}"
+    # Extra kargs with dm-verity hashes
+    secex_kargs="ignition.firstboot rootfs.roothash=$(<"${PWD}"/rootfs_hash) bootfs.roothash=$(<"${PWD}"/bootfs_hash)"
+    echo "${secex_kargs}" > "${genprotimg_dir}/parmfile"
+    virt-make-fs --format=raw --type=ext4 "${genprotimg_dir}" "${genprotimg_img}"
+    rm -rf "${genprotimg_dir}"
+    qemu_args+=("-drive" "if=none,id=genprotimg,format=raw,file=${genprotimg_img}" \
+                "-device" "virtio-blk,serial=genprotimg,drive=genprotimg")
+
+    # GPG keys used for protecting Ignition config
+    tmp_gpg_home=$(mktemp -p "${tmp_builddir}" -d)
+    ignition_pubkey=$(mktemp -p "${tmp_builddir}")
+    ignition_prikey=$(mktemp -p "${tmp_builddir}")
+    gpg --homedir "${tmp_gpg_home}" --batch --passphrase '' --yes --quick-gen-key "Secure Execution (secex) ${build}" rsa4096 encr none
+    gpg --homedir "${tmp_gpg_home}" --armor --export secex > "${ignition_pubkey}"
+    gpg --homedir "${tmp_gpg_home}" --armor --export-secret-key secex > "${ignition_prikey}"
+    exec 9<"${ignition_prikey}"
+    rm -rf "${tmp_gpg_home}" "${ignition_prikey}"
+    qemu_args+=("-add-fd" "fd=9,set=3" "-drive" "if=none,id=gpgkey,format=raw,file=/dev/fdset/3,readonly=on" \
+		"-device" "virtio-blk,serial=gpgkey,drive=gpgkey")
+
     /usr/lib/coreos-assembler/secex-genprotimgvm-scripts/runvm.sh \
         --genprotimgvm "${genprotimgvm}" -- "${qemu_args[@]}"
+    rm -f "${genprotimg_img}"
+    exec 9>&-
 fi
 
 /usr/lib/coreos-assembler/finalize-artifact "${path}.tmp" "${path}"
