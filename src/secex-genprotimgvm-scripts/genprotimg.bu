@@ -1,0 +1,75 @@
+variant: fcos
+version: 1.5.0
+passwd:
+  users:
+    - name: core
+      ssh_authorized_keys_local:
+        - id_rsa.pub
+      groups:
+        - wheel
+storage:
+  directories:
+    - path: /var/genprotimg
+    - path: /var/build
+  files:
+    - path: /etc/se-hostkeys/ibm-z-hostkey-1
+      overwrite: true
+      contents:
+        local: secex-hostkey
+    - path: /etc/do_genprotimg
+      overwrite: true
+      mode: 0755
+      contents:
+        inline: |
+          #!/bin/bash
+          set -euo pipefail
+          trap "rm -f /var/genprotimg/signal.file" EXIT
+          bash /var/build/genprotimg-script.sh &
+          while [ ! -e "/var/genprotimg/signal.file" ]; do
+              sleep 1
+          done
+          genprotimg -V --no-verify -i /var/genprotimg/vmlinuz -r /var/genprotimg/initrd.img  -p /var/genprotimg/parmfile -k /etc/se-hostkeys/ibm-z-hostkey-1 -o /var/genprotimg/se.img
+          rm -f /var/genprotimg/signal.file
+          bash /var/build/post-script.sh
+systemd:
+  units:
+    - name: serial-getty@.service
+      dropins:
+        - name: autologin-core.conf
+          contents: |
+            [Service]
+            TTYVTDisallocate=no
+            ExecStart=
+            ExecStart=-/usr/sbin/agetty --autologin core  -o '-p -f core' --noclear %I $TERM
+      mask: false
+    - name: autovt@.service
+      mask: false
+    - name: genprotimg.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=GenProtImg
+        ConditionKernelCommandLine=!ignition.firstboot
+        After=var-build.mount
+        [Service]
+        Type=oneshot
+        StandardOutput=journal+console
+        ExecStart=/etc/do_genprotimg
+        ExecStopPost=/sbin/halt
+        [Install]
+        WantedBy=default.target
+    - name: var-build.mount
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Mounts genprotimg build partition
+        ConditionKernelCommandLine=!ignition.firstboot
+        Requires=dev-disk-by\x2did-virtio\x2dgenprotimg.device
+        After=dev-disk-by\x2did-virtio\x2dgenprotimg.device
+        [Mount]
+        What=/dev/disk/by-id/virtio-genprotimg
+        Where=/var/build
+        Type=ext4
+        Options=rw,noatime
+        [Install]
+        WantedBy=default.target
