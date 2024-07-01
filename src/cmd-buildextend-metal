@@ -34,13 +34,12 @@ EOF
 }
 
 # Parse options
-hostkey=
 genprotimgvm=/data.secex/genprotimgvm.qcow2
 ignition_pubkey=
 rc=0
 build=
 force=
-options=$(getopt --options h --longoptions help,force,build:,hostkey:,genprotimgvm: -- "$@") || rc=$?
+options=$(getopt --options h --longoptions help,force,build:,genprotimgvm: -- "$@") || rc=$?
 [ $rc -eq 0 ] || {
     print_help
     exit 1
@@ -57,10 +56,6 @@ while true; do
             ;;
         --build)
             build=$2
-            shift
-            ;;
-        --hostkey)
-            hostkey=$(realpath "$2")
             shift
             ;;
         --genprotimgvm)
@@ -156,13 +151,6 @@ fi
 img=${name}-${build}-${image_type}${image_suffix}.${basearch}.${image_format}
 path=${PWD}/${img}
 
-ignition_platform_id="${image_type}"
-
-# dasd and metal4k are different disk formats, but they're still metal
-if [ "${image_type}" = dasd ] || [ "${image_type}" = metal4k ]; then
-    ignition_platform_id=metal
-fi
-
 # We do some extra handling of the rootfs here; it feeds into size estimation.
 rootfs_type=$(jq -re .rootfs < "${image_json}")
 
@@ -242,18 +230,15 @@ image_dynamic_yaml="${tmp_builddir}/image-dynamic.yaml"
 image_dynamic_json="${tmp_builddir}/image-dynamic.json"
 image_for_disk_json="${tmp_builddir}/image-for-disk.json"
 cat >"${image_dynamic_yaml}" << EOF
-# Used by create_disk.sh
 buildid: "${build}"
 imgid: "${img}"
 ostree-commit: "${commit}"
-# Used by both create_disk.sh and runvm-osbuild
 container-imgref: "${container_imgref}"
 deploy-via-container: "${deploy_via_container}"
 osname: "${name}"
 ostree-container: "${ostree_container}"
 ostree-ref: "${ref}"
 extra-kargs-string: "${extra_kargs}"
-# Used by runvm-osbuild
 image-type: "${image_type}"
 ostree-repo: "${ostree_repo}"
 metal-image-size: "${metal_image_size_mb}"
@@ -287,18 +272,8 @@ if [ "${OSBUILD_SUPPORTED:-}" != "" ] && [ "${COSA_USE_OSBUILD:-}" != "0" ]; the
                 --mpp "/usr/lib/coreos-assembler/osbuild-manifests/coreos.osbuild.${basearch}.mpp.yaml" \
                 --filepath "${path}.tmp" "${osbuild_extra_args[@]}"
 else
-    runvm "${qemu_args[@]}" -- \
-            /usr/lib/coreos-assembler/create_disk.sh \
-                --config "${image_for_disk_json}" \
-                --platform "${ignition_platform_id}" \
-                --platforms-json "${platforms_json}" \
-                "${disk_args[@]}"
-
-    # Now that we've created the image let's resize it to the desired
-    # size for qemu (and all images based on it).
-    if [[ $image_type == qemu ]]; then
-        qemu-img resize "${path}.tmp" "${cloud_image_size_mb}M"
-    fi
+    echo "OSBUILD_SUPPORTED is not supported or COSA_USE_OSBUILD is unset"
+    exit 1
 fi
 
 if [[ $secure_execution -eq "1" ]]; then
