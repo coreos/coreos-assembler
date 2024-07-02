@@ -109,6 +109,23 @@ $ cosa run --kargs 'foo bar'
 foo bar
 ```
 
+### FIPS mode
+
+For example, to test FIPS mode:
+
+```
+$ cosa run --kargs 'fips=1 boot=LABEL=boot'
+...
+[core@cosa-devsh ~]$ grep -o 'fips' /proc/cmdline
+fips
+[root@cosa-devsh ~]# update-crypto-policies --show
+FIPS
+[root@cosa-devsh ~]# fips-mode-setup --check
+FIPS mode is enabled.
+[root@cosa-devsh ~]# cat /proc/sys/crypto/fips_enabled
+1
+```
+
 ## Simulating a CoreOS install
 
 With `--qemu-iso` and `--add-disk`, it's possible to run through the interactive
