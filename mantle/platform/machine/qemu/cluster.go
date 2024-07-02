@@ -150,6 +150,12 @@ func (qc *Cluster) NewMachineWithQemuOptions(userdata *conf.UserData, options pl
 		primaryDisk = *diskp
 	}
 
+	if qc.flight.opts.Cex || options.Cex {
+		if err := builder.AddCexDevice(); err != nil {
+			return nil, err
+		}
+	}
+
 	if qc.flight.opts.Nvme || options.Nvme {
 		primaryDisk.Channel = "nvme"
 	}
