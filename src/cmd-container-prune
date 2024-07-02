@@ -1,0 +1,125 @@
+#!/usr/bin/python3 -u
+
+"""
+Prune containers from a remote registry
+according to the images age
+See cmd-cloud-prune for a policy file example
+"""
+
+import argparse
+import datetime
+import json
+import os
+import subprocess
+from dateutil.relativedelta import relativedelta
+import requests
+import yaml
+from cosalib.cmdlib import parse_fcos_version_to_timestamp_and_stream
+from cosalib.cmdlib import convert_duration_to_days
+
+# Dict of known streams
+STREAMS = {"next": 1, "testing": 2, "stable": 3,
+           "next-devel": 10, "testing-devel": 20,
+           "rawhide": 91, "branched": 92}
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(prog="coreos-assembler container-prune")
+    parser.add_argument("--policy", required=True, type=str, help="Path to policy YAML file")
+    parser.add_argument("--dry-run", help="Don't actually delete anything", action='store_true')
+    parser.add_argument("-v", help="Increase verbosity", action='store_true')
+    parser.add_argument("--registry-auth-file", default=os.environ.get("REGISTRY_AUTH_FILE"),
+                        help="Path to docker registry auth file. Directly passed to skopeo.")
+    parser.add_argument("--stream", type=str, help="CoreOS stream", required=True, choices=STREAMS.keys())
+    parser.add_argument("repository_url", help="container images URL")
+    return parser.parse_args()
+
+
+def skopeo_delete(repo, image, auth):
+
+    skopeo_args = ["skopeo", "delete", f"docker://{repo}:{image}"]
+    if auth is not None:
+        skopeo_args.append(f"--authfile {auth}")
+
+    subprocess.check_output(skopeo_args)
+
+
+def get_update_graph(stream):
+
+    url = f"https://builds.coreos.fedoraproject.org/updates/{stream}.json"
+    r = requests.get(url, timeout=5)
+    if r.status_code != 200:
+        raise Exception(f"Could not download update graph for {stream}. HTTP {r.status_code}")
+    return r.json()
+
+
+def main():
+
+    args = parse_args()
+
+    # Load the policy file
+    with open(args.policy, "r") as f:
+        policy = yaml.safe_load(f)
+    if args.stream not in policy:
+        print(f"Stream {args.stream} is not defined in policy file; exiting...")
+        return
+    if 'containers' not in policy[args.stream]:
+        print(f"No containers section for {args.stream} stream in policy; exiting...")
+        return
+    policy = policy[args.stream]["containers"]
+
+    print(f"Pulling tags from {args.repository_url}")
+    # This is a JSON object:
+    # {"Repository": "quay.io/jbtrystramtestimages/fcos",
+    #    "Tags": [
+    #        "40.20"40.20240301.1.0",.....]}
+    tags_data = subprocess.check_output(["skopeo", "list-tags",
+                                         f"docker://{args.repository_url}"])
+
+    tags_json = json.loads(tags_data)
+    tags = tags_json['Tags']
+    # Compute the date before we should prune images
+    # today - prune-policy
+    today = datetime.datetime.now()
+    date_limit = today - relativedelta(days=convert_duration_to_days(policy))
+    print(f"This will delete any images older than {date_limit} from the stream {args.stream}")
+
+    stream_id = STREAMS[args.stream]
+    barrier_releases = set()
+    # Get the update graph for stable streams
+    if args.stream in ['stable', 'testing', 'next']:
+        update_graph = get_update_graph(args.stream)['releases']
+        # Keep only the barrier releases
+        barrier_releases = set([release["version"] for release in update_graph if "barrier" in release])
+
+    for tag in tags:
+        # silently skip known moving tags (next, stable...)
+        if tag in STREAMS:
+            continue
+
+        try:
+            (build_date, tag_stream) = parse_fcos_version_to_timestamp_and_stream(tag)
+        except Exception:
+            print(f"WARNING: Ignoring unexpected tag: {tag}")
+            continue
+        if stream_id != tag_stream:
+            if args.v:
+                print(f"Skipping tag {tag} not in {args.stream} stream")
+            continue
+        # Make sure this is not a barrier release (for stable streams)
+        # For non-production streams barrier_releases will be empty so
+        # this will be no-op
+        if tag in barrier_releases:
+            print(f"Release {tag} is a barrier release, keeping.")
+            continue
+
+        if build_date < date_limit:
+            if args.dry_run:
+                print(f"Dry-run: would prune image {args.repository_url}:{tag}")
+            else:
+                print(f"Production tag {tag} is older than {date_limit.strftime("%Y%m%d")}, pruning.")
+                skopeo_delete(args.repository_url, tag, args.registry_auth_file)
+
+
+if __name__ == "__main__":
+    main()
