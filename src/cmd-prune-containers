@@ -1,0 +1,166 @@
+#!/bin/bash
+set -euo pipefail
+
+# Prune containers from a remote registry
+# according to the images age
+
+print_help() {
+    cat 1>&2 <<'EOF'
+Usage: prune-containers [OPTIONS] REGISTRY_URL
+
+  Prune old FCOS images from remote container registry.
+
+  Example: prune-containers --devel 3w quay.io/fedora/fedora-coreos
+
+  The following options are available:
+
+  -a      Path of the authentication file. Passed directly to skopeo. 
+  -d      Maximum age of images from the development streams. 
+          If not specified, no images will be deleted.
+          See durations section below for the accepted arguments.
+  -p      Maximum age of images from de production streams.
+          See durations section below for the accepted arguments.
+          If not specified, no images will be deleted.
+  -z      Dry run: do not delete any image, just print what action would be done.
+  -h      Print this help
+
+Age syntax: age of the images can be specified in years, months, days or weeks.
+Use Y/y for years, M/m for months, D/d for days, W/w for weeks.
+
+EOF
+}
+
+convert_to_seconds() {
+  local input=$1
+  local duration=${input:0:-1}
+  local unit=${input: -1}
+  local seconds=0
+  
+  case $unit in
+    "y" | "Y")
+      seconds=$(( duration * 365 * 24 * 60 * 60 ))
+      ;;
+    "m" | "M")
+      seconds=$(( duration * 30 * 24 * 60 * 60 ))
+      ;;
+    "w" | "W")
+      seconds=$(( duration * 7 * 24 * 60 * 60 ))
+      ;;
+    "d" |  "D")
+      seconds=$(( duration * 24 * 60 * 60 ))
+      ;;
+    *)
+      echo "Invalid unit. Please use y (years), m (months), w (weeks), or d (days)."
+      exit 1
+      ;;
+  esac
+  
+  echo $seconds
+}
+
+REPOSITORY_URL=""
+PROD_AGE=0
+prod_age_seconds=$(date +%s)
+DEVEL_AGE=0
+devel_age_seconds=$(date +%s)
+SKOPEO_ARGS=""
+DRY_RUN=false
+
+while getopts 'hza:d:p:' options; do
+  case "$options" in
+    h)
+      print_help
+      exit 1
+      ;;
+    a)
+      SKOPEO_ARGS+="--authfile $OPTARG "
+      ;;
+    d)
+      DEVEL_AGE=$OPTARG
+      devel_age_seconds=convert_to_seconds $OPTARG
+      ;;
+    p)
+      PROD_AGE=$OPTARG
+      prod_age_seconds=convert_to_seconds $OPTARG
+      ;;
+    z)
+      DRY_RUN=true
+      ;;
+    ?)
+      echo "error: unrecognized option: $VALUE"
+      echo "Usage: prune-containers -d 2w -p 2m quay.io/organization/repository"
+      exit 2
+      ;;
+    esac
+done    
+shift "$((OPTIND -1))"
+
+if [ "$#" -ne 1 ]; then
+  echo "Error: REGISTRY_URL argument is required."
+  echo "Usage: prune-containers -d 2w -p 2m REGISTRY_URL"
+  exit 1
+fi
+
+REPOSITORY_URL=$1
+
+skopeo_delete() {
+
+  image=${REPOSITORY_URL}:$1
+  if $DRY_RUN; then 
+    echo "Dry-run mode, would delete ${image}."
+  else
+    skopeo delete ${SKOPEO_ARGS} docker://${image}
+  fi
+
+}
+
+echo "Pulling tag list from ${REPOSITORY_URL}"
+# This is a JSON object: 
+# {"Repository": "quay.io/jbtrystramtestimages/fcos",
+#    "Tags": [
+#        "40.20"40.20240301.1.0",.....]}
+tags_json=$(skopeo list-tags docker://"${REPOSITORY_URL}")
+
+tags=$(jq -r '.Tags[]' <<< "${tags_json}")
+
+# To compare the dates we convert them into seconds since epoch
+today=$(date +%s)
+
+for tag in $tags; do
+  
+  # ignore the named moving tags ("stable", "next" etc..)
+  if [[ "$tag" == "stable" || "$tag" == "next" || "$tag" == "testing" \
+        || "$tag" == "rawhide" || "$tag" == "testing-devel" \
+        || "$tag" == "next-devel" ||"$tag" == "branched" ]]; then
+    echo "skipping $tag tag."
+    continue
+  fi  
+
+  # split the build id into an array
+  IFS='.' read -r -a build_id <<< "${tag}"
+  build_date=${build_id[1]}
+  stream=${build_id[2]}
+
+  # assign the number of seconds between the build date 
+  # and today. Then we directly compare with the policy
+  # value
+  tag_age=$(( today - $(date -d "${build_date}" +%s) ))
+
+  # test for production streams. Production stream id are 1, 2 and 3
+  if [[ $stream -eq 1 || $stream -eq 2 || $stream -eq 3 ]]; then 
+    if  [[ $tag_age -gt "$prod_age_seconds" ]]; then
+      echo "Production tag ${tag} is older than ${PROD_AGE}, pruning." 
+      skopeo_delete "$tag"
+    fi    
+  fi
+
+  # test for devel streams
+  if [[ $stream -eq 10 || $stream -eq 20 || $stream -eq 91 || $stream -eq 92 ]]; then 
+    if  [[ $tag_age -gt "$devel_age_seconds" ]]; then
+      echo "Devel tag ${tag} is older than ${DEVEL_AGE}, pruning." 
+      skopeo_delete "$tag"
+    fi    
+  fi
+
+done  
+
