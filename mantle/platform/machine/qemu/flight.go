@@ -55,6 +55,9 @@ type Options struct {
 	SecureExecutionIgnitionPubKey string
 	SecureExecutionHostKey        string
 
+	// Option to create IBM cex based luks encryption
+	Cex bool
+
 	*platform.Options
 }
 
