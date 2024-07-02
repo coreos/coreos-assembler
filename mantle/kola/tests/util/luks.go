@@ -17,6 +17,7 @@ import (
 	"regexp"
 
 	"github.com/coreos/coreos-assembler/mantle/kola/cluster"
+	"github.com/coreos/coreos-assembler/mantle/kola/tests/coretest"
 	"github.com/coreos/coreos-assembler/mantle/platform"
 )
 
@@ -78,4 +79,27 @@ func LUKSSanityTest(c cluster.TestCluster, tangd TangServer, m platform.Machine,
 	}
 	luksDump = c.MustSSH(m, "sudo cryptsetup luksDump "+rootPart)
 	mustMatch(c, "Cipher: *aes", luksDump)
+}
+
+// LUKSSanityCEXTest verifies that the rootfs is encrypted with Cex based LUKS
+func LUKSSanityCEXTest(c cluster.TestCluster, m platform.Machine, rootPart string) {
+	var err error
+	luksDump := c.MustSSH(m, "sudo cryptsetup luksDump "+rootPart)
+	mustMatch(c, "cipher: paes-*", luksDump)
+	mustNotMatch(c, "Cipher: *cipher_null-ecb", luksDump)
+	mustMatch(c, "0: paes-verification-pattern", luksDump)
+	mustNotMatch(c, "9: *coreos", luksDump)
+
+	err = m.Reboot()
+
+	if err != nil {
+		c.Fatalf("Failed to reboot the machine: %v", err)
+	}
+	luksDump = c.MustSSH(m, "sudo cryptsetup luksDump "+rootPart)
+	mustMatch(c, "cipher: paes-*", luksDump)
+
+	err = coretest.TestRHCOSGrowfs()
+	if err != nil {
+		c.Fatalf("Failed to run ignition-ostree-growfs.service: %v", err)
+	}
 }
