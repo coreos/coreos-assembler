@@ -55,21 +55,20 @@ def main():
     if args.aws_config_file:
         os.environ["AWS_CONFIG_FILE"] = args.aws_config_file
 
-    url = args.url
-    if not url:
+    if not args.url:
         if args.build:
             stream = get_stream_for_build(args.build)
             if args.stream and stream != args.stream:
                 raise Exception("A conflicting --build and --stream were provided")
         else:
             stream = args.stream or 'testing-devel'
-        url = f'{FCOS_STREAMS_URL}/{stream}/builds'
-    if url.startswith("s3://"):
-        fetcher = S3Fetcher(url)
-    elif url.startswith("http://") or url.startswith("https://"):
-        fetcher = HTTPFetcher(url)
-    elif url.startswith("file://") or url.startswith("/"):
-        fetcher = LocalFetcher(url)
+        args.url = f'{FCOS_STREAMS_URL}/{stream}/builds'
+    if args.url.startswith("s3://"):
+        fetcher = S3Fetcher(args.url)
+    elif args.url.startswith("http://") or args.url.startswith("https://"):
+        fetcher = HTTPFetcher(args.url)
+    elif args.url.startswith("file://") or args.url.startswith("/"):
+        fetcher = LocalFetcher(args.url)
     else:
         raise Exception("Invalid scheme: only file://, s3://, and http(s):// supported")
 
