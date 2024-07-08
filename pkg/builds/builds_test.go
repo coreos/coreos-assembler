@@ -30,7 +30,7 @@ func TestBuildsMeta(t *testing.T) {
 		t.Fatalf("failed to write the test data %v", err)
 	}
 
-	b, err := getBuilds(tmpd)
+	b, err := GetBuilds(tmpd)
 	if err != nil {
 		t.Fatalf("failed to find the builds")
 	}

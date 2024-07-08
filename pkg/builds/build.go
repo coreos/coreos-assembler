@@ -96,7 +96,7 @@ func ReadBuild(dir, buildID, arch string) (*Build, string, error) {
 	}
 
 	if buildID == "" {
-		b, err := getBuilds(dir)
+		b, err := GetBuilds(dir)
 		if err != nil {
 			return nil, "", err
 		}

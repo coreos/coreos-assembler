@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -80,6 +81,27 @@ func GetLocalFastBuildQemu() (string, error) {
 
 func GetLatestLocalBuild(root, arch string) (*LocalBuild, error) {
 	return GetLocalBuild(root, "latest", arch)
+}
+
+func GetRelativeLocalBuildId(root, relid string) (string, error) {
+	// resolve relative builds, e.g. -1, -2
+	relBuild, err := strconv.ParseInt(relid, 10, 0)
+	if err != nil {
+		return "", fmt.Errorf("invalid relative build index %s: %w", relid, err)
+	}
+	if relBuild >= 0 {
+		return "", fmt.Errorf("invalid relative build index %s: not negative", relid)
+	}
+	// we know it'll fit in an int since we used bitSize: 0 above
+	relBuildInt := int(-relBuild)
+	builds, err := cosa.GetBuilds(filepath.Join(root, "builds"))
+	if err != nil {
+		return "", err
+	}
+	if relBuildInt >= len(builds.Builds) {
+		return "", fmt.Errorf("relative build index %d does not exist", -relBuild)
+	}
+	return builds.Builds[relBuildInt].ID, nil
 }
 
 func GetLocalBuild(root, buildid, arch string) (*LocalBuild, error) {

@@ -151,7 +151,7 @@ func TestMergeMeta(t *testing.T) {
 
 	// Create a fake build dir
 	fakeBuildID := "999.1"
-	bjson, _ := json.Marshal(buildsJSON{
+	bjson, _ := json.Marshal(BuildsJSON{
 		SchemaVersion: "0.1.0",
 		Builds: []build{
 			{
