@@ -67,7 +67,7 @@ func init() {
 	bv(&kola.Options.SSHOnTestFailure, "ssh-on-test-failure", false, "SSH into a machine when tests fail")
 	sv(&kola.Options.Stream, "stream", "", "CoreOS stream ID (e.g. for Fedora CoreOS: stable, testing, next)")
 	sv(&kola.Options.CosaWorkdir, "workdir", "", "coreos-assembler working directory")
-	sv(&kola.Options.CosaBuildId, "build", "", "coreos-assembler build ID")
+	sv(&kola.Options.CosaBuildId, "build", "", "coreos-assembler build ID (or e.g. -1, -2, for previous builds)")
 	sv(&kola.Options.CosaBuildArch, "arch", coreosarch.CurrentRpmArch(), "The target architecture of the build")
 	sv(&kola.Options.AppendButane, "append-butane", "", "Path to Butane config which is merged with test code")
 	sv(&kola.Options.AppendIgnition, "append-ignition", "", "Path to Ignition config which is merged with test code")
@@ -271,6 +271,14 @@ func syncOptionsImpl(useCosa bool) error {
 
 		if kola.Options.CosaWorkdir == "" {
 			kola.Options.CosaWorkdir = "."
+		}
+
+		if strings.HasPrefix(kola.Options.CosaBuildId, "-") {
+			var err error
+			kola.Options.CosaBuildId, err = util.GetRelativeLocalBuildId(kola.Options.CosaWorkdir, kola.Options.CosaBuildId)
+			if err != nil {
+				return err
+			}
 		}
 
 		localbuild, err := util.GetLocalBuild(kola.Options.CosaWorkdir,
