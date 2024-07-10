@@ -249,32 +249,22 @@ cat "${image_json}" "${image_dynamic_json}" | jq -s add > "${image_for_disk_json
 platforms_json="${tmp_builddir}/platforms.json"
 yaml2json "${configdir}/platforms.yaml" "${platforms_json}"
 
-# Currently we only support OSBuild for qemu and metal disk images
 osbuild_extra_args=()
-if [ "${image_type}" == "qemu" ] || [ "${image_type}" == "metal" ] || [ "${image_type}" == "metal4k" ]; then
-    OSBUILD_SUPPORTED=1
-    if [[ $secure_execution -eq "1" ]]; then
-        osbuild_extra_args+=("--secex" "1")
-    fi
+if [[ $secure_execution -eq "1" ]]; then
+    osbuild_extra_args+=("--secex" "1")
 fi
 
-# Run with OSBuild if it's supported, unless it is explicitly disabled with COSA_USE_OSBUILD=0
-if [ "${OSBUILD_SUPPORTED:-}" != "" ] && [ "${COSA_USE_OSBUILD:-}" != "0" ]; then
-    # In the jenkins pipelines we build the qemu image first and that operation
-    # will do a lot of the same work required for later artifacts (metal, metal4k, etc)
-    # so we want the cached output from that run to persist. The later artifacts get
-    # built in parallel, so we need to be able to access the cache by multiple processes,
-    # so for those we'll set `snapshot=on` so that each will get their own disk image.
-    # This is OK because we don't checkpoint (cache) any of those stages.
-    [ "${image_type}" == "qemu" ] && snapshot="off" || snapshot="on"
-    runvm_with_cache_snapshot "$snapshot" -- /usr/lib/coreos-assembler/runvm-osbuild                    \
-                --config "${image_for_disk_json}"                                                       \
-                --mpp "/usr/lib/coreos-assembler/osbuild-manifests/coreos.osbuild.${basearch}.mpp.yaml" \
-                --filepath "${path}.tmp" "${osbuild_extra_args[@]}"
-else
-    echo "OSBUILD_SUPPORTED is not supported or COSA_USE_OSBUILD is unset"
-    exit 1
-fi
+# In the jenkins pipelines we build the qemu image first and that operation
+# will do a lot of the same work required for later artifacts (metal, metal4k, etc)
+# so we want the cached output from that run to persist. The later artifacts get
+# built in parallel, so we need to be able to access the cache by multiple processes,
+# so for those we'll set `snapshot=on` so that each will get their own disk image.
+# This is OK because we don't checkpoint (cache) any of those stages.
+[ "${image_type}" == "qemu" ] && snapshot="off" || snapshot="on"
+runvm_with_cache_snapshot "$snapshot" -- /usr/lib/coreos-assembler/runvm-osbuild                    \
+            --config "${image_for_disk_json}"                                                       \
+            --mpp "/usr/lib/coreos-assembler/osbuild-manifests/coreos.osbuild.${basearch}.mpp.yaml" \
+            --filepath "${path}.tmp" "${osbuild_extra_args[@]}"
 
 if [[ $secure_execution -eq "1" ]]; then
     # SecureVM (holding Universal Key for all IBM Z Mainframes) requires scripts to execute genprotimg
