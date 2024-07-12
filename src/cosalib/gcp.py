@@ -24,10 +24,12 @@ def remove_gcp_image(gcp_id, json_key, project):
         runcmd([
             'ore', 'gcloud', 'delete-images', gcp_id,
             '--json-key', json_key,
-            '--project', project
+            '--project', project,
+            '--allow-missing'
         ])
+        print(f"GCP: successfully removed image {gcp_id}")
     except SystemExit:
-        raise Exception("Failed to remove image")
+        raise Exception(f"Failed to remove image {gcp_id}")
 
 
 @retry(reraise=True, stop=stop_after_attempt(3))

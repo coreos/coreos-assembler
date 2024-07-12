@@ -1,4 +1,3 @@
-import boto3
 import json
 import os
 import subprocess
@@ -6,9 +5,7 @@ import sys
 
 from cosalib.cmdlib import (
     flatten_image_yaml,
-    retry_boto_exception,
-    retry_callback,
-    retry_stop
+    runcmd
 )
 from tenacity import (
     retry,
@@ -16,20 +13,21 @@ from tenacity import (
 )
 
 
-@retry(stop=retry_stop, retry=retry_boto_exception,
-       before_sleep=retry_callback)
-def deregister_ami(ami_id, region):
-    print(f"AWS: deregistering AMI {ami_id} in {region}")
-    ec2 = boto3.client('ec2', region_name=region)
-    ec2.deregister_image(ImageId=ami_id)
-
-
-@retry(stop=retry_stop, retry=retry_boto_exception,
-       before_sleep=retry_callback)
-def delete_snapshot(snap_id, region):
-    print(f"AWS: removing snapshot {snap_id} in {region}")
-    ec2 = boto3.client('ec2', region_name=region)
-    ec2.delete_snapshot(SnapshotId=snap_id)
+@retry(reraise=True, stop=stop_after_attempt(3))
+def deregister_aws_resource(ami, snapshot, region, credentials_file):
+    print(f"AWS: deregistering AMI {ami} and {snapshot} in {region}")
+    try:
+        runcmd([
+            'ore', 'aws', 'delete-image',
+            '--credentials-file', credentials_file,
+            '--ami', ami,
+            '--snapshot', snapshot,
+            "--region", region,
+            "--allow-missing"
+        ])
+        print(f"AWS: successfully removed {ami} and {snapshot}")
+    except SystemExit:
+        raise Exception(f"Failed to remove {ami} or {snapshot}")
 
 
 @retry(reraise=True, stop=stop_after_attempt(3))
