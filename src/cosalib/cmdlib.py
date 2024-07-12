@@ -7,6 +7,7 @@ import hashlib
 import json
 import logging
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -336,6 +337,21 @@ def get_basearch():
     except AttributeError:
         get_basearch.saved = RpmOstree.get_basearch()
         return get_basearch.saved
+
+
+def parse_fcos_version_to_timestamp(version):
+    '''
+    Parses an FCOS build ID and verifies the versioning is accurate. Then
+    it verifies that the parsed timestamp has %Y%m%d format and returns that.
+    '''
+    m = re.match(r'^([0-9]{2})\.([0-9]{8})\.([0-9]+)\.([0-9]+)$', version)
+    if m is None:
+        raise Exception(f"Incorrect versioning for FCOS build {version}")
+    try:
+        timestamp = datetime.datetime.strptime(m.group(2), '%Y%m%d')
+    except ValueError:
+        raise Exception(f"FCOS build {version} has incorrect date format. It should be in (%Y%m%d)")
+    return timestamp
 
 
 def parse_date_string(date_string):

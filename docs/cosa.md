@@ -65,7 +65,7 @@ Those less commonly used commands are listed here:
 | [oc-adm-release](https://github.com/coreos/coreos-assembler/blob/main/src/cmd-oc-adm-release) | Publish an oscontainer as the machine-os-content in an OpenShift release series
 | [offline-update](https://github.com/coreos/coreos-assembler/blob/main/src/cmd-offline-update) | Given a disk image and a coreos-assembler build, use supermin to update the disk image to the target OSTree commit "offline"
 | [prune](https://github.com/coreos/coreos-assembler/blob/main/src/cmd-prune) | This script removes previous builds. DO NOT USE on production pipelines
-| [remote-prune](https://github.com/coreos/coreos-assembler/blob/main/src/cmd-remote-prune) | Removes unreferenced builds from s3 bucket
+| [cloud-prune](https://github.com/coreos/coreos-assembler/blob/main/src/cmd-cloud-prune) | Prune resources as sepcified in policy.yaml
 | [sign](https://github.com/coreos/coreos-assembler/blob/main/src/cmd-sign) | Implements signing with RoboSignatory via fedora-messaging
 | [supermin-shell](https://github.com/coreos/coreos-assembler/blob/main/src/cmd-supermin-shell) | Get a supermin shell
 | [tag](https://github.com/coreos/coreos-assembler/blob/main/src/cmd-tag) | Operate on the tags in `builds.json`
