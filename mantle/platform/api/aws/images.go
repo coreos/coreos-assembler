@@ -733,6 +733,49 @@ func (a *API) FindImage(name string) (string, error) {
 	return "", nil
 }
 
+// Deregisters the ami.
+func (a *API) RemoveByAmiTag(imageID string, allowMissing bool) error {
+	_, err := a.ec2.DeregisterImage(&ec2.DeregisterImageInput{ImageId: &imageID})
+	if err != nil {
+		if allowMissing {
+			if awsErr, ok := err.(awserr.Error); ok {
+				if awsErr.Code() == "InvalidAMIID.NotFound" {
+					plog.Infof("%s does not exist.", imageID)
+					return nil
+				}
+				if awsErr.Code() == "InvalidAMIID.Unavailable" {
+					plog.Infof("%s is no longer available.", imageID)
+					return nil
+				}
+			}
+		}
+		return err
+	}
+	plog.Infof("Deregistered existing AMI %s", imageID)
+	return nil
+}
+
+func (a *API) RemoveBySnapshotTag(snapshotID string, allowMissing bool) error {
+	_, err := a.ec2.DeleteSnapshot(&ec2.DeleteSnapshotInput{SnapshotId: &snapshotID})
+	if err != nil {
+		if allowMissing {
+			if awsErr, ok := err.(awserr.Error); ok {
+				if awsErr.Code() == "InvalidSnapshot.NotFound" {
+					plog.Infof("%s does not exist.", snapshotID)
+					return nil
+				}
+				if awsErr.Code() == "InvalidSnapshot.Unavailable" {
+					plog.Infof("%s is no longer available.", snapshotID)
+					return nil
+				}
+			}
+		}
+		return err
+	}
+	plog.Infof("Deregistered existing snapshot %s", snapshotID)
+	return nil
+}
+
 func (a *API) describeImage(imageID string) (*ec2.Image, error) {
 	describeRes, err := a.ec2.DescribeImages(&ec2.DescribeImagesInput{
 		ImageIds: aws.StringSlice([]string{imageID}),
