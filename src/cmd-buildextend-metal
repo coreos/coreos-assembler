@@ -243,6 +243,9 @@ image-type: "${image_type}"
 ostree-repo: "${ostree_repo}"
 metal-image-size: "${metal_image_size_mb}"
 cloud-image-size: "${cloud_image_size_mb}"
+# Note: this is only used in the secex case; there, the rootfs is
+# not the last partition on the disk so we need to explicitly size it
+rootfs-size: "${rootfs_size_mb}"
 EOF
 yaml2json "${image_dynamic_yaml}" "${image_dynamic_json}"
 cat "${image_json}" "${image_dynamic_json}" | jq -s add > "${image_for_disk_json}"

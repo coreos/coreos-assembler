@@ -55,6 +55,7 @@ platform=$(getconfig "image-type")
 deploy_via_container=$(getconfig_def "deploy-via-container" "")
 metal_image_size_mb=$(getconfig "metal-image-size")
 cloud_image_size_mb=$(getconfig "cloud-image-size")
+rootfs_size_mb=$(getconfig "rootfs-size")
 container_imgref=$(getconfig "container-imgref")
 container_repo=$(getconfig_def "container-repo" "")
 container_tag=$(getconfig_def "container-tag" "")
@@ -100,6 +101,7 @@ osbuild-mpp                                             \
     -D extra_kargs=\""${extra_kargs}"\"                 \
     -D metal_image_size_mb="${metal_image_size_mb}"     \
     -D cloud_image_size_mb="${cloud_image_size_mb}"     \
+    -D rootfs_size_mb="${rootfs_size_mb}"               \
     -D qemu_secex=\""${secex}"\"                        \
     "${mppyaml}" "${processed_json}"
 

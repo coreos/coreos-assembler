@@ -17,7 +17,8 @@ mpp-vars:
   efi_system_size_mb: 127
   se_size_mb:   200
   boot_size_mb: 384
-  root_size_mb: 1800
+  root_size_mb:
+    mpp-format-int: $rootfs_size_mb
   boot_verity_size_mb: 128
   root_verity_size_mb: 256
   sector_size: 512
