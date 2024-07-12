@@ -19,6 +19,7 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+	"google.golang.org/api/googleapi"
 
 	"github.com/coreos/coreos-assembler/mantle/platform/api/gcloud"
 )
@@ -29,10 +30,12 @@ var (
 		Short: "Delete GCP images",
 		Run:   runDeleteImage,
 	}
+	allowMissing bool
 )
 
 func init() {
 	GCloud.AddCommand(cmdDeleteImage)
+	cmdDeleteImage.Flags().BoolVar(&allowMissing, "allow-missing", false, "Do not error out on the resource not existing")
 }
 
 func runDeleteImage(cmd *cobra.Command, args []string) {
@@ -46,7 +49,14 @@ func runDeleteImage(cmd *cobra.Command, args []string) {
 	for _, name := range args {
 		pending, err := api.DeleteImage(name)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "%v\n", err)
+			if gErr, ok := err.(*googleapi.Error); ok {
+				// Skip on NotFound error only if allowMissing flag is set to True
+				if gErr.Code == 404 && allowMissing {
+					plog.Infof("%v\n", err)
+					continue
+				}
+			}
+			fmt.Fprintf(os.Stderr, "Deleting %q failed: %v\n", name, err)
 			exit = 1
 			continue
 		}
