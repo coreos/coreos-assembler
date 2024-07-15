@@ -161,6 +161,11 @@ systemd:
   units:
     - name: kdump.service
       enabled: true
+      dropins:
+        - name: debug.conf
+          contents: |
+            [Service]
+            Environment="debug=1"
 kernel_arguments:
     should_exist:
       - crashkernel=512M`,
