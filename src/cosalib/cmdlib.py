@@ -339,7 +339,7 @@ def get_basearch():
         return get_basearch.saved
 
 
-def parse_fcos_version_to_timestamp(version):
+def parse_fcos_version_to_timestamp_and_stream(version):
     '''
     Parses an FCOS build ID and verifies the versioning is accurate. Then
     it verifies that the parsed timestamp has %Y%m%d format and returns that.
@@ -351,7 +351,34 @@ def parse_fcos_version_to_timestamp(version):
         timestamp = datetime.datetime.strptime(m.group(2), '%Y%m%d')
     except ValueError:
         raise Exception(f"FCOS build {version} has incorrect date format. It should be in (%Y%m%d)")
-    return timestamp
+    return (timestamp, int(m.group(3)))
+
+
+def convert_duration_to_days(duration_arg):
+    """
+    Parses duration strings and convert them into days.
+    The excpected format is Nd/D, nw/W, Nm/M, Ny/Y where N is a positive integer.
+    The return value is the number of days represented, in integer format
+    """
+    match = re.match(r'^([0-9]+)([dDmMyYwW])$', duration_arg)
+
+    if match is None:
+        raise ValueError(f"Incorrect duration '{duration_arg}'. Valid values are in the form of 1d, 2w, 3m, 4y")
+
+    unit = match.group(2)
+    value = int(match.group(1))
+    match unit.lower():
+        case "y":
+            days = value * 365
+        case "m":
+            days = value * 30
+        case "w":
+            days = value * 7
+        case "d":
+            days = value
+        case _:
+            raise ValueError(f"Invalid unit '{match.group(2)}'. Please use y (years), m (months), w (weeks), or d (days).")
+    return days
 
 
 def parse_date_string(date_string):
