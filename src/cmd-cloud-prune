@@ -6,11 +6,12 @@
 # Example of policy.yaml
 # rawhide:
 #     # all cloud images
-#     cloud-uploads: 2 years
+#     cloud-uploads: 2y
 #     # artifacts in meta.json's `images` key
-#     images: 2 years
+#     images: 2y
 #     images-keep: [qemu, live-iso]
-#     build: 3 years
+#     build: 3y
+#     containers: 2w
 # The script also updates the builds.json for the respective stream by
 # adding the policy-cleanup key when we set the upload_builds_json flag.
 # It adds the relevant actions completed to that key
@@ -44,7 +45,8 @@ from cosalib.gcp import remove_gcp_image
 from cosalib.aws import deregister_aws_resource
 from cosalib.builds import BUILDFILES
 from cosalib.s3 import s3_copy
-from cosalib.cmdlib import parse_fcos_version_to_timestamp
+from cosalib.cmdlib import parse_fcos_version_to_timestamp_and_stream
+from cosalib.cmdlib import convert_duration_to_days
 
 Build = collections.namedtuple("Build", ["id", "images", "arch", "meta_json"])
 # set metadata caching to 5m
@@ -105,17 +107,17 @@ def main():
     for action in ['cloud-uploads', 'images', 'build']:
         if action not in policy[stream]:
             continue
-        duration = get_period_in_months(policy[stream][action])
-        ref_date = today_date - relativedelta(months=int(duration))
+        duration = convert_duration_to_days(policy[stream][action])
+        ref_date = today_date - relativedelta(days=int(duration))
 
-        print(f"Pruning resources of type {action} older than {duration} months ({ref_date.date()}) on stream {stream}")
+        print(f"Pruning resources of type {action} older than {policy[stream][action]} ({ref_date.date()}) on stream {stream}")
         # Enumerating in reverse to go from the oldest build to the newest one
         for index, build in enumerate(reversed(builds_json_data["builds"])):
             build_id = build["id"]
             if action in build.get("policy-cleanup", []):
                 print(f"Build {build_id} has already had {action} pruning completed")
                 continue
-            build_date = parse_fcos_version_to_timestamp(build_id)
+            (build_date, _) = parse_fcos_version_to_timestamp_and_stream(build_id)
 
             if build_date >= ref_date:
                 break
@@ -172,8 +174,8 @@ def validate_policy(stream, policy):
         actions = policy[stream]
         if 'cloud-uploads' not in actions:
             raise Exception("Pruning for cloud-uploads must be set before we prune the builds")
-        cloud_uploads_duration = get_period_in_months(actions["cloud-uploads"])
-        build_duration = get_period_in_months(actions["build"])
+        cloud_uploads_duration = convert_duration_to_days(actions["cloud-uploads"])
+        build_duration = convert_duration_to_days(actions["build"])
         if cloud_uploads_duration > build_duration:
             raise Exception("Duration of pruning cloud-uploads must be less than or equal to pruning a build")
 
@@ -284,16 +286,6 @@ def delete_gcp_image(build, cloud_config, dry_run):
     else:
         errors.append(f"Missing parameters to remove {gcp_image}")
     return errors
-
-
-def get_period_in_months(duration):
-    val, unit = duration.split(maxsplit=1)
-    if unit in ["years", "year", "y"]:
-        return int(val) * 12
-    elif unit in ["months", "month", "m"]:
-        return int(val)
-    else:
-        raise Exception(f"Duration unit provided is {unit}. Pruning duration is only supported in years and months")
 
 
 if __name__ == "__main__":
