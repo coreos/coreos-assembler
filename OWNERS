@@ -1,0 +1,33 @@
+# This file is required in order to control `/approve` and `/lgtm` and related
+# Prow commands on this repo.  It may contain non-Openshift org members and
+# aliases (defined in OWNERS_ALIASES). It will be synced to the
+# `openshift/release/ci-operator` repo where non-Openshift org members will be
+# filtered out and aliases will be expanded.
+
+# See: https://coreos.slack.com/archives/CBN38N3MW/p1654872921259859
+
+# See the OWNERS docs: https://git.k8s.io/community/contributors/guide/owners.md
+
+# This file should mirror the list of users defined on coreos-approvers in:
+# https://github.com/openshift/release/blob/master/OWNERS_ALIASES
+
+approvers:
+  - cgwalters
+  - dustymabe
+  - mike-nguyen
+  - jlebon
+  - travier
+  - HuijingHei
+  - jmarrero
+  - aaradhak
+  - ravanelli
+  - gursewak1997
+  - prestist
+  - marmijo
+  - jschintag
+  - c4rt0
+  - cverna
+  - lukewarmtemp
+  - yasminvalim
+  - jbtrystram
+  - madhu-pillai
