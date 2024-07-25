@@ -344,7 +344,7 @@ def parse_fcos_version_to_timestamp_and_stream(version):
     Parses an FCOS build ID and verifies the versioning is accurate. Then
     it verifies that the parsed timestamp has %Y%m%d format and returns that.
     '''
-    m = re.match(r'^([0-9]{2})\.([0-9]{8})\.([0-9]+)\.([0-9]+)$', version)
+    m = re.match(r'^([0-9]{2})\.([0-9]{8})\.([0-9]+|dev)\.([0-9]+)$', version)
     if m is None:
         raise Exception(f"Incorrect versioning for FCOS build {version}")
     try:
