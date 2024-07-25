@@ -89,8 +89,11 @@ def aliyun_run_ore_replicate(build, args):
             } for region, val in ore_data.items()
         ])
 
-    build.meta['aliyun'] = aliyun_img_data
-    build.meta_write()
+        # Record the images that have been replicated as they happen
+        # otherwise re-running the replication will fail with
+        # InvalidImageName.Duplicated because the image already exists
+        build.meta['aliyun'] = aliyun_img_data
+        build.meta_write()
 
     # we've successfully replicated to *some* of the regions, so exit early.
     # if `cosa aliyun-replicate` is ran again with the same arguments, it will
