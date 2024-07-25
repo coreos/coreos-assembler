@@ -272,7 +272,7 @@ def delete_gcp_image(build, cloud_config, dry_run):
     gcp = build.images.get("gcp")
     if not gcp:
         print(f"No GCP image for {build.id} for {build.arch}")
-        return
+        return errors
     gcp_image = gcp.get("image")
     json_key = cloud_config.get("gcp", {}).get("json-key")
     project = cloud_config.get("gcp", {}).get("project")
