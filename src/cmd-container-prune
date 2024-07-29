@@ -102,7 +102,7 @@ def main():
         except Exception:
             print(f"WARNING: Ignoring unexpected tag: {tag}")
             continue
-        if stream_id != tag_stream:
+        if stream_id != int(tag_stream):
             if args.v:
                 print(f"Skipping tag {tag} not in {args.stream} stream")
             continue
