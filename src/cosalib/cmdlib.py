@@ -351,7 +351,7 @@ def parse_fcos_version_to_timestamp_and_stream(version):
         timestamp = datetime.datetime.strptime(m.group(2), '%Y%m%d')
     except ValueError:
         raise Exception(f"FCOS build {version} has incorrect date format. It should be in (%Y%m%d)")
-    return (timestamp, int(m.group(3)))
+    return (timestamp, m.group(3))
 
 
 def convert_duration_to_days(duration_arg):
