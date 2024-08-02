@@ -391,6 +391,14 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	// IBM Cex based luks encryption.
+	if kola.QEMUOptions.Cex {
+		err := builder.AddCexDevice()
+		if err != nil {
+			return err
+		}
+	}
+
 	if devshell && !devshellConsole {
 		return runDevShellSSH(ctx, builder, config, sshCommand)
 	}
