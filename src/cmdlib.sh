@@ -1103,3 +1103,22 @@ extract_osrelease_name() {
     # shellcheck disable=SC1091,SC2153
     (. "$out/os-release" && echo "${NAME}")
 }
+
+
+gen_ed25519_signing_key() {
+    local key_file="${1:-cosa_key}"
+    # Generate the key
+    openssl genpkey -algorithm ed25519 -outform PEM -out ${TMPDIR}/${key_file}
+
+    # Extract the pubkey
+    PUBKEY="$(openssl pkey -outform DER -pubout -in ${TMPDIR}/${key_file} | tail -c 32 | base64)"
+
+    ## write the pubkey in overrides
+    echo $PUBKEY > ${workdir}/overrides/rootfs/etc/ostree/initramfs-root-binding.key
+
+    # Convert the private key to base64 for ostree signing
+    ## Extract the seed
+    SEED="$(openssl pkey -outform DER -in ${TMPDIR}/${key_file} | tail -c 32 | base64)"
+    ## Secret key is the concatenation of SEED and PUBLIC
+    echo ${SEED}${PUBKEY} | base64 -d | base64 -w 0 > ${TMPDIR}/${key_file}.ed25519
+}
