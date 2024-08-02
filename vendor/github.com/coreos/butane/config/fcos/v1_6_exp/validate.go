@@ -27,6 +27,8 @@ import (
 const rootDevice = "/dev/disk/by-id/coreos-boot-disk"
 
 var allowedMountpoints = regexp.MustCompile(`^/(etc|var)(/|$)`)
+var dasdRe = regexp.MustCompile("(/dev/dasd[a-z]$)")
+var sdRe = regexp.MustCompile("(/dev/sd[a-z]$)")
 
 // We can't define a Validate function directly on Disk because that's defined in base,
 // so we use a Validate function on the top-level Config instead.
@@ -52,8 +54,27 @@ func (d BootDevice) Validate(c path.ContextPath) (r report.Report) {
 	if d.Layout != nil {
 		switch *d.Layout {
 		case "aarch64", "ppc64le", "x86_64":
+		case "s390x-eckd":
+			if util.NilOrEmpty(d.Luks.Device) {
+				r.AddOnError(c.Append(*d.Layout), common.ErrNoLuksBootDevice)
+			} else if !dasdRe.MatchString(*d.Luks.Device) {
+				r.AddOnError(c.Append(*d.Layout), common.ErrLuksBootDeviceBadName)
+			}
+		case "s390x-zfcp":
+			if util.NilOrEmpty(d.Luks.Device) {
+				r.AddOnError(c.Append(*d.Layout), common.ErrNoLuksBootDevice)
+			} else if !sdRe.MatchString(*d.Luks.Device) {
+				r.AddOnError(c.Append(*d.Layout), common.ErrLuksBootDeviceBadName)
+			}
+		case "s390x-virt":
 		default:
 			r.AddOnError(c.Append("layout"), common.ErrUnknownBootDeviceLayout)
+		}
+
+		if *d.Layout == "s390x-eckd" || *d.Layout == "s390x-zfcp" || *d.Layout == "s390x-virt" {
+			if len(d.Mirror.Devices) > 0 {
+				r.AddOnError(c.Append(*d.Layout), common.ErrMirrorNotSupport)
+			}
 		}
 	}
 	r.Merge(d.Mirror.Validate(c.Append("mirror")))
