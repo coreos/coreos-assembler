@@ -60,7 +60,6 @@ def parse_args():
     parser.add_argument("--upload-builds-json", help="Push builds.json", action='store_true')
     parser.add_argument("--stream", type=str, help="CoreOS stream", required=True)
     parser.add_argument("--gcp-json-key", help="GCP Service Account JSON Auth", default=os.environ.get("GCP_JSON_AUTH"))
-    parser.add_argument("--gcp-project", help="GCP Project name", default=os.environ.get("GCP_PROJECT_NAME"))
     parser.add_argument("--acl", help="ACL for objects", action='store', default='private')
     parser.add_argument("--aws-config-file", default=os.environ.get("AWS_CONFIG_FILE"), help="Path to AWS config file")
     return parser.parse_args()
@@ -98,7 +97,11 @@ def main():
 
     with open(args.policy, "r") as f:
         policy = yaml.safe_load(f)
-    validate_policy(stream, policy)
+    if stream in policy:
+        validate_policy(stream, policy)
+    else:
+        print(f"There is no policy defined in gc-policy.yaml for {stream}")
+        return
 
     with open(BUILDFILES['list'], "r") as f:
         builds_json_data = json.load(f)
@@ -159,7 +162,6 @@ def get_cloud_config(args):
     return {
         "gcp": {
             "json-key": args.gcp_json_key,
-            "project": args.gcp_project
         },
         "aws": {
             "credentials": args.aws_config_file
@@ -207,15 +209,24 @@ def save_builds_json(builds_json_data):
 
 def handle_upload_builds_json(s3_client, bucket, prefix, dry_run, acl):
     remote_builds_json = get_json_from_s3(s3_client, bucket, os.path.join(prefix, "builds.json"))
+    # This is the copy of builds.json from what we last downloaded from the source
     with open(BUILDFILES['sourcedata'], "r") as f:
         builds_json_source_data = json.load(f)
+    # This is the current list of builds at builds/builds.json
+    with open(BUILDFILES['list'], "r") as f:
+        current_builds_json = json.load(f)
+
+    # If there are no changes to the local builds/builds.json we won't need to upload
+    # anything to the s3 bucket. Will return in this scenario.
+    if builds_json_source_data == current_builds_json:
+        print("There are no changes to the local builds/builds.json. No upload needed")
+        return
+
     # Check if there are any changes that were made to remote(s3 version) builds.json
     # while the pruning was in progress
     if remote_builds_json != builds_json_source_data:
         print("Detected remote updates to builds.json. Merging it to the local builds.json file")
-        with open(BUILDFILES['list'], "r") as f:
-            current_builds_json = json.load(f)
-            update_policy_cleanup(current_builds_json, remote_builds_json)
+        remote_builds_json = update_policy_cleanup(current_builds_json, remote_builds_json)
         if not dry_run:
             # Make sure we have the merged json as local builds/builds.json
             save_builds_json(remote_builds_json)
@@ -232,6 +243,7 @@ def update_policy_cleanup(current_builds, remote_builds):
             current_build = current_builds_dict[build_id]
             if 'policy-cleanup' in current_build:
                 remote_build['policy-cleanup'] = current_build['policy-cleanup']
+    return remote_builds
 
 
 def prune_cloud_uploads(build, cloud_config, dry_run):
@@ -257,7 +269,7 @@ def deregister_aws_amis(build, cloud_config, dry_run):
         if dry_run:
             print(f"Would delete {ami_id} and {snapshot_id} for {build.id}")
             continue
-        if ami_id and snapshot_id and region_name:
+        if (ami_id or snapshot_id) and region_name:
             try:
                 deregister_aws_resource(ami_id, snapshot_id, region=region_name, credentials_file=aws_credentials)
             except Exception as e:
@@ -274,8 +286,8 @@ def delete_gcp_image(build, cloud_config, dry_run):
         print(f"No GCP image for {build.id} for {build.arch}")
         return errors
     gcp_image = gcp.get("image")
+    project = gcp.get("project")
     json_key = cloud_config.get("gcp", {}).get("json-key")
-    project = cloud_config.get("gcp", {}).get("project")
     if dry_run:
         print(f"Would delete {gcp_image} GCP image for {build.id}")
     elif gcp_image and json_key and project:
