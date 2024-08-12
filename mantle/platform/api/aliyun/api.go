@@ -26,6 +26,8 @@ import (
 	"github.com/coreos/pkg/capnslog"
 	"github.com/coreos/pkg/multierror"
 
+	"github.com/aliyun/alibaba-cloud-sdk-go/sdk"
+	"github.com/aliyun/alibaba-cloud-sdk-go/sdk/auth/credentials"
 	"github.com/aliyun/alibaba-cloud-sdk-go/sdk/requests"
 	"github.com/aliyun/alibaba-cloud-sdk-go/services/ecs"
 	"github.com/aliyun/aliyun-oss-go-sdk/oss"
@@ -88,7 +90,10 @@ func New(opts *Options) (*API, error) {
 		opts.Region = profile.Region
 	}
 
-	ecs, err := ecs.NewClientWithAccessKey(opts.Region, opts.AccessKeyID, opts.SecretKey)
+	config := sdk.NewConfig()
+	config.Scheme = "HTTPS"
+	credential := credentials.NewAccessKeyCredential(opts.AccessKeyID, opts.SecretKey)
+	ecs, err := ecs.NewClientWithOptions(opts.Region, config, credential)
 	if err != nil {
 		return nil, err
 	}
@@ -207,7 +212,6 @@ func (a *API) ImportImage(format, bucket, object, image_size, device, name, desc
 	request := ecs.CreateImportImageRequest()
 	request.SetConnectTimeout(defaultConnectTimeout)
 	request.SetReadTimeout(defaultReadTimeout)
-	request.Scheme = "https"
 	request.DiskDeviceMapping = &[]ecs.ImportImageDiskDeviceMapping{
 		{
 			Format:        format,
@@ -297,7 +301,6 @@ func (a *API) GetImages(name string) (*ecs.DescribeImagesResponse, error) {
 	request := ecs.CreateDescribeImagesRequest()
 	request.SetConnectTimeout(defaultConnectTimeout)
 	request.SetReadTimeout(defaultReadTimeout)
-	request.Scheme = "https"
 	request.ImageName = name
 	return a.ecs.DescribeImages(request)
 }
@@ -307,7 +310,6 @@ func (a *API) GetImagesByID(id string, region string) (*ecs.DescribeImagesRespon
 	request := ecs.CreateDescribeImagesRequest()
 	request.SetConnectTimeout(defaultConnectTimeout)
 	request.SetReadTimeout(defaultReadTimeout)
-	request.Scheme = "https"
 	request.ImageId = id
 	request.RegionId = region
 	return a.ecs.DescribeImages(request)
@@ -318,7 +320,6 @@ func (a *API) DeleteImage(id string, force bool) error {
 	request := ecs.CreateDeleteImageRequest()
 	request.SetConnectTimeout(defaultConnectTimeout)
 	request.SetReadTimeout(defaultReadTimeout)
-	request.Scheme = "https"
 	request.ImageId = id
 	request.Force = requests.NewBoolean(force)
 
@@ -350,7 +351,6 @@ func (a *API) DeleteSnapshot(id string, force bool) error {
 	request := ecs.CreateDeleteSnapshotRequest()
 	request.SetConnectTimeout(defaultConnectTimeout)
 	request.SetReadTimeout(defaultReadTimeout)
-	request.Scheme = "https"
 	request.SnapshotId = id
 	request.Force = requests.NewBoolean(force)
 	_, err := a.ecs.DeleteSnapshot(request)
@@ -430,7 +430,6 @@ func (a *API) ListRegions() ([]string, error) {
 	request := ecs.CreateDescribeRegionsRequest()
 	request.SetConnectTimeout(defaultConnectTimeout)
 	request.SetReadTimeout(defaultReadTimeout)
-	request.Scheme = "https"
 
 	response, err := a.ecs.DescribeRegions(request)
 	if err != nil {
@@ -468,7 +467,6 @@ func (a *API) ChangeVisibility(region string, id string, public bool) error {
 			request := ecs.CreateModifyImageSharePermissionRequest()
 			request.SetConnectTimeout(defaultConnectTimeout)
 			request.SetReadTimeout(defaultReadTimeout)
-			request.Scheme = "https"
 			request.ImageId = id
 			request.RegionId = region
 			request.IsPublic = requests.NewBoolean(public)
