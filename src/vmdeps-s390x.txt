@@ -1,4 +1,7 @@
 s390utils-base
 
+# for building iso image
+lorax
+
 # for Secure Execution
 veritysetup
