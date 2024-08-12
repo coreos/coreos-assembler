@@ -5,6 +5,9 @@
 # bare essentials
 bash vim-minimal coreutils util-linux procps-ng kmod kernel-modules
 
+# For generating ISO images
+genisoimage squashfs-tools
+
 # for composes
 rpm-ostree distribution-gpg-keys jq
 
