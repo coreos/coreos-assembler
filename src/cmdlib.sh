@@ -436,6 +436,8 @@ EOF
     if [ -f "${platforms_json}" ]; then
         cp "${platforms_json}" "${jsondir}/usr/share/coreos-assembler/"
     fi
+    # also the full contents of the live/ directory
+    cp -r "${configdir}/live" "${jsondir}/usr/share/coreos-assembler/live"
     commit_overlay cosa-json "${jsondir}"
     layers="${layers} overlay/cosa-json"
 
