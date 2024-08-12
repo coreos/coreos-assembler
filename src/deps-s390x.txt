@@ -1,5 +1,5 @@
 # For building iso image
-lorax xorriso
+xorriso
 
 # Deps needed by supermin
 s390utils-base
