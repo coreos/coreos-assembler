@@ -3,8 +3,8 @@ set -eux -o pipefail
 
 usage() {
     cat <<EOC
-${0} creates a supermin virtual machine that then
-runs OSBuild to build a CoreOS style disk image.
+${0} runs in a supermin virtual machine to then
+run OSBuild to build a CoreOS style disk image.
 
 Options:
     --config: JSON-formatted image.yaml
@@ -60,6 +60,10 @@ container_imgref=$(getconfig "container-imgref")
 container_repo=$(getconfig_def "container-repo" "")
 container_tag=$(getconfig_def "container-tag" "")
 extra_kargs=$(getconfig "extra-kargs-string" "")
+squashfs_compression=$(getconfig_def "squashfs-compression" "")
+metal_filename=$(getconfig_def "metal-filename" "")
+metal4k_filename=$(getconfig_def "metal4k-filename" "")
+live_efiboot_img_size_mb=$(getconfig_def "live-efiboot-img-size" "0")
 # If we are not deploying via container let's go ahead and
 # set the OSTree repo and ref information
 ostree_ref=""
@@ -103,6 +107,10 @@ osbuild-mpp                                             \
     -D cloud_image_size_mb="${cloud_image_size_mb}"     \
     -D rootfs_size_mb="${rootfs_size_mb}"               \
     -D qemu_secex=\""${secex}"\"                        \
+    -D squashfs_compression=\""${squashfs_compression}"\" \
+    -D metal_filename=\""${metal_filename}"\"             \
+    -D metal4k_filename=\""${metal4k_filename}"\"         \
+    -D live_efiboot_img_size_mb="${live_efiboot_img_size_mb}" \
     "${mppyaml}" "${processed_json}"
 
 # Build the image
