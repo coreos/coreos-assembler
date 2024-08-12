@@ -729,7 +729,6 @@ runvm() {
 
     # include COSA in the image
     find /usr/lib/coreos-assembler/ -type f > "${vmpreparedir}/hostfiles"
-    echo /usr/lib/osbuild/stages/org.osbuild.dmverity >> "${vmpreparedir}/hostfiles"
 
     # and include all GPG keys
     find /etc/pki/rpm-gpg/ -type f >> "${vmpreparedir}/hostfiles"
