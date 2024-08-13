@@ -429,17 +429,16 @@ EOF
     # Store the fully rendered disk image config (image.json)
     # and the platform (platforms.json) if it exists inside
     # the ostree commit, so it can later be extracted by disk image
-    # builds.
-    local jsondir="${tmp_overridesdir}/jsons"
-    mkdir -p "${jsondir}/usr/share/coreos-assembler/"
-    cp "${image_json}" "${jsondir}/usr/share/coreos-assembler/"
+    # builds. Also the full contents of the live/ directory.
+    local usr_share_cosa="${tmp_overridesdir}/usr-share-cosa"
+    mkdir -p "${usr_share_cosa}/usr/share/coreos-assembler/"
+    cp "${image_json}" "${usr_share_cosa}/usr/share/coreos-assembler/"
     if [ -f "${platforms_json}" ]; then
-        cp "${platforms_json}" "${jsondir}/usr/share/coreos-assembler/"
+        cp "${platforms_json}" "${usr_share_cosa}/usr/share/coreos-assembler/"
     fi
-    # also the full contents of the live/ directory
-    cp -r "${configdir}/live" "${jsondir}/usr/share/coreos-assembler/live"
-    commit_overlay cosa-json "${jsondir}"
-    layers="${layers} overlay/cosa-json"
+    cp -r "${configdir}/live" "${usr_share_cosa}/usr/share/coreos-assembler/live"
+    commit_overlay usr-share-cosa "${usr_share_cosa}"
+    layers="${layers} overlay/usr-share-cosa"
 
     local_overrides_lockfile="${tmp_overridesdir}/local-overrides.json"
     if [ -n "${with_cosa_overrides}" ] && [[ -n $(ls "${overridesdir}/rpm/"*.rpm 2> /dev/null) ]]; then
