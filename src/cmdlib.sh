@@ -758,6 +758,8 @@ else
 fi
 echo \$rc > ${rc_file}
 if [ -n "\${cachedev}" ]; then
+    # XXX: brutal workaround for https://github.com/coreos/coreos-assembler/issues/3848
+    killall rofiles-fuse || :
     /sbin/fstrim -v ${workdir}/cache
     mount -o remount,ro ${workdir}/cache
     fsfreeze -f ${workdir}/cache
