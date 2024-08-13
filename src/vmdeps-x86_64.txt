@@ -2,6 +2,9 @@
 grub2
 bootupd
 
+# For generating ISO images
+syslinux-nonlinux
+
 # For creating bootable UEFI media on x86_64
 shim-x64 grub2-efi-x64
 
