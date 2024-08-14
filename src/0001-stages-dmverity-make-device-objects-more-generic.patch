@@ -1,0 +1,58 @@
+From 5ccbe720ace34866931e2af7f248d5e5c632f9da Mon Sep 17 00:00:00 2001
+From: Jonathan Lebon <jonathan@jlebon.com>
+Date: Wed, 14 Aug 2024 10:56:11 -0400
+Subject: [PATCH] stages/dmverity: make device objects more generic
+
+We need to pass loopback devices for these properties, but the schema
+says that there will be a `path` property, so osbuild complains.
+
+osbuild is right of course, but this definitely *did* work in an earlier
+version, so something changed. Ideally, we'd narrow down here what
+happened exactly, but at the same time this approach of just making the
+property more generic matches what's done in e.g. the `zipl.inst` stage
+where we also use a loopback device.
+
+For reference, this is where we use this stage:
+
+https://github.com/coreos/coreos-assembler/blob/ba45b296ec11734bafcae7728915016f17137a3d/src/osbuild-manifests/platform.qemu.ipp.yaml#L100-L119
+---
+ stages/org.osbuild.dmverity.meta.json | 20 ++------------------
+ 1 file changed, 2 insertions(+), 18 deletions(-)
+
+diff --git a/stages/org.osbuild.dmverity.meta.json b/stages/org.osbuild.dmverity.meta.json
+index 213b5855..4c470838 100644
+--- a/stages/org.osbuild.dmverity.meta.json
++++ b/stages/org.osbuild.dmverity.meta.json
+@@ -30,27 +30,11 @@
+       "properties": {
+         "data_device": {
+           "type": "object",
+-          "additionalProperties": false,
+-          "required": [
+-            "path"
+-          ],
+-          "properties": {
+-            "path": {
+-              "type": "string"
+-            }
+-          }
++          "additionalProperties": true
+         },
+         "hash_device": {
+           "type": "object",
+-          "additionalProperties": false,
+-          "required": [
+-            "path"
+-          ],
+-          "properties": {
+-            "path": {
+-              "type": "string"
+-            }
+-          }
++          "additionalProperties": true
+         }
+       }
+     }
+-- 
+2.46.0
+
