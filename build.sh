@@ -22,6 +22,7 @@ if [ $# -gt 1 ]; then
   echo "    configure_yum_repos"
   echo "    install_rpms"
   echo "    make_and_makeinstall"
+  echo "    patch_osbuild"
   exit 1
 fi
 
@@ -160,6 +161,27 @@ write_archive_info() {
     prepare_git_artifacts "${srcdir}" /cosa/coreos-assembler-git.json /cosa/coreos-assembler-git.tar.gz
 }
 
+patch_osbuild() {
+    # Add a few patches that either haven't made it into a release or
+    # that will be obsoleted with other work that will be done soon.
+
+    # To make it easier to apply patches we'll move around the osbuild
+    # code on the system first:
+    rmdir /usr/lib/osbuild/osbuild
+    mv /usr/lib/python3.12/site-packages/osbuild /usr/lib/osbuild/
+    mkdir /usr/lib/osbuild/tools
+    mv /usr/bin/osbuild-mpp /usr/lib/osbuild/tools/
+
+    # Now all the software is under the /usr/lib/osbuild dir and we can patch
+    patch -d /usr/lib/osbuild -p1 < /usr/lib/coreos-assembler/0001-stages-dmverity-make-device-objects-more-generic.patch
+
+    # And then move the files back; supermin appliance creation will need it back
+    # in the places delivered by the RPM.
+    mv /usr/lib/osbuild/tools/osbuild-mpp /usr/bin/osbuild-mpp
+    mv /usr/lib/osbuild/osbuild /usr/lib/python3.12/site-packages/osbuild
+    mkdir /usr/lib/osbuild/osbuild
+}
+
 if [ $# -ne 0 ]; then
   # Run the function specified by the calling script
   ${1}
@@ -174,4 +196,5 @@ else
   install_ocp_tools
   trust_redhat_gpg_keys
   configure_user
+  patch_osbuild
 fi

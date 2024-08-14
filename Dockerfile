@@ -23,6 +23,7 @@ COPY ./ /root/containerbuild/
 RUN ./build.sh write_archive_info
 RUN ./build.sh make_and_makeinstall
 RUN ./build.sh configure_user
+RUN ./build.sh patch_osbuild
 
 # clean up scripts (it will get cached in layers, but oh well)
 WORKDIR /srv/
