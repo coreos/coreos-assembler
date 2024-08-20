@@ -762,7 +762,10 @@ if [ -n "\${cachedev}" ]; then
     # XXX: brutal workaround for https://github.com/coreos/coreos-assembler/issues/3848
     killall rofiles-fuse || :
     /sbin/fstrim -v ${workdir}/cache
-    mount -o remount,ro ${workdir}/cache
+    while ! mount -o remount,ro ${workdir}/cache; do
+        echo "failed to remount cache ro; retrying..." |& tee /dev/virtio-ports/cosa-cmdout
+        sleep 1
+    done
     fsfreeze -f ${workdir}/cache
     fsfreeze -u ${workdir}/cache
     umount ${workdir}/cache
