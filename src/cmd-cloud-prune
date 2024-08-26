@@ -105,6 +105,8 @@ def main():
 
     with open(BUILDFILES['list'], "r") as f:
         builds_json_data = json.load(f)
+    # Original list of builds
+    builds = builds_json_data["builds"]
 
     # Prune builds based on the policy
     for action in ['cloud-uploads', 'images', 'build']:
@@ -115,7 +117,7 @@ def main():
 
         print(f"Pruning resources of type {action} older than {policy[stream][action]} ({ref_date.date()}) on stream {stream}")
         # Enumerating in reverse to go from the oldest build to the newest one
-        for index, build in enumerate(reversed(builds_json_data["builds"])):
+        for build in reversed(builds):
             build_id = build["id"]
             if action in build.get("policy-cleanup", []):
                 print(f"Build {build_id} has already had {action} pruning completed")
@@ -141,13 +143,10 @@ def main():
                         # S3().delete_object(args.bucket, f"{args.prefix}{str(current_build.id)}")
                     case "images":
                         raise NotImplementedError
-            if not args.dry_run:
-                build.setdefault("policy-cleanup", []).append("cloud-uploads")
-                builds_json_data["builds"][index] = build
+            build.setdefault("policy-cleanup", []).append("cloud-uploads")
 
-    if not args.dry_run:
-        # Save the updated builds.json to local builds/builds.json
-        save_builds_json(builds_json_data)
+    # Save the updated builds.json to local builds/builds.json
+    save_builds_json(builds_json_data, BUILDFILES['list'])
 
 
 def get_s3_bucket_and_prefix(builds_source_data_url):
@@ -201,9 +200,9 @@ def get_json_from_s3(s3, bucket, key):
         raise Exception(f"Error fetching the JSON file from S3 {bucket}/{key}: {e}")
 
 
-def save_builds_json(builds_json_data):
+def save_builds_json(builds_json_data, location):
     builds_json_data["timestamp"] = datetime.datetime.now(pytz.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-    with open(BUILDFILES['list'], "w") as json_file:
+    with open(location, "w") as json_file:
         json.dump(builds_json_data, json_file, indent=2)
 
 
@@ -225,11 +224,23 @@ def handle_upload_builds_json(s3_client, bucket, prefix, dry_run, acl):
     # Check if there are any changes that were made to remote(s3 version) builds.json
     # while the pruning was in progress
     if remote_builds_json != builds_json_source_data:
+        # Before we merge the changes, let's update the local tmp/builds-source.json with the latest remote_builds_json
+        save_builds_json(remote_builds_json, BUILDFILES['sourcedata'])
         print("Detected remote updates to builds.json. Merging it to the local builds.json file")
         remote_builds_json = update_policy_cleanup(current_builds_json, remote_builds_json)
-        if not dry_run:
-            # Make sure we have the merged json as local builds/builds.json
-            save_builds_json(remote_builds_json)
+        # Make sure we have the merged json as local builds/builds.json
+        save_builds_json(remote_builds_json, BUILDFILES['list'])
+
+    # Print the updated builds.json before the s3 update
+    with open(BUILDFILES['list'], 'r') as file:
+        data = json.load(file)
+    print("----")
+    print(json.dumps(data, indent=4))
+    print("----")
+
+    # Before uploading builds.json, copy the updated tmp/builds-source.json as builds.json.bak as a backup
+    s3_copy(s3_client, BUILDFILES['sourcedata'], bucket, f'{prefix}/builds.json.bak', CACHE_MAX_AGE_METADATA, acl, extra_args={}, dry_run=dry_run)
+
     # Upload the local builds.json to s3
     return s3_copy(s3_client, BUILDFILES['list'], bucket, f'{prefix}/builds.json', CACHE_MAX_AGE_METADATA, acl, extra_args={}, dry_run=dry_run)
 
@@ -262,7 +273,11 @@ def prune_cloud_uploads(build, cloud_config, dry_run):
 def deregister_aws_amis(build, cloud_config, dry_run):
     errors = []
     aws_credentials = cloud_config.get("aws", {}).get("credentials")
-    for ami in build.images.get("amis", []):
+    amis = build.images.get("amis")
+    if not amis:
+        print(f"No AMI/Snapshot to prune for {build.id} for {build.arch}")
+        return errors
+    for ami in amis:
         region_name = ami.get("name")
         ami_id = ami.get("hvm")
         snapshot_id = ami.get("snapshot")
@@ -283,7 +298,7 @@ def delete_gcp_image(build, cloud_config, dry_run):
     errors = []
     gcp = build.images.get("gcp")
     if not gcp:
-        print(f"No GCP image for {build.id} for {build.arch}")
+        print(f"No GCP image to prune for {build.id} for {build.arch}")
         return errors
     gcp_image = gcp.get("image")
     project = gcp.get("project")
