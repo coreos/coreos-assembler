@@ -335,6 +335,23 @@ RequiredBy=coreos-installer.target
 # for target system
 RequiredBy=multi-user.target`, nmConnectionId, nmConnectionFile)
 
+// Unit to check that if there is any failed service
+var verifyNoFailedService = `[Unit]
+Description=TestISO Verify No Failed Service
+OnFailure=emergency.target
+OnFailureJobMode=isolate
+After=rpm-ostree-fix-shadow-mode.service
+Before=live-signal-ok.service
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/sh -c '[[ -z $(/usr/bin/systemctl list-units --state failed --quiet) ]]'
+[Install]
+# for install tests
+RequiredBy=coreos-installer.target
+# for iso-as-disk
+RequiredBy=multi-user.target`
+
 //go:embed resources/iscsi_butane_setup.yaml
 var iscsi_butane_config string
 
@@ -985,6 +1002,7 @@ func testAsDisk(ctx context.Context, outdir string) (time.Duration, error) {
 		return 0, err
 	}
 
+	config.AddSystemdUnit("verify-no-failed-service.service", verifyNoFailedService, conf.Enable)
 	config.AddSystemdUnit("live-signal-ok.service", liveSignalOKUnit, conf.Enable)
 	config.AddSystemdUnit("verify-no-efi-boot-entry.service", verifyNoEFIBootEntry, conf.Enable)
 	builder.SetConfig(config)
