@@ -203,7 +203,7 @@ def get_json_from_s3(s3, bucket, key):
 def save_builds_json(builds_json_data, location):
     builds_json_data["timestamp"] = datetime.datetime.now(pytz.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     with open(location, "w") as json_file:
-        json.dump(builds_json_data, json_file, indent=2)
+        json.dump(builds_json_data, json_file, indent=4)
 
 
 def handle_upload_builds_json(s3_client, bucket, prefix, dry_run, acl):
@@ -217,7 +217,7 @@ def handle_upload_builds_json(s3_client, bucket, prefix, dry_run, acl):
 
     # If there are no changes to the local builds/builds.json we won't need to upload
     # anything to the s3 bucket. Will return in this scenario.
-    if builds_json_source_data == current_builds_json:
+    if builds_json_source_data.get('builds') == current_builds_json.get('builds'):
         print("There are no changes to the local builds/builds.json. No upload needed")
         return
 
@@ -233,10 +233,15 @@ def handle_upload_builds_json(s3_client, bucket, prefix, dry_run, acl):
 
     # Print the updated builds.json before the s3 update
     with open(BUILDFILES['list'], 'r') as file:
-        data = json.load(file)
+        updated_builds_json = json.load(file)
     print("----")
-    print(json.dumps(data, indent=4))
+    print(json.dumps(updated_builds_json, indent=4))
     print("----")
+
+    with open(BUILDFILES['sourcedata'], 'r') as file:
+        builds_json_source_data = json.load(file)
+    # Make sure the size of the builds array is the same in the original and our modified builds.json
+    assert len(builds_json_source_data.get('builds')) == len(updated_builds_json.get('builds'))
 
     # Before uploading builds.json, copy the updated tmp/builds-source.json as builds.json.bak as a backup
     s3_copy(s3_client, BUILDFILES['sourcedata'], bucket, f'{prefix}/builds.json.bak', CACHE_MAX_AGE_METADATA, acl, extra_args={}, dry_run=dry_run)
