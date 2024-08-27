@@ -57,8 +57,8 @@ github.com/containers/image/v5 v5.28.0 h1:H4cWbdI88UA/mDb6SxMo3IxpmS1BSs/Kifvhwt
 github.com/containers/image/v5 v5.28.0/go.mod h1:9aPnNkwHNHgGl9VlQxXEshvmOJRbdRAc1rNDD6sP2eU=
 github.com/containers/storage v1.50.1 h1:1r5k4N2BNa94WZZFw116tozj08zJg7SxihQZ3iccyCs=
 github.com/containers/storage v1.50.1/go.mod h1:dpspZsUrcKD8SpTofvKWhwPDHD0MkO4Q7VE+oYdWkiA=
-github.com/coreos/butane v0.19.0 h1:F4uuWwIaOCA6YrBOKoVU1cb25SMIkuValW9p1/PXyO8=
-github.com/coreos/butane v0.19.0/go.mod h1:dfa3/aWa58qfWMK/CGm3OR3T328x6x2nm66MgZURCTs=
+github.com/coreos/butane v0.21.0 h1:GDi6XBheEfvxaq7Ez3wxdN+0IraAz3U7QvpVGcbHd84=
+github.com/coreos/butane v0.21.0/go.mod h1:3OKS5qaH58O2yLAKgAtOgBpUQSm7aIOU09IpG+IvmF4=
 github.com/coreos/go-json v0.0.0-20230131223807-18775e0fb4fb h1:rmqyI19j3Z/74bIRhuC59RB442rXUazKNueVpfJPxg4=
 github.com/coreos/go-json v0.0.0-20230131223807-18775e0fb4fb/go.mod h1:rcFZM3uxVvdyNmsAV2jopgPD1cs5SPWJWU5dOz2LUnw=
 github.com/coreos/go-semver v0.3.1 h1:yi21YpKnrx1gt5R+la8n5WgS0kCrsPp33dmEyHReZr4=

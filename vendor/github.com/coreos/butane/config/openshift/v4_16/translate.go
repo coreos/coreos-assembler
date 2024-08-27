@@ -12,19 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.)
 
-package v4_15_exp
+package v4_16
 
 import (
 	"net/url"
 	"strings"
 
 	"github.com/coreos/butane/config/common"
-	"github.com/coreos/butane/config/openshift/v4_15_exp/result"
+	"github.com/coreos/butane/config/openshift/v4_16/result"
 	cutil "github.com/coreos/butane/config/util"
 	"github.com/coreos/butane/translate"
 
 	"github.com/coreos/ignition/v2/config/util"
-	"github.com/coreos/ignition/v2/config/v3_5_experimental/types"
+	"github.com/coreos/ignition/v2/config/v3_4/types"
 	"github.com/coreos/vcontext/path"
 	"github.com/coreos/vcontext/report"
 )
@@ -108,16 +108,15 @@ func (c Config) FieldFilters() *cutil.FieldFilters {
 	return &fieldFilters
 }
 
-// ToMachineConfig4_15Unvalidated translates the config to a MachineConfig.  It also
+// ToMachineConfig4_16Unvalidated translates the config to a MachineConfig.  It also
 // returns the set of translations it did so paths in the resultant config
 // can be tracked back to their source in the source config.  No config
 // validation is performed on input or output.
-func (c Config) ToMachineConfig4_15Unvalidated(options common.TranslateOptions) (result.MachineConfig, translate.TranslationSet, report.Report) {
-	cfg, ts, r := c.Config.ToIgn3_5Unvalidated(options)
+func (c Config) ToMachineConfig4_16Unvalidated(options common.TranslateOptions) (result.MachineConfig, translate.TranslationSet, report.Report) {
+	cfg, ts, r := c.Config.ToIgn3_4Unvalidated(options)
 	if r.IsFatal() {
 		return result.MachineConfig{}, ts, r
 	}
-	ts = translateUserGrubCfg(&cfg, &ts)
 
 	// wrap
 	ts = ts.PrefixPaths(path.New("yaml"), path.New("json", "spec", "config"))
@@ -165,21 +164,21 @@ func (c Config) ToMachineConfig4_15Unvalidated(options common.TranslateOptions) 
 	return mc, ts, r
 }
 
-// ToMachineConfig4_15 translates the config to a MachineConfig.  It returns a
+// ToMachineConfig4_16 translates the config to a MachineConfig.  It returns a
 // report of any errors or warnings in the source and resultant config.  If
 // the report has fatal errors or it encounters other problems translating,
 // an error is returned.
-func (c Config) ToMachineConfig4_15(options common.TranslateOptions) (result.MachineConfig, report.Report, error) {
-	cfg, r, err := cutil.Translate(c, "ToMachineConfig4_15Unvalidated", options)
+func (c Config) ToMachineConfig4_16(options common.TranslateOptions) (result.MachineConfig, report.Report, error) {
+	cfg, r, err := cutil.Translate(c, "ToMachineConfig4_16Unvalidated", options)
 	return cfg.(result.MachineConfig), r, err
 }
 
-// ToIgn3_5Unvalidated translates the config to an Ignition config.  It also
+// ToIgn3_4Unvalidated translates the config to an Ignition config.  It also
 // returns the set of translations it did so paths in the resultant config
 // can be tracked back to their source in the source config.  No config
 // validation is performed on input or output.
-func (c Config) ToIgn3_5Unvalidated(options common.TranslateOptions) (types.Config, translate.TranslationSet, report.Report) {
-	mc, ts, r := c.ToMachineConfig4_15Unvalidated(options)
+func (c Config) ToIgn3_4Unvalidated(options common.TranslateOptions) (types.Config, translate.TranslationSet, report.Report) {
+	mc, ts, r := c.ToMachineConfig4_16Unvalidated(options)
 	cfg := mc.Spec.Config
 
 	// report warnings if there are any non-empty fields in Spec (other
@@ -194,23 +193,23 @@ func (c Config) ToIgn3_5Unvalidated(options common.TranslateOptions) (types.Conf
 	return cfg, ts, r
 }
 
-// ToIgn3_5 translates the config to an Ignition config.  It returns a
+// ToIgn3_4 translates the config to an Ignition config.  It returns a
 // report of any errors or warnings in the source and resultant config.  If
 // the report has fatal errors or it encounters other problems translating,
 // an error is returned.
-func (c Config) ToIgn3_5(options common.TranslateOptions) (types.Config, report.Report, error) {
-	cfg, r, err := cutil.Translate(c, "ToIgn3_5Unvalidated", options)
+func (c Config) ToIgn3_4(options common.TranslateOptions) (types.Config, report.Report, error) {
+	cfg, r, err := cutil.Translate(c, "ToIgn3_4Unvalidated", options)
 	return cfg.(types.Config), r, err
 }
 
-// ToConfigBytes translates from a v4.15 Butane config to a v4.15 MachineConfig or a v3.5.0 Ignition config. It returns a report of any errors or
+// ToConfigBytes translates from a v4.16 Butane config to a v4.16 MachineConfig or a v3.4.0 Ignition config. It returns a report of any errors or
 // warnings in the source and resultant config. If the report has fatal errors or it encounters other problems
 // translating, an error is returned.
 func ToConfigBytes(input []byte, options common.TranslateBytesOptions) ([]byte, report.Report, error) {
 	if options.Raw {
-		return cutil.TranslateBytes(input, &Config{}, "ToIgn3_5", options)
+		return cutil.TranslateBytes(input, &Config{}, "ToIgn3_4", options)
 	} else {
-		return cutil.TranslateBytesYAML(input, &Config{}, "ToMachineConfig4_15", options)
+		return cutil.TranslateBytesYAML(input, &Config{}, "ToMachineConfig4_16", options)
 	}
 }
 
@@ -301,27 +300,4 @@ func validateMCOSupport(mc result.MachineConfig) report.Report {
 		}
 	}
 	return r
-}
-
-// fcos config generates a user.cfg file using append; however, OpenShift config
-// does not support append (since MCO does not support it). Let change the file to use contents
-func translateUserGrubCfg(config *types.Config, ts *translate.TranslationSet) translate.TranslationSet {
-	newMappings := translate.NewTranslationSet("json", "json")
-	for i, file := range config.Storage.Files {
-		if file.Path == "/boot/grub2/user.cfg" {
-			if len(file.Append) != 1 {
-				// The number of append objects was different from expected, this file
-				// was created by the user and not via butane GRUB sugar
-				return *ts
-			}
-			fromPath := path.New("json", "storage", "files", i, "append", 0)
-			translatedPath := path.New("json", "storage", "files", i, "contents")
-			config.Storage.Files[i].FileEmbedded1.Contents = file.Append[0]
-			config.Storage.Files[i].FileEmbedded1.Append = nil
-			newMappings.AddFromCommonObject(fromPath, translatedPath, config.Storage.Files[i].FileEmbedded1.Contents)
-
-			return ts.Map(newMappings)
-		}
-	}
-	return *ts
 }

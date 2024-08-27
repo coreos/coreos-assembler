@@ -25,6 +25,8 @@ import (
 	fcos1_4 "github.com/coreos/butane/config/fcos/v1_4"
 	fcos1_5 "github.com/coreos/butane/config/fcos/v1_5"
 	fcos1_6_exp "github.com/coreos/butane/config/fcos/v1_6_exp"
+	fiot1_0 "github.com/coreos/butane/config/fiot/v1_0"
+	fiot1_1_exp "github.com/coreos/butane/config/fiot/v1_1_exp"
 	flatcar1_0 "github.com/coreos/butane/config/flatcar/v1_0"
 	flatcar1_1 "github.com/coreos/butane/config/flatcar/v1_1"
 	flatcar1_2_exp "github.com/coreos/butane/config/flatcar/v1_2_exp"
@@ -33,7 +35,9 @@ import (
 	openshift4_12 "github.com/coreos/butane/config/openshift/v4_12"
 	openshift4_13 "github.com/coreos/butane/config/openshift/v4_13"
 	openshift4_14 "github.com/coreos/butane/config/openshift/v4_14"
-	openshift4_15_exp "github.com/coreos/butane/config/openshift/v4_15_exp"
+	openshift4_15 "github.com/coreos/butane/config/openshift/v4_15"
+	openshift4_16 "github.com/coreos/butane/config/openshift/v4_16"
+	openshift4_17_exp "github.com/coreos/butane/config/openshift/v4_17_exp"
 	openshift4_8 "github.com/coreos/butane/config/openshift/v4_8"
 	openshift4_9 "github.com/coreos/butane/config/openshift/v4_9"
 	r4e1_0 "github.com/coreos/butane/config/r4e/v1_0"
@@ -73,10 +77,14 @@ func init() {
 	RegisterTranslator("openshift", "4.12.0", openshift4_12.ToConfigBytes)
 	RegisterTranslator("openshift", "4.13.0", openshift4_13.ToConfigBytes)
 	RegisterTranslator("openshift", "4.14.0", openshift4_14.ToConfigBytes)
-	RegisterTranslator("openshift", "4.15.0-experimental", openshift4_15_exp.ToConfigBytes)
+	RegisterTranslator("openshift", "4.15.0", openshift4_15.ToConfigBytes)
+	RegisterTranslator("openshift", "4.16.0", openshift4_16.ToConfigBytes)
+	RegisterTranslator("openshift", "4.17.0-experimental", openshift4_17_exp.ToConfigBytes)
 	RegisterTranslator("r4e", "1.0.0", r4e1_0.ToIgn3_3Bytes)
 	RegisterTranslator("r4e", "1.1.0", r4e1_1.ToIgn3_4Bytes)
 	RegisterTranslator("r4e", "1.2.0-experimental", r4e1_2_exp.ToIgn3_5Bytes)
+	RegisterTranslator("fiot", "1.0.0", fiot1_0.ToIgn3_4Bytes)
+	RegisterTranslator("fiot", "1.1.0-experimental", fiot1_1_exp.ToIgn3_5Bytes)
 	RegisterTranslator("rhcos", "0.1.0", unsupportedRhcosVariant)
 }
 
