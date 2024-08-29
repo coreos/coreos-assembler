@@ -22,10 +22,11 @@
 #             "arches": [
 #                 "x86_64"
 #             ],
-#             "policy-cleanup": [
-#                 "cloud-uploads",
+#             "policy-cleanup": {
+#                 "cloud-uploads": true,
+#                 "images": true,
 #                 "images-kept": ["qemu", "live-iso"]
-#             ]
+#             }
 #         }
 #
 # We should also prune unreferenced build directories here. See also
@@ -40,6 +41,7 @@ import collections
 import datetime
 import os
 import boto3
+import botocore
 from dateutil.relativedelta import relativedelta
 from cosalib.gcp import remove_gcp_image
 from cosalib.aws import deregister_aws_resource
@@ -51,6 +53,12 @@ from cosalib.cmdlib import convert_duration_to_days
 Build = collections.namedtuple("Build", ["id", "images", "arch", "meta_json"])
 # set metadata caching to 5m
 CACHE_MAX_AGE_METADATA = 60 * 5
+# These lists are up to date as of schema hash
+# 4c19aed3b3d84af278780bff63728510bb3e70613e4c4eef8cabd7939eb31bd8. If changing
+# this hash, ensure that the list of SUPPORTED and UNSUPPORTED artifacts below
+# is up to date.
+SUPPORTED = ["amis", "gcp"]
+UNSUPPORTED = ["aliyun", "azurestack", "digitalocean", "exoscale", "ibmcloud", "powervs", "azure"]
 
 
 def parse_args():
@@ -88,13 +96,6 @@ def main():
         # This copies the local builds.json and updates the S3 bucket version.
         return handle_upload_builds_json(s3_client, bucket, prefix, args.dry_run, args.acl)
 
-    # These lists are up to date as of schema hash
-    # 4c19aed3b3d84af278780bff63728510bb3e70613e4c4eef8cabd7939eb31bd8. If changing
-    # this hash, ensure that the list of supported and unsupported artifacts below
-    # is up to date.
-    supported = ["amis", "gcp"]
-    unsupported = ["aliyun", "azurestack", "digitalocean", "exoscale", "ibmcloud", "powervs", "azure"]
-
     with open(args.policy, "r") as f:
         policy = yaml.safe_load(f)
     if stream in policy:
@@ -114,36 +115,72 @@ def main():
             continue
         duration = convert_duration_to_days(policy[stream][action])
         ref_date = today_date - relativedelta(days=int(duration))
+        pruned_build_ids = []
+        images_to_keep = policy.get(stream, {}).get("images-keep", [])
 
         print(f"Pruning resources of type {action} older than {policy[stream][action]} ({ref_date.date()}) on stream {stream}")
         # Enumerating in reverse to go from the oldest build to the newest one
         for build in reversed(builds):
             build_id = build["id"]
-            if action in build.get("policy-cleanup", []):
-                print(f"Build {build_id} has already had {action} pruning completed")
-                continue
             (build_date, _) = parse_fcos_version_to_timestamp_and_stream(build_id)
-
             if build_date >= ref_date:
                 break
+
+            previous_cleanup = build.get("policy-cleanup", {})
+            if action in previous_cleanup:
+                # If we are in here then there has been some previous cleanup of
+                # this type run for this build. For all types except `images` we
+                # can just continue.
+                if action != "images":
+                    print(f"Build {build_id} has already had {action} pruning completed")
+                    continue
+                else:
+                    # OK `images` has been pruned before, but we need to check
+                    # that all the images were pruned that match the current policy.
+                    # i.e. there may be additional images we need prune
+                    previous_images_kept = previous_cleanup.get("images-kept", [])
+                    if set(images_to_keep) == set(previous_images_kept):
+                        print(f"Build {build_id} has already had {action} pruning completed")
+                        continue
+
             for arch in build["arches"]:
+                print(f"Pruning {arch} {action} for {build_id}")
                 meta_prefix = os.path.join(prefix, f"{build_id}/{arch}/meta.json")
                 meta_json = get_json_from_s3(s3_client, bucket, meta_prefix)
                 # Make sure the meta.json doesn't contain any cloud_platform that is not supported for pruning yet.
-                images = get_supported_images(meta_json, unsupported, supported)
+                images = get_supported_images(meta_json)
                 current_build = Build(id=build_id, images=images, arch=arch, meta_json=meta_json)
 
                 match action:
                     case "cloud-uploads":
                         prune_cloud_uploads(current_build, cloud_config, args.dry_run)
-                    case "build":
-                        raise NotImplementedError
-                        # print(f"Deleting key {prefix}{build.id} from bucket {bucket}")
-                        # Delete the build's directory in S3
-                        # S3().delete_object(args.bucket, f"{args.prefix}{str(current_build.id)}")
+                    # Prune through images that are not mentioned in images-keep
                     case "images":
-                        raise NotImplementedError
-            build.setdefault("policy-cleanup", []).append("cloud-uploads")
+                        prune_images(s3_client, current_build, images_to_keep, args.dry_run, bucket, prefix)
+                    # Fully prune releases that are very old including deleting the directory in s3 for that build.
+                    case "build":
+                        prune_build(s3_client, bucket, prefix, build_id, args.dry_run)
+                        pruned_build_ids.append(build_id)
+            # Update policy-cleanup after processing all arches for the build
+            policy_cleanup = build.setdefault("policy-cleanup", {})
+            match action:
+                case "cloud-uploads":
+                    if "cloud-uploads" not in policy_cleanup:
+                        policy_cleanup["cloud-uploads"] = True
+                case "images":
+                    if "images" not in policy_cleanup:
+                        policy_cleanup["images"] = True
+                    policy_cleanup["images-kept"] = images_to_keep
+
+    if pruned_build_ids:
+        if "tombstone-builds" not in builds_json_data:
+            builds_json_data["tombstone-builds"] = []
+        # Separate the builds into remaining builds and tombstone builds
+        remaining_builds = [build for build in builds if build["id"] not in pruned_build_ids]
+        tombstone_builds = [build for build in builds if build["id"] in pruned_build_ids]
+        # Update the data structure
+        builds_json_data["builds"] = remaining_builds
+        builds_json_data["tombstone-builds"].extend(tombstone_builds)
 
     # Save the updated builds.json to local builds/builds.json
     save_builds_json(builds_json_data, BUILDFILES['list'])
@@ -181,13 +218,15 @@ def validate_policy(stream, policy):
             raise Exception("Duration of pruning cloud-uploads must be less than or equal to pruning a build")
 
 
-def get_supported_images(meta_json, unsupported, supported):
+def get_supported_images(meta_json):
     images = {}
     for key in meta_json:
-        if key in unsupported:
+        if key in UNSUPPORTED:
             raise Exception(f"The platform {key} is not supported")
-        if key in supported:
+        if key in SUPPORTED:
             images[key] = meta_json[key]
+        else:
+            raise Exception(f"The platform {key} is neither in supported nor unsupported artifacts.")
     return images
 
 
@@ -318,6 +357,48 @@ def delete_gcp_image(build, cloud_config, dry_run):
     else:
         errors.append(f"Missing parameters to remove {gcp_image}")
     return errors
+
+
+def prune_images(s3, build, images_to_keep, dry_run, bucket, prefix):
+    images_from_meta_json = build.meta_json.get("images", [])
+    # Get the image names and paths currently in meta.json
+    current_images_data = [(name, data.get("path")) for name, data in images_from_meta_json.items()]
+    errors = []
+
+    for name, path in current_images_data:
+        if name not in images_to_keep:
+            image_prefix = os.path.join(prefix, f"{build.id}/{build.arch}/{path}")
+            if dry_run:
+                print(f"Would prune {bucket}/{image_prefix}")
+            else:
+                try:
+                    s3.delete_object(Bucket=bucket, Key=image_prefix)
+                    print(f"Pruned {name} image for {build.id} for {build.arch}")
+                except botocore.exceptions.ClientError as e:
+                    if e.response['Error']['Code'] == 'NoSuchKey':
+                        print(f"{bucket}/{image_prefix} already pruned.")
+                    else:
+                        errors.append(e)
+    if errors:
+        print(f"Found errors when pruning images for {build.id}:")
+        for e in errors:
+            print(e)
+        raise Exception("Some errors were encountered")
+
+
+def prune_build(bucket, prefix, build_id, dry_run, s3_client):
+    build_prefix = os.path.join(prefix, f"{build_id}/")
+    if dry_run:
+        print(f"Would delete all resources in {bucket}/{build_prefix}.")
+    else:
+        try:
+            bucket.objects.filter(Prefix=build_prefix).delete()
+            print(f"Pruned {build_id} completely from s3")
+        except botocore.exceptions.ClientError as e:
+            if e.response['Error']['Code'] == 'NoSuchKey':
+                print(f"{bucket}/{build_prefix} already pruned.")
+            else:
+                raise Exception(f"Error pruning {build_id}: {e.response['Error']['Message']}")
 
 
 if __name__ == "__main__":
