@@ -40,7 +40,8 @@ type Cluster struct {
 	*platform.BaseCluster
 	flight *flight
 
-	mu sync.Mutex
+	mu          sync.Mutex
+	tearingDown bool
 }
 
 func (qc *Cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error) {
@@ -231,10 +232,22 @@ func (qc *Cluster) NewMachineWithQemuOptions(userdata *conf.UserData, options pl
 
 	qc.AddMach(qm)
 
+	// In this flow, nothing actually Wait()s for the QEMU process. Let's do it here
+	// and print something if it exited unexpectedly. Ideally in the future, this
+	// interface allows the test harness to provide e.g. a channel we can signal on so
+	// it knows to stop the test once QEMU dies.
+	go func() {
+		err := inst.Wait()
+		if err != nil && !qc.tearingDown {
+			plog.Errorf("QEMU process finished abnormally: %v", err)
+		}
+	}()
+
 	return qm, nil
 }
 
 func (qc *Cluster) Destroy() {
+	qc.tearingDown = true
 	qc.BaseCluster.Destroy()
 	qc.flight.DelCluster(qc)
 }
