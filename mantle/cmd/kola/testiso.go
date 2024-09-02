@@ -675,59 +675,85 @@ func awaitCompletion(ctx context.Context, inst *platform.QemuInstance, outdir st
 					err = platform.ErrInitramfsEmergency
 				}
 			}
+		}()
+		go func() {
+			err := inst.Wait()
+			// only one Wait() gets process data, so also manually check for signal
+			plog.Debugf("qemu exited err=%v", err)
+			if err == nil && inst.Signaled() {
+				err = errors.New("process killed")
+			}
 			if err != nil {
-				errchan <- err
+				errchan <- errors.Wrapf(err, "QEMU unexpectedly exited while awaiting completion")
+			}
+			time.Sleep(1 * time.Minute)
+			errchan <- fmt.Errorf("QEMU exited; timed out waiting for completion")
+		}()
+		go func() {
+			r := bufio.NewReader(qchan)
+			for _, exp := range expected {
+				l, err := r.ReadString('\n')
+				if err != nil {
+					if err == io.EOF {
+						// this may be from QEMU getting killed or exiting; wait a bit
+						// to give a chance for .Wait() above to feed the channel with a
+						// better error
+						time.Sleep(1 * time.Second)
+						errchan <- fmt.Errorf("Got EOF from completion channel, %s expected", exp)
+					} else {
+						errchan <- errors.Wrapf(err, "reading from completion channel")
+					}
+					return
+				}
+				line := strings.TrimSpace(l)
+				if line != exp {
+					errchan <- fmt.Errorf("Unexpected string from completion channel: %s expected: %s", line, exp)
+					return
+				}
+				plog.Debugf("Matched expected message %s", exp)
+			}
+			plog.Debugf("Matched all expected messages")
+			// OK!
+			errchan <- nil
+		}()
+		go func() {
+			//check for error when switching boot order
+			if booterrchan != nil {
+				if err := <-booterrchan; err != nil {
+					errchan <- err
+				}
+			}
+		}()
+		go func() {
+			err := <-errchan
+			if err == nil {
+				// No error so far, check the console and journal files
+				files := []string{filepath.Join(outdir, "console.txt"), filepath.Join(outdir, "journal.txt")}
+				for _, file := range files {
+					// Read the contents of the file
+					fileContent, err := inst.ReadFile(file)
+					if err != nil {
+						fmt.Printf("error reading file %s: %v\n", file, err)
+						return
+					}
+					// Check for badness with CheckConsole
+					warnOnly, badlines := kola.CheckConsole([]byte(fileContent), nil)
+					if len(badlines) > 0 {
+						err = fmt.Errorf("errors found in console file: %v", badlines)
+						for _, badline := range badlines {
+							if err != nil {
+								fmt.Printf("badness detected in console file: %v\n", badline)
+							}
+						}
+						errchan <- err
+					} else if warnOnly {
+						fmt.Println("warnings found in console file")
+						continue
+					}
+				}
 			}
 		}()
 	}
-	go func() {
-		err := inst.Wait()
-		// only one Wait() gets process data, so also manually check for signal
-		plog.Debugf("qemu exited err=%v", err)
-		if err == nil && inst.Signaled() {
-			err = errors.New("process killed")
-		}
-		if err != nil {
-			errchan <- errors.Wrapf(err, "QEMU unexpectedly exited while awaiting completion")
-		}
-		time.Sleep(1 * time.Minute)
-		errchan <- fmt.Errorf("QEMU exited; timed out waiting for completion")
-	}()
-	go func() {
-		r := bufio.NewReader(qchan)
-		for _, exp := range expected {
-			l, err := r.ReadString('\n')
-			if err != nil {
-				if err == io.EOF {
-					// this may be from QEMU getting killed or exiting; wait a bit
-					// to give a chance for .Wait() above to feed the channel with a
-					// better error
-					time.Sleep(1 * time.Second)
-					errchan <- fmt.Errorf("Got EOF from completion channel, %s expected", exp)
-				} else {
-					errchan <- errors.Wrapf(err, "reading from completion channel")
-				}
-				return
-			}
-			line := strings.TrimSpace(l)
-			if line != exp {
-				errchan <- fmt.Errorf("Unexpected string from completion channel: %s expected: %s", line, exp)
-				return
-			}
-			plog.Debugf("Matched expected message %s", exp)
-		}
-		plog.Debugf("Matched all expected messages")
-		// OK!
-		errchan <- nil
-	}()
-	go func() {
-		//check for error when switching boot order
-		if booterrchan != nil {
-			if err := <-booterrchan; err != nil {
-				errchan <- err
-			}
-		}
-	}()
 	err := <-errchan
 	return time.Since(start), err
 }
