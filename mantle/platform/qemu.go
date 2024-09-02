@@ -43,6 +43,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/coreos/coreos-assembler/mantle/kola"
 	"github.com/coreos/coreos-assembler/mantle/platform/conf"
 	"github.com/coreos/coreos-assembler/mantle/util"
 	coreosarch "github.com/coreos/stream-metadata-go/arch"
@@ -255,6 +256,51 @@ func (inst *QemuInstance) WaitIgnitionError(ctx context.Context) (string, error)
 	return r.String(), nil
 }
 
+// Copy of WaitIgnitionError -> CheckConsoleForBadness
+// CheckConsoleForBadness will only return if the instance
+// failed inside the initramfs.  The resulting string will
+// be a newline-delimited stream of JSON strings, as returned
+// by `journalctl -o json`.
+func (inst *QemuInstance) CheckConsoleForBadness(ctx context.Context) (string, error) {
+	b := bufio.NewReaderSize(inst.journalPipe, 64768)
+	var r strings.Builder
+	iscorrupted := false
+	_, err := b.Peek(1)
+	if err != nil {
+		// It's normal to get EOF if we didn't catch an error and qemu
+		// is shutting down.  We also need to handle when the Destroy()
+		// function closes the journal FD on us.
+		if e, ok := err.(*os.PathError); ok && e.Err == os.ErrClosed {
+			return "", nil
+		} else if err == io.EOF {
+			return "", nil
+		}
+		return "", errors.Wrapf(err, "Reading from journal")
+	}
+	for {
+		if err := ctx.Err(); err != nil {
+			return "", err
+		}
+
+		line, prefix, err := b.ReadLine()
+		if err != nil {
+			return r.String(), errors.Wrapf(err, "Reading from journal channel")
+		}
+		if prefix {
+			iscorrupted = true
+		}
+		if len(line) == 0 || string(line) == "{}" {
+			break
+		}
+		r.Write(line)
+		r.Write([]byte("\n"))
+	}
+	if iscorrupted {
+		return r.String(), fmt.Errorf("journal was truncated due to overly long line")
+	}
+	return r.String(), nil
+}
+
 // WaitAll wraps the process exit as well as WaitIgnitionError,
 // returning an error if either fail.
 func (inst *QemuInstance) WaitAll(ctx context.Context) error {
@@ -277,6 +323,20 @@ func (inst *QemuInstance) WaitAll(ctx context.Context) error {
 		}
 	}()
 
+	// Early stop due to failure in initramfs.
+	go func() {
+		buf, err := inst.CheckConsoleForBadness(waitCtx)
+		if err != nil {
+			c <- err
+			return
+		}
+
+		// TODO: parse buf and try to nicely render something.
+		if buf != "" {
+			c <- ErrInitramfsEmergency
+			return
+		}
+	}()
 	// Machine terminated.
 	go func() {
 		select {

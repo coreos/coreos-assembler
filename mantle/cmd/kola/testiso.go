@@ -679,6 +679,22 @@ func awaitCompletion(ctx context.Context, inst *platform.QemuInstance, outdir st
 				errchan <- err
 			}
 		}()
+		// check for console badness
+		errBuf, err := inst.CheckConsoleForBadness(ctx)
+			if err == nil {
+				if errBuf != "" {
+					plog.Info("entered emergency.target in initramfs")
+					path := filepath.Join(outdir, "ignition-virtio-dump.txt")
+					if err := os.WriteFile(path, []byte(errBuf), 0644); err != nil {
+						plog.Errorf("Failed to write journal: %v", err)
+					}
+					err = platform.ErrInitramfsEmergency
+				}
+			}
+			if err != nil {
+				errchan <- err
+			}
+		}()
 	}
 	go func() {
 		err := inst.Wait()

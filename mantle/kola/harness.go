@@ -1917,6 +1917,34 @@ func ScpKolet(machines []platform.Machine) error {
 	return fmt.Errorf("Unable to locate kolet binary for %s", mArch)
 }
 
+
+// CheckConsoleText checks console output for badness
+func CheckConsoleText(consoleOutput []byte) (bool, []string) {
+	var badlines []string
+	warnOnly, allowRerunSuccess := true, true
+	for _, check := range consoleChecks {
+		if check.skipFlag != nil {
+			continue
+		}
+		match := check.match.FindSubmatch(consoleOutput)
+		if match != nil {
+			badline := check.desc
+			if len(match) > 1 {
+				// include first subexpression
+				badline += fmt.Sprintf(" (%s)", match[1])
+			}
+			badlines = append(badlines, badline)
+			if !check.warnOnly {
+				warnOnly = false
+			}
+			if !check.allowRerunSuccess {
+				allowRerunSuccess = false
+			}
+		}
+	}
+	return warnOnly, badlines
+}
+
 // CheckConsole checks some console output for badness and returns short
 // descriptions of any bad lines it finds along with a boolean
 // indicating if the configuration has the bad lines marked as
@@ -1944,6 +1972,9 @@ func CheckConsole(output []byte, t *register.Test) (bool, []string) {
 			if !check.allowRerunSuccess {
 				allowRerunSuccess = false
 			}
+			cc := CheckConsoleText([]byte(output))
+			fmt.Printf("Test failed: %v", cc)
+			fmt.Printf("// Leftovers \n\n")
 		}
 	}
 	if len(badlines) > 0 && allowRerunSuccess && t != nil {
