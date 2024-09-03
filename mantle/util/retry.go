@@ -53,6 +53,7 @@ func RetryConditional(attempts int, delay time.Duration, shouldRetry func(err er
 // between each try based on the given delay.
 func RetryUntilTimeout(timeout, delay time.Duration, f func() error) error {
 	after := time.After(timeout)
+	deadline := time.Now().Add(timeout)
 	for {
 		select {
 		case <-after:
@@ -63,9 +64,11 @@ func RetryUntilTimeout(timeout, delay time.Duration, f func() error) error {
 		// how long it takes remote network requests to finish.
 		start := time.Now()
 		err := f()
-		plog.Debugf("RetryUntilTimeout: f() took %v", time.Since(start))
+		plog.Debugf("RetryUntilTimeout: f() took %v. %v until timeout.", time.Since(start), time.Until(deadline).Round(time.Second))
 		if err == nil {
 			break
+		} else {
+			plog.Debugf("RetryUntilTimeout: f() returned error: %s", err)
 		}
 		time.Sleep(delay)
 	}
