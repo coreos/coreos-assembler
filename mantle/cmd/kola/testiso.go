@@ -694,8 +694,7 @@ func awaitCompletion(ctx context.Context, inst *platform.QemuInstance, outdir st
 			if err != nil {
 				errchan <- err
 			}
-		}()
-	}
+		}
 	go func() {
 		err := inst.Wait()
 		// only one Wait() gets process data, so also manually check for signal

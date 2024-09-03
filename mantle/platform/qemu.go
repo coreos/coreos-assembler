@@ -43,7 +43,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/coreos/coreos-assembler/mantle/kola"
 	"github.com/coreos/coreos-assembler/mantle/platform/conf"
 	"github.com/coreos/coreos-assembler/mantle/util"
 	coreosarch "github.com/coreos/stream-metadata-go/arch"
