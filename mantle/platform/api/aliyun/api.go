@@ -134,6 +134,20 @@ func (a *API) CopyImage(source_id, dest_name, dest_region, dest_description, kms
 			Value: "mantle",
 		},
 	}
+
+	// Check if an image with the name has already been uploaded. This can
+	// happen when replication to a region fails which happens often on aliyun
+	images, err := a.GetImagesInRegion(dest_name, dest_region)
+	if err != nil {
+		return "", fmt.Errorf("getting image: %v", err)
+	}
+
+	// return early if there is already an image with that tag
+	if len(images.Images.Image) > 0 {
+		plog.Infof("image with name %v in %v region already exists--skipping copy", dest_name, dest_region)
+		return images.Images.Image[0].ImageId, nil
+	}
+
 	response, err := a.ecs.CopyImage(request)
 	if err != nil {
 		return "", fmt.Errorf("copying image: %v", err)
@@ -287,6 +301,16 @@ func (a *API) finishImportImageTask(importImageResponse *ecs.ImportImageResponse
 	}
 
 	return importImageResponse.ImageId, nil
+}
+
+// GetImagesInRegion retrieves a list of images by ImageName in a specified region
+func (a *API) GetImagesInRegion(name string, region string) (*ecs.DescribeImagesResponse, error) {
+	request := ecs.CreateDescribeImagesRequest()
+	request.SetConnectTimeout(defaultConnectTimeout)
+	request.SetReadTimeout(defaultReadTimeout)
+	request.ImageName = name
+	request.RegionId = region
+	return a.ecs.DescribeImages(request)
 }
 
 // GetImages retrieves a list of images by ImageName
