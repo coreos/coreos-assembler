@@ -33,16 +33,16 @@ var (
 )
 
 type Options struct {
-	Image        string
-	Project      string
-	Zone         string
-	MachineType  string
-	DiskType     string
-	Network      string
-	ServiceAcct  string
-	JSONKeyFile  string
-	ServiceAuth  bool
-	Confidential bool
+	Image            string
+	Project          string
+	Zone             string
+	MachineType      string
+	DiskType         string
+	Network          string
+	ServiceAcct      string
+	JSONKeyFile      string
+	ServiceAuth      bool
+	ConfidentialType string
 	*platform.Options
 }
 
