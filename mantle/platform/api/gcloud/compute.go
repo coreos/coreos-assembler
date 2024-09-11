@@ -147,13 +147,18 @@ func (a *API) mkinstance(userdata, name string, keys []*agent.Key, opts platform
 		})
 	}
 	// create confidential instance
-	if a.options.Confidential {
+	ConfidentialType := strings.ToUpper(a.options.ConfidentialType)
+	ConfidentialType = strings.Replace(ConfidentialType, "-", "_", -1)
+	if ConfidentialType == "SEV" || ConfidentialType == "SEV_SNP" {
+		fmt.Printf("Using confidential type for confidential computing %s\n", ConfidentialType)
 		instance.ConfidentialInstanceConfig = &compute.ConfidentialInstanceConfig{
-			EnableConfidentialCompute: true,
+			ConfidentialInstanceType: ConfidentialType,
 		}
 		instance.Scheduling = &compute.Scheduling{
 			OnHostMaintenance: "TERMINATE",
 		}
+	} else {
+		return nil, fmt.Errorf("Does not support confidential type %s, should be: sev, sev_snp\n", a.options.ConfidentialType)
 	}
 	// attach aditional disk
 	for _, spec := range opts.AdditionalDisks {
