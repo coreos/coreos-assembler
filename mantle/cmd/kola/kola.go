@@ -17,7 +17,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"math/rand"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -25,7 +24,6 @@ import (
 	"sort"
 	"strings"
 	"text/tabwriter"
-	"time"
 
 	"github.com/coreos/pkg/capnslog"
 	"github.com/pkg/errors"
@@ -160,8 +158,6 @@ func init() {
 }
 
 func main() {
-	// initialize global state
-	rand.Seed(time.Now().UnixNano())
 	cli.Execute(root)
 }
 
