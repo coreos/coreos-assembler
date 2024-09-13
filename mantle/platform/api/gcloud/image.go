@@ -86,6 +86,7 @@ func (a *API) CreateImage(spec *ImageSpec, overwrite bool) (*compute.Operation, 
 		}
 	}
 
+	// https://cloud.google.com/compute/docs/images/create-custom#guest-os-features
 	features := []*compute.GuestOsFeature{
 		// https://cloud.google.com/compute/docs/images/create-delete-deprecate-private-images
 		{
@@ -105,6 +106,10 @@ func (a *API) CreateImage(spec *ImageSpec, overwrite bool) (*compute.Operation, 
 		// https://cloud.google.com/blog/products/identity-security/rsa-snp-vm-more-confidential
 		{
 			Type: "SEV_SNP_CAPABLE",
+		},
+		// https://cloud.google.com/compute/docs/networking/using-idpf
+		{
+			Type: "IDPF",
 		},
 	}
 

@@ -155,6 +155,12 @@ func (a *API) mkinstance(userdata, name string, keys []*agent.Key, opts platform
 			OnHostMaintenance: "TERMINATE",
 		}
 	}
+	// metal instances can only have a TERMINATE maintenance policy
+	if strings.HasSuffix(a.options.MachineType, "metal") {
+		instance.Scheduling = &compute.Scheduling{
+			OnHostMaintenance: "TERMINATE",
+		}
+	}
 	// attach aditional disk
 	for _, spec := range opts.AdditionalDisks {
 		plog.Debugf("Parsing disk spec %q\n", spec)
