@@ -120,7 +120,7 @@ func init() {
 	sv(&kola.GCPOptions.Project, "gcp-project", "fedora-coreos-devel", "GCP project name")
 	sv(&kola.GCPOptions.Zone, "gcp-zone", "us-central1-a", "GCP zone name")
 	sv(&kola.GCPOptions.MachineType, "gcp-machinetype", "", "GCP machine type")
-	sv(&kola.GCPOptions.DiskType, "gcp-disktype", "pd-ssd", "GCP disk type")
+	sv(&kola.GCPOptions.DiskType, "gcp-disktype", "", "GCP disk type (default pd-ssd)")
 	sv(&kola.GCPOptions.Network, "gcp-network", "default", "GCP network")
 	sv(&kola.GCPOptions.ServiceAcct, "gcp-service-account", "", "GCP service account to attach to instance (default project default)")
 	bv(&kola.GCPOptions.ServiceAuth, "gcp-service-auth", false, "for non-interactive auth when running within GCP")
@@ -256,6 +256,18 @@ func syncOptionsImpl(useCosa bool) error {
 			kola.GCPOptions.MachineType = "t2a-standard-1"
 		}
 		fmt.Printf("Using %s instance type\n", kola.GCPOptions.MachineType)
+	}
+	// Set the disktype for gcp based on the instance type. metal
+	// instances require hyperdisk storage, all other should be able
+	// to use pd-ssd.
+	// https://cloud.google.com/compute/docs/general-purpose-machines#c3_disks
+	if kolaPlatform == "gcp" && kola.GCPOptions.DiskType == "" {
+		if strings.HasSuffix(kola.GCPOptions.MachineType, "metal") {
+			kola.GCPOptions.DiskType = "hyperdisk-balanced"
+		} else {
+			kola.GCPOptions.DiskType = "pd-ssd"
+		}
+		fmt.Printf("Using %s disktype for gcp instance\n", kola.GCPOptions.DiskType)
 	}
 
 	// if no external dirs were given, automatically add the working directory;
