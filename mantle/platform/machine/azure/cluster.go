@@ -15,9 +15,9 @@
 package azure
 
 import (
+	"crypto/rand"
 	"errors"
 	"fmt"
-	"math/rand"
 	"os"
 	"path/filepath"
 
@@ -35,7 +35,9 @@ type cluster struct {
 
 func (ac *cluster) vmname() string {
 	b := make([]byte, 5)
-	rand.Read(b)
+	if _, err := rand.Read(b); err != nil {
+		plog.Errorf("failed to generate a random vmname: %v", err)
+	}
 	return fmt.Sprintf("%s-%x", ac.Name()[0:13], b)
 }
 
