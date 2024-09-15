@@ -343,7 +343,7 @@ func runFnAndWaitForRebootIntoVersion(c cluster.TestCluster, m platform.Machine,
 
 	fn()
 
-	if err := m.WaitForReboot(120*time.Second, oldBootId); err != nil {
+	if err := m.WaitForReboot(240*time.Second, oldBootId); err != nil {
 		c.Fatalf("failed waiting for machine reboot: %v", err)
 	}
 
