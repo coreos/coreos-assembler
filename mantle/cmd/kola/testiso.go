@@ -861,7 +861,7 @@ func testLiveIso(ctx context.Context, inst platform.Install, outdir string, mini
 	// When you are debugging earlyboot/initramfs issues this can be
 	// problematic. Let's add a hook here to enable more debugging.
 	if _, ok := os.LookupEnv("COSA_TESTISO_DEBUG"); ok {
-		isoKernelArgs = append(isoKernelArgs, "systemd.log_color=0 systemd.log_level=debug systemd.log_target=console")
+		isoKernelArgs = append(isoKernelArgs, "systemd.log_color=0 systemd.log_level=debug systemd.journald.forward_to_console=1")
 	}
 
 	mach, err := inst.InstallViaISOEmbed(isoKernelArgs, liveConfig, targetConfig, outdir, isOffline, minimal)
