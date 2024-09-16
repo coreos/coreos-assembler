@@ -123,7 +123,8 @@ func (inst *Install) PXE(kargs []string, liveIgnition, ignition conf.Conf, offli
 	}
 
 	installerConfig := installerConfig{
-		Console: []string{consoleKernelArgument[coreosarch.CurrentRpmArch()]},
+		Console:     []string{consoleKernelArgument[coreosarch.CurrentRpmArch()]},
+		AppendKargs: renderCosaTestIsoDebugKargs(),
 	}
 	installerConfigData, err := yaml.Marshal(installerConfig)
 	if err != nil {
@@ -136,7 +137,7 @@ func (inst *Install) PXE(kargs []string, liveIgnition, ignition conf.Conf, offli
 		liveIgnition.AddFile("/etc/coreos/installer.d/mantle.yaml", string(installerConfigData), mode)
 	}
 
-	inst.kargs = kargs
+	inst.kargs = append(renderCosaTestIsoDebugKargs(), kargs...)
 	inst.ignition = ignition
 	inst.liveIgnition = liveIgnition
 
@@ -361,6 +362,18 @@ func renderInstallKargs(t *installerRun, offline bool) []string {
 		args = append(args, "coreos.inst.insecure")
 	}
 	return args
+}
+
+// Sometimes the logs that stream from various virtio streams can be
+// incomplete because they depend on services inside the guest.
+// When you are debugging earlyboot/initramfs issues this can be
+// problematic. Let's add a hook here to enable more debugging.
+func renderCosaTestIsoDebugKargs() []string {
+	if _, ok := os.LookupEnv("COSA_TESTISO_DEBUG"); ok {
+		return []string{"systemd.log_color=0", "systemd.log_level=debug", "systemd.journald.forward_to_console=1"}
+	} else {
+		return []string{}
+	}
 }
 
 func (t *installerRun) destroy() error {
@@ -602,6 +615,7 @@ func (inst *Install) InstallViaISOEmbed(kargs []string, liveIgnition, targetIgni
 	installerConfig := installerConfig{
 		IgnitionFile: "/var/opt/pointer.ign",
 		DestDevice:   "/dev/vda",
+		AppendKargs:  renderCosaTestIsoDebugKargs(),
 	}
 
 	// XXX: https://github.com/coreos/coreos-installer/issues/1171
@@ -615,7 +629,7 @@ func (inst *Install) InstallViaISOEmbed(kargs []string, liveIgnition, targetIgni
 		installerConfig.AppendKargs = append(installerConfig.AppendKargs, "rd.multipath=default", "root=/dev/disk/by-label/dm-mpath-root", "rw")
 	}
 
-	inst.kargs = kargs
+	inst.kargs = append(renderCosaTestIsoDebugKargs(), kargs...)
 	inst.ignition = targetIgnition
 	inst.liveIgnition = liveIgnition
 
