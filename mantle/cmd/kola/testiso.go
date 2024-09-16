@@ -856,14 +856,6 @@ func testLiveIso(ctx context.Context, inst platform.Install, outdir string, mini
 		isoKernelArgs = append(isoKernelArgs, liveISOFromRAMKarg)
 	}
 
-	// Sometimes the logs that stream from various virtio streams can be
-	// incomplete because they depend on services inside the guest.
-	// When you are debugging earlyboot/initramfs issues this can be
-	// problematic. Let's add a hook here to enable more debugging.
-	if _, ok := os.LookupEnv("COSA_TESTISO_DEBUG"); ok {
-		isoKernelArgs = append(isoKernelArgs, "systemd.log_color=0 systemd.log_level=debug systemd.journald.forward_to_console=1")
-	}
-
 	mach, err := inst.InstallViaISOEmbed(isoKernelArgs, liveConfig, targetConfig, outdir, isOffline, minimal)
 	if err != nil {
 		return 0, errors.Wrapf(err, "running iso install")
