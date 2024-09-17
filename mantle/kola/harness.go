@@ -1919,33 +1919,30 @@ func ScpKolet(machines []platform.Machine) error {
 
 
 // CheckConsoleText checks console output for badness
-func CheckConsoleText(badlines []string) (bool, []string) {
-	badness := false
-	newBadlines := []string{}
+// input : the console content
+// output true if badlines were found and the bad lines.
+func CheckConsoleText(input []byte) (bool, []string) {
+	warnOnly := true
+	badlines := []string{}
 
-	// Ensure there are enough badlines to check
-	if len(badlines) < 2 {
-		return badness, badlines // Return early if not enough lines
-	}
 	for _, check := range consoleChecks {
 		if check.skipFlag != nil {
 			continue
 		}
-		match := check.match.FindStringSubmatch(badlines[1])
+		match := check.match.FindSubmatch(input)
 		if match != nil {
 			badline := check.desc
 			if len(match) > 1 {
 				// include first subexpression
 				badline += fmt.Sprintf(" (%v)", match[1])
 			}
-			newBadlines = append(newBadlines, badline)
+			badlines = append(badlines, badline)
 			if !check.warnOnly {
-				badness = false
+				warnOnly = false
 			}
 		}
 	}
-	badlines = append(badlines, newBadlines...)
-	return badness, badlines
+	return warnOnly, badlines
 }
 
 // CheckConsole checks some console output for badness and returns short
@@ -1956,33 +1953,16 @@ func CheckConsoleText(badlines []string) (bool, []string) {
 // rerun success.
 func CheckConsole(output []byte, t *register.Test) (bool, []string) {
 	var badlines []string
-	warnOnly, allowRerunSuccess := true, true
-	for _, check := range consoleChecks {
-		if check.skipFlag != nil && t != nil && t.HasFlag(*check.skipFlag) {
-			continue
-		}
-		match := check.match.FindSubmatch(output)
-		if match != nil {
-			badline := check.desc
-			if len(match) > 1 {
-				// include first subexpression
-				badline += fmt.Sprintf(" (%s)", match[1])
-			}
-			badlines = append(badlines, badline)
-			if !check.warnOnly {
-				warnOnly = false
-			}
-			if !check.allowRerunSuccess {
-				allowRerunSuccess = false
-			}
-			is_it_err,checkConsole := CheckConsoleText([]string(badlines))
-			fmt.Printf("%v\n,%v", checkConsole, is_it_err)
-		}
-	}
+    var badness bool
+	allowRerunSuccess := true
+
+	//here pass output to checkconsoleText
+	badness, badlines = CheckConsoleText(output)
+
 	if len(badlines) > 0 && allowRerunSuccess && t != nil {
 		markTestForRerunSuccess(t, "CheckConsole:")
 	}
-	return warnOnly, badlines
+	return badness, badlines
 }
 
 func SetupOutputDir(outputDir, platform string) (string, error) {

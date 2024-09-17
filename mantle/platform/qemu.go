@@ -254,7 +254,40 @@ func (inst *QemuInstance) WaitIgnitionError(ctx context.Context) (string, error)
 	}
 	return r.String(), nil
 }
+// Create a sample, log file for testing purposes
+func (inst *QemuInstance) CreateLogFile() string {
+    // Create some dir and check if it exists
+    dir, err := os.UserHomeDir()
+    if err != nil {
+        fmt.Println("Error getting home directory:", err)
+        return ""
+    }
+    fullDir := filepath.Join(dir, "log", "journal", "test")
 
+    err = os.MkdirAll(fullDir, os.ModePerm)
+    if err != nil {
+        fmt.Println("Error creating directory:", err)
+        return ""
+    }
+
+    // Create sample log file
+    filePath := filepath.Join(fullDir, "sample.log")
+    file, err := os.Create(filePath)
+    if err != nil {
+        fmt.Println("Error creating file:", err)
+        return ""
+    }
+    defer file.Close() // Ensure the file is closed when done
+
+	// Write "Hello!" to the file
+	_, err = file.WriteString("Test file\n")
+	if err != nil {
+		fmt.Println("Error writing to file:", err)
+		return ""
+	}
+
+    return filePath
+}
 // Copy of WaitIgnitionError -> CheckConsoleForBadness
 // CheckConsoleForBadness will only return if the instance
 // failed inside the initramfs.  The resulting string will

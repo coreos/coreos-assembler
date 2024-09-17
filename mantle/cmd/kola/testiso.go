@@ -662,6 +662,7 @@ func awaitCompletion(ctx context.Context, inst *platform.QemuInstance, outdir st
 		time.Sleep(timeout)
 		errchan <- fmt.Errorf("timed out after %v", timeout)
 	}()
+
 	if !console {
 		go func() {
 			errBuf, err := inst.WaitIgnitionError(ctx)
@@ -679,22 +680,60 @@ func awaitCompletion(ctx context.Context, inst *platform.QemuInstance, outdir st
 				errchan <- err
 			}
 		}()
-		// check for console badness
-		errBuf, err := inst.CheckConsoleForBadness(ctx)
-			if err == nil {
-				if errBuf != "" {
-					plog.Info("entered emergency.target in initramfs")
-					path := filepath.Join(outdir, "ignition-virtio-dump.txt")
-					if err := os.WriteFile(path, []byte(errBuf), 0644); err != nil {
-						plog.Errorf("Failed to write journal: %v", err)
+
+		go func() {
+			errBuf, err := inst.CheckConsoleForBadness(ctx)
+				if err == nil {
+					if errBuf != "" {
+						plog.Info("Badness identified")
+						path := filepath.Join(outdir, "badness.txt")
+						if err := os.WriteFile(path, []byte(errBuf), 0644); err != nil {
+							plog.Errorf("Failed to write journal: %v", err)
+						}
+						err = platform.ErrInitramfsEmergency
 					}
-					err = platform.ErrInitramfsEmergency
 				}
-			}
+				if err != nil {
+					errchan <- err
+				}
+
+		}()
+
+		go func() {
+		// figure out how to get console file from instance
+			// Run a sample Log File func
+			filename := inst.CreateLogFile()
+			// Read file
+			fmt.Printf("\nTesting file:\n%v\n", filename)
+			// Open file for reading
+			file, err := os.Open(filename)
 			if err != nil {
-				errchan <- err
+				fmt.Println("Error opening file:", err)
+				return
 			}
-		}
+			defer file.Close() // When done, close file
+			// Read and print contents
+			scanner := bufio.NewScanner(file)
+			for scanner.Scan() {
+				fmt.Printf("File contents:\n%v\n",scanner.Text())
+				fmt.Println("")
+			}
+			if err := scanner.Err(); err != nil {
+				fmt.Printf("Error reading %v.\nError: %v",filename, err)
+			}
+
+
+		// below something like
+ 		// inst.builder.ConsoleFile
+
+		// zz, err := inst.CheckConsoleForBadness(ctx)
+		// fmt.Println(zz,err)
+
+		//plus that
+		// ReadFile(path/tofile...)
+		// path := filepath.Base(outdir) // returns test name / dir
+		}()
+
 	go func() {
 		err := inst.Wait()
 		// only one Wait() gets process data, so also manually check for signal
@@ -708,6 +747,7 @@ func awaitCompletion(ctx context.Context, inst *platform.QemuInstance, outdir st
 		time.Sleep(1 * time.Minute)
 		errchan <- fmt.Errorf("QEMU exited; timed out waiting for completion")
 	}()
+
 	go func() {
 		r := bufio.NewReader(qchan)
 		for _, exp := range expected {
@@ -735,6 +775,7 @@ func awaitCompletion(ctx context.Context, inst *platform.QemuInstance, outdir st
 		// OK!
 		errchan <- nil
 	}()
+
 	go func() {
 		//check for error when switching boot order
 		if booterrchan != nil {
@@ -743,6 +784,8 @@ func awaitCompletion(ctx context.Context, inst *platform.QemuInstance, outdir st
 			}
 		}
 	}()
+
+}
 	err := <-errchan
 	return time.Since(start), err
 }
