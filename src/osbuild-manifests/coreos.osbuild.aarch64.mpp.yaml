@@ -139,6 +139,12 @@ pipelines:
       mpp-format-string: '{buildroot}'
     source-epoch: 1659397331
     stages:
+      # Set the context of the root of the tree so that we avoid unlabeled_t files.
+      # https://github.com/coreos/fedora-coreos-tracker/issues/1772
+      - type: org.osbuild.selinux
+        options:
+          labels:
+            /: system_u:object_r:root_t:s0
       - type: org.osbuild.ostree.init-fs
       - type: org.osbuild.ostree.os-init
         options:
