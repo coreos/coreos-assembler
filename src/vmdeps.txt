@@ -38,3 +38,7 @@ podman
 
 # For running osbuild
 osbuild osbuild-ostree osbuild-selinux osbuild-tools python3-pyrsistent
+
+# For resetting the terminal inside supermin shell
+/usr/bin/reset
+/usr/bin/clear
