@@ -173,10 +173,7 @@ patch_osbuild() {
     mv /usr/bin/osbuild-mpp /usr/lib/osbuild/tools/
 
     # Now all the software is under the /usr/lib/osbuild dir and we can patch
-    cat /usr/lib/coreos-assembler/0001-stages-coreos.platform-use-shutil.copy.patch               \
-        /usr/lib/coreos-assembler/0001-stages-selinux-don-t-require-file_contexts-if-labels.patch \
-        /usr/lib/coreos-assembler/0001-hacks-for-coreos-selinux-issues.patch                      \
-            | patch -d /usr/lib/osbuild -p1
+    patch -d /usr/lib/osbuild -p1 < /usr/lib/coreos-assembler/0001-hacks-for-coreos-selinux-issues.patch
 
     # And then move the files back; supermin appliance creation will need it back
     # in the places delivered by the RPM.
