@@ -1118,10 +1118,10 @@ func runExternalTest(c cluster.TestCluster, mach platform.Machine, testNum int) 
 			// This is a non-exclusive test
 			unit := fmt.Sprintf("%s-%d.service", KoletExtTestUnit, testNum)
 			// Reboot requests are disabled for non-exclusive tests
-			cmd = fmt.Sprintf("sudo ./kolet run-test-unit --deny-reboots %s", shellquote.Join(unit))
+			cmd = fmt.Sprintf("sudo /usr/local/bin/kolet run-test-unit --deny-reboots %s", shellquote.Join(unit))
 		} else {
 			unit := fmt.Sprintf("%s.service", KoletExtTestUnit)
-			cmd = fmt.Sprintf("sudo ./kolet run-test-unit %s", shellquote.Join(unit))
+			cmd = fmt.Sprintf("sudo /usr/local/bin/kolet run-test-unit %s", shellquote.Join(unit))
 		}
 		stdout, err = c.SSH(mach, cmd)
 
@@ -1893,9 +1893,14 @@ func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flig
 	t.Run(tcluster)
 }
 
-// ScpKolet searches for a kolet binary and copies it to the machine.
+// ScpKolet searches for a kolet binary and copies it to the machines.
+// Write initially to a .partial file in the same directory and then
+// rename since systemd.path units may be watching and we don't want
+// them to start while the file is still transferring.
 func ScpKolet(machines []platform.Machine) error {
 	mArch := Options.CosaBuildArch
+	remotepath := "/usr/local/bin/kolet"
+	remotepathpartial := remotepath + ".partial"
 	exePath, err := os.Executable()
 	if err != nil {
 		return errors.Wrapf(err, "finding path of executable")
@@ -1908,8 +1913,21 @@ func ScpKolet(machines []platform.Machine) error {
 	} {
 		kolet := filepath.Join(d, "kolet")
 		if _, err := os.Stat(kolet); err == nil {
-			if err := cluster.DropLabeledFile(machines, kolet, "bin_t"); err != nil {
-				return errors.Wrapf(err, "dropping kolet binary")
+			in, err := os.Open(kolet)
+			if err != nil {
+				return err
+			}
+			defer in.Close()
+			for _, m := range machines {
+				if _, err := in.Seek(0, 0); err != nil {
+					return errors.Wrapf(err, "seeking kolet binary")
+				}
+				if err := platform.InstallFile(in, m, remotepathpartial); err != nil {
+					return errors.Wrapf(err, "dropping kolet binary")
+				}
+				if out, stderr, err := m.SSH(fmt.Sprintf("sudo mv %s %s", remotepathpartial, remotepath)); err != nil {
+					return errors.Wrapf(err, "running sudo mv %s %s: %s: %s", remotepathpartial, remotepath, out, stderr)
+				}
 			}
 			return nil
 		}
