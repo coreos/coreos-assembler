@@ -112,11 +112,10 @@ method is deprecated and will be removed at some point)
 
 ## HTTP Server
 
-The `kolet` binary is copied into the `core` user's home directory
-(`/var/home/core`) on the CoreOS system running the tests. Notably, it contains
-the built-in command `kolet httpd` for starting an HTTP file server to serve the
-contents of the file system.
-By default, it starts the server listening on port `80` and serves the contents of
+The `kolet` binary is copied into the `/usr/local/bin/` directory on the CoreOS
+system running the tests. Notably, it contains the built-in command `kolet httpd`
+for starting an HTTP file server to serve the contents of the file system. By
+default, it starts the server listening on port `80` and serves the contents of
 the file system at `./`; you can use the `--port` and `--path` flags to override
 the defaults.
 
@@ -124,7 +123,7 @@ For example, if you're using a bash script as your test, you can start an HTTP
 server to serve the contents at `/var/home/core` like this:
 ```
 echo testdata > /var/home/core/testdata.txt
-systemd-run /var/home/core/kolet httpd --path /var/home/core/
+systemd-run /usr/local/bin/kolet httpd --path /var/home/core/
 # It may take some time for the server to start.
 sleep 1
 curl localhost/testdata.txt
@@ -155,13 +154,13 @@ systemd:
         [Unit]
         Before=kola-runext.service
         [Path]
-        PathExists=/var/home/core/kolet
+        PathExists=/usr/local/bin/kolet
         [Install]
         WantedBy=kola-runext.service
     - name: kolet-httpd.service
       contents: |
         [Service]
-        ExecStart=/var/home/core/kolet httpd --path /var/www -v
+        ExecStart=/usr/local/bin/kolet httpd --path /var/www -v
         [Install]
         WantedBy=kola-runext.service
 storage:
