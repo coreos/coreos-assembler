@@ -81,7 +81,7 @@ func init() {
 func resourceLocal(c cluster.TestCluster) {
 	server := c.Machines()[0]
 
-	c.RunCmdSyncf(server, "sudo systemd-run --quiet ./kolet run %s Serve", c.H.Name())
+	c.RunCmdSyncf(server, "sudo systemd-run --quiet /usr/local/bin/kolet run %s Serve", c.H.Name())
 
 	ip := server.PrivateIP()
 	if c.Platform() == packet.Platform {
