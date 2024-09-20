@@ -662,7 +662,6 @@ func awaitCompletion(ctx context.Context, inst *platform.QemuInstance, outdir st
 		time.Sleep(timeout)
 		errchan <- fmt.Errorf("timed out after %v", timeout)
 	}()
-
 	if !console {
 		go func() {
 			errBuf, err := inst.WaitIgnitionError(ctx)
@@ -679,60 +678,106 @@ func awaitCompletion(ctx context.Context, inst *platform.QemuInstance, outdir st
 			if err != nil {
 				errchan <- err
 			}
-		}()
+
+			 // Open the file
+			path := filepath.Join(outdir, "ignition-virtio-dump.txt")
+			file, err := os.Open(path)
+			if err != nil {
+				fmt.Println("Error opening file: \n", err)
+				// if file doesn't exist lets print contents of the directory
+				fmt.Println("Other files in this directory:")
+				filepath.Walk(outdir, func(path string, info os.FileInfo, err error) error {
+					if err != nil {
+						fmt.Println("Error accessing path", path, ":", err)
+						return err
+					}
+					fmt.Println(path)
+					return nil
+				})
+			}
+			// fmt.Printf("FILE: %v\n", file)
+			defer file.Close()
+			// Open the console file
+			// consoleFile := filepath.Join(outdir, "console.txt")
+			// inst.CheckConsoleForBadness2(consoleFile)
+			// inst.CheckConsoleForBadness(ctx)
+
+
+// maybe just run checkConsoleForBadness here, and try to refactor some code to open the file once ?
+// ie open the file before and change WaitForIgnition to take a file descriptor
+// 1 - open the file
+// 2 - WAitforIgnitionError(file)
+// 3 - CheckForBadness(file)
+// since if ignition failed we don't really care for failed services anyway
+}()
 
 		go func() {
+			fileName := "console.txt"
+			path := filepath.Join(outdir, fileName)
+			file, err := os.Open(path)
+			if err != nil {
+				fmt.Printf("Error opening %s file: \n", fileName)
+			}
+			defer file.Close()
+
 			errBuf, err := inst.CheckConsoleForBadness(ctx)
 				if err == nil {
 					if errBuf != "" {
 						plog.Info("Badness identified")
-						path := filepath.Join(outdir, "badness.txt")
+						path := filepath.Join(outdir, fileName)
 						if err := os.WriteFile(path, []byte(errBuf), 0644); err != nil {
 							plog.Errorf("Failed to write journal: %v", err)
 						}
-						err = platform.ErrInitramfsEmergency
+						err = platform.ErrInitramfsEmergency // What does the ErrInitramfsEmergency do?
 					}
+					console, err := os.Open(path)
+					if err != nil {
+						fmt.Printf("error opening console file: %v", err)
+					}
+					fmt.Printf("File \"%v\" opened successfully", fileName)
+
+					// Ensure the console file is closed after the function ends
+					defer console.Close()
+					// Read the file content
+					content, err := io.ReadAll(console)
+					if err != nil {
+						fmt.Printf("error reading file: %v", err)
+					}
+					// Print the whole file content
+					fmt.Printf("FILE:\n%s\n", content)
 				}
-				if err != nil {
-					errchan <- err
-				}
+				fmt.Println("This works o_0")
 
 		}()
 
-		go func() {
-		// figure out how to get console file from instance
-			// Run a sample Log File func
-			filename := inst.CreateLogFile()
-			// Read file
-			fmt.Printf("\nTesting file:\n%v\n", filename)
-			// Open file for reading
-			file, err := os.Open(filename)
-			if err != nil {
-				fmt.Println("Error opening file:", err)
-				return
-			}
-			defer file.Close() // When done, close file
-			// Read and print contents
-			scanner := bufio.NewScanner(file)
-			for scanner.Scan() {
-				fmt.Printf("File contents:\n%v\n",scanner.Text())
-				fmt.Println("")
-			}
-			if err := scanner.Err(); err != nil {
-				fmt.Printf("Error reading %v.\nError: %v",filename, err)
-			}
+		// TEMPORARY: Below is the function that calls inst.CreateLogFile in order to create
+		// and print contents of the temporary log file
+		// go func(inst *platform.QemuInstance, ctx context.Context) { //I'm new to routines
+		// // 1. figure out how to get console file from instance
+		// 	// HERE: use the journal file instead of the CreateLogFile function
 
-
-		// below something like
- 		// inst.builder.ConsoleFile
-
-		// zz, err := inst.CheckConsoleForBadness(ctx)
-		// fmt.Println(zz,err)
-
-		//plus that
-		// ReadFile(path/tofile...)
-		// path := filepath.Base(outdir) // returns test name / dir
-		}()
+		// 	inst.ReadJournal(ctx)
+		// // Run a sample Log File func
+		// 	filename := inst.CreateLogFile()
+		// 	// Read file
+		// 	fmt.Printf("\nTesting file:\n%v\n", filename)
+		// 	// Open file for reading
+		// 	file, err := os.Open(filename)
+		// 	if err != nil {
+		// 		fmt.Println("Error opening file:", err)
+		// 		return
+		// 	}
+		// 	defer file.Close() // When done, close file
+		// 	// Read and print contents
+		// 	scanner := bufio.NewScanner(file)
+		// 	for scanner.Scan() {
+		// 		fmt.Printf("File contents:\n%v\n",scanner.Text())
+		// 		fmt.Println("")
+		// 	}
+		// 	if err := scanner.Err(); err != nil {
+		// 		fmt.Printf("Error reading %v.\nError: %v",filename, err)
+		// 	}
+		// }(inst,ctx)
 
 	go func() {
 		err := inst.Wait()
