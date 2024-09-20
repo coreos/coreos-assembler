@@ -97,14 +97,14 @@ const (
 	autopkgTestRebootPath   = "/tmp/autopkgtest-reboot"
 	autopkgtestRebootScript = `#!/bin/bash
 set -xeuo pipefail
-~core/kolet reboot-request "$1"
+/usr/local/bin/kolet reboot-request "$1"
 reboot
 `
 	autopkgTestRebootPreparePath = "/tmp/autopkgtest-reboot-prepare"
 
 	autopkgtestRebootPrepareScript = `#!/bin/bash
 set -euo pipefail
-exec ~core/kolet reboot-request "$1"
+exec /usr/local/bin/kolet reboot-request "$1"
 `
 
 	// File used to communicate between the script and the kolet runner internally

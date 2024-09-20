@@ -80,11 +80,11 @@ func init() {
       {
         "name": "kolet-httpd.path",
         "enabled": true,
-        "contents": "[Path]\nPathExists=/var/home/core/kolet\n[Install]\nWantedBy=multi-user.target"
+        "contents": "[Path]\nPathExists=/usr/local/bin/kolet\n[Install]\nWantedBy=multi-user.target"
       },
       {
         "name": "kolet-httpd.service",
-        "contents": "[Service]\nExecStart=/var/home/core/kolet run fcos.upgrade.basic httpd -v\n[Install]\nWantedBy=multi-user.target"
+        "contents": "[Service]\nExecStart=/usr/local/bin/kolet run fcos.upgrade.basic httpd -v\n[Install]\nWantedBy=multi-user.target"
       }
     ]
   },
