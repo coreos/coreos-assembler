@@ -261,8 +261,6 @@ func (inst *QemuInstance) WaitIgnitionError(ctx context.Context) (string, error)
 // be a newline-delimited stream of JSON strings, as returned
 // by `journalctl -o json`.
 
-// TEMPORARY: How to modify CheckConsoleForBadness so that it calls WaitIgnitionError and returns
-// string and error?
 func (inst *QemuInstance) CheckConsoleForBadness(ctx context.Context) (string, error) {
 	b := bufio.NewReaderSize(inst.journalPipe, 64768)
 	var r strings.Builder
@@ -301,25 +299,6 @@ func (inst *QemuInstance) CheckConsoleForBadness(ctx context.Context) (string, e
 		return r.String(), fmt.Errorf("journal was truncated due to overly long line")
 	}
 	return r.String(), nil
-}
-
-// TEMPORARY: CheckConsole func
-func (inst *QemuInstance) CheckConsoleForBadness2(file string) (string, error) {
-	// Open the console file
-	console, err := os.Open(file)
-	if err != nil {
-		return "", fmt.Errorf("error opening console file: %v", err)
-	}
-	// Ensure the console file is closed after the function ends
-	defer console.Close()
-	// Read the file content
-	content, err := io.ReadAll(console)
-	if err != nil {
-		return "", fmt.Errorf("error reading file: %v", err)
-	}
-	// Print the whole file content
-	fmt.Printf("FILE:\n%s\n", content)
-	return string(content), nil
 }
 
 // WaitAll wraps the process exit as well as WaitIgnitionError,
