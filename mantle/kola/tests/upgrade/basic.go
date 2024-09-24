@@ -25,7 +25,6 @@ import (
 	"time"
 
 	"github.com/coreos/pkg/capnslog"
-	rpmostreeclient "github.com/coreos/rpmostree-client-go/pkg/client"
 
 	"github.com/coreos/coreos-assembler/mantle/kola"
 	"github.com/coreos/coreos-assembler/mantle/kola/cluster"
@@ -57,10 +56,15 @@ func init() {
 		// 2. auto-runs httpd once kolet is scp'ed
 		// 3. changes the Zincati config to point to localhost:8080 so we'll be
 		//    able to feed the update graph we want
-		// 4. always start with Zincati updates disabled so we can finish
-		//    setting it up here before enabling it again without risking race
-		//    conditions
-		// 5. change the OSTree remote to localhost:8080
+		// 4. changes the Zincati config to have a 99-updates-enabled.toml config
+		//    that overrides any previous config that would have disabled them like
+		//    the following that are dropped in various scenarios:
+		//      - 90-disable-auto-updates.toml
+		//      - 90-disable-on-non-production-stream.toml
+		//      - 95-disable-on-dev.toml
+		// 5. disables zincati.service in Ignition so we can finish setting it up here
+		//    before starting it again without risking race conditions
+		// 6. change the OSTree remote to localhost:8080
 		// We could use file:/// to simplify things though using a URL at least
 		// exercises the ostree/libcurl stack.
 		// We use strings.Replace here because fmt.Sprintf would try to
@@ -72,6 +76,7 @@ func init() {
     "units": [
       {
         "name": "zincati.service",
+        "enabled": false,
         "dropins": [{
           "name": "verbose.conf",
           "contents": "[Service]\nEnvironment=ZINCATI_VERBOSITY=\"-vvvv\""
@@ -96,7 +101,7 @@ func init() {
         "mode": 420
       },
       {
-        "path": "/etc/zincati/config.d/99-updates.toml",
+        "path": "/etc/zincati/config.d/99-updates-enabled.toml",
         "contents": { "source": "data:,updates.enabled%20%3D%20true%0A" },
         "mode": 420
       },
@@ -178,13 +183,6 @@ func fcosUpgradeBasic(c cluster.TestCluster) {
 		// Should drop this once we fix it more properly in {rpm-,}ostree.
 		// https://github.com/coreos/coreos-assembler/issues/1301
 		c.RunCmdSync(m, "time sudo sync")
-
-		// disable zincati; from now on, we'll start it manually whenenever we
-		// want to upgrade via Zincati
-		c.RunCmdSync(m, "sudo systemctl disable --now --quiet zincati.service")
-		c.RunCmdSync(m, "sudo rm /etc/zincati/config.d/99-updates.toml")
-		// delete what mantle adds (XXX: should just opt out of this upfront)
-		c.RunCmdSync(m, "sudo rm /etc/zincati/config.d/90-disable-auto-updates.toml")
 
 	})
 
@@ -288,42 +286,6 @@ func (g *Graph) addUpdate(c cluster.TestCluster, m platform.Machine, version, pa
 	g.sync(c, m)
 }
 
-// XXX: consider making this distinction part of FCOS itself?
-func onProdStream(c cluster.TestCluster, d *rpmostreeclient.Deployment) bool {
-	stream, err := util.GetDeploymentStream(d)
-	if err != nil {
-		panic(err)
-	}
-	switch stream {
-	case "stable", "testing", "next":
-		return true
-	default:
-		return false
-	}
-}
-
-func isDevBuild(c cluster.TestCluster, d *rpmostreeclient.Deployment) bool {
-	return strings.Contains(d.Version, "dev")
-}
-
-// On production streams, the default should already be to have updates turned
-// on, so we shouldn't have to delete anything. On developer and/or
-// non-production streams, we have to delete other knobs.
-func undoZincatiDisablement(c cluster.TestCluster, m platform.Machine) {
-	d, err := util.GetBootedDeployment(c, m)
-	if err != nil {
-		c.Fatal(err)
-	}
-
-	if !onProdStream(c, d) {
-		c.RunCmdSync(m, "sudo rm -f /etc/zincati/config.d/90-disable-on-non-production-stream.toml")
-	}
-
-	if isDevBuild(c, d) {
-		c.RunCmdSync(m, "sudo rm -f /etc/zincati/config.d/95-disable-on-dev.toml")
-	}
-}
-
 func (g *Graph) sync(c cluster.TestCluster, m platform.Machine) {
 	b, err := json.Marshal(g)
 	if err != nil {
@@ -358,10 +320,6 @@ func runFnAndWaitForRebootIntoVersion(c cluster.TestCluster, m platform.Machine,
 }
 
 func waitForUpgradeToVersion(c cluster.TestCluster, m platform.Machine, version string) {
-	// we have to do this every time in case e.g. we've just rebased from an
-	// official pipeline build to a developer build
-	undoZincatiDisablement(c, m)
-
 	runFnAndWaitForRebootIntoVersion(c, m, version, func() {
 		// XXX: update to use https://github.com/coreos/zincati/issues/203
 		c.RunCmdSync(m, "sudo systemctl start zincati.service")
