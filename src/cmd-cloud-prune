@@ -54,11 +54,11 @@ Build = collections.namedtuple("Build", ["id", "images", "arch", "meta_json"])
 # set metadata caching to 5m
 CACHE_MAX_AGE_METADATA = 60 * 5
 # These lists are up to date as of schema hash
-# 4c19aed3b3d84af278780bff63728510bb3e70613e4c4eef8cabd7939eb31bd8. If changing
+# 4bb2fd8591ae1cc9179181b9efcb550542137a01c9544fd048e66794e0fb176a. If changing
 # this hash, ensure that the list of SUPPORTED and UNSUPPORTED artifacts below
 # is up to date.
 SUPPORTED = ["amis", "gcp"]
-UNSUPPORTED = ["aliyun", "azurestack", "digitalocean", "exoscale", "ibmcloud", "powervs", "azure"]
+UNSUPPORTED = ["aliyun", "azure", "ibmcloud", "powervs"]
 
 
 def parse_args():
