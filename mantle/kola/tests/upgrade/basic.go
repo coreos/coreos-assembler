@@ -321,7 +321,7 @@ func runFnAndWaitForRebootIntoVersion(c cluster.TestCluster, m platform.Machine,
 
 func waitForUpgradeToVersion(c cluster.TestCluster, m platform.Machine, version string) {
 	runFnAndWaitForRebootIntoVersion(c, m, version, func() {
-		// XXX: update to use https://github.com/coreos/zincati/issues/203
+		// Start Zincati so it will apply the update
 		c.RunCmdSync(m, "sudo systemctl start zincati.service")
 	})
 }
