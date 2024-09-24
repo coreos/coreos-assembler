@@ -178,12 +178,6 @@ func fcosUpgradeBasic(c cluster.TestCluster) {
 			c.RunCmdSyncf(m, "ostree --repo=%s pull-local %s %s", ostreeRepo, tmprepo, ostreeref)
 		}
 
-		// XXX: This is to work around sysroot
-		// remounting in libostree forcing a cache flush and blocking D-Bus.
-		// Should drop this once we fix it more properly in {rpm-,}ostree.
-		// https://github.com/coreos/coreos-assembler/issues/1301
-		c.RunCmdSync(m, "time sudo sync")
-
 	})
 
 	c.Run("upgrade-from-previous", func(c cluster.TestCluster) {
