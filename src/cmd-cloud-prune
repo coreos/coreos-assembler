@@ -225,8 +225,6 @@ def get_supported_images(meta_json):
             raise Exception(f"The platform {key} is not supported")
         if key in SUPPORTED:
             images[key] = meta_json[key]
-        else:
-            raise Exception(f"The platform {key} is neither in supported nor unsupported artifacts.")
     return images
 
 
