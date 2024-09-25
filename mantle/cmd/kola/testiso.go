@@ -682,78 +682,78 @@ func awaitCompletion(ctx context.Context, inst *platform.QemuInstance, outdir st
 		}()
 
 		go func() {
-		file, err := os.Open(consoleFilePath)
-		if err != nil {
-			fmt.Printf("Error opening %s file: \n", consoleFilePath)
-			return
-		}
-		defer file.Close()
-		errBuf, err := inst.CheckConsoleForBadness(ctx)
-		if err == nil && errBuf != "" {
-			plog.Info("Badness identified")
-			if err := os.WriteFile(consoleFilePath, []byte(errBuf), 0644); err != nil {
-				plog.Errorf("Failed to write journal: %v", err)
-			}
-			err = platform.ErrInitramfsEmergency
-		}
-
-		if err != nil {
-			errchan <- errors.Wrapf(err, "CheckConsoleForBadness detected an error")
-		}
-	}()
-
-	go func() {
-		err := inst.Wait()
-		// only one Wait() gets process data, so also manually check for signal
-		plog.Debugf("qemu exited err=%v", err)
-		if err == nil && inst.Signaled() {
-			err = errors.New("process killed")
-		}
-		if err != nil {
-			errchan <- errors.Wrapf(err, "QEMU unexpectedly exited while awaiting completion")
-		}
-		time.Sleep(1 * time.Minute)
-		errchan <- fmt.Errorf("QEMU exited; timed out waiting for completion")
-	}()
-
-	go func() {
-		r := bufio.NewReader(qchan)
-		for _, exp := range expected {
-			l, err := r.ReadString('\n')
+			file, err := os.Open(consoleFilePath)
 			if err != nil {
-				if err == io.EOF {
-					// this may be from QEMU getting killed or exiting; wait a bit
-					// to give a chance for .Wait() above to feed the channel with a
-					// better error
-					time.Sleep(1 * time.Second)
-					errchan <- fmt.Errorf("Got EOF from completion channel, %s expected", exp)
-				} else {
-					errchan <- errors.Wrapf(err, "reading from completion channel")
+				fmt.Printf("Error opening %s file: \n", consoleFilePath)
+				return
+			}
+			defer file.Close()
+			errBuf, err := inst.CheckConsoleForBadness(ctx)
+			if err == nil && errBuf != "" {
+				plog.Info("Badness identified")
+				if err := os.WriteFile(consoleFilePath, []byte(errBuf), 0644); err != nil {
+					plog.Errorf("Failed to write journal: %v", err)
 				}
-				return
+				err = platform.ErrInitramfsEmergency
 			}
-			line := strings.TrimSpace(l)
-			if line != exp {
-				errchan <- fmt.Errorf("Unexpected string from completion channel: %s expected: %s", line, exp)
-				return
-			}
-			plog.Debugf("Matched expected message %s", exp)
-		}
-		plog.Debugf("Matched all expected messages")
-		// OK!
-		errchan <- nil
-	}()
 
-	go func() {
-		//check for error when switching boot order
-		if booterrchan != nil {
-			if err := <-booterrchan; err != nil {
-				errchan <- err
+			if err != nil {
+				errchan <- errors.Wrapf(err, "CheckConsoleForBadness detected an error")
 			}
-		}
-	}()
+		}()
 
-}
+		go func() {
+			err := inst.Wait()
+			// only one Wait() gets process data, so also manually check for signal
+			plog.Debugf("qemu exited err=%v", err)
+			if err == nil && inst.Signaled() {
+				err = errors.New("process killed")
+			}
+			if err != nil {
+				errchan <- errors.Wrapf(err, "QEMU unexpectedly exited while awaiting completion")
+			}
+			time.Sleep(1 * time.Minute)
+			errchan <- fmt.Errorf("QEMU exited; timed out waiting for completion")
+		}()
+
+		go func() {
+			r := bufio.NewReader(qchan)
+			for _, exp := range expected {
+				l, err := r.ReadString('\n')
+				if err != nil {
+					if err == io.EOF {
+						// this may be from QEMU getting killed or exiting; wait a bit
+						// to give a chance for .Wait() above to feed the channel with a
+						// better error
+						time.Sleep(1 * time.Second)
+						errchan <- fmt.Errorf("Got EOF from completion channel, %s expected", exp)
+					} else {
+						errchan <- errors.Wrapf(err, "reading from completion channel")
+					}
+					return
+				}
+				line := strings.TrimSpace(l)
+				if line != exp {
+					errchan <- fmt.Errorf("Unexpected string from completion channel: %s expected: %s", line, exp)
+					return
+				}
+				plog.Debugf("Matched expected message %s", exp)
+			}
+			plog.Debugf("Matched all expected messages")
+			// OK!
+			errchan <- nil
+		}()
+
+		go func() {
+			//check for error when switching boot order
+			if booterrchan != nil {
+				if err := <-booterrchan; err != nil {
+					errchan <- err
+				}
+			}
+		}()
+
+	}
 	err := <-errchan
 	return time.Since(start), err
 }

@@ -1917,7 +1917,6 @@ func ScpKolet(machines []platform.Machine) error {
 	return fmt.Errorf("Unable to locate kolet binary for %s", mArch)
 }
 
-
 // CheckConsoleText checks console output for badness
 // input : the console content
 // output true if badlines were found and the bad lines.
@@ -1953,7 +1952,7 @@ func CheckConsoleText(input []byte) (bool, []string) {
 // rerun success.
 func CheckConsole(output []byte, t *register.Test) (bool, []string) {
 	var badlines []string
-    var badness bool
+	var badness bool
 	allowRerunSuccess := true
 
 	//here pass output to checkconsoleText
