@@ -43,6 +43,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/coreos/coreos-assembler/mantle/platform"
 	"github.com/coreos/coreos-assembler/mantle/platform/conf"
 	"github.com/coreos/coreos-assembler/mantle/util"
 	coreosarch "github.com/coreos/stream-metadata-go/arch"
@@ -261,7 +262,7 @@ func (inst *QemuInstance) WaitIgnitionError(ctx context.Context) (string, error)
 // be a newline-delimited stream of JSON strings, as returned
 // by `journalctl -o json`.
 
-func (inst *QemuInstance) CheckConsoleForBadness(ctx context.Context) (string, error) {
+func (inst *QemuInstance) CheckConsoleForBadness(ctx context.Context, m platform.Machine) (string, error) {
 	b := bufio.NewReaderSize(inst.journalPipe, 64768)
 	var r strings.Builder
 	iscorrupted := false
@@ -298,12 +299,17 @@ func (inst *QemuInstance) CheckConsoleForBadness(ctx context.Context) (string, e
 	if iscorrupted {
 		return r.String(), fmt.Errorf("journal was truncated due to overly long line")
 	}
+	// Check the machine state
+	err = platform.CheckMachine(ctx, m)
+	if err != nil {
+		return "", errors.Wrapf(err, "Machine is in bad state")
+	}
 	return r.String(), nil
 }
 
 // WaitAll wraps the process exit as well as WaitIgnitionError,
 // returning an error if either fail.
-func (inst *QemuInstance) WaitAll(ctx context.Context) error {
+func (inst *QemuInstance) WaitAll(ctx context.Context, m platform.Machine) error {
 	c := make(chan error)
 	waitCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -325,7 +331,7 @@ func (inst *QemuInstance) WaitAll(ctx context.Context) error {
 
 	// Early stop due to failure in initramfs.
 	go func() {
-		buf, err := inst.CheckConsoleForBadness(waitCtx)
+		buf, err := inst.CheckConsoleForBadness(waitCtx, m)
 		if err != nil {
 			c <- err
 			return

@@ -479,7 +479,7 @@ func filterTests(tests []string, patterns []string) ([]string, error) {
 	return r, nil
 }
 
-func runTestIso(cmd *cobra.Command, args []string) (err error) {
+func runTestIso(cmd *cobra.Command, args []string, m platform.Machine) (err error) {
 	if kola.CosaBuild == nil {
 		return fmt.Errorf("Must provide --build")
 	}
@@ -605,17 +605,17 @@ func runTestIso(cmd *cobra.Command, args []string) (err error) {
 
 		switch components[0] {
 		case "pxe-offline-install", "pxe-online-install":
-			duration, err = testPXE(ctx, inst, filepath.Join(outputDir, test))
+			duration, err = testPXE(ctx, inst, filepath.Join(outputDir, test), m)
 		case "iso-as-disk":
-			duration, err = testAsDisk(ctx, filepath.Join(outputDir, test))
+			duration, err = testAsDisk(ctx, filepath.Join(outputDir, test), m)
 		case "iso-live-login":
-			duration, err = testLiveLogin(ctx, filepath.Join(outputDir, test))
+			duration, err = testLiveLogin(ctx, filepath.Join(outputDir, test), m)
 		case "iso-fips":
-			duration, err = testLiveFIPS(ctx, filepath.Join(outputDir, test))
+			duration, err = testLiveFIPS(ctx, filepath.Join(outputDir, test), m)
 		case "iso-install", "iso-offline-install", "iso-offline-install-fromram":
-			duration, err = testLiveIso(ctx, inst, filepath.Join(outputDir, test), false)
+			duration, err = testLiveIso(ctx, inst, filepath.Join(outputDir, test), false, m)
 		case "miniso-install":
-			duration, err = testLiveIso(ctx, inst, filepath.Join(outputDir, test), true)
+			duration, err = testLiveIso(ctx, inst, filepath.Join(outputDir, test), true, m)
 		case "iso-offline-install-iscsi":
 			var butane_config string
 			switch components[1] {
@@ -628,7 +628,7 @@ func runTestIso(cmd *cobra.Command, args []string) (err error) {
 			default:
 				plog.Fatalf("Unknown test name:%s", test)
 			}
-			duration, err = testLiveInstalliscsi(ctx, inst, filepath.Join(outputDir, test), butane_config)
+			duration, err = testLiveInstalliscsi(ctx, inst, filepath.Join(outputDir, test), butane_config, m)
 		default:
 			plog.Fatalf("Unknown test name:%s", test)
 		}
@@ -654,7 +654,7 @@ func runTestIso(cmd *cobra.Command, args []string) (err error) {
 	return nil
 }
 
-func awaitCompletion(ctx context.Context, inst *platform.QemuInstance, outdir string, qchan *os.File, booterrchan chan error, expected []string) (time.Duration, error) {
+func awaitCompletion(ctx context.Context, inst *platform.QemuInstance, outdir string, qchan *os.File, booterrchan chan error, expected []string, m platform.Machine) (time.Duration, error) {
 	start := time.Now()
 	errchan := make(chan error)
 	consoleFilePath := filepath.Join(outdir, "console.txt")
@@ -688,7 +688,7 @@ func awaitCompletion(ctx context.Context, inst *platform.QemuInstance, outdir st
 				return
 			}
 			defer file.Close()
-			errBuf, err := inst.CheckConsoleForBadness(ctx)
+			errBuf, err := inst.CheckConsoleForBadness(ctx, m)
 			if err == nil && errBuf != "" {
 				plog.Info("Badness identified")
 				if err := os.WriteFile(consoleFilePath, []byte(errBuf), 0644); err != nil {
@@ -771,7 +771,7 @@ func printResult(test string, duration time.Duration, err error) bool {
 	return false
 }
 
-func testPXE(ctx context.Context, inst platform.Install, outdir string) (time.Duration, error) {
+func testPXE(ctx context.Context, inst platform.Install, outdir string, m platform.Machine) (time.Duration, error) {
 	if addNmKeyfile {
 		return 0, errors.New("--add-nm-keyfile not yet supported for PXE")
 	}
@@ -824,10 +824,10 @@ func testPXE(ctx context.Context, inst platform.Install, outdir string) (time.Du
 		}
 	}()
 
-	return awaitCompletion(ctx, mach.QemuInst, outdir, completionChannel, mach.BootStartedErrorChannel, []string{liveOKSignal, signalCompleteString})
+	return awaitCompletion(ctx, mach.QemuInst, outdir, completionChannel, mach.BootStartedErrorChannel, []string{liveOKSignal, signalCompleteString}, m)
 }
 
-func testLiveIso(ctx context.Context, inst platform.Install, outdir string, minimal bool) (time.Duration, error) {
+func testLiveIso(ctx context.Context, inst platform.Install, outdir string, minimal bool, m platform.Machine) (time.Duration, error) {
 	tmpd, err := os.MkdirTemp("", "kola-testiso")
 	if err != nil {
 		return 0, err
@@ -900,11 +900,11 @@ func testLiveIso(ctx context.Context, inst platform.Install, outdir string, mini
 		}
 	}()
 
-	return awaitCompletion(ctx, mach.QemuInst, outdir, completionChannel, mach.BootStartedErrorChannel, []string{liveOKSignal, signalCompleteString})
+	return awaitCompletion(ctx, mach.QemuInst, outdir, completionChannel, mach.BootStartedErrorChannel, []string{liveOKSignal, signalCompleteString}, m)
 }
 
 // testLiveFIPS verifies that adding fips=1 to the ISO results in a FIPS mode system
-func testLiveFIPS(ctx context.Context, outdir string) (time.Duration, error) {
+func testLiveFIPS(ctx context.Context, outdir string, m platform.Machine) (time.Duration, error) {
 	tmpd, err := os.MkdirTemp("", "kola-testiso")
 	if err != nil {
 		return 0, err
@@ -960,10 +960,10 @@ RequiredBy=fips-signal-ok.service
 	}
 	defer mach.Destroy()
 
-	return awaitCompletion(ctx, mach, outdir, completionChannel, nil, []string{liveOKSignal})
+	return awaitCompletion(ctx, mach, outdir, completionChannel, nil, []string{liveOKSignal}, m)
 }
 
-func testLiveLogin(ctx context.Context, outdir string) (time.Duration, error) {
+func testLiveLogin(ctx context.Context, outdir string, m platform.Machine) (time.Duration, error) {
 	builddir := kola.CosaBuild.Dir
 	isopath := filepath.Join(builddir, kola.CosaBuild.Meta.BuildArtifacts.LiveIso.Path)
 	builder, err := newBaseQemuBuilder(outdir)
@@ -990,10 +990,10 @@ func testLiveLogin(ctx context.Context, outdir string) (time.Duration, error) {
 	}
 	defer mach.Destroy()
 
-	return awaitCompletion(ctx, mach, outdir, completionChannel, nil, []string{"coreos-liveiso-success"})
+	return awaitCompletion(ctx, mach, outdir, completionChannel, nil, []string{"coreos-liveiso-success"}, m)
 }
 
-func testAsDisk(ctx context.Context, outdir string) (time.Duration, error) {
+func testAsDisk(ctx context.Context, outdir string, m platform.Machine) (time.Duration, error) {
 	builddir := kola.CosaBuild.Dir
 	isopath := filepath.Join(builddir, kola.CosaBuild.Meta.BuildArtifacts.LiveIso.Path)
 	builder, config, err := newQemuBuilder(outdir)
@@ -1021,7 +1021,7 @@ func testAsDisk(ctx context.Context, outdir string) (time.Duration, error) {
 	}
 	defer mach.Destroy()
 
-	return awaitCompletion(ctx, mach, outdir, completionChannel, nil, []string{liveOKSignal})
+	return awaitCompletion(ctx, mach, outdir, completionChannel, nil, []string{liveOKSignal}, m)
 }
 
 // iscsi_butane_setup.yaml contains the full butane config but here is an overview of the setup
@@ -1048,7 +1048,7 @@ func testAsDisk(ctx context.Context, outdir string) (time.Duration, error) {
 // 6 - /var/nested-ign.json contains an ignition config:
 //   - when the system is booted, write a success string to /dev/virtio-ports/testisocompletion
 //   - as this serial device is mapped to the host serial device, the test concludes
-func testLiveInstalliscsi(ctx context.Context, inst platform.Install, outdir string, butane string) (time.Duration, error) {
+func testLiveInstalliscsi(ctx context.Context, inst platform.Install, outdir string, butane string, m platform.Machine) (time.Duration, error) {
 
 	builddir := kola.CosaBuild.Dir
 	isopath := filepath.Join(builddir, kola.CosaBuild.Meta.BuildArtifacts.LiveIso.Path)
@@ -1123,5 +1123,5 @@ func testLiveInstalliscsi(ctx context.Context, inst platform.Install, outdir str
 	}
 	defer mach.Destroy()
 
-	return awaitCompletion(ctx, mach, outdir, completionChannel, nil, []string{"iscsi-boot-ok"})
+	return awaitCompletion(ctx, mach, outdir, completionChannel, nil, []string{"iscsi-boot-ok"}, m)
 }
