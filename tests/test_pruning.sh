@@ -1,6 +1,7 @@
 #!/bin/bash
 set -xeuo pipefail
 
+# test
 # This test isn't standalone for now. It's executed from the `.cci.jenkinsfile`.
 # It expects to be running in cosa workdir where a single fresh build was made.
 
