@@ -479,7 +479,17 @@ func filterTests(tests []string, patterns []string) ([]string, error) {
 	return r, nil
 }
 
-func runTestIso(cmd *cobra.Command, args []string, m platform.Machine) (err error) {
+// possible wrapper for runTestIso to pass m platform.Machine
+func runWrapper(cmd *cobra.Command, args []string, m platform.Machine) error {
+	arguments := append(args, m.ConsoleOutput())
+	// print args
+	fmt.Println(arguments)
+	// or
+	_ = arguments
+	return nil
+}
+
+func runTestIso(cmd *cobra.Command, args []string) (err error) {
 	if kola.CosaBuild == nil {
 		return fmt.Errorf("Must provide --build")
 	}
@@ -654,10 +664,11 @@ func runTestIso(cmd *cobra.Command, args []string, m platform.Machine) (err erro
 	return nil
 }
 
-func awaitCompletion(ctx context.Context, inst *platform.QemuInstance, outdir string, qchan *os.File, booterrchan chan error, expected []string, m platform.Machine) (time.Duration, error) {
+func awaitCompletion(ctx context.Context, inst *platform.QemuInstance, outdir string, qchan *os.File, booterrchan chan error, expected []string, m ...platform.Machine) (time.Duration, error) {
 	start := time.Now()
 	errchan := make(chan error)
-	consoleFilePath := filepath.Join(outdir, "console.txt")
+	// if m is passed in
+	consoleFilePath := m[0].ConsoleOutput()
 	go func() {
 		timeout := (time.Duration(installTimeoutMins*(100+kola.Options.ExtendTimeoutPercent)) * time.Minute) / 100
 		time.Sleep(timeout)
@@ -687,6 +698,7 @@ func awaitCompletion(ctx context.Context, inst *platform.QemuInstance, outdir st
 				fmt.Printf("Error opening %s file: \n", consoleFilePath)
 				return
 			}
+			fmt.Println(consoleFilePath)
 			defer file.Close()
 			errBuf, err := inst.CheckConsoleForBadness(ctx, m)
 			if err == nil && errBuf != "" {
