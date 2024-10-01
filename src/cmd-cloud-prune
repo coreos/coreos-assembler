@@ -277,8 +277,10 @@ def handle_upload_builds_json(s3_client, bucket, prefix, dry_run, acl):
 
     with open(BUILDFILES['sourcedata'], 'r') as file:
         builds_json_source_data = json.load(file)
-    # Make sure the size of the builds array is the same in the original and our modified builds.json
-    assert len(builds_json_source_data.get('builds')) == len(updated_builds_json.get('builds'))
+    # Make sure the size of the builds+tombstone-builds array is the same in the original and our modified builds.json
+    source_builds_count = len(builds_json_source_data.get('builds', [])) + len(builds_json_source_data.get('tombstone-builds', []))
+    updated_builds_count = len(updated_builds_json.get('builds', [])) + len(updated_builds_json.get('tombstone-builds', []))
+    assert source_builds_count == updated_builds_count
 
     # Before uploading builds.json, copy the updated tmp/builds-source.json as builds.json.bak as a backup
     s3_copy(s3_client, BUILDFILES['sourcedata'], bucket, f'{prefix}/builds.json.bak', CACHE_MAX_AGE_METADATA, acl, extra_args={}, dry_run=dry_run)
