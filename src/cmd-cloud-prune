@@ -324,7 +324,9 @@ def deregister_aws_amis(build, cloud_config, dry_run):
     for ami in amis:
         region_name = ami.get("name")
         ami_id = ami.get("hvm")
-        snapshot_id = ami.get("snapshot")
+        # If we are dealing with an old manifest where the snapshot ID isn't stored
+        # then let's instruct ore to detect the snapshot ID from the AMI.
+        snapshot_id = ami.get("snapshot", "detectFromAMI")
         if dry_run:
             print(f"Would delete {ami_id} and {snapshot_id} for {build.id}")
             continue
