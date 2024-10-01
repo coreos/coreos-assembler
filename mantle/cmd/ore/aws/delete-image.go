@@ -57,6 +57,18 @@ func runDeleteImage(cmd *cobra.Command, args []string) {
 	}
 
 	if snapshotID != "" {
+		if snapshotID == "detectFromAMI" && amiID != "" {
+			// Let's try to extract the snapshotID from AMI
+			snapshot, err := API.FindSnapshot(amiID)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Warning: Encountered error when searching for snapshot for %s: %s. Continuing..\n", amiID, err)
+				os.Exit(0)
+			} else if snapshot == nil {
+				fmt.Fprintf(os.Stdout, "No valid snapshot found for %s.\n", amiID)
+				os.Exit(0)
+			}
+			snapshotID = snapshot.SnapshotID
+		}
 		err := API.RemoveBySnapshotTag(snapshotID, allowMissing)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Could not delete %v: %v\n", snapshotID, err)
