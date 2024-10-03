@@ -388,17 +388,25 @@ def prune_images(s3, build, images_to_keep, dry_run, bucket, prefix):
         raise Exception("Some errors were encountered")
 
 
-def prune_build(bucket, prefix, build_id, dry_run, s3_client):
+def prune_build(s3_client, bucket, prefix, build_id, dry_run):
     build_prefix = os.path.join(prefix, f"{build_id}/")
     if dry_run:
         print(f"Would delete all resources in {bucket}/{build_prefix}.")
     else:
         try:
-            bucket.objects.filter(Prefix=build_prefix).delete()
-            print(f"Pruned {build_id} completely from s3")
+            # List all objects under the specified prefix
+            objects_to_delete = s3_client.list_objects_v2(Bucket=bucket, Prefix=build_prefix)
+            if 'Contents' in objects_to_delete:
+                # Extract the object keys and format them for deletion
+                delete_keys = [{'Key': obj['Key']} for obj in objects_to_delete['Contents']]
+                # Delete objects
+                s3_client.delete_objects(Bucket=bucket, Delete={'Objects': delete_keys})
+                print(f"Pruned {build_id} completely from {bucket}/{build_prefix}.")
+            else:
+                print(f"No objects found to delete in {bucket}/{build_prefix}.")
         except botocore.exceptions.ClientError as e:
             if e.response['Error']['Code'] == 'NoSuchKey':
-                print(f"{bucket}/{build_prefix} already pruned.")
+                print(f"{bucket}/{build_prefix} already pruned or doesn't exist.")
             else:
                 raise Exception(f"Error pruning {build_id}: {e.response['Error']['Message']}")
 
