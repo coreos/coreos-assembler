@@ -1,0 +1,96 @@
+# This file defines the pipeline for building the live ISO.
+version: '2'
+pipelines:
+  - name: live-iso
+    stages:
+      # Yuck: here we copy the metal and metal4k images into the tree from the
+      # outside instead of referencing the metal/metal4k osbuild pipelines.
+      # The reason for that is that our tooling and pipeline is currently
+      # very oriented towards building the metal images as separate artifacts
+      # in separate invocations of osbuild, so we need to support the metal
+      # images pre-existing. Also, the invocations in which we currently build
+      # those images are done with -snapshot on the cache qcow so it can be
+      # parallelized, so we can't just checkpoint those stage outputs. And even
+      # if we did, it doesn't feel quite right to rely on whatever is cached
+      # vs the canonical images. I think to improve this, we should move to
+      # building the metal, metal4k and live artifacts in one invocation.
+      #
+      # The mpp-if here is so osbuild-mpp doesn't try to embed the (possibly
+      # non-existent metal images) when building other stuff... We really should
+      # improve how we interact with osbuild.
+      - mpp-if: metal_filename != ''
+        then:
+          type: org.osbuild.copy
+          inputs:
+            metal:
+              type: org.osbuild.files
+              origin: org.osbuild.source
+              mpp-embed:
+                id: metal
+                url:
+                  mpp-format-string: 'file://{metal_filename}'
+          options:
+            paths:
+              - from:
+                  mpp-format-string: input://metal/{embedded['metal']}
+                to: tree:///metal.raw
+      - mpp-if: metal4k_filename != ''
+        then:
+          type: org.osbuild.copy
+          inputs:
+            metal4k:
+              type: org.osbuild.files
+              origin: org.osbuild.source
+              mpp-embed:
+                id: metal4k
+                url:
+                  mpp-format-string: 'file://{metal4k_filename}'
+          options:
+            paths:
+              - from:
+                  mpp-format-string: input://metal4k/{embedded['metal4k']}
+                to: tree:///metal4k.raw
+      # We need to be able to create efiboot.img, a FAT filesystem image. It's
+      # hard to setup loopback devices from within the stage, so just do it
+      # here. This should normally be conditional on the architecture but it
+      # doesn't hurt either since it's a tiny file.
+      - type: org.osbuild.truncate
+        options:
+          filename: efiboot.img
+          size:
+            mpp-format-string: '{live_efiboot_img_size_mb * 1024 * 1024}'
+      - type: org.osbuild.coreos.live-iso
+        inputs:
+          tree:
+            type: org.osbuild.tree
+            origin: org.osbuild.pipeline
+            references:
+              # XXX: we should rename this pipeline now that we don't use it as
+              # a buildroot
+              - name:build
+        devices:
+          metal:
+            type: org.osbuild.loopback
+            options:
+              filename: metal.raw
+              partscan: true
+              read-only: true
+              sector-size: 512
+          metal4k:
+            type: org.osbuild.loopback
+            options:
+              filename: metal4k.raw
+              partscan: true
+              read-only: true
+              sector-size: 4096
+          efiboot_img:
+            type: org.osbuild.loopback
+            options:
+              filename: efiboot.img
+        options:
+          efiboot_img_filename:
+            mpp-format-string: 'efiboot.img'
+          filename:
+            mpp-format-string: '{filename}'
+          squashfs_compression:
+            mpp-format-string: '{squashfs_compression}'

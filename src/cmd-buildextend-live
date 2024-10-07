@@ -23,6 +23,14 @@ from cosalib.cmdlib import runcmd, sha256sum_file
 from cosalib.cmdlib import import_ostree_commit, get_basearch, ensure_glob
 from cosalib.meta import GenericBuildMeta
 
+# Size of file used to embed an Ignition config within a CPIO.
+IGNITION_IMG_SIZE = 256 * 1024
+
+# Size of the file used to embed miniso data.
+MINISO_DATA_FILE_SIZE = 16 * 1024
+
+COSA_OSBUILD_LIVEISO = os.getenv("COSA_OSBUILD_LIVEISO", "")
+
 live_exclude_kargs = set([
     '$ignition_firstboot',   # unsubstituted variable in grub config
     'console',               # no serial console by default on ISO
@@ -91,32 +99,39 @@ name_version = f'{base_name}-{args.build}'
 # to shorten this more intelligently, otherwise we truncate the
 # version which may impede uniqueness.
 volid = name_version[0:32]
+build_path = os.path.abspath(f"{builddir}/{base_name}-{args.build}")
+kernel_name = f'{base_name}-{args.build}-live-kernel-{basearch}'
+initramfs_name = f'{base_name}-{args.build}-live-initramfs.{basearch}.img'
+rootfs_name = f'{base_name}-{args.build}-live-rootfs.{basearch}.img'
+kernel_file = os.path.join(builddir, kernel_name)
+initramfs_file = os.path.join(builddir, initramfs_name)
+rootfs_file = os.path.join(builddir, rootfs_name)
 
-tmpdir = os.environ.get("FORCE_TMPDIR", f"{workdir}/tmp/buildpost-live")
-if os.path.isdir(tmpdir):
-    shutil.rmtree(tmpdir)
+if COSA_OSBUILD_LIVEISO != "":
+    data = {
+        "buildid": args.build,
+        "imgid": iso_name,
+        "ostree-commit": buildmeta_commit,
+        "container-imgref": "",
+        "deploy-via-container": "",
+        "osname": base_name,
+        "ostree-ref": args.build,
+        "ostree-container": f"{build_path}-ostree.{basearch}.ociarchive",
+        "metal-filename": f"{build_path}-metal.{basearch}.raw",
+        "metal4k-filename": f"{build_path}-metal4k.{basearch}.raw",
+        "ostree-repo": repo,
+        "extra-kargs-string": "mitigations=auto,nosmt",
+        "image-type": "live-iso",
+        "cloud-image-size": "10240",
+        "metal-image-size": "2405",
+        "squashfs-compression": squashfs_compression,
+        "rootfs-size": 0,
+        "live-efiboot-img-size": 16
+    }
 
-tmpisoroot = os.path.join(tmpdir, 'live')
-tmpisocoreos = os.path.join(tmpisoroot, 'coreos')
-tmpisoimages = os.path.join(tmpisoroot, 'images')
-tmpisoimagespxe = os.path.join(tmpisoimages, 'pxeboot')
-tmpisoisolinux = os.path.join(tmpisoroot, 'isolinux')
-# contents of initramfs on both PXE and ISO
-tmpinitrd_base = os.path.join(tmpdir, 'initrd')
-# contents of rootfs image
-tmpinitrd_rootfs = os.path.join(tmpdir, 'initrd-rootfs')
-
-for d in (tmpdir, tmpisoroot, tmpisocoreos, tmpisoimages, tmpisoimagespxe,
-        tmpisoisolinux, tmpinitrd_base, tmpinitrd_rootfs):
-    os.mkdir(d)
-
-# Size of file used to embed an Ignition config within a CPIO.
-ignition_img_size = 256 * 1024
-
-# Size of the file used to embed miniso data.
-miniso_data_file_size = 16 * 1024
-
-
+    image_for_disk_json = "runvm.json"
+    with open(image_for_disk_json, 'w') as file:
+        json.dump(data, file, indent=4)
 # The kernel requires that uncompressed cpio archives appended to an initrd
 # start on a 4-byte boundary.  If there's misalignment, it stops unpacking
 # and says:
@@ -131,6 +146,35 @@ def align_initrd_for_uncompressed_append(destf):
     offset = destf.tell()
     if offset % 4:
         destf.write(b'\0' * (4 - offset % 4))
+
+
+def update_buildmeta():
+    buildmeta['images'].update({
+        'live-iso': {
+            'path': iso_name,
+            'sha256': sha256sum_file(tmpisofile),
+            'skip-compression': True,
+        }
+    })
+    buildmeta['images'].update({
+        'live-kernel': {
+            'path': kernel_name,
+            'sha256': sha256sum_file(kernel_file),
+            'skip-compression': True,
+        },
+        'live-initramfs': {
+            'path': initramfs_name,
+            'sha256': sha256sum_file(initramfs_file),
+            'skip-compression': True,
+        },
+        'live-rootfs': {
+            'path': rootfs_name,
+            'sha256': sha256sum_file(rootfs_file),
+            'skip-compression': True,
+        }
+    })
+    buildmeta.write(artifact_name='live')
+    print(f"Updated: {buildmeta_path}")
 
 
 # Return OS features table for features.json, which is read by
@@ -222,6 +266,24 @@ def generate_iso():
     kargs_file = 'kargs.json'
     igninfo_file = 'igninfo.json'
 
+    tmpdir = os.environ.get("FORCE_TMPDIR", f"{workdir}/tmp/buildpost-live")
+    if os.path.isdir(tmpdir):
+        shutil.rmtree(tmpdir)
+
+    tmpisoroot = os.path.join(tmpdir, 'live')
+    tmpisocoreos = os.path.join(tmpisoroot, 'coreos')
+    tmpisoimages = os.path.join(tmpisoroot, 'images')
+    tmpisoimagespxe = os.path.join(tmpisoimages, 'pxeboot')
+    tmpisoisolinux = os.path.join(tmpisoroot, 'isolinux')
+    # contents of initramfs on both PXE and ISO
+    tmpinitrd_base = os.path.join(tmpdir, 'initrd')
+    # contents of rootfs image
+    tmpinitrd_rootfs = os.path.join(tmpdir, 'initrd-rootfs')
+
+    for d in (tmpdir, tmpisoroot, tmpisocoreos, tmpisoimages, tmpisoimagespxe,
+            tmpisoisolinux, tmpinitrd_base, tmpinitrd_rootfs):
+        os.mkdir(d)
+
     tmpisofile = os.path.join(tmpdir, iso_name)
 
     img_metal_obj = buildmeta.get_artifact_meta("metal", unmerged=True)["images"].get("metal")
@@ -289,7 +351,7 @@ def generate_iso():
     # handled lower down
     if basearch != 's390x':
         with open(os.path.join(tmpisoimages, 'ignition.img'), 'wb') as fdst:
-            fdst.write(bytes(ignition_img_size))
+            fdst.write(bytes(IGNITION_IMG_SIZE))
         igninfo_json = {'file': 'images/ignition.img'}
 
     # Generate JSON file that lists OS features available to
@@ -512,7 +574,7 @@ def generate_iso():
         assert initramfs_size % 4 == 0
 
         # combine kernel, initramfs and cmdline using the mk-s390image tool
-        os.truncate(iso_initramfs, initramfs_size + ignition_img_size)
+        os.truncate(iso_initramfs, initramfs_size + IGNITION_IMG_SIZE)
         runcmd(['/usr/bin/mk-s390image',
                kernel_dest,
                os.path.join(tmpisoimages, 'cdboot.img'),
@@ -538,7 +600,7 @@ def generate_iso():
             igninfo_json = {
                 'file': 'images/cdboot.img',
                 'offset': offset + initramfs_size,
-                'length': ignition_img_size,
+                'length': IGNITION_IMG_SIZE,
             }
 
             # kargs are part of 'images/cdboot.img' blob
@@ -707,7 +769,7 @@ boot
 
     miniso_data = os.path.join(tmpisocoreos, "miniso.dat")
     with open(miniso_data, 'wb') as f:
-        f.truncate(miniso_data_file_size)
+        f.truncate(MINISO_DATA_FILE_SIZE)
 
     if args.fixture:
         # Replace or delete anything irrelevant to coreos-installer
@@ -764,13 +826,6 @@ boot
         }
     })
     shutil.move(tmpisofile, f"{builddir}/{iso_name}")
-
-    kernel_name = f'{base_name}-{args.build}-live-kernel-{basearch}'
-    initramfs_name = f'{base_name}-{args.build}-live-initramfs.{basearch}.img'
-    rootfs_name = f'{base_name}-{args.build}-live-rootfs.{basearch}.img'
-    kernel_file = os.path.join(builddir, kernel_name)
-    initramfs_file = os.path.join(builddir, initramfs_name)
-    rootfs_file = os.path.join(builddir, rootfs_name)
     shutil.copyfile(os.path.join(tmpisoimagespxe, kernel_img), kernel_file)
     shutil.move(pxe_initramfs, initramfs_file)
     shutil.move(pxe_rootfs, rootfs_file)
@@ -801,7 +856,24 @@ with open(build_semaphore, 'w') as f:
     f.write(f"{time.time_ns()}")
 
 try:
-    generate_iso()
+    if COSA_OSBUILD_LIVEISO == "":
+        generate_iso()
+    else:
+        command = [
+            "/usr/bin/cosa", "supermin-run",
+            "--cache",  "/usr/lib/coreos-assembler/runvm-osbuild",
+            "--config",
+            image_for_disk_json,
+            "--mpp",
+            f"/usr/lib/coreos-assembler/osbuild-manifests/coreos.osbuild.{basearch}.mpp.yaml",
+            "--filepath",
+            tmpisofile
+        ]
+        subprocess.run(command)
+        update_buildmeta()
+        # Extract live artifacts from ISO. OSBUILD does not support an output with multiple files
+        command = ["coreos-installer", "iso", "extract", "pxe", tmpisofile]
+        subprocess.run(command)
 finally:
     if os.path.exists(build_semaphore):
         os.unlink(build_semaphore)

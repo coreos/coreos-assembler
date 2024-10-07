@@ -11,6 +11,7 @@ mpp-vars:
   extra_kargs: $extra_kargs
   metal_image_size_mb: $metal_image_size_mb
   cloud_image_size_mb: $cloud_image_size_mb
+  squashfs_compression: $squashfs_compression
   bios_boot_size_mb: 1
   ppc_prep_size_mb: 4
   reserved_part_size_mb: 1
@@ -18,6 +19,9 @@ mpp-vars:
   boot_size_mb: 384
   sector_size: 512
   four_k_sector_size: 4096
+  metal_filename: $metal_filename
+  metal4k_filename: $metal4k_filename
+  live_efiboot_img_size_mb: $live_efiboot_img_size_mb
   # Filesystem UUID and label definitions. These UUIDs
   # are looked for on boot and if found replaced with
   # a new random UUID to make each install unique.
@@ -593,3 +597,5 @@ pipelines:
       path: platform.metal.ipp.yaml
   - mpp-import-pipelines:
       path: platform.qemu.ipp.yaml
+  - mpp-import-pipelines:
+      path: platform.live-iso.ipp.yaml

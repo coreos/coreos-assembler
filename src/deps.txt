@@ -16,9 +16,6 @@ dumb-init
 rpm-ostree createrepo_c openssh-clients python3-createrepo_c composefs
 dnf-utils
 
-# For generating ISO images
-genisoimage
-
 # Standard build tools
 make git rpm-build
 
