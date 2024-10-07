@@ -32,6 +32,7 @@ type BootDevice struct {
 
 type BootDeviceLuks struct {
 	Discard   *bool       `yaml:"discard"`
+	Device    *string     `yaml:"device"`
 	Tang      []base.Tang `yaml:"tang"`
 	Threshold *int        `yaml:"threshold"`
 	Tpm2      *bool       `yaml:"tpm2"`
