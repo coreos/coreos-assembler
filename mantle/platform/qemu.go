@@ -1398,8 +1398,8 @@ func baseQemuArgs(arch string, memoryMiB int) ([]string, error) {
 		ret = []string{
 			"qemu-system-ppc64",
 			// kvm-type=HV ensures we use bare metal KVM and not "user mode"
-			// https://qemu.readthedocs.io/en/latest/system/ppc/pseries.html#switching-between-the-kvm-pr-and-kvm-hv-kernel-module
-			"-machine", "pseries,kvm-type=HV," + machineArg,
+			// https://www.qemu.org/docs/master/system/ppc/pseries.html
+			"-machine", "pseries,kvm-type=HV,ic-mode=xics," + machineArg,
 		}
 	default:
 		return nil, fmt.Errorf("architecture %s not supported for qemu", arch)
