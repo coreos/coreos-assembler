@@ -11,14 +11,6 @@ export LIBGUESTFS_BACKEND=direct
 
 arch=$(uname -m)
 
-
-# Hack to run with a wrapper on older P8 hardware running RHEL7
-if [ "$arch" = "ppc64le" ] ; then
-    if [[ "$(uname -r)" =~ "el7" ]]; then
-        export LIBGUESTFS_HV="/usr/lib/coreos-assembler/libguestfs-ppc64le-wrapper.sh"
-    fi
-fi
-
 # Hack to give ppc64le more memory inside the libguestfs VM.
 # The compiled in default I see when running `guestfish get-memsize`
 # is 1280. We need this because we are seeing issues from
