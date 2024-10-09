@@ -283,3 +283,24 @@ func (a *API) SetImagePublic(name string) error {
 	}
 	return nil
 }
+
+// Add label(s) to an image
+func (a *API) SetImageLabels(name string, labels map[string]string) error {
+	img, err := a.compute.Images.Get(a.options.Project, name).Do()
+	if err != nil {
+		return fmt.Errorf("Getting image %s failed: %v", name, err)
+	}
+
+	req := &compute.GlobalSetLabelsRequest{
+		LabelFingerprint: img.LabelFingerprint,
+		Labels:           labels,
+	}
+
+	op, err := a.compute.Images.SetLabels(a.options.Project, name, req).Do()
+	if err != nil {
+		return fmt.Errorf("Adding labels to %s failed: %v", name, err)
+	}
+
+	plog.Infof("Updated labels on image %s: %v", name, op.Status)
+	return nil
+}
