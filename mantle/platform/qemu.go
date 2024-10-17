@@ -256,6 +256,17 @@ func (inst *QemuInstance) WaitIgnitionError(ctx context.Context) (string, error)
 	return r.String(), nil
 }
 
+// Read file, output contents and return error if reading fails
+func (inst *QemuInstance) ReadFile(filename string) (string, error) {
+	data, err := os.ReadFile(filename)
+	errchan := make(chan error)
+	if err != nil {
+		errchan <- err
+		return "", err
+	}
+	return string(data), nil
+}
+
 // WaitAll wraps the process exit as well as WaitIgnitionError,
 // returning an error if either fail.
 func (inst *QemuInstance) WaitAll(ctx context.Context) error {
