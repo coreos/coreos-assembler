@@ -1,6 +1,3 @@
-# For generating ISO images
-syslinux-nonlinux
-
 # For the pipeline and developers to interact with AWS. It's not needed by cosa
 # itself. This isn't available on s390x at least, so make it x86_64-only.
 awscli2
