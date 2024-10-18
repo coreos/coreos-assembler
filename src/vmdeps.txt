@@ -35,3 +35,8 @@ tar
 
 # needed for extensions container build
 podman
+
+# Needed for cosa push-container-manifest. In later releases the
+# supermin build pulls in these deps but for some reason not in Fedora 38.
+python3-jsonschema
+python3-pyrsistent
