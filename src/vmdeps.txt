@@ -38,6 +38,9 @@ podman
 
 # For running osbuild
 osbuild osbuild-ostree osbuild-selinux osbuild-tools python3-pyrsistent
+# remove this when osbuild-tools requires python3-dnf
+# https://github.com/osbuild/osbuild/pull/1908
+python3-dnf
 
 # For resetting the terminal inside supermin shell
 /usr/bin/reset
