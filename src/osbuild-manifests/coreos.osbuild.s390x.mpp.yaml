@@ -313,6 +313,48 @@ pipelines:
             mpp-format-string: '{root_fs_uuid}'
           label:
             mpp-format-string: '{root_fs_label}'
+      - type: org.osbuild.mkdir
+        options:
+          paths:
+            - path: mount://root/boot
+              mode: 493
+        devices:
+          disk:
+            type: org.osbuild.loopback
+            options:
+              filename: disk.img
+              partscan: true
+        mounts:
+          - name: root
+            type: org.osbuild.xfs
+            source: disk
+            partition:
+              mpp-format-int: '{image.layout[''root''].partnum}'
+            target: /root-mount-point
+      - type: org.osbuild.selinux
+        options:
+          labels:
+            mount://root/boot: system_u:object_r:boot_t:s0
+            mount://boot/lost+found: system_u:object_r:lost_found_t:s0
+        devices:
+          disk:
+            type: org.osbuild.loopback
+            options:
+              filename: disk.img
+              partscan: true
+        mounts:
+          - name: root
+            type: org.osbuild.xfs
+            source: disk
+            partition:
+              mpp-format-int: '{image.layout[''root''].partnum}'
+            target: /sysroot
+          - name: boot
+            type: org.osbuild.ext4
+            source: disk
+            partition:
+              mpp-format-int: '{image.layout[''boot''].partnum}'
+            target: /boot
       - type: org.osbuild.copy
         inputs:
           tree:
@@ -427,6 +469,52 @@ pipelines:
             mpp-format-string: '{root_fs_uuid}'
           label:
             mpp-format-string: '{root_fs_label}'
+      - type: org.osbuild.mkdir
+        options:
+          paths:
+            - path: mount://root/boot
+              mode: 493
+        devices:
+          disk:
+            type: org.osbuild.loopback
+            options:
+              filename: disk.img
+              partscan: true
+              sector-size:
+                  mpp-format-int: "{four_k_sector_size}"
+        mounts:
+          - name: root
+            type: org.osbuild.xfs
+            source: disk
+            partition:
+              mpp-format-int: '{image4k.layout[''root''].partnum}'
+            target: /root-mount-point
+      - type: org.osbuild.selinux
+        options:
+          labels:
+            mount://root/boot: system_u:object_r:boot_t:s0
+            mount://boot/lost+found: system_u:object_r:lost_found_t:s0
+        devices:
+          disk:
+            type: org.osbuild.loopback
+            options:
+              filename: disk.img
+              partscan: true
+              sector-size:
+                  mpp-format-int: "{four_k_sector_size}"
+        mounts:
+          - name: root
+            type: org.osbuild.xfs
+            source: disk
+            partition:
+              mpp-format-int: '{image4k.layout[''root''].partnum}'
+            target: /sysroot
+          - name: boot
+            type: org.osbuild.ext4
+            source: disk
+            partition:
+              mpp-format-int: '{image4k.layout[''boot''].partnum}'
+            target: /boot
       - type: org.osbuild.copy
         inputs:
           tree:

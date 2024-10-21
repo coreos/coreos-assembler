@@ -1,0 +1,55 @@
+From 6a59e740e4ccb761f9d87c2c6f837fa748908a90 Mon Sep 17 00:00:00 2001
+From: Nikita Dubrovskii <nikita@linux.ibm.com>
+Date: Mon, 28 Oct 2024 11:20:23 +0100
+Subject: [PATCH 2/4] parsing: treat locations without scheme as belonging to
+ 'tree://'
+
+---
+ osbuild/util/parsing.py  | 6 +++++-
+ stages/org.osbuild.mkdir | 9 +++------
+ 2 files changed, 8 insertions(+), 7 deletions(-)
+
+diff --git a/osbuild/util/parsing.py b/osbuild/util/parsing.py
+index f75ffd67..d6d16f22 100644
+--- a/osbuild/util/parsing.py
++++ b/osbuild/util/parsing.py
+@@ -77,11 +77,15 @@ def parse_location_into_parts(location: str, args: Dict) -> Tuple[str, str]:
+     Parses the location URL to derive the corresponding root and url path.
+ 
+     Parameters:
+-    - location (str): The location URL to be parsed.
++    - location (str): The location URL to be parsed. If the URL has no scheme,
++    then 'tree://' is implied
+     - args (Dict): A dictionary containing arguments including mounts and
+     path information as passed by osbuild.api.arguments()
+     """
+ 
++    if "://" not in location:
++        location = f"tree://{location}"
++
+     url = urlparse(location)
+ 
+     scheme = url.scheme
+diff --git a/stages/org.osbuild.mkdir b/stages/org.osbuild.mkdir
+index d2d11a7a..01f5f431 100755
+--- a/stages/org.osbuild.mkdir
++++ b/stages/org.osbuild.mkdir
+@@ -15,12 +15,9 @@ def main(args):
+         parents = item.get("parents", False)
+         exist_ok = item.get("exist_ok", False)
+ 
+-        if "://" not in path:
+-            if not path.startswith("/"):
+-                print("WARNING: relative path used, this is discouraged!")
+-                path = f"tree:///{path}"
+-            else:
+-                path = f"tree://{path}"
++        if "://" not in path and not path.startswith("/"):
++            print("WARNING: relative path used, this is discouraged!")
++            path = f"tree:///{path}"
+ 
+         target = parsing.parse_location(path, args)
+         if parents:
+-- 
+2.47.0
+
