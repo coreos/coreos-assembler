@@ -173,7 +173,11 @@ patch_osbuild() {
     mv /usr/bin/osbuild-mpp /usr/lib/osbuild/tools/
 
     # Now all the software is under the /usr/lib/osbuild dir and we can patch
-    patch -d /usr/lib/osbuild -p1 < /usr/lib/coreos-assembler/0001-hacks-for-coreos-selinux-issues.patch
+    cat /usr/lib/coreos-assembler/0001-parsing-add-parse_location_into_parts.patch                \
+        /usr/lib/coreos-assembler/0002-parsing-treat-locations-without-scheme-as-belonging-.patch \
+        /usr/lib/coreos-assembler/0003-org.osbuild.selinux-support-operating-on-mounts.patch      \
+        /usr/lib/coreos-assembler/0004-org.osbuild.selinux-support-for-specifying-where-fil.patch \
+            | patch -d /usr/lib/osbuild -p1
 
     # And then move the files back; supermin appliance creation will need it back
     # in the places delivered by the RPM.

@@ -1,0 +1,92 @@
+From a8e8ebde4400e94036df35f72b08708f00bd4ffe Mon Sep 17 00:00:00 2001
+From: Nikita Dubrovskii <nikita@linux.ibm.com>
+Date: Fri, 18 Oct 2024 17:04:07 +0200
+Subject: [PATCH 4/4] org.osbuild.selinux: support for specifying where
+ file_contexts comes from
+
+file_context now can come from
+- tree (current default)
+- mount
+- input
+
+Example:
+```
+- type: org.osbuild.selinux
+  inputs:
+    tree:
+      type: org.osbuild.tree
+      origin: org.osbuild.pipeline
+      references:
+        - name:tree
+  options:
+    file_contexts: input://tree/etc/selinux/targeted/contexts/files/file_contexts
+```
+---
+ stages/org.osbuild.selinux           |  6 +++++-
+ stages/org.osbuild.selinux.meta.json | 12 ++++++++----
+ 2 files changed, 13 insertions(+), 5 deletions(-)
+
+diff --git a/stages/org.osbuild.selinux b/stages/org.osbuild.selinux
+index 40487599..8e25a281 100755
+--- a/stages/org.osbuild.selinux
++++ b/stages/org.osbuild.selinux
+@@ -9,6 +9,7 @@ from osbuild.util import parsing, selinux
+ 
+ def main(args):
+     # Get the path where the tree is
++    tree = args["tree"]
+     options = args["options"]
+     file_contexts = options.get("file_contexts")
+     exclude_paths = options.get("exclude_paths")
+@@ -16,7 +17,10 @@ def main(args):
+     root, target = parsing.parse_location_into_parts(target, args)
+ 
+     if file_contexts:
+-        file_contexts = os.path.join(args["tree"], options["file_contexts"])
++        if "://" not in file_contexts:
++            file_contexts = os.path.normpath(f"{tree}/{file_contexts}")
++        else:
++            file_contexts = parsing.parse_location(file_contexts, args)
+         if exclude_paths:
+             exclude_paths = [os.path.normpath(f"{root}/{target}/{p}") for p in exclude_paths]
+         selinux.setfiles(file_contexts, os.path.normpath(root), target, exclude_paths=exclude_paths)
+diff --git a/stages/org.osbuild.selinux.meta.json b/stages/org.osbuild.selinux.meta.json
+index e536cead..9a9d7bb1 100644
+--- a/stages/org.osbuild.selinux.meta.json
++++ b/stages/org.osbuild.selinux.meta.json
+@@ -1,8 +1,8 @@
+ {
+   "summary": "Set SELinux file contexts",
+   "description": [
+-    "Sets correct SELinux labels for every file in the tree, according to the",
+-    "SELinux policy installed inside the tree.",
++    "Sets correct SELinux labels for every file in the tree or on mount, according to",
++    "the SELinux policy.",
+     "Uses the host's `setfiles` program and the tree's `file_contexts`, usually",
+     "    /etc/selinux/<SELINUXTYPE>/contexts/files/file_contexts",
+     "where <SELINUXTYPE> is the value set in /etc/selinux/config (usually \"targeted\"",
+@@ -40,8 +40,8 @@
+           "default": "tree:///"
+         },
+         "file_contexts": {
+-          "type": "string",
+-          "description": "Path to the active SELinux policy's `file_contexts`"
++          "description": "Path to the active SELinux policy's `file_contexts`. Supports `tree://`, `mount://`, and `input://` schemes. Plain paths imply `tree://`.",
++          "type": "string"
+         },
+         "exclude_paths": {
+           "type": "array",
+@@ -70,6 +70,10 @@
+     },
+     "mounts": {
+       "type": "array"
++    },
++    "inputs": {
++      "type": "object",
++      "additionalProperties": true
+     }
+   }
+ }
+-- 
+2.47.0
+
