@@ -317,6 +317,44 @@ pipelines:
             mpp-format-string: '{root_fs_uuid}'
           label:
             mpp-format-string: '{root_fs_label}'
+      - type: org.osbuild.mkdir
+        options:
+          paths:
+            - path: mount://boot/efi
+              mode: 493
+        devices:
+          disk:
+            type: org.osbuild.loopback
+            options:
+              filename: disk.img
+              partscan: true
+        mounts:
+          - name: boot
+            type: org.osbuild.ext4
+            source: disk
+            partition:
+              mpp-format-int: '{image.layout[''boot''].partnum}'
+            target: /
+      - type: org.osbuild.selinux
+        options:
+          labels:
+            /efi: system_u:object_r:boot_t:s0
+            /lost+found: system_u:object_r:lost_found_t:s0
+          targets:
+            - mount://boot/
+        devices:
+          disk:
+            type: org.osbuild.loopback
+            options:
+              filename: disk.img
+              partscan: true
+        mounts:
+          - name: boot
+            type: org.osbuild.ext4
+            source: disk
+            partition:
+              mpp-format-int: '{image.layout[''boot''].partnum}'
+            target: /
       - type: org.osbuild.copy
         inputs:
           tree:
@@ -483,6 +521,44 @@ pipelines:
             mpp-format-string: '{root_fs_uuid}'
           label:
             mpp-format-string: '{root_fs_label}'
+      - type: org.osbuild.mkdir
+        options:
+          paths:
+            - path: mount://boot/efi
+              mode: 493
+        devices:
+          disk:
+            type: org.osbuild.loopback
+            options:
+              filename: disk.img
+              partscan: true
+        mounts:
+          - name: boot
+            type: org.osbuild.ext4
+            source: disk
+            partition:
+              mpp-format-int: '{image4k.layout[''boot''].partnum}'
+            target: /
+      - type: org.osbuild.selinux
+        options:
+          labels:
+            /efi: system_u:object_r:boot_t:s0
+            /lost+found: system_u:object_r:lost_found_t:s0
+          targets:
+            - mount://boot/
+        devices:
+          disk:
+            type: org.osbuild.loopback
+            options:
+              filename: disk.img
+              partscan: true
+        mounts:
+          - name: boot
+            type: org.osbuild.ext4
+            source: disk
+            partition:
+              mpp-format-int: '{image4k.layout[''boot''].partnum}'
+            target: /
       - type: org.osbuild.copy
         inputs:
           tree:

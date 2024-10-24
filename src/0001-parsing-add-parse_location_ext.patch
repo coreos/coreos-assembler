@@ -1,0 +1,68 @@
+From e36f51ff5787a62323c0a9ad8987c81c9a6aba09 Mon Sep 17 00:00:00 2001
+From: Nikita Dubrovskii <nikita@linux.ibm.com>
+Date: Fri, 18 Oct 2024 12:28:32 +0200
+Subject: [PATCH 1/3] parsing: add parse_location_ext
+
+New fucntion returns tuple of 'root' and 'url path', which could be
+useful in contexts, where knowing 'root' is required, for example setting
+selinux labels.
+---
+ osbuild/util/parsing.py | 25 +++++++++++++++++++------
+ 1 file changed, 19 insertions(+), 6 deletions(-)
+
+diff --git a/osbuild/util/parsing.py b/osbuild/util/parsing.py
+index f8fb2768..2c03b123 100644
+--- a/osbuild/util/parsing.py
++++ b/osbuild/util/parsing.py
+@@ -2,7 +2,7 @@
+ 
+ import os
+ import re
+-from typing import Dict, Union
++from typing import Dict, Tuple, Union
+ from urllib.parse import ParseResult, urlparse
+ 
+ 
+@@ -72,9 +72,9 @@ def parse_input(url: ParseResult, args: Dict) -> os.PathLike:
+     return root
+ 
+ 
+-def parse_location(location: str, args: Dict) -> str:
++def parse_location_ext(location: str, args: Dict) -> Tuple[str, str]:
+     """
+-    Parses the location URL to derive the corresponding file path.
++    Parses the location URL to derive the corresponding root and file path.
+ 
+     Parameters:
+     - location (str): The location URL to be parsed.
+@@ -97,11 +97,24 @@ def parse_location(location: str, args: Dict) -> str:
+     if not url.path.startswith("/"):
+         raise ValueError(f"url.path from location must start with '/', got: {url.path}")
+ 
+-    path = os.path.relpath(url.path, "/")
++    return root, url.path
++
++
++def parse_location(location: str, args: Dict) -> str:
++    """
++    Parses the location URL to derive the corresponding file path.
++
++    Parameters:
++    - location (str): The location URL to be parsed.
++    - args (Dict): A dictionary containing arguments including mounts and
++    path information as passed by osbuild.api.arguments()
++    """
++
++    root, urlpath = parse_location_ext(location, args)
++    path = os.path.relpath(urlpath, "/")
+     path = os.path.join(root, path)
+     path = os.path.normpath(path)
+-
+-    if url.path.endswith("/"):
++    if urlpath.endswith("/"):
+         path = os.path.join(path, ".")
+ 
+     return path
+-- 
+2.47.0
+

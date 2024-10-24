@@ -1,0 +1,133 @@
+From 311957fc2ddacc8fcf4339e75d7b12eef39e4c7b Mon Sep 17 00:00:00 2001
+From: Nikita Dubrovskii <nikita@linux.ibm.com>
+Date: Fri, 18 Oct 2024 17:04:07 +0200
+Subject: [PATCH 3/3] org.osbuild.selinux: support for specifying where
+ file_contexts come from
+
+file_context now can come from
+- tree (current default)
+- mount
+- input
+
+Example:
+```
+- type: org.osbuild.selinux
+  inputs:
+    tree:
+      type: org.osbuild.tree
+      origin: org.osbuild.pipeline
+      references:
+        - name:tree
+  options:
+    file_contexts: input://tree/etc/selinux/targeted/contexts/files/file_contexts
+```
+---
+ stages/org.osbuild.selinux           | 19 ++++++++++++-------
+ stages/org.osbuild.selinux.meta.json | 28 ++++++++++++++++++++++++----
+ 2 files changed, 36 insertions(+), 11 deletions(-)
+
+diff --git a/stages/org.osbuild.selinux b/stages/org.osbuild.selinux
+index da1ad39a..0fe42626 100755
+--- a/stages/org.osbuild.selinux
++++ b/stages/org.osbuild.selinux
+@@ -7,12 +7,20 @@ import osbuild.api
+ from osbuild.util import parsing, selinux
+ 
+ 
+-def main(args, options):
++def main(args):
++    options = args["options"]
+     file_contexts = options.get("file_contexts")
+     exclude_paths = options.get("exclude_paths")
+ 
+-    # Get the path where the tree is
+-    tree = args["tree"]
++    if file_contexts:
++        if "://" not in file_contexts:
++            if file_contexts.startswith("/"):
++                file_contexts = f"tree://{file_contexts}"
++            else:
++                file_contexts = f"tree:///{file_contexts}"
++        file_contexts = parsing.parse_location(file_contexts, args)
++
++    labels = options.get("labels", {})
+ 
+     # Set labels on each target
+     for target in options.get("targets", ["tree:///"]):
+@@ -20,12 +28,10 @@ def main(args, options):
+         target = target.lstrip("/")
+ 
+         if file_contexts:
+-            file_contexts = os.path.join(f"{tree}", options["file_contexts"])
+             if exclude_paths:
+                 exclude_paths = [os.path.join(root, target, p.lstrip("/")) for p in exclude_paths]
+             selinux.setfiles(file_contexts, os.fspath(root), target, exclude_paths=exclude_paths)
+ 
+-        labels = options.get("labels", {})
+         for path, label in labels.items():
+             fullpath = os.path.join(root, path.lstrip("/"))
+             selinux.setfilecon(fullpath, label)
+@@ -42,6 +48,5 @@ def main(args, options):
+ 
+ 
+ if __name__ == '__main__':
+-    _args = osbuild.api.arguments()
+-    r = main(_args, _args["options"])
++    r = main(osbuild.api.arguments())
+     sys.exit(r)
+diff --git a/stages/org.osbuild.selinux.meta.json b/stages/org.osbuild.selinux.meta.json
+index 3476df9d..232cd19d 100644
+--- a/stages/org.osbuild.selinux.meta.json
++++ b/stages/org.osbuild.selinux.meta.json
+@@ -1,8 +1,8 @@
+ {
+   "summary": "Set SELinux file contexts",
+   "description": [
+-    "Sets correct SELinux labels for every file in the tree, according to the",
+-    "SELinux policy installed inside the tree.",
++    "Sets correct SELinux labels for every file in the tree or on mount, according to",
++    "the SELinux policy.",
+     "Uses the host's `setfiles` program and the tree's `file_contexts`, usually",
+     "    /etc/selinux/<SELINUXTYPE>/contexts/files/file_contexts",
+     "where <SELINUXTYPE> is the value set in /etc/selinux/config (usually \"targeted\"",
+@@ -53,8 +53,24 @@
+           }
+         },
+         "file_contexts": {
+-          "type": "string",
+-          "description": "Path to the active SELinux policy's `file_contexts`"
++          "description": "Path to the active SELinux policy's `file_contexts`",
++          "anyOf": [
++            {
++              "type": "string",
++              "pattern": "^mount://.+"
++            },
++            {
++              "type": "string",
++              "pattern": "^tree://.+"
++            },
++            {
++              "type": "string",
++              "pattern": "^input://.+"
++            },
++            {
++              "type": "string"
++            }
++          ]
+         },
+         "exclude_paths": {
+           "type": "array",
+@@ -83,6 +99,10 @@
+     },
+     "mounts": {
+       "type": "array"
++    },
++    "inputs": {
++      "type": "object",
++      "additionalProperties": true
+     }
+   }
+ }
+-- 
+2.47.0
+

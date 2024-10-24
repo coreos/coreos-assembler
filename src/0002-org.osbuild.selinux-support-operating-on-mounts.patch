@@ -1,0 +1,130 @@
+From beacc9e146cb3c104ff69a06e439e76656dc8df3 Mon Sep 17 00:00:00 2001
+From: Nikita Dubrovskii <nikita@linux.ibm.com>
+Date: Thu, 17 Oct 2024 12:57:00 +0200
+Subject: [PATCH 2/3] org.osbuild.selinux: support operating on mounts
+
+This adds support for specifying paths to operate on,
+rather than just the root of the target:
+```
+- type: org.osbuild.selinux
+  options:
+    file_contexts: etc/selinux/targeted/contexts/files/file_contexts
+    targets:
+     - tree:///path/to/dir
+     - mount://root/path/to/dir
+  devices:
+    disk: ...
+  mounts:
+    - name: root
+      source: disk
+      target: /
+```
+---
+ stages/org.osbuild.selinux           | 52 ++++++++++++++++------------
+ stages/org.osbuild.selinux.meta.json | 19 ++++++++++
+ 2 files changed, 49 insertions(+), 22 deletions(-)
+
+diff --git a/stages/org.osbuild.selinux b/stages/org.osbuild.selinux
+index 563d827b..da1ad39a 100755
+--- a/stages/org.osbuild.selinux
++++ b/stages/org.osbuild.selinux
+@@ -4,36 +4,44 @@ import pathlib
+ import sys
+ 
+ import osbuild.api
+-from osbuild.util import selinux
++from osbuild.util import parsing, selinux
+ 
+ 
+-def main(tree, options):
++def main(args, options):
+     file_contexts = options.get("file_contexts")
+     exclude_paths = options.get("exclude_paths")
+ 
+-    if file_contexts:
+-        file_contexts = os.path.join(f"{tree}", options["file_contexts"])
+-        if exclude_paths:
+-            exclude_paths = [os.path.join(tree, p.lstrip("/")) for p in exclude_paths]
+-        selinux.setfiles(file_contexts, os.fspath(tree), "", exclude_paths=exclude_paths)
++    # Get the path where the tree is
++    tree = args["tree"]
+ 
+-    labels = options.get("labels", {})
+-    for path, label in labels.items():
+-        fullpath = os.path.join(tree, path.lstrip("/"))
+-        selinux.setfilecon(fullpath, label)
++    # Set labels on each target
++    for target in options.get("targets", ["tree:///"]):
++        root, target = parsing.parse_location_ext(target, args)
++        target = target.lstrip("/")
+ 
+-    if options.get("force_autorelabel", False):
+-        stamp = pathlib.Path(tree, ".autorelabel")
+-        # Creating just empty /.autorelabel resets only the type of files.
+-        # To ensure that the full context is reset, we write "-F" into the file.
+-        # This mimics the behavior of `fixfiles -F boot`. The "-F" option is
+-        # then passed to `selinux-autorelabel` script [0].
+-        # Note that this is missing from the selinux(8) and selinux_config(5) man-pages
+-        # [0] https://src.fedoraproject.org/rpms/policycoreutils/blob/rawhide/f/selinux-autorelabel#_54
+-        stamp.write_text("-F", encoding="utf-8")
++        if file_contexts:
++            file_contexts = os.path.join(f"{tree}", options["file_contexts"])
++            if exclude_paths:
++                exclude_paths = [os.path.join(root, target, p.lstrip("/")) for p in exclude_paths]
++            selinux.setfiles(file_contexts, os.fspath(root), target, exclude_paths=exclude_paths)
++
++        labels = options.get("labels", {})
++        for path, label in labels.items():
++            fullpath = os.path.join(root, path.lstrip("/"))
++            selinux.setfilecon(fullpath, label)
++
++        if options.get("force_autorelabel", False):
++            stamp = pathlib.Path(root, ".autorelabel")
++            # Creating just empty /.autorelabel resets only the type of files.
++            # To ensure that the full context is reset, we write "-F" into the file.
++            # This mimics the behavior of `fixfiles -F boot`. The "-F" option is
++            # then passed to `selinux-autorelabel` script [0].
++            # Note that this is missing from the selinux(8) and selinux_config(5) man-pages
++            # [0] https://src.fedoraproject.org/rpms/policycoreutils/blob/rawhide/f/selinux-autorelabel#_54
++            stamp.write_text("-F", encoding="utf-8")
+ 
+ 
+ if __name__ == '__main__':
+-    args = osbuild.api.arguments()
+-    r = main(args["tree"], args["options"])
++    _args = osbuild.api.arguments()
++    r = main(_args, _args["options"])
+     sys.exit(r)
+diff --git a/stages/org.osbuild.selinux.meta.json b/stages/org.osbuild.selinux.meta.json
+index 30dbddae..3476df9d 100644
+--- a/stages/org.osbuild.selinux.meta.json
++++ b/stages/org.osbuild.selinux.meta.json
+@@ -33,6 +33,25 @@
+         }
+       ],
+       "properties": {
++        "targets": {
++          "description": "Array of target paths to operate on",
++          "type": "array",
++          "additionalItems": false,
++          "items": {
++            "oneOf": [
++              {
++                "type": "string",
++                "description": "Target path, if a mount",
++                "pattern": "^mount://.+"
++              },
++              {
++                "type": "string",
++                "description": "Target path, if a tree",
++                "pattern": "^tree://.+"
++              }
++            ]
++          }
++        },
+         "file_contexts": {
+           "type": "string",
+           "description": "Path to the active SELinux policy's `file_contexts`"
+-- 
+2.47.0
+
