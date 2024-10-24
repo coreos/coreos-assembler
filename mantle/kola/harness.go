@@ -1935,6 +1935,33 @@ func ScpKolet(machines []platform.Machine) error {
 	return fmt.Errorf("Unable to locate kolet binary for %s", mArch)
 }
 
+// CheckConsoleText checks console output for badness
+// input : the console content
+// output true if badlines were found and the bad lines.
+func CheckConsoleText(input []byte) (bool, []string) {
+	warnOnly := true
+	badlines := []string{}
+
+	for _, check := range consoleChecks {
+		if check.skipFlag != nil {
+			continue
+		}
+		match := check.match.FindSubmatch(input)
+		if match != nil {
+			badline := check.desc
+			if len(match) > 1 {
+				// include first subexpression
+				badline += fmt.Sprintf(" (%v)", match[1])
+			}
+			badlines = append(badlines, badline)
+			if !check.warnOnly {
+				warnOnly = false
+			}
+		}
+	}
+	return warnOnly, badlines
+}
+
 // CheckConsole checks some console output for badness and returns short
 // descriptions of any bad lines it finds along with a boolean
 // indicating if the configuration has the bad lines marked as
@@ -1943,31 +1970,16 @@ func ScpKolet(machines []platform.Machine) error {
 // rerun success.
 func CheckConsole(output []byte, t *register.Test) (bool, []string) {
 	var badlines []string
-	warnOnly, allowRerunSuccess := true, true
-	for _, check := range consoleChecks {
-		if check.skipFlag != nil && t != nil && t.HasFlag(*check.skipFlag) {
-			continue
-		}
-		match := check.match.FindSubmatch(output)
-		if match != nil {
-			badline := check.desc
-			if len(match) > 1 {
-				// include first subexpression
-				badline += fmt.Sprintf(" (%s)", match[1])
-			}
-			badlines = append(badlines, badline)
-			if !check.warnOnly {
-				warnOnly = false
-			}
-			if !check.allowRerunSuccess {
-				allowRerunSuccess = false
-			}
-		}
-	}
+	var badness bool
+	allowRerunSuccess := true
+
+	//here pass output to checkconsoleText
+	badness, badlines = CheckConsoleText(output)
+
 	if len(badlines) > 0 && allowRerunSuccess && t != nil {
 		markTestForRerunSuccess(t, "CheckConsole:")
 	}
-	return warnOnly, badlines
+	return badness, badlines
 }
 
 func SetupOutputDir(outputDir, platform string) (string, error) {
