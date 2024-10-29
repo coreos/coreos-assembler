@@ -174,6 +174,16 @@ func (a *API) DeleteBlockBlob(storageaccount, key, container, blob string) error
 	return err
 }
 
+func (a *API) SetBlobMetadata(storageaccount, key, container, blobname string, tags map[string]*string) error {
+	client, err := getPageBlobClient(storageaccount, key, container, blobname)
+	if err != nil {
+		return err
+	}
+
+	_, err = client.SetMetadata(context.Background(), tags, nil)
+	return err
+}
+
 func getBlockBlobClient(storageaccount, key string) (*azblob.Client, error) {
 	serviceURL := fmt.Sprintf("https://%s.blob.core.windows.net/", storageaccount)
 	cred, err := azblob.NewSharedKeyCredential(storageaccount, key)
