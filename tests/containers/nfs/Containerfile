@@ -1,0 +1,16 @@
+FROM registry.fedoraproject.org/fedora-minimal:41
+
+RUN dnf -y install /usr/bin/ps nfs-utils && dnf clean all && rm -rf /var/cache/yum
+
+ADD run_nfs.sh /usr/local/bin/
+
+# expose mountd 20048/tcp and nfsd 2049/tcp
+EXPOSE 2049/tcp 20048/tcp
+
+# Prepare mount point rw for everyone
+RUN mkdir /export && chmod 777 /export
+
+# mark /export as a mount point
+VOLUME /export
+ENTRYPOINT ["/usr/local/bin/run_nfs.sh"]
+CMD ["/export"]
