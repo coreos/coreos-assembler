@@ -14,7 +14,6 @@ image_suffix=
 case "$(basename "$0")" in
     "cmd-buildextend-metal") image_type=metal;;
     "cmd-buildextend-metal4k") image_type=metal4k;;
-    "cmd-buildextend-dasd") image_type=dasd;;
     "cmd-buildextend-qemu") image_type=qemu;;
     "cmd-buildextend-secex")
         secure_execution=1
@@ -85,10 +84,6 @@ case "$basearch" in
     "x86_64"|"aarch64"|"s390x"|"ppc64le") ;;
     *) fatal "$basearch is not supported for this command" ;;
 esac
-
-if [[ "$basearch" != "s390x" && $image_type == dasd ]]; then
-    fatal "$basearch is not supported for building dasd images"
-fi
 
 # shellcheck disable=SC2031
 export LIBGUESTFS_BACKEND=direct
@@ -191,7 +186,7 @@ echo "Estimating disk size..."
 rootfs_size_mb="$(jq '."estimate-mb".final' "$PWD/tmp/ostree-size.json")"
 # The minimum size of a disk image we'll need will be the rootfs_size
 # estimate plus the size of the non-root partitions. We'll use this
-# size for the metal/dasd images, but for the IaaS/virt image we'll use
+# size for the metal images, but for the IaaS/virt image we'll use
 # the size set in the configs since some of them have minimum sizes that
 # the platforms require and we want a "default" disk size that has some
 # free space.
@@ -218,8 +213,8 @@ extra_kargs="$(python3 -c 'import sys, json; args = json.load(sys.stdin)["extra-
 qemu-img create -f ${image_format} "${path}.tmp" "${metal_image_size_mb}M"
 
 extra_target_device_opts=""
-# we need 4096 block size for ECKD DASD and (obviously) metal4k
-if [[ $image_type == dasd || $image_type == metal4k ]]; then
+# we need 4096 block size for metal4k
+if [[ $image_type == metal4k ]]; then
   extra_target_device_opts=",physical_block_size=4096,logical_block_size=4096"
 fi
 qemu_args+=("-drive" "if=none,id=target,format=${image_format},file=${path}.tmp,cache=unsafe" \
