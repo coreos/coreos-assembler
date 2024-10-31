@@ -143,8 +143,8 @@ if [[ $image_type == qemu ]]; then
     image_format=qcow2
 fi
 
-img=${name}-${build}-${image_type}${image_suffix}.${basearch}.${image_format}
-path=${PWD}/${img}
+imgname=${name}-${build}-${image_type}${image_suffix}.${basearch}.${image_format}
+imgpath=${PWD}/${imgname}
 
 # We do some extra handling of the rootfs here; it feeds into size estimation.
 rootfs_type=$(jq -re .rootfs < "${image_json}")
@@ -202,7 +202,7 @@ image_dynamic_json="${tmp_builddir}/image-dynamic.json"
 image_for_disk_json="${tmp_builddir}/image-for-disk.json"
 cat >"${image_dynamic_yaml}" << EOF
 buildid: "${build}"
-imgid: "${img}"
+imgid: "${imgname}"
 ostree-commit: "${commit}"
 container-imgref: "${container_imgref}"
 deploy-via-container: "${deploy_via_container}"
@@ -238,7 +238,7 @@ fi
 runvm_with_cache_snapshot "$snapshot" -- /usr/lib/coreos-assembler/runvm-osbuild                    \
             --config "${image_for_disk_json}"                                                       \
             --mpp "/usr/lib/coreos-assembler/osbuild-manifests/coreos.osbuild.${basearch}.mpp.yaml" \
-            --filepath "${path}.tmp" "${osbuild_extra_args[@]}"
+            --filepath "${imgpath}" "${osbuild_extra_args[@]}"
 
 if [[ $secure_execution -eq "1" ]]; then
     if [ ! -f "${genprotimgvm}" ]; then
@@ -248,7 +248,7 @@ if [[ $secure_execution -eq "1" ]]; then
     # Basic qemu args:
     qemu_args=(); blk_size="512"
     [[ $image_type == metal4k ]] && blk_size="4096"
-    qemu_args+=("-drive" "if=none,id=target,format=${image_format},file=${path}.tmp,cache=unsafe" \
+    qemu_args+=("-drive" "if=none,id=target,format=${image_format},file=${imgpath},cache=unsafe" \
         "-device" "virtio-blk,serial=target,drive=target,physical_block_size=${blk_size},logical_block_size=${blk_size}")
 
     # SecureVM (holding Universal Key for all IBM Z Mainframes) requires scripts to execute genprotimg
@@ -282,16 +282,14 @@ if [[ $secure_execution -eq "1" ]]; then
     exec 9>&-
 fi
 
-/usr/lib/coreos-assembler/finalize-artifact "${path}.tmp" "${path}"
-
-sha256=$(sha256sum_str < "${img}")
+sha256=$(sha256sum_str < "${imgpath}")
 cosa meta --workdir "${workdir}" --build "${build}" --dump | python3 -c "
 import sys, json
 j = json.load(sys.stdin)
 j['images']['${image_type}${image_suffix}'] = {
-    'path': '${img}',
+    'path': '${imgname}',
     'sha256': '${sha256}',
-    'size': $(stat -c '%s' "${img}")
+    'size': $(stat -c '%s' "${imgpath}")
 }
 json.dump(j, sys.stdout, indent=4)
 " | jq -s add > "meta.json.new"
@@ -316,10 +314,10 @@ fi
 
 # and now the crucial bits
 cosa meta --workdir "${workdir}" --build "${build}" --artifact "${image_type}" --artifact-json "$(readlink -f meta.json.new)"
-/usr/lib/coreos-assembler/finalize-artifact "${img}" "${builddir}/${img}"
+/usr/lib/coreos-assembler/finalize-artifact "${imgpath}" "${builddir}/${imgname}"
 
 # Quiet for the rest of this so the last thing we see is a success message
 set +x
 # clean up the tmpbuild
 rm -rf "${tmp_builddir}"
-echo "Successfully generated: ${img}"
+echo "Successfully generated: ${imgname}"
