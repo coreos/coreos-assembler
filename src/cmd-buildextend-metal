@@ -169,11 +169,9 @@ if [ "${rootfs_type}" = "ext4verity" ]; then
     BLKSIZE="$(getconf PAGE_SIZE)"
 fi
 
-disk_args=()
 qemu_args=()
 # SecureExecution extra stuff
 if [[ $secure_execution -eq "1" ]]; then
-    disk_args+=("--with-secure-execution")
     if [ ! -f "${genprotimgvm}" ]; then
         fatal "No genprotimgvm provided at ${genprotimgvm}"
     fi
@@ -202,10 +200,6 @@ fi
 metal_image_size_mb="$(( rootfs_size_mb + nonroot_partition_sizes ))"
 cloud_image_size_mb="$(jq -r ".size*1024" < "${image_json}")"
 echo "Disk sizes: metal: ${metal_image_size_mb}M (estimated), cloud: ${cloud_image_size_mb}M"
-
-if [ "${image_type}" == metal4k ]; then
-    disk_args+=("--no-x86-bios-bootloader")
-fi
 
 set -x
 extra_kargs="$(python3 -c 'import sys, json; args = json.load(sys.stdin)["extra-kargs"]; print(" ".join(args))' < "${image_json}")"
