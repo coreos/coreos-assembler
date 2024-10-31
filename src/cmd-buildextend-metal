@@ -169,14 +169,6 @@ if [ "${rootfs_type}" = "ext4verity" ]; then
     BLKSIZE="$(getconf PAGE_SIZE)"
 fi
 
-qemu_args=()
-# SecureExecution extra stuff
-if [[ $secure_execution -eq "1" ]]; then
-    if [ ! -f "${genprotimgvm}" ]; then
-        fatal "No genprotimgvm provided at ${genprotimgvm}"
-    fi
-fi
-
 echo "Estimating disk size..."
 # The additional 35% here is obviously a hack, but we can't easily completely fill the filesystem,
 # and doing so has apparently negative performance implications.
@@ -203,14 +195,6 @@ echo "Disk sizes: metal: ${metal_image_size_mb}M (estimated), cloud: ${cloud_ima
 
 set -x
 extra_kargs="$(python3 -c 'import sys, json; args = json.load(sys.stdin)["extra-kargs"]; print(" ".join(args))' < "${image_json}")"
-
-extra_target_device_opts=""
-# we need 4096 block size for metal4k
-if [[ $image_type == metal4k ]]; then
-  extra_target_device_opts=",physical_block_size=4096,logical_block_size=4096"
-fi
-qemu_args+=("-drive" "if=none,id=target,format=${image_format},file=${path}.tmp,cache=unsafe" \
-              "-device" "virtio-blk,serial=target,drive=target${extra_target_device_opts}")
 
 # Generate the JSON describing the disk we want to build
 image_dynamic_yaml="${tmp_builddir}/image-dynamic.yaml"
@@ -257,6 +241,19 @@ runvm_with_cache_snapshot "$snapshot" -- /usr/lib/coreos-assembler/runvm-osbuild
             --filepath "${path}.tmp" "${osbuild_extra_args[@]}"
 
 if [[ $secure_execution -eq "1" ]]; then
+    if [ ! -f "${genprotimgvm}" ]; then
+        fatal "No genprotimgvm provided at ${genprotimgvm}"
+    fi
+
+    # Basic qemu args:
+    qemu_args=(); extra_target_device_opts=""
+    # we need 4096 block size for metal4k
+    if [[ $image_type == metal4k ]]; then
+      extra_target_device_opts=",physical_block_size=4096,logical_block_size=4096"
+    fi
+    qemu_args+=("-drive" "if=none,id=target,format=${image_format},file=${path}.tmp,cache=unsafe" \
+                "-device" "virtio-blk,serial=target,drive=target${extra_target_device_opts}")
+
     # SecureVM (holding Universal Key for all IBM Z Mainframes) requires scripts to execute genprotimg
     se_script_dir="/usr/lib/coreos-assembler/secex-genprotimgvm-scripts"
     genprotimg_img="${PWD}/secex-genprotimg.img"
