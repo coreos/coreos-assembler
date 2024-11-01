@@ -370,7 +370,9 @@ func renderInstallKargs(t *installerRun, offline bool) []string {
 // problematic. Let's add a hook here to enable more debugging.
 func renderCosaTestIsoDebugKargs() []string {
 	if _, ok := os.LookupEnv("COSA_TESTISO_DEBUG"); ok {
-		return []string{"systemd.log_color=0", "systemd.log_level=debug", "systemd.journald.forward_to_console=1"}
+		return []string{"systemd.log_color=0", "systemd.log_level=debug",
+			"systemd.journald.forward_to_console=1",
+			"systemd.journald.max_level_console=debug"}
 	} else {
 		return []string{}
 	}
