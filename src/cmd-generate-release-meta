@@ -103,7 +103,17 @@ def get_floating_tag(rel, tags):
     return found
 
 
-# Append the coreos-assembler build json `input_` to `out`, the target release stream.
+def populate_oci_image(buildid, oci):
+    # The `image` field uses a floating tag and the `digest-ref` field uses
+    # a digest pullspec. See: https://github.com/coreos/stream-metadata-go/pull/46.
+    tag = get_floating_tag(buildid, oci["tags"])
+    return {
+        "image": oci["image"] + f":{tag}",
+        "digest-ref": oci["image"] + "@" + oci["digest"],
+    }
+
+
+# Append the coreos-assembler build meta.json `input_` to `out`, the target release stream.
 def append_build(out, input_):
     arch = input_.get("coreos-assembler.basearch")
 
@@ -182,13 +192,7 @@ def append_build(out, input_):
     # KubeVirt specific additions: https://github.com/coreos/stream-metadata-go/pull/41
     if input_.get("kubevirt", None) is not None:
         arch_dict["media"].setdefault("kubevirt", {}).setdefault("image", {})
-        # The `image` field uses a floating tag and the `digest-ref` field uses
-        # a digest pullspec. See: https://github.com/coreos/stream-metadata-go/pull/46.
-        tag = get_floating_tag(input_["buildid"], input_["kubevirt"]["tags"])
-        arch_dict["media"]["kubevirt"]["image"] = {
-            "image": input_["kubevirt"]["image"] + f":{tag}",
-            "digest-ref": input_["kubevirt"]["image"] + "@" + input_["kubevirt"]["digest"],
-        }
+        arch_dict["media"]["kubevirt"]["image"] = populate_oci_image(input_["buildid"], input_["kubevirt"])
 
     # Azure: https://github.com/coreos/stream-metadata-go/issues/13
     inputaz = input_.get("azure")
