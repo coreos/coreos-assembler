@@ -11,7 +11,6 @@ Options:
     --help: show this help
     --mpp: the path to the OSBuild mpp.yaml file
     --filepath: where to write the created image file
-    --secex: Build qemu-secex image
 
 You probably don't want to run this script by hand. This script is
 run as part of 'coreos-assembler build'.
@@ -32,7 +31,6 @@ getconfig_def() {
     jq -re .\""$k"\"//\""${default}"\" < "${config}"
 }
 
-secex=""
 while [ $# -gt 0 ];
 do
     flag="${1}"; shift;
@@ -41,7 +39,6 @@ do
         --help)                    usage; exit;;
         --mpp)                     mppyaml="${1}"; shift;;
         --filepath)                filepath="${1}"; shift;;
-        --secex)                   secex="${1}"; shift;;
          *) echo "${flag} is not understood."; usage; exit 10;;
      esac;
 done
@@ -102,7 +99,6 @@ osbuild-mpp                                             \
     -D metal_image_size_mb="${metal_image_size_mb}"     \
     -D cloud_image_size_mb="${cloud_image_size_mb}"     \
     -D rootfs_size_mb="${rootfs_size_mb}"               \
-    -D qemu_secex=\""${secex}"\"                        \
     "${mppyaml}" "${processed_json}"
 
 # Build the image
@@ -121,7 +117,7 @@ osbuild \
 mv "${outdir}/${platform}/${filename}" "${filepath}"
 
 # In case of IBM Secure Execution there are more artifacts
-if [ -n "${secex}" ]; then
+if [ "${platform}" == 'qemu-secex' ]; then
     dir=$(dirname "${filepath}")
     mv "${outdir}/${platform}/bootfs_hash" "${dir}"
     mv "${outdir}/${platform}/rootfs_hash" "${dir}"

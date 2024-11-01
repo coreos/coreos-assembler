@@ -5,21 +5,14 @@ dn=$(dirname "$0")
 # shellcheck source=src/cmdlib.sh
 . "${dn}"/cmdlib.sh
 
-# IBM SecureExecution
-secure_execution=
-image_suffix=
-
 # This script is used for creating both the bare metal and the canonical VM
 # image (qemu). `buildextend-qemu` is a symlink to `buildextend-metal`.
 case "$(basename "$0")" in
     "cmd-buildextend-metal") image_type=metal;;
     "cmd-buildextend-metal4k") image_type=metal4k;;
     "cmd-buildextend-qemu") image_type=qemu;;
-    "cmd-buildextend-secex")
-        secure_execution=1
-        image_type=qemu
-        image_suffix=-secex
-        ;;
+    "cmd-buildextend-qemu-secex") image_type=qemu-secex;;
+    "cmd-buildextend-secex") image_type=qemu-secex;;
     *) fatal "called as unexpected name $0";;
 esac
 
@@ -112,9 +105,9 @@ trap 'rm -f ${build_semaphore}' EXIT
 
 # check if the image already exists in the meta.json
 if [ -z "${force}" ]; then
-    meta_img=$(meta_key "images.${image_type}${image_suffix}.path")
+    meta_img=$(meta_key "images.${image_type}.path")
     if [ "${meta_img}" != "None" ]; then
-        echo "${image_type}${image_suffix} image already exists:"
+        echo "${image_type} image already exists:"
         echo "$meta_img"
         exit 0
     fi
@@ -139,11 +132,11 @@ import_ostree_commit_for_build "${build}"
 image_json=${workdir}/tmp/image.json
 
 image_format=raw
-if [[ $image_type == qemu ]]; then
+if [[ "${image_type}" == "qemu" || "${image_type}" == "qemu-secex" ]]; then
     image_format=qcow2
 fi
 
-imgname=${name}-${build}-${image_type}${image_suffix}.${basearch}.${image_format}
+imgname=${name}-${build}-${image_type}.${basearch}.${image_format}
 imgpath=${PWD}/${imgname}
 
 # We do some extra handling of the rootfs here; it feeds into size estimation.
@@ -220,11 +213,6 @@ cat "${image_json}" "${image_dynamic_json}" | jq -s add > "${image_for_disk_json
 platforms_json="${tmp_builddir}/platforms.json"
 yaml2json "${configdir}/platforms.yaml" "${platforms_json}"
 
-osbuild_extra_args=()
-if [[ $secure_execution -eq "1" ]]; then
-    osbuild_extra_args+=("--secex" "1")
-fi
-
 # In the jenkins pipelines we build the qemu image first and that operation
 # will do a lot of the same work required for later artifacts (metal, metal4k, etc)
 # so we want the cached output from that run to persist. The later artifacts get
@@ -235,9 +223,9 @@ fi
 runvm_with_cache_snapshot "$snapshot" -- /usr/lib/coreos-assembler/runvm-osbuild                    \
             --config "${image_for_disk_json}"                                                       \
             --mpp "/usr/lib/coreos-assembler/osbuild-manifests/coreos.osbuild.${basearch}.mpp.yaml" \
-            --filepath "${imgpath}" "${osbuild_extra_args[@]}"
+            --filepath "${imgpath}"
 
-if [[ $secure_execution -eq "1" ]]; then
+if [[ "${image_type}" == "qemu-secex" ]]; then
     if [ ! -f "${genprotimgvm}" ]; then
         fatal "No genprotimgvm provided at ${genprotimgvm}"
     fi
@@ -283,7 +271,7 @@ sha256=$(sha256sum_str < "${imgpath}")
 cosa meta --workdir "${workdir}" --build "${build}" --dump | python3 -c "
 import sys, json
 j = json.load(sys.stdin)
-j['images']['${image_type}${image_suffix}'] = {
+j['images']['${image_type}'] = {
     'path': '${imgname}',
     'sha256': '${sha256}',
     'size': $(stat -c '%s' "${imgpath}")

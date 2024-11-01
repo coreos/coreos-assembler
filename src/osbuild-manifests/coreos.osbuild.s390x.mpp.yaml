@@ -17,8 +17,6 @@ mpp-vars:
   efi_system_size_mb: 127
   se_size_mb:   200
   boot_size_mb: 384
-  root_size_mb:
-    mpp-format-int: $rootfs_size_mb
   boot_verity_size_mb: 128
   root_verity_size_mb: 256
   sector_size: 512
@@ -46,8 +44,6 @@ mpp-vars:
   # the host buildroot is the default if nothing is specified.
   # We're still defining it here in an attempt to be explicit.
   qemu_stage_buildroot: ""
-  # IBM Secure Execution
-  qemu_secex: $qemu_secex
 mpp-define-images:
   - id: image
     sector_size:
@@ -83,40 +79,6 @@ mpp-define-images:
         - name: root
           type: 0FC63DAF-8483-4772-8E79-3D69D8477DE4
           partnum: 4
-  # Secure Execution image. It MUST contain same partitions as `image` plus 3 additional
-  - id: image_secex
-    sector_size:
-      mpp-format-int: "{sector_size}"
-    size:
-      mpp-format-string: "{metal_image_size_mb * 1024 * 1024}"
-    table:
-      uuid: 00000000-0000-4000-a000-000000000001
-      label: gpt
-      partitions:
-        - name: se
-          type: 0FC63DAF-8483-4772-8E79-3D69D8477DE4
-          partnum: 1
-          size:
-            mpp-format-int: "{se_size_mb * 1024 * 1024 / sector_size}"
-        - name: boot
-          type: 0FC63DAF-8483-4772-8E79-3D69D8477DE4
-          partnum: 3
-          size:
-            mpp-format-int: "{boot_size_mb * 1024 * 1024 / sector_size}"
-        - name: root
-          type: 0FC63DAF-8483-4772-8E79-3D69D8477DE4
-          partnum: 4
-          size:
-            mpp-format-int: "{root_size_mb * 1024 * 1024 / sector_size}"
-        - name: boothash
-          partnum: 5
-          size:
-            mpp-format-int: "{boot_verity_size_mb * 1024 * 1024 / sector_size}"
-        - name: roothash
-          type: B325BFBE-C7BE-4AB8-8357-139E652D2F6B
-          partnum: 6
-          size:
-            mpp-format-int: "{root_verity_size_mb * 1024 * 1024 / sector_size}"
 pipelines:
   # If installing from container then let's pull the container file into a pipeline
   - name: oci-archive
@@ -196,13 +158,6 @@ pipelines:
               # filesystem by OSTree (boot -> .) that makes it so that /boot paths
               # will always work.
               bootprefix: true
-      # If on s390x with secex then mkdir for filesytem labeled `se`, where `sdboot` image gets stored
-      - mpp-if: qemu_secex != ''
-        then:
-          type: org.osbuild.mkdir
-          options:
-            paths:
-              - path: /se
       - type: org.osbuild.ignition
       # Deploy via OSTree repo if specified, otherwise ociarchive or container.
       - mpp-if: ostree_repo != ''
@@ -530,131 +485,9 @@ pipelines:
               source: mount
               deployment:
                 default: true
-  # IBM Secure Execution (secex) image has special layout
-  - name: raw-secex-image
-    build:
-      mpp-format-string: '{buildroot}'
-    stages:
-      - type: org.osbuild.truncate
-        options:
-          filename: disk.img
-          size:
-            mpp-format-string: '{image_secex.size}'
-      - type: org.osbuild.sfdisk
-        devices:
-          device:
-            type: org.osbuild.loopback
-            options:
-              filename: disk.img
-        options:
-          mpp-format-json: '{image_secex.layout}'
-      - type: org.osbuild.mkfs.ext4
-        devices:
-          device:
-            type: org.osbuild.loopback
-            options:
-              filename: disk.img
-              start:
-                mpp-format-int: '{image_secex.layout[''se''].start}'
-              size:
-                mpp-format-int: '{image_secex.layout[''se''].size}'
-              lock: true
-        options:
-          uuid: random
-          label:
-            mpp-format-string: '{sd_fs_label}'
-      - type: org.osbuild.mkfs.ext4
-        devices:
-          device:
-            type: org.osbuild.loopback
-            options:
-              filename: disk.img
-              start:
-                mpp-format-int: '{image_secex.layout[''boot''].start}'
-              size:
-                mpp-format-int: '{image_secex.layout[''boot''].size}'
-              lock: true
-        options:
-          uuid:
-            mpp-format-string: '{boot_fs_uuid}'
-          label:
-            mpp-format-string: '{boot_fs_label}'
-          # Set manually the metadata_csum_seed ext4 option otherwise changing the
-          # filesystem UUID while it's mounted doesn't work. Can remove this when
-          # metadata_csum_seed is default in RHEL, which can be checked by looking
-          # in /etc/mke2fs.conf.
-          metadata_csum_seed: true
-      - type: org.osbuild.mkfs.xfs
-        devices:
-          device:
-            type: org.osbuild.loopback
-            options:
-              filename: disk.img
-              start:
-                mpp-format-int: '{image_secex.layout[''root''].start}'
-              size:
-                mpp-format-int: '{image_secex.layout[''root''].size}'
-              lock: true
-        options:
-          uuid:
-            mpp-format-string: '{root_fs_uuid}'
-          label:
-            mpp-format-string: '{root_fs_label}'
-      - type: org.osbuild.copy
-        inputs:
-          tree:
-            type: org.osbuild.tree
-            origin: org.osbuild.pipeline
-            references:
-              - name:tree
-        options:
-          paths:
-            - from: input://tree/
-              to: mount://root/
-        devices:
-          disk:
-            type: org.osbuild.loopback
-            options:
-              filename: disk.img
-              partscan: true
-        mounts:
-          - name: root
-            type: org.osbuild.xfs
-            source: disk
-            partition:
-              mpp-format-int: '{image_secex.layout[''root''].partnum}'
-            target: /
-          - name: boot
-            type: org.osbuild.ext4
-            source: disk
-            partition:
-              mpp-format-int: '{image_secex.layout[''boot''].partnum}'
-            target: /boot
-      - type: org.osbuild.chattr
-        options:
-          items:
-            mount://root/:
-              immutable: true
-        devices:
-          disk:
-            type: org.osbuild.loopback
-            options:
-              filename: disk.img
-              partscan: true
-        mounts:
-          - name: root
-            type: org.osbuild.xfs
-            source: disk
-            partition:
-              mpp-format-int: '{image_secex.layout[''root''].partnum}'
-            target: /
-          - name: ostree.deployment
-            type: org.osbuild.ostree.deployment
-            options:
-              source: mount
-              deployment:
-                default: true
   - mpp-import-pipelines:
       path: platform.metal.ipp.yaml
   - mpp-import-pipelines:
       path: platform.qemu.ipp.yaml
+  - mpp-import-pipelines:
+      path: platform.qemu-secex.ipp.yaml
