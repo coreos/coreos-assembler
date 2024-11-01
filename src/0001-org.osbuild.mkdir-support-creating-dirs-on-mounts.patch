@@ -1,0 +1,109 @@
+From 362a1ea2485ea2c49e6c250a0446bd5a33b2062c Mon Sep 17 00:00:00 2001
+From: Nikita Dubrovskii <nikita@linux.ibm.com>
+Date: Mon, 30 Sep 2024 15:46:31 +0200
+Subject: [PATCH] org.osbuild.mkdir: support creating dirs on mounts
+
+This allows creating new directories on mounts:
+```
+- type: org.osbuild.mkdir
+  options:
+    paths:
+      - path: mount:///boot/efi
+  devices:
+    disk: ...
+  mounts:
+    - name: boot
+      target: /boot
+      ...
+```
+---
+ stages/org.osbuild.mkdir           | 22 ++++++++++++----------
+ stages/org.osbuild.mkdir.meta.json | 21 ++++++++++++++++++---
+ 2 files changed, 30 insertions(+), 13 deletions(-)
+
+diff --git a/stages/org.osbuild.mkdir b/stages/org.osbuild.mkdir
+index f04549f6..d2d11a7a 100755
+--- a/stages/org.osbuild.mkdir
++++ b/stages/org.osbuild.mkdir
+@@ -3,23 +3,26 @@ import os
+ import sys
+ 
+ import osbuild.api
+-from osbuild.util.path import in_tree
++from osbuild.util import parsing
+ 
+ 
+-def main(tree, options):
++def main(args):
++    options = args["options"]
++
+     for item in options["paths"]:
+         path = item["path"]
+         mode = item.get("mode", 0o777)
+         parents = item.get("parents", False)
+         exist_ok = item.get("exist_ok", False)
+ 
+-        if not path.startswith("/"):
+-            print("WARNING: relative path used, this is discouraged!")
+-
+-        target = os.path.join(tree, path.lstrip("/"))
+-        if not in_tree(target, tree):
+-            raise ValueError(f"path {path} not in tree")
++        if "://" not in path:
++            if not path.startswith("/"):
++                print("WARNING: relative path used, this is discouraged!")
++                path = f"tree:///{path}"
++            else:
++                path = f"tree://{path}"
+ 
++        target = parsing.parse_location(path, args)
+         if parents:
+             os.makedirs(target, mode=mode, exist_ok=exist_ok)
+         else:
+@@ -33,5 +36,4 @@ def main(tree, options):
+ 
+ 
+ if __name__ == "__main__":
+-    args = osbuild.api.arguments()
+-    sys.exit(main(args["tree"], args["options"]))
++    sys.exit(main(osbuild.api.arguments()))
+diff --git a/stages/org.osbuild.mkdir.meta.json b/stages/org.osbuild.mkdir.meta.json
+index 5534120a..6cebaaf5 100644
+--- a/stages/org.osbuild.mkdir.meta.json
++++ b/stages/org.osbuild.mkdir.meta.json
+@@ -1,5 +1,5 @@
+ {
+-  "summary": "Create directories within the tree.",
++  "summary": "Create directories within the tree or mount.",
+   "description": [
+     "Can create one or more directories, optionally also the",
+     "intermediate directories. The stage can gracefully handle",
+@@ -31,8 +31,23 @@
+             ],
+             "properties": {
+               "path": {
+-                "type": "string",
+-                "pattern": "^\\/?(?!\\.\\.)((?!\\/\\.\\.\\/).)+$"
++                "anyOf": [
++                  {
++                    "type": "string",
++                    "description": "Target path, if a tree",
++                    "pattern": "^\\/?(?!\\.\\.)((?!\\/\\.\\.\\/).)+$"
++                  },
++                  {
++                    "type": "string",
++                    "description": "Target path, if a mount",
++                    "pattern": "^mount://.+"
++                  },
++                  {
++                    "type": "string",
++                    "description": "Target path, if a tree",
++                    "pattern": "^tree://.+"
++                  }
++                ]
+               },
+               "mode": {
+                 "type": "number",
+-- 
+2.47.0
+
