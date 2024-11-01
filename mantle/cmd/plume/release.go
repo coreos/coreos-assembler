@@ -28,6 +28,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/coreos/coreos-assembler/mantle/platform/api/aws"
 	"github.com/coreos/stream-metadata-go/release"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )
 
@@ -40,6 +41,30 @@ var (
 	specVersion string
 
 	specBucketPrefix string
+
+	// This is useful for testing `update-release-index` locally. The command is
+	// then expected to be run in a cosa workdir with the release metadata and
+	// release index available, hosted at the same levels they would be in S3. For
+	// reference:
+	// ```
+	// $ tree -L 3
+	// .
+	// ├── builds
+	// │   ├── 40.20241019.3.0
+	// │   │   ├── aarch64
+	// │   │   ├── ppc64le
+	// │   │   ├── release.json
+	// │   │   ├── s390x
+	// │   │   └── x86_64
+	// │   ├── builds.json
+	// │   └── latest -> 40.20241019.3.0
+	// ...
+	// ├── releases.json
+	// ├── src
+	// ...
+	// └── tmp
+	// ```
+	releaseIndexLocal bool
 
 	cmdMakeAmisPublic = &cobra.Command{
 		Use:   "make-amis-public [options]",
@@ -71,6 +96,7 @@ func init() {
 	cmdUpdateReleaseIndex.Flags().StringVar(&specRegion, "region", "us-east-1", "S3 bucket region")
 	cmdUpdateReleaseIndex.Flags().StringVarP(&specStream, "stream", "", "", "target stream")
 	cmdUpdateReleaseIndex.Flags().StringVarP(&specVersion, "version", "", "", "release version")
+	cmdUpdateReleaseIndex.Flags().BoolVarP(&releaseIndexLocal, "local-mode", "", false, "operate on local files")
 	root.AddCommand(cmdUpdateReleaseIndex)
 
 }
@@ -85,10 +111,10 @@ func validateArgs(args []string) {
 	if specStream == "" {
 		plog.Fatal("--stream is required")
 	}
-	if specBucketPrefix == "" {
+	if specBucketPrefix == "" && !releaseIndexLocal {
 		plog.Fatal("--bucket-prefix is required")
 	}
-	if specRegion == "" {
+	if specRegion == "" && !releaseIndexLocal {
 		plog.Fatal("--region is required")
 	}
 }
@@ -105,8 +131,20 @@ func runMakeAmisPublic(cmd *cobra.Command, args []string) {
 
 func runUpdateReleaseIndex(cmd *cobra.Command, args []string) {
 	validateArgs(args)
-	api := getAWSApi()
-	rel := getReleaseMetadata(api)
+	var api *aws.API
+	var rel release.Release
+	if !releaseIndexLocal {
+		api = getAWSApi()
+		rel = getReleaseMetadata(api)
+	} else {
+		localRelease := fmt.Sprintf("builds/%s/release.json", specVersion)
+		if releaseData, err := os.ReadFile(localRelease); err != nil {
+			plog.Fatalf("reading release metadata at %s: %v", localRelease, err)
+		} else if err := json.Unmarshal(releaseData, &rel); err != nil {
+			plog.Fatalf("unmarshaling release metadata at %s: %v", localRelease, err)
+		}
+	}
+
 	modifyReleaseMetadataIndex(api, rel)
 }
 
@@ -209,25 +247,38 @@ func modifyReleaseMetadataIndex(api *aws.API, rel release.Release) {
 	// version.  Plus we need S3 creds anyway later on to push the modified
 	// release index back.
 
-	bucket, prefix := getBucketAndStreamPrefix()
-	path := filepath.Join(prefix, "releases.json")
-	data, err := func() ([]byte, error) {
-		f, err := api.DownloadFile(bucket, path)
-		if err != nil {
-			if awsErr, ok := err.(awserr.Error); ok {
-				if awsErr.Code() == "NoSuchKey" {
-					return []byte("{}"), nil
+	var bucket, prefix, path string
+	if !releaseIndexLocal {
+		bucket, prefix = getBucketAndStreamPrefix()
+		path = filepath.Join(prefix, "releases.json")
+	} else {
+		path = "releases.json"
+	}
+	var data []byte
+	var err error
+	if !releaseIndexLocal {
+		data, err = func() ([]byte, error) {
+			f, err := api.DownloadFile(bucket, path)
+			if err != nil {
+				if awsErr, ok := err.(awserr.Error); ok {
+					if awsErr.Code() == "NoSuchKey" {
+						return []byte("{}"), nil
+					}
 				}
+				return []byte{}, fmt.Errorf("downloading release metadata index: %v", err)
 			}
-			return []byte{}, fmt.Errorf("downloading release metadata index: %v", err)
+			defer f.Close()
+			d, err := io.ReadAll(f)
+			if err != nil {
+				return []byte{}, fmt.Errorf("reading release metadata index: %v", err)
+			}
+			return d, nil
+		}()
+	} else {
+		if data, err = os.ReadFile(path); err != nil {
+			err = errors.Wrapf(err, "reading release metadata index from %s", path)
 		}
-		defer f.Close()
-		d, err := io.ReadAll(f)
-		if err != nil {
-			return []byte{}, fmt.Errorf("reading release metadata index: %v", err)
-		}
-		return d, nil
-	}()
+	}
 	if err != nil {
 		plog.Fatal(err)
 	}
@@ -293,11 +344,17 @@ func modifyReleaseMetadataIndex(api *aws.API, rel release.Release) {
 		plog.Fatalf("marshalling release metadata json: %v", err)
 	}
 
-	// we don't want this to be cached for very long so that e.g. Cincinnati picks it up quickly
-	var releases_max_age = 60 * 5
-	err = api.UploadObjectExt(bytes.NewReader(out), bucket, path, true, "public-read", aws.ContentTypeJSON, releases_max_age)
-	if err != nil {
-		plog.Fatalf("uploading release metadata json: %v", err)
+	if !releaseIndexLocal {
+		// we don't want this to be cached for very long so that e.g. Cincinnati picks it up quickly
+		var releases_max_age = 60 * 5
+		err = api.UploadObjectExt(bytes.NewReader(out), bucket, path, true, "public-read", aws.ContentTypeJSON, releases_max_age)
+		if err != nil {
+			plog.Fatalf("uploading release metadata json: %v", err)
+		}
+	} else {
+		if err := os.WriteFile(path, out, 0644); err != nil {
+			plog.Fatalf("writing release metadata json to %s: %v", path, err)
+		}
 	}
 }
 
