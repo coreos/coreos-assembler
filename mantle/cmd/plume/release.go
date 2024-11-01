@@ -297,15 +297,21 @@ func modifyReleaseMetadataIndex(api *aws.API, rel release.Release) {
 	}
 
 	var commits []release.IndexReleaseCommit
+	var pullspecs []release.IndexReleaseOciImage
 	for arch, vals := range rel.Architectures {
 		commits = append(commits, release.IndexReleaseCommit{
 			Architecture: arch,
 			Checksum:     vals.Commit,
 		})
+		pullspecs = append(pullspecs, release.IndexReleaseOciImage{
+			Architecture:   arch,
+			ContainerImage: *vals.OciImage,
+		})
 	}
 
 	newIdxRelease := release.IndexRelease{
 		Commits:     commits,
+		OciImages:   pullspecs,
 		Version:     specVersion,
 		MetadataURL: url.String(),
 	}
@@ -316,19 +322,20 @@ func modifyReleaseMetadataIndex(api *aws.API, rel release.Release) {
 				plog.Fatalf("build is already present and is not the latest release")
 			}
 
-			comp := compareCommits(rel.Commits, newIdxRelease.Commits)
-			if comp == 0 {
+			compCommits := compareCommits(rel.Commits, newIdxRelease.Commits)
+			compImages := compareOciImages(rel.OciImages, newIdxRelease.OciImages)
+			if compCommits == 0 && compImages == 0 {
 				// the build is already the latest release, exit
 				plog.Notice("build is already present and is the latest release")
 				return
-			} else if comp == -1 {
+			} else if compCommits == -1 || compImages == -1 {
 				// the build is present and contains a subset of the new release data,
 				// pop the old entry and add the new version
 				releaseIdx.Releases = releaseIdx.Releases[:len(releaseIdx.Releases)-1]
 				break
 			} else {
 				// the commit hash of the new build is not a superset of the current release
-				plog.Fatalf("build is present but commit hashes are not a superset of latest release")
+				plog.Fatalf("build is present but commit hashes or images are not a superset of latest release")
 			}
 		}
 	}
@@ -375,6 +382,30 @@ func compareCommits(a, b []release.IndexReleaseCommit) int {
 		found := false
 		for _, bHash := range b {
 			if aHash.Architecture == bHash.Architecture && aHash.Checksum == bHash.Checksum {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return 1
+		}
+	}
+	if sameLength {
+		return 0
+	}
+	return -1
+}
+
+// returns -1 if a is a subset of b, 0 if equal, 1 if a is not a subset of b
+func compareOciImages(a, b []release.IndexReleaseOciImage) int {
+	if len(a) > len(b) {
+		return 1
+	}
+	sameLength := len(a) == len(b)
+	for _, aImage := range a {
+		found := false
+		for _, bImage := range b {
+			if aImage.Architecture == bImage.Architecture && aImage.ContainerImage == bImage.ContainerImage {
 				found = true
 				break
 			}
