@@ -347,7 +347,7 @@ def delete_gcp_image(build, cloud_config, dry_run):
         print(f"No GCP image to prune for {build.id} for {build.arch}")
         return errors
     gcp_image = gcp.get("image")
-    project = gcp.get("project")
+    project = gcp.get("project") or "fedora-coreos-cloud"
     json_key = cloud_config.get("gcp", {}).get("json-key")
     if dry_run:
         print(f"Would delete {gcp_image} GCP image for {build.id}")
