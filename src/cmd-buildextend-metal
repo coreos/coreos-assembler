@@ -139,9 +139,6 @@ fi
 imgname=${name}-${build}-${image_type}.${basearch}.${image_format}
 imgpath=${PWD}/${imgname}
 
-# We do some extra handling of the rootfs here; it feeds into size estimation.
-rootfs_type=$(jq -re .rootfs < "${image_json}")
-
 deploy_via_container=""
 if jq -re '.["deploy-via-container"]' < "${image_json}"; then
     deploy_via_container="true"
@@ -155,17 +152,10 @@ if [ -z "${container_imgref}" ]; then
     container_imgref="ostree-image-signed:oci-archive:/$(basename "${ostree_container}")"
 fi
 
-# fs-verity requires block size = page size. We need to take that into account
-# in the disk size estimation due to higher fragmentation on larger blocks.
-BLKSIZE=""
-if [ "${rootfs_type}" = "ext4verity" ]; then
-    BLKSIZE="$(getconf PAGE_SIZE)"
-fi
-
 echo "Estimating disk size..."
 # The additional 35% here is obviously a hack, but we can't easily completely fill the filesystem,
 # and doing so has apparently negative performance implications.
-/usr/lib/coreos-assembler/estimate-commit-disk-size ${BLKSIZE:+--blksize ${BLKSIZE}} --repo "$ostree_repo" "$commit" --add-percent 35 > "$PWD/tmp/ostree-size.json"
+/usr/lib/coreos-assembler/estimate-commit-disk-size --repo "$ostree_repo" "$commit" --add-percent 35 > "$PWD/tmp/ostree-size.json"
 rootfs_size_mb="$(jq '."estimate-mb".final' "$PWD/tmp/ostree-size.json")"
 # The minimum size of a disk image we'll need will be the rootfs_size
 # estimate plus the size of the non-root partitions. We'll use this
