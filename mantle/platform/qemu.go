@@ -40,6 +40,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -758,11 +759,20 @@ func (builder *QemuBuilder) SetSecureExecution(gpgkey string, hostkey string, co
 	return nil
 }
 
+// When running kola secex tests with '--parallel=auto', this function fails with:
+//
+//	kola: retryloop: failed to bring up machines: encrypting ignition_crypted.1234: exit status 2
+//
+// Use mutex to protect `gpg --encrypt`
+var gpgMutex sync.Mutex
+
 func (builder *QemuBuilder) encryptIgnitionConfig() error {
 	crypted, err := builder.TempFile("ignition_crypted.*")
 	if err != nil {
 		return fmt.Errorf("creating crypted config: %v", err)
 	}
+	gpgMutex.Lock()
+	defer gpgMutex.Unlock()
 	c := exec.Command("gpg", "--recipient-file", builder.ignitionPubKey, "--yes", "--output", crypted.Name(), "--armor", "--encrypt", builder.ConfigFile)
 	if err := c.Run(); err != nil {
 		return fmt.Errorf("encrypting %s: %v", crypted.Name(), err)
