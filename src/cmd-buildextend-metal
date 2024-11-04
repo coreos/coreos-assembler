@@ -200,8 +200,6 @@ rootfs-size: "${rootfs_size_mb}"
 EOF
 yaml2json "${image_dynamic_yaml}" "${image_dynamic_json}"
 cat "${image_json}" "${image_dynamic_json}" | jq -s add > "${image_for_disk_json}"
-platforms_json="${tmp_builddir}/platforms.json"
-yaml2json "${configdir}/platforms.yaml" "${platforms_json}"
 
 # In the jenkins pipelines we build the qemu image first and that operation
 # will do a lot of the same work required for later artifacts (metal, metal4k, etc)
