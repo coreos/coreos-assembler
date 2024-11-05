@@ -11,6 +11,7 @@ Options:
     --help: show this help
     --mpp: the path to the OSBuild mpp.yaml file
     --filepath: where to write the created image file
+    --platform: the platform to generate an artifact for
 
 You probably don't want to run this script by hand. This script is
 run as part of 'coreos-assembler build'.
@@ -39,6 +40,7 @@ do
         --help)                    usage; exit;;
         --mpp)                     mppyaml="${1}"; shift;;
         --filepath)                filepath="${1}"; shift;;
+        --platform)                platform="${1}"; shift;;
          *) echo "${flag} is not understood."; usage; exit 10;;
      esac;
 done
@@ -48,7 +50,6 @@ filename=$(basename "$filepath")
 
 ostree_container=$(getconfig "ostree-container")
 osname=$(getconfig "osname")
-platform=$(getconfig "image-type")
 deploy_via_container=$(getconfig_def "deploy-via-container" "")
 metal_image_size_mb=$(getconfig "metal-image-size")
 cloud_image_size_mb=$(getconfig "cloud-image-size")
