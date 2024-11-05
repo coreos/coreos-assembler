@@ -1,6 +1,5 @@
 version: '2'
 mpp-vars:
-  filename: $filename
   ostree_repo: $ostree_repo
   ostree_ref: $ostree_ref
   ociarchive: $ociarchive

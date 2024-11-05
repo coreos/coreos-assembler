@@ -65,5 +65,4 @@ pipelines:
         options:
           paths:
             - from: input://tree/disk.img
-              to:
-                mpp-format-string: 'tree:///{filename}'
+              to: tree:///applehv
