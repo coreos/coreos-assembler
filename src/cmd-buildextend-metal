@@ -116,20 +116,6 @@ fi
 # reread these values from the build itself rather than rely on the ones loaded
 # by prepare_build since the config might've changed since then
 name=$(meta_key name)
-ref=$(meta_key ref)
-if [ "${ref}" = "None" ]; then
-    ref=""
-fi
-commit=$(meta_key ostree-commit)
-
-ostree_repo=${tmprepo}
-# Ensure that we have the cached unpacked commit
-import_ostree_commit_for_build "${build}"
-# Note this overwrote the bits generated in prepare_build
-# for image_json.  In the future we expect to split prepare_build
-# into prepare_ostree_build and prepare_diskimage_build; the
-# latter path would only run this.
-image_json=${workdir}/tmp/image.json
 
 image_format=raw
 if [[ "${image_type}" == "qemu" || "${image_type}" == "qemu-secex" ]]; then
@@ -139,73 +125,6 @@ fi
 imgname=${name}-${build}-${image_type}.${basearch}.${image_format}
 imgpath=${PWD}/${imgname}
 
-# Parse the passed config JSON and extract a mandatory value
-getconfig() {
-    k=$1
-    config=$2
-    jq -re .\""$k"\" < "${config}"
-}
-# Return a configuration value, or default if not set
-getconfig_def() {
-    k=$1
-    shift
-    default=$1
-    config=$2
-    jq -re .\""$k"\"//\""${default}"\" < "${config}"
-}
-
-# Grab a few values from ${image_json}
-deploy_via_container=$(getconfig_def "deploy-via-container" "" "${image_json}")
-extra_kargs="$(python3 -c 'import sys, json; args = json.load(sys.stdin)["extra-kargs"]; print(" ".join(args))' < "${image_json}")"
-
-# OStree container ociarchive file path
-ostree_container="${builddir}/$(meta_key images.ostree.path)"
-# If no container_imgref was set let's just set it to some professional
-# looking default. The name of the ociarchive file should suffice.
-container_imgref_default="ostree-image-signed:oci-archive:/$(basename "${ostree_container}")"
-container_imgref=$(getconfig_def "container_imgref" "${container_imgref_default}" "${image_json}")
-
-echo "Estimating disk size..."
-# The additional 35% here is obviously a hack, but we can't easily completely fill the filesystem,
-# and doing so has apparently negative performance implications.
-ostree_size_json="$(/usr/lib/coreos-assembler/estimate-commit-disk-size --repo "$ostree_repo" "$commit" --add-percent 35)"
-rootfs_size_mb="$(jq '."estimate-mb".final' <<< "${ostree_size_json}")"
-# The minimum size of a disk image we'll need will be the rootfs_size
-# estimate plus the size of the non-root partitions. We'll use this
-# size for the metal images, but for the IaaS/virt image we'll use
-# the size set in the configs since some of them have minimum sizes that
-# the platforms require and we want a "default" disk size that has some
-# free space.
-nonroot_partition_sizes=513
-# On s390x there is one more build - Secure Execution case, which has
-# different image layout. We add the sizes of the se and verity
-# partitions so that they don't "eat into" the 35% buffer (though note
-# this is all blown away on first boot anyway). For 's390x.mpp.yaml'
-# simplicity all s390x images have same size (of secex image).
-if [[ $basearch == "s390x" ]]; then
-    nonroot_partition_sizes=$((nonroot_partition_sizes + 200 + 128 + 256 + 1))
-fi
-metal_image_size_mb="$(( rootfs_size_mb + nonroot_partition_sizes ))"
-cloud_image_size_mb="$(jq -r ".size*1024" < "${image_json}")"
-echo "Disk sizes: metal: ${metal_image_size_mb}M (estimated), cloud: ${cloud_image_size_mb}M"
-
-# Generate the JSON describing the disk we want to build
-runvm_osbuild_config_json="${tmp_builddir}/runvm-osbuild-config.json"
-yaml2json /dev/stdin "${runvm_osbuild_config_json}" <<EOF
-container-imgref: "${container_imgref}"
-deploy-via-container: "${deploy_via_container}"
-osname: "${name}"
-ostree-container: "${ostree_container}"
-ostree-ref: "${ref}"
-extra-kargs-string: "${extra_kargs}"
-ostree-repo: "${ostree_repo}"
-metal-image-size: "${metal_image_size_mb}"
-cloud-image-size: "${cloud_image_size_mb}"
-# Note: this is only used in the secex case; there, the rootfs is
-# not the last partition on the disk so we need to explicitly size it
-rootfs-size: "${rootfs_size_mb}"
-EOF
-
 # In the jenkins pipelines we build the qemu image first and that operation
 # will do a lot of the same work required for later artifacts (metal, metal4k, etc)
 # so we want the cached output from that run to persist. The later artifacts get
@@ -214,7 +133,7 @@ EOF
 # This is OK because we don't checkpoint (cache) any of those stages.
 [ "${image_type}" == "qemu" ] && snapshot="off" || snapshot="on"
 runvm_with_cache_snapshot "$snapshot" -- /usr/lib/coreos-assembler/runvm-osbuild                    \
-            --config "${runvm_osbuild_config_json}"                                                 \
+            --config "${builddir}/runvm-osbuild-config.json"                                        \
             --mpp "/usr/lib/coreos-assembler/osbuild-manifests/coreos.osbuild.${basearch}.mpp.yaml" \
             --filepath "${imgpath}"                                                                 \
             --platform "${image_type}"

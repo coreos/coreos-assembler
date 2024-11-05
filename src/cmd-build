@@ -181,6 +181,84 @@ build_followup_targets() {
     done
 }
 
+# Parse the passed config JSON and extract a mandatory value
+getconfig() {
+    k=$1
+    config=$2
+    jq -re .\""$k"\" < "${config}"
+}
+
+# Return a configuration value, or default if not set
+getconfig_def() {
+    k=$1
+    shift
+    default=$1
+    config=$2
+    jq -re .\""$k"\"//\""${default}"\" < "${config}"
+}
+
+# Here we generate the input JSON we pass to runvm_osbuild for all of our image builds
+generate_runvm_osbuild_config() {
+    # Grab a few values from $image_json
+    deploy_via_container=$(getconfig_def "deploy-via-container" "" "${image_json}")
+    extra_kargs="$(python3 -c 'import sys, json; args = json.load(sys.stdin)["extra-kargs"]; print(" ".join(args))' < "${image_json}")"
+
+    # The OSTree repo is at $tmprepo and the commit is $commit
+    ostree_repo="${tmprepo}"
+    ostree_commit="${commit}"
+
+    # OStree container ociarchive file path and container_imgref
+    builddir=$(get_build_dir "${buildid}")
+    ostree_container="${builddir}/${ostree_tarfile_path}"
+    # If no container_imgref was set let's just set it to some professional
+    # looking default. The name of the ociarchive file should suffice.
+    container_imgref_default="ostree-image-signed:oci-archive:/$(basename "${ostree_container}")"
+    container_imgref=$(getconfig_def "container_imgref" "${container_imgref_default}" "${image_json}")
+
+    echo "Estimating disk size..."
+    # The additional 35% here is obviously a hack, but we can't easily completely fill the filesystem,
+    # and doing so has apparently negative performance implications.
+    ostree_size_json="$(/usr/lib/coreos-assembler/estimate-commit-disk-size --repo "$ostree_repo" "$commit" --add-percent 35)"
+    rootfs_size_mb="$(jq '."estimate-mb".final' <<< "${ostree_size_json}")"
+    # The minimum size of a disk image we'll need will be the rootfs_size
+    # estimate plus the size of the non-root partitions. We'll use this
+    # size for the metal images, but for the IaaS/virt image we'll use
+    # the size set in the configs since some of them have minimum sizes that
+    # the platforms require and we want a "default" disk size that has some
+    # free space.
+    nonroot_partition_sizes=513
+    # On s390x there is one more build - Secure Execution case, which has
+    # different image layout. We add the sizes of the se and verity
+    # partitions so that they don't "eat into" the 35% buffer (though note
+    # this is all blown away on first boot anyway). For 's390x.mpp.yaml'
+    # simplicity all s390x images have same size (of secex image).
+    if [[ $basearch == "s390x" ]]; then
+        nonroot_partition_sizes=$((nonroot_partition_sizes + 200 + 128 + 256 + 1))
+    fi
+    metal_image_size_mb="$(( rootfs_size_mb + nonroot_partition_sizes ))"
+    cloud_image_size_mb="$(jq -r ".size*1024" < "${image_json}")"
+    echo "Disk sizes: metal: ${metal_image_size_mb}M (estimated), cloud: ${cloud_image_size_mb}M"
+
+    # Generate the JSON describing the disk we want to build
+    runvm_osbuild_config_json="runvm-osbuild-config.json"
+    yaml2json /dev/stdin "tmp/${runvm_osbuild_config_json}" <<EOF
+container-imgref: "${container_imgref}"
+deploy-via-container: "${deploy_via_container}"
+osname: "${name}"
+ostree-container: "${ostree_container}"
+ostree-ref: "${ref}"
+extra-kargs-string: "${extra_kargs}"
+ostree-repo: "${ostree_repo}"
+metal-image-size: "${metal_image_size_mb}"
+cloud-image-size: "${cloud_image_size_mb}"
+# Note: this is only used in the secex case; there, the rootfs is
+# not the last partition on the disk so we need to explicitly size it
+rootfs-size: "${rootfs_size_mb}"
+EOF
+    /usr/lib/coreos-assembler/finalize-artifact "tmp/${runvm_osbuild_config_json}" "${runvm_osbuild_config_json}"
+}
+
+
 prepare_build
 
 ostree --version
@@ -615,6 +693,10 @@ mv "${lockfile_out}" .
 # in a format that'd be easy to generate diffs out of for higher level tools
 "${dn}"/commitmeta_to_json "${tmprepo}" "${commit}" > commitmeta.json.tmp
 /usr/lib/coreos-assembler/finalize-artifact commitmeta.json{.tmp,}
+
+# Generate the runvm-osbuild config file that will be used for all
+# later image builds.
+generate_runvm_osbuild_config
 
 # Clean up our temporary data
 saved_build_tmpdir="${workdir}/tmp/last-build-tmp"
