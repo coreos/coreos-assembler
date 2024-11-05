@@ -190,7 +190,6 @@ osname: "${name}"
 ostree-container: "${ostree_container}"
 ostree-ref: "${ref}"
 extra-kargs-string: "${extra_kargs}"
-image-type: "${image_type}"
 ostree-repo: "${ostree_repo}"
 metal-image-size: "${metal_image_size_mb}"
 cloud-image-size: "${cloud_image_size_mb}"
@@ -211,7 +210,8 @@ cat "${image_json}" "${image_dynamic_json}" | jq -s add > "${image_for_disk_json
 runvm_with_cache_snapshot "$snapshot" -- /usr/lib/coreos-assembler/runvm-osbuild                    \
             --config "${image_for_disk_json}"                                                       \
             --mpp "/usr/lib/coreos-assembler/osbuild-manifests/coreos.osbuild.${basearch}.mpp.yaml" \
-            --filepath "${imgpath}"
+            --filepath "${imgpath}"                                                                 \
+            --platform "${image_type}"
 
 if [[ "${image_type}" == "qemu-secex" ]]; then
     if [ ! -f "${genprotimgvm}" ]; then
