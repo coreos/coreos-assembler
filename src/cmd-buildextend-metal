@@ -8,18 +8,18 @@ dn=$(dirname "$0")
 # This script is used for creating both the bare metal and the canonical VM
 # image (qemu). `buildextend-qemu` is a symlink to `buildextend-metal`.
 case "$(basename "$0")" in
-    "cmd-buildextend-metal") image_type=metal;;
-    "cmd-buildextend-metal4k") image_type=metal4k;;
-    "cmd-buildextend-qemu") image_type=qemu;;
-    "cmd-buildextend-qemu-secex") image_type=qemu-secex;;
-    "cmd-buildextend-secex") image_type=qemu-secex;;
+    "cmd-buildextend-metal") platform=metal;;
+    "cmd-buildextend-metal4k") platform=metal4k;;
+    "cmd-buildextend-qemu") platform=qemu;;
+    "cmd-buildextend-qemu-secex") platform=qemu-secex;;
+    "cmd-buildextend-secex") platform=qemu-secex;;
     *) fatal "called as unexpected name $0";;
 esac
 
 print_help() {
     cat 1>&2 <<EOF
-Usage: coreos-assembler buildextend-${image_type} --help
-       coreos-assembler buildextend-${image_type} [--build ID]
+Usage: coreos-assembler buildextend-${platform} --help
+       coreos-assembler buildextend-${platform} [--build ID]
 
   Build a bare metal image.
 EOF
@@ -80,7 +80,7 @@ esac
 
 # shellcheck disable=SC2031
 export LIBGUESTFS_BACKEND=direct
-export IMAGE_TYPE="${image_type}"
+export IMAGE_TYPE="${platform}"
 prepare_build
 
 if [ -z "${build}" ]; then
@@ -96,18 +96,18 @@ if [ ! -d "${builddir}" ]; then
 fi
 
 # add building sempahore
-build_semaphore="${builddir}/.${image_type}.building"
+build_semaphore="${builddir}/.${platform}.building"
 if [ -e "${build_semaphore}" ]; then
-    fatal "${build_semaphore} found: another process is building ${image_type}"
+    fatal "${build_semaphore} found: another process is building ${platform}"
 fi
 touch "${build_semaphore}"
 trap 'rm -f ${build_semaphore}' EXIT
 
 # check if the image already exists in the meta.json
 if [ -z "${force}" ]; then
-    meta_img=$(meta_key "images.${image_type}.path")
+    meta_img=$(meta_key "images.${platform}.path")
     if [ "${meta_img}" != "None" ]; then
-        echo "${image_type} image already exists:"
+        echo "${platform} image already exists:"
         echo "$meta_img"
         exit 0
     fi
@@ -118,11 +118,11 @@ fi
 name=$(meta_key name)
 
 image_format=raw
-if [[ "${image_type}" == "qemu" || "${image_type}" == "qemu-secex" ]]; then
+if [[ "${platform}" == "qemu" || "${platform}" == "qemu-secex" ]]; then
     image_format=qcow2
 fi
 
-imgname=${name}-${build}-${image_type}.${basearch}.${image_format}
+imgname=${name}-${build}-${platform}.${basearch}.${image_format}
 imgpath=${PWD}/${imgname}
 
 # In the jenkins pipelines we build the qemu image first and that operation
@@ -131,21 +131,22 @@ imgpath=${PWD}/${imgname}
 # built in parallel, so we need to be able to access the cache by multiple processes,
 # so for those we'll set `snapshot=on` so that each will get their own disk image.
 # This is OK because we don't checkpoint (cache) any of those stages.
-[ "${image_type}" == "qemu" ] && snapshot="off" || snapshot="on"
+[ "${platform}" == "qemu" ] && snapshot="off" || snapshot="on"
 runvm_with_cache_snapshot "$snapshot" -- /usr/lib/coreos-assembler/runvm-osbuild                    \
             --config "${builddir}/runvm-osbuild-config.json"                                        \
             --mpp "/usr/lib/coreos-assembler/osbuild-manifests/coreos.osbuild.${basearch}.mpp.yaml" \
             --filepath "${imgpath}"                                                                 \
-            --platform "${image_type}"
+            --platform "${platform}"
 
 if [[ "${image_type}" == "qemu-secex" ]]; then
+if [[ "${platform}" == "qemu-secex" ]]; then
     if [ ! -f "${genprotimgvm}" ]; then
         fatal "No genprotimgvm provided at ${genprotimgvm}"
     fi
 
     # Basic qemu args:
     qemu_args=(); blk_size="512"
-    [[ $image_type == metal4k ]] && blk_size="4096"
+    [[ $platform == metal4k ]] && blk_size="4096"
     qemu_args+=("-drive" "if=none,id=target,format=${image_format},file=${imgpath},cache=unsafe" \
         "-device" "virtio-blk,serial=target,drive=target,physical_block_size=${blk_size},logical_block_size=${blk_size}")
 
@@ -184,7 +185,7 @@ sha256=$(sha256sum_str < "${imgpath}")
 cosa meta --workdir "${workdir}" --build "${build}" --dump | python3 -c "
 import sys, json
 j = json.load(sys.stdin)
-j['images']['${image_type}'] = {
+j['images']['${platform}'] = {
     'path': '${imgname}',
     'sha256': '${sha256}',
     'size': $(stat -c '%s' "${imgpath}")
@@ -211,7 +212,7 @@ json.dump(j, sys.stdout, indent=4)
 fi
 
 # and now the crucial bits
-cosa meta --workdir "${workdir}" --build "${build}" --artifact "${image_type}" --artifact-json "$(readlink -f meta.json.new)"
+cosa meta --workdir "${workdir}" --build "${build}" --artifact "${platform}" --artifact-json "$(readlink -f meta.json.new)"
 /usr/lib/coreos-assembler/finalize-artifact "${imgpath}" "${builddir}/${imgname}"
 
 # Quiet for the rest of this so the last thing we see is a success message
