@@ -85,5 +85,4 @@ pipelines:
               name:raw-gcp-image-tar:
                 file: disk.tar
         options:
-          filename:
-            mpp-format-string: '{filename}'
+          filename: gcp

@@ -90,8 +90,7 @@ pipelines:
         options:
           paths:
             - from: input://tree/disk.img
-              to:
-                mpp-format-string: 'tree:///{filename}'
+              to: tree:///metal
   - name: raw-metal4k-image
     build:
       mpp-format-string: '{buildroot}'
@@ -184,5 +183,4 @@ pipelines:
         options:
           paths:
             - from: input://tree/disk.img
-              to:
-                mpp-format-string: 'tree:///{filename}'
+              to: tree:///metal4k

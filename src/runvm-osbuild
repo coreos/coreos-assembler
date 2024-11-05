@@ -10,7 +10,7 @@ Options:
     --config: JSON-formatted image.yaml
     --help: show this help
     --mpp: the path to the OSBuild mpp.yaml file
-    --filepath: where to write the created image file
+    --outdir: where to write the created files
     --platform: the platform to generate an artifact for
 
 You probably don't want to run this script by hand. This script is
@@ -39,14 +39,11 @@ do
         --config)                  config="${1}"; shift;;
         --help)                    usage; exit;;
         --mpp)                     mppyaml="${1}"; shift;;
-        --filepath)                filepath="${1}"; shift;;
+        --outdir)                  outdir="${1}"; shift;;
         --platform)                platform="${1}"; shift;;
          *) echo "${flag} is not understood."; usage; exit 10;;
      esac;
 done
-
-# Get the base filename of the desired file output path
-filename=$(basename "$filepath")
 
 ostree_container=$(getconfig "ostree-container")
 osname=$(getconfig "osname")
@@ -70,11 +67,19 @@ fi
 # Since it doesn't exist create loop-control
 [ ! -e /dev/loop-control ] && mknod /dev/loop-control c 10 237
 
-# Put the store and the output dir on the cache. At the end we'll mv
-# out the created artifact from the output dir to the place it's supposed
-# to go.
-outdir=cache/osbuild/out
+# Put the store on the cache filesystem since in the case we are
+# running unprivileged in COSA we won't be able to create files
+# with SELinux labels that the host's policy doesn't know about.
 storedir=cache/osbuild/store
+
+# Musical chairs for now with the outdir because osbuild does
+# cp -a and that will fail to preserve ownership when copying
+# from the cache qcow2 (where files are owned by root) to the
+# virtiofs mount. Eventually we can use idmapped virtiofs mount
+# inside the supermin VM and we won't need this.
+# https://gitlab.com/virtio-fs/virtiofsd/-/merge_requests/245
+orig_outdir=$outdir
+outdir=cache/osbuild/out
 
 processed_json=$(mktemp -t osbuild-XXXX.json)
 
@@ -90,7 +95,6 @@ osbuild-mpp                                             \
     -D arch=\""$(arch)"\"                               \
     -D ostree_ref=\""${ostree_ref}"\"                   \
     -D ostree_repo=\""${ostree_repo}"\"                 \
-    -D filename=\""${filename}"\"                       \
     -D ociarchive=\""${ostree_container}"\"             \
     -D osname=\""${osname}"\"                           \
     -D container_imgref=\""${container_imgref}"\"       \
@@ -112,16 +116,5 @@ osbuild \
     --checkpoint raw-image       \
     --export "$platform" "${processed_json}"
 
-
-# Copy it out to the specified location. Use mv here so we remove it
-# from the cache qcow2 so we don't cache it.
-mv "${outdir}/${platform}/${filename}" "${filepath}"
-
-# In case of IBM Secure Execution there are more artifacts
-if [ "${platform}" == 'qemu-secex' ]; then
-    dir=$(dirname "${filepath}")
-    mv "${outdir}/${platform}/bootfs_hash" "${dir}"
-    mv "${outdir}/${platform}/rootfs_hash" "${dir}"
-fi
-
+mv "${outdir}"/* "${orig_outdir}/"
 rm -f "${processed_json}"
