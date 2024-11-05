@@ -93,8 +93,7 @@ pipelines:
               name:raw-qemu-image:
                 file: disk.img
         options:
-          filename:
-            mpp-format-string: '{filename}'
+          filename: qemu
           format:
             type: qcow2
             compression: false

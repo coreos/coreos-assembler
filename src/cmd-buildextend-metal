@@ -132,13 +132,15 @@ imgpath=${PWD}/${imgname}
 # so for those we'll set `snapshot=on` so that each will get their own disk image.
 # This is OK because we don't checkpoint (cache) any of those stages.
 [ "${platform}" == "qemu" ] && snapshot="off" || snapshot="on"
+outdir=$(mktemp -p "${tmp_builddir}" -d)
 runvm_with_cache_snapshot "$snapshot" -- /usr/lib/coreos-assembler/runvm-osbuild                    \
             --config "${builddir}/runvm-osbuild-config.json"                                        \
             --mpp "/usr/lib/coreos-assembler/osbuild-manifests/coreos.osbuild.${basearch}.mpp.yaml" \
-            --filepath "${imgpath}"                                                                 \
+            --outdir "${outdir}"                                                                    \
             --platform "${platform}"
 
-if [[ "${image_type}" == "qemu-secex" ]]; then
+mv "${outdir}/${platform}/${platform}" "${imgpath}"
+
 if [[ "${platform}" == "qemu-secex" ]]; then
     if [ ! -f "${genprotimgvm}" ]; then
         fatal "No genprotimgvm provided at ${genprotimgvm}"
@@ -156,7 +158,9 @@ if [[ "${platform}" == "qemu-secex" ]]; then
     genprotimg_dir=$(mktemp -p "${tmp_builddir}" -d)
     cp "${se_script_dir}/genprotimg-script.sh" "${se_script_dir}/post-script.sh" "${genprotimg_dir}"
     # Extra kargs with dm-verity hashes
-    secex_kargs="ignition.firstboot rootfs.roothash=$(<"${PWD}"/rootfs_hash) bootfs.roothash=$(<"${PWD}"/bootfs_hash)"
+    secex_kargs="ignition.firstboot"
+    secex_kargs+=" rootfs.roothash=$(<"${outdir}/${platform}/rootfs_hash")"
+    secex_kargs+=" bootfs.roothash=$(<"${outdir}/${platform}/bootfs_hash")"
     echo "${secex_kargs}" > "${genprotimg_dir}/parmfile"
     virt-make-fs --format=raw --type=ext4 "${genprotimg_dir}" "${genprotimg_img}"
     rm -rf "${genprotimg_dir}"
