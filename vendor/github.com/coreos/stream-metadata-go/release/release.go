@@ -19,15 +19,22 @@ type Index struct {
 
 // IndexRelease is a "release pointer" from a release index
 type IndexRelease struct {
-	Commits     []IndexReleaseCommit `json:"commits"`
-	Version     string               `json:"version"`
-	MetadataURL string               `json:"metadata"`
+	Commits     []IndexReleaseCommit   `json:"commits"`
+	OciImages   []IndexReleaseOciImage `json:"oci-images,omitempty"`
+	Version     string                 `json:"version"`
+	MetadataURL string                 `json:"metadata"`
 }
 
 // IndexReleaseCommit describes an ostree commit plus architecture
 type IndexReleaseCommit struct {
 	Architecture string `json:"architecture"`
 	Checksum     string `json:"checksum"`
+}
+
+// IndexReleaseOciImages describes a pullspec plus architecture
+type IndexReleaseOciImage struct {
+	ContainerImage
+	Architecture string `json:"architecture"`
 }
 
 // Release contains details from release.json
@@ -46,6 +53,7 @@ type Metadata struct {
 // Arch release details
 type Arch struct {
 	Commit               string               `json:"commit"`
+	OciImage             *ContainerImage      `json:"oci-image,omitempty"`
 	Media                Media                `json:"media"`
 	RHELCoreOSExtensions *relrhcos.Extensions `json:"rhel-coreos-extensions,omitempty"`
 }
