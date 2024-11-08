@@ -5,16 +5,6 @@ dn=$(dirname "$0")
 # shellcheck source=src/cmdlib.sh
 . "${dn}"/cmdlib.sh
 
-# This script is used for creating both the bare metal and the canonical VM
-# image (qemu). `buildextend-qemu` is a symlink to `buildextend-metal`.
-case "$(basename "$0")" in
-    "cmd-buildextend-metal") platform=metal;;
-    "cmd-buildextend-metal4k") platform=metal4k;;
-    "cmd-buildextend-qemu") platform=qemu;;
-    "cmd-buildextend-qemu-secex") platform=qemu-secex;;
-    "cmd-buildextend-secex") platform=qemu-secex;;
-    *) fatal "called as unexpected name $0";;
-esac
 
 print_help() {
     cat 1>&2 <<EOF
@@ -25,105 +15,6 @@ Usage: coreos-assembler buildextend-${platform} --help
 EOF
 }
 
-# Parse options
-genprotimgvm=/data.secex/genprotimgvm.qcow2
-ignition_pubkey=
-rc=0
-build=
-force=
-options=$(getopt --options h --longoptions help,force,build:,genprotimgvm: -- "$@") || rc=$?
-[ $rc -eq 0 ] || {
-    print_help
-    exit 1
-}
-eval set -- "$options"
-while true; do
-    case "$1" in
-        -h | --help)
-            print_help
-            exit 0
-            ;;
-        --force)
-            force=1
-            ;;
-        --build)
-            build=$2
-            shift
-            ;;
-        --genprotimgvm)
-            genprotimgvm="$2"
-            shift
-            ;;
-        --)
-            shift
-            break
-            ;;
-        -*)
-            fatal "$0: unrecognized option: $1"
-            ;;
-        *)
-            break
-            ;;
-    esac
-    shift
-done
-
-if [ $# -ne 0 ]; then
-    print_help
-    fatal "Too many arguments passed"
-fi
-
-case "$basearch" in
-    "x86_64"|"aarch64"|"s390x"|"ppc64le") ;;
-    *) fatal "$basearch is not supported for this command" ;;
-esac
-
-# shellcheck disable=SC2031
-export LIBGUESTFS_BACKEND=direct
-export IMAGE_TYPE="${platform}"
-prepare_build
-
-if [ -z "${build}" ]; then
-    build=$(get_latest_build)
-    if [ -z "${build}" ]; then
-        fatal "No build found."
-    fi
-fi
-
-builddir=$(get_build_dir "$build")
-if [ ! -d "${builddir}" ]; then
-    fatal "Build dir ${builddir} does not exist."
-fi
-
-# add building sempahore
-build_semaphore="${builddir}/.${platform}.building"
-if [ -e "${build_semaphore}" ]; then
-    fatal "${build_semaphore} found: another process is building ${platform}"
-fi
-touch "${build_semaphore}"
-trap 'rm -f ${build_semaphore}' EXIT
-
-# check if the image already exists in the meta.json
-if [ -z "${force}" ]; then
-    meta_img=$(meta_key "images.${platform}.path")
-    if [ "${meta_img}" != "None" ]; then
-        echo "${platform} image already exists:"
-        echo "$meta_img"
-        exit 0
-    fi
-fi
-
-# reread these values from the build itself rather than rely on the ones loaded
-# by prepare_build since the config might've changed since then
-name=$(meta_key name)
-
-image_format=raw
-if [[ "${platform}" == "qemu" || "${platform}" == "qemu-secex" ]]; then
-    image_format=qcow2
-fi
-
-imgname=${name}-${build}-${platform}.${basearch}.${image_format}
-imgpath=${PWD}/${imgname}
 
 # Parse the passed config JSON and extract a mandatory value
 getconfig() {
@@ -218,69 +109,183 @@ rootfs-size: "${rootfs_size_mb}"
 EOF
 }
 
-# In the jenkins pipelines we build the qemu image first and that operation
-# will do a lot of the same work required for later artifacts (metal, metal4k, etc)
-# so we want the cached output from that run to persist. The later artifacts get
-# built in parallel, so we need to be able to access the cache by multiple processes,
-# so for those we'll set `snapshot=on` so that each will get their own disk image.
-# This is OK because we don't checkpoint (cache) any of those stages.
-[ "${platform}" == "qemu" ] && snapshot="off" || snapshot="on"
-runvm_osbuild_config_json="$(generate_runvm_osbuild_config)"
-outdir=$(mktemp -p "${tmp_builddir}" -d)
-runvm_with_cache_snapshot "$snapshot" -- /usr/lib/coreos-assembler/runvm-osbuild                    \
-            --config "${runvm_osbuild_config_json}"                                                 \
-            --mpp "/usr/lib/coreos-assembler/osbuild-manifests/coreos.osbuild.${basearch}.mpp.yaml" \
-            --outdir "${outdir}"                                                                    \
-            --platform "${platform}"
 
-mv "${outdir}/${platform}/${platform}" "${imgpath}"
+main() {
 
-if [[ "${platform}" == "qemu-secex" ]]; then
-    if [ ! -f "${genprotimgvm}" ]; then
-        fatal "No genprotimgvm provided at ${genprotimgvm}"
+    # This script is used for creating several artifacts. For example,
+    # `cmd-buildextend-qemu` is a symlink to `cmd-buildextend-metal`.
+    case "$(basename "$0")" in
+        "cmd-buildextend-metal") platform=metal;;
+        "cmd-buildextend-metal4k") platform=metal4k;;
+        "cmd-buildextend-qemu") platform=qemu;;
+        "cmd-buildextend-qemu-secex") platform=qemu-secex;;
+        "cmd-buildextend-secex") platform=qemu-secex;;
+        *) fatal "called as unexpected name $0";;
+    esac
+
+    # Parse options
+    genprotimgvm=/data.secex/genprotimgvm.qcow2
+    ignition_pubkey=
+    rc=0
+    build=
+    force=
+    options=$(getopt --options h --longoptions help,force,build:,genprotimgvm: -- "$@") || rc=$?
+    [ $rc -eq 0 ] || {
+        print_help
+        exit 1
+    }
+    eval set -- "$options"
+    while true; do
+        case "$1" in
+            -h | --help)
+                print_help
+                exit 0
+                ;;
+            --force)
+                force=1
+                ;;
+            --build)
+                build=$2
+                shift
+                ;;
+            --genprotimgvm)
+                genprotimgvm="$2"
+                shift
+                ;;
+            --)
+                shift
+                break
+                ;;
+            -*)
+                fatal "$0: unrecognized option: $1"
+                ;;
+            *)
+                break
+                ;;
+        esac
+        shift
+    done
+
+    if [ $# -ne 0 ]; then
+        print_help
+        fatal "Too many arguments passed"
     fi
 
-    # Basic qemu args:
-    qemu_args=(); blk_size="512"
-    [[ $platform == metal4k ]] && blk_size="4096"
-    qemu_args+=("-drive" "if=none,id=target,format=${image_format},file=${imgpath},cache=unsafe" \
-        "-device" "virtio-blk,serial=target,drive=target,physical_block_size=${blk_size},logical_block_size=${blk_size}")
+    case "$basearch" in
+        "x86_64"|"aarch64"|"s390x"|"ppc64le") ;;
+        *) fatal "$basearch is not supported for this command" ;;
+    esac
 
-    # SecureVM (holding Universal Key for all IBM Z Mainframes) requires scripts to execute genprotimg
-    se_script_dir="/usr/lib/coreos-assembler/secex-genprotimgvm-scripts"
-    genprotimg_img="${PWD}/secex-genprotimg.img"
-    genprotimg_dir=$(mktemp -p "${tmp_builddir}" -d)
-    cp "${se_script_dir}/genprotimg-script.sh" "${se_script_dir}/post-script.sh" "${genprotimg_dir}"
-    # Extra kargs with dm-verity hashes
-    secex_kargs="ignition.firstboot"
-    secex_kargs+=" rootfs.roothash=$(<"${outdir}/${platform}/rootfs_hash")"
-    secex_kargs+=" bootfs.roothash=$(<"${outdir}/${platform}/bootfs_hash")"
-    echo "${secex_kargs}" > "${genprotimg_dir}/parmfile"
-    virt-make-fs --format=raw --type=ext4 "${genprotimg_dir}" "${genprotimg_img}"
-    rm -rf "${genprotimg_dir}"
-    qemu_args+=("-drive" "if=none,id=genprotimg,format=raw,file=${genprotimg_img}" \
-                "-device" "virtio-blk,serial=genprotimg,drive=genprotimg")
+    # shellcheck disable=SC2031
+    export LIBGUESTFS_BACKEND=direct
+    export IMAGE_TYPE="${platform}"
+    prepare_build
 
-    # GPG keys used for protecting Ignition config
-    tmp_gpg_home=$(mktemp -p "${tmp_builddir}" -d)
-    ignition_pubkey=$(mktemp -p "${tmp_builddir}")
-    ignition_prikey=$(mktemp -p "${tmp_builddir}")
-    gpg --homedir "${tmp_gpg_home}" --batch --passphrase '' --yes --quick-gen-key "Secure Execution (secex) ${build}" rsa4096 encr none
-    gpg --homedir "${tmp_gpg_home}" --armor --export secex > "${ignition_pubkey}"
-    gpg --homedir "${tmp_gpg_home}" --armor --export-secret-key secex > "${ignition_prikey}"
-    exec 9<"${ignition_prikey}"
-    rm -rf "${tmp_gpg_home}" "${ignition_prikey}"
-    qemu_args+=("-add-fd" "fd=9,set=3" "-drive" "if=none,id=gpgkey,format=raw,file=/dev/fdset/3,readonly=on" \
-		"-device" "virtio-blk,serial=gpgkey,drive=gpgkey")
+    if [ -z "${build}" ]; then
+        build=$(get_latest_build)
+        if [ -z "${build}" ]; then
+            fatal "No build found."
+        fi
+    fi
 
-    /usr/lib/coreos-assembler/secex-genprotimgvm-scripts/runvm.sh \
-        --genprotimgvm "${genprotimgvm}" -- "${qemu_args[@]}"
-    rm -f "${genprotimg_img}"
-    exec 9>&-
-fi
+    builddir=$(get_build_dir "$build")
+    if [ ! -d "${builddir}" ]; then
+        fatal "Build dir ${builddir} does not exist."
+    fi
 
-sha256=$(sha256sum_str < "${imgpath}")
-cosa meta --workdir "${workdir}" --build "${build}" --dump | python3 -c "
+    # add building sempahore
+    build_semaphore="${builddir}/.${platform}.building"
+    if [ -e "${build_semaphore}" ]; then
+        fatal "${build_semaphore} found: another process is building ${platform}"
+    fi
+    touch "${build_semaphore}"
+    trap 'rm -f ${build_semaphore}' EXIT
+
+    # check if the image already exists in the meta.json
+    if [ -z "${force}" ]; then
+        meta_img=$(meta_key "images.${platform}.path")
+        if [ "${meta_img}" != "None" ]; then
+            echo "${platform} image already exists:"
+            echo "$meta_img"
+            exit 0
+        fi
+    fi
+
+    # reread these values from the build itself rather than rely on the ones loaded
+    # by prepare_build since the config might've changed since then
+    name=$(meta_key name)
+
+    image_format=raw
+    if [[ "${platform}" == "qemu" || "${platform}" == "qemu-secex" ]]; then
+        image_format=qcow2
+    fi
+
+    imgname=${name}-${build}-${platform}.${basearch}.${image_format}
+    imgpath=${PWD}/${imgname}
+
+    # In the jenkins pipelines we build the qemu image first and that operation
+    # will do a lot of the same work required for later artifacts (metal, metal4k, etc)
+    # so we want the cached output from that run to persist. The later artifacts get
+    # built in parallel, so we need to be able to access the cache by multiple processes,
+    # so for those we'll set `snapshot=on` so that each will get their own disk image.
+    # This is OK because we don't checkpoint (cache) any of those stages.
+    [ "${platform}" == "qemu" ] && snapshot="off" || snapshot="on"
+    runvm_osbuild_config_json="$(generate_runvm_osbuild_config)"
+    outdir=$(mktemp -p "${tmp_builddir}" -d)
+    runvm_with_cache_snapshot "$snapshot" -- /usr/lib/coreos-assembler/runvm-osbuild                    \
+                --config "${runvm_osbuild_config_json}"                                                 \
+                --mpp "/usr/lib/coreos-assembler/osbuild-manifests/coreos.osbuild.${basearch}.mpp.yaml" \
+                --outdir "${outdir}"                                                                    \
+                --platform "${platform}"
+
+    mv "${outdir}/${platform}/${platform}" "${imgpath}"
+
+    if [[ "${platform}" == "qemu-secex" ]]; then
+        if [ ! -f "${genprotimgvm}" ]; then
+            fatal "No genprotimgvm provided at ${genprotimgvm}"
+        fi
+
+        # Basic qemu args:
+        qemu_args=(); blk_size="512"
+        [[ $platform == metal4k ]] && blk_size="4096"
+        qemu_args+=("-drive" "if=none,id=target,format=${image_format},file=${imgpath},cache=unsafe" \
+            "-device" "virtio-blk,serial=target,drive=target,physical_block_size=${blk_size},logical_block_size=${blk_size}")
+
+        # SecureVM (holding Universal Key for all IBM Z Mainframes) requires scripts to execute genprotimg
+        se_script_dir="/usr/lib/coreos-assembler/secex-genprotimgvm-scripts"
+        genprotimg_img="${PWD}/secex-genprotimg.img"
+        genprotimg_dir=$(mktemp -p "${tmp_builddir}" -d)
+        cp "${se_script_dir}/genprotimg-script.sh" "${se_script_dir}/post-script.sh" "${genprotimg_dir}"
+        # Extra kargs with dm-verity hashes
+        secex_kargs="ignition.firstboot"
+        secex_kargs+=" rootfs.roothash=$(<"${outdir}/${platform}/rootfs_hash")"
+        secex_kargs+=" bootfs.roothash=$(<"${outdir}/${platform}/bootfs_hash")"
+        echo "${secex_kargs}" > "${genprotimg_dir}/parmfile"
+        virt-make-fs --format=raw --type=ext4 "${genprotimg_dir}" "${genprotimg_img}"
+        rm -rf "${genprotimg_dir}"
+        qemu_args+=("-drive" "if=none,id=genprotimg,format=raw,file=${genprotimg_img}" \
+                    "-device" "virtio-blk,serial=genprotimg,drive=genprotimg")
+
+        # GPG keys used for protecting Ignition config
+        tmp_gpg_home=$(mktemp -p "${tmp_builddir}" -d)
+        ignition_pubkey=$(mktemp -p "${tmp_builddir}")
+        ignition_prikey=$(mktemp -p "${tmp_builddir}")
+        gpg --homedir "${tmp_gpg_home}" --batch --passphrase '' --yes --quick-gen-key "Secure Execution (secex) ${build}" rsa4096 encr none
+        gpg --homedir "${tmp_gpg_home}" --armor --export secex > "${ignition_pubkey}"
+        gpg --homedir "${tmp_gpg_home}" --armor --export-secret-key secex > "${ignition_prikey}"
+        exec 9<"${ignition_prikey}"
+        rm -rf "${tmp_gpg_home}" "${ignition_prikey}"
+        qemu_args+=("-add-fd" "fd=9,set=3" "-drive" "if=none,id=gpgkey,format=raw,file=/dev/fdset/3,readonly=on" \
+            "-device" "virtio-blk,serial=gpgkey,drive=gpgkey")
+
+        /usr/lib/coreos-assembler/secex-genprotimgvm-scripts/runvm.sh \
+            --genprotimgvm "${genprotimgvm}" -- "${qemu_args[@]}"
+        rm -f "${genprotimg_img}"
+        exec 9>&-
+    fi
+
+    sha256=$(sha256sum_str < "${imgpath}")
+    cosa meta --workdir "${workdir}" --build "${build}" --dump | python3 -c "
 import sys, json
 j = json.load(sys.stdin)
 j['images']['${platform}'] = {
@@ -291,10 +296,10 @@ j['images']['${platform}'] = {
 json.dump(j, sys.stdout, indent=4)
 " | jq -s add > "meta.json.new"
 
-# one more artifact for Secure Execution
-if [[ -n "${ignition_pubkey}" ]]; then
-    gpg_key=${name}-${build}-ignition-secex-key.gpg.pub
-    python3 -c "
+    # one more artifact for Secure Execution
+    if [[ -n "${ignition_pubkey}" ]]; then
+        gpg_key=${name}-${build}-ignition-secex-key.gpg.pub
+        python3 -c "
 import sys, json
 j = json.load(sys.stdin)
 j['images']['ignition-gpg-key'] = {
@@ -305,16 +310,21 @@ j['images']['ignition-gpg-key'] = {
 }
 json.dump(j, sys.stdout, indent=4)
 " < "meta.json.new" | jq -s add > "key.json"
-    mv key.json meta.json.new
-    /usr/lib/coreos-assembler/finalize-artifact "${ignition_pubkey}" "${builddir}/${gpg_key}"
-fi
+        mv key.json meta.json.new
+        /usr/lib/coreos-assembler/finalize-artifact "${ignition_pubkey}" "${builddir}/${gpg_key}"
+    fi
 
-# and now the crucial bits
-cosa meta --workdir "${workdir}" --build "${build}" --artifact "${platform}" --artifact-json "$(readlink -f meta.json.new)"
-/usr/lib/coreos-assembler/finalize-artifact "${imgpath}" "${builddir}/${imgname}"
+    # and now the crucial bits
+    cosa meta --workdir "${workdir}" --build "${build}" \
+        --artifact "${platform}" --artifact-json "$(readlink -f meta.json.new)"
+    /usr/lib/coreos-assembler/finalize-artifact "${imgpath}" "${builddir}/${imgname}"
 
-# Quiet for the rest of this so the last thing we see is a success message
-set +x
-# clean up the tmpbuild
-rm -rf "${tmp_builddir}"
-echo "Successfully generated: ${imgname}"
+    # Quiet for the rest of this so the last thing we see is a success message
+    set +x
+    # clean up the tmpbuild
+    rm -rf "${tmp_builddir}"
+    echo "Successfully generated: ${imgname}"
+
+}
+
+main "$@"
