@@ -108,61 +108,64 @@ def main():
         builds_json_data = json.load(f)
     # Original list of builds
     builds = builds_json_data["builds"]
+    pruned_build_ids = []
+    images_to_keep = policy.get(stream, {}).get("images-keep", [])
 
-    # Prune builds based on the policy
-    for action in ['cloud-uploads', 'images', 'build']:
-        if action not in policy[stream]:
-            continue
-        duration = convert_duration_to_days(policy[stream][action])
-        ref_date = today_date - relativedelta(days=int(duration))
-        pruned_build_ids = []
-        images_to_keep = policy.get(stream, {}).get("images-keep", [])
+    # Iterate through builds from oldest to newest
+    for build in reversed(builds):
+        build_id = build["id"]
+        build_date, _ = parse_fcos_version_to_timestamp_and_stream(build_id)
 
-        print(f"Pruning resources of type {action} older than {policy[stream][action]} ({ref_date.date()}) on stream {stream}")
-        # Enumerating in reverse to go from the oldest build to the newest one
-        for build in reversed(builds):
-            build_id = build["id"]
-            (build_date, _) = parse_fcos_version_to_timestamp_and_stream(build_id)
-            if build_date >= ref_date:
-                break
+        # For each build, iterate over arches first to minimize downloads of meta.json per arch
+        for arch in build["arches"]:
+            print(f"Processing {arch} for build {build_id}")
+            meta_prefix = os.path.join(prefix, f"{build_id}/{arch}/meta.json")
+            meta_json = get_json_from_s3(s3_client, bucket, meta_prefix)  # Download meta.json once per arch
+            images = get_supported_images(meta_json)
+            current_build = Build(id=build_id, images=images, arch=arch, meta_json=meta_json)
 
-            previous_cleanup = build.get("policy-cleanup", {})
-            if action in previous_cleanup:
-                # If we are in here then there has been some previous cleanup of
-                # this type run for this build. For all types except `images` we
-                # can just continue.
-                if action != "images":
-                    print(f"Build {build_id} has already had {action} pruning completed")
+            # Iterate over actions (policy types) to apply pruning
+            for action in ['cloud-uploads', 'images', 'build']:
+                if action not in policy[stream]:
                     continue
-                else:
-                    # OK `images` has been pruned before, but we need to check
-                    # that all the images were pruned that match the current policy.
-                    # i.e. there may be additional images we need prune
-                    previous_images_kept = previous_cleanup.get("images-kept", [])
-                    if set(images_to_keep) == set(previous_images_kept):
-                        print(f"Build {build_id} has already had {action} pruning completed")
-                        continue
+                action_duration = convert_duration_to_days(policy[stream][action])
+                ref_date = today_date - relativedelta(days=int(action_duration))
 
-            for arch in build["arches"]:
-                print(f"Pruning {arch} {action} for {build_id}")
-                meta_prefix = os.path.join(prefix, f"{build_id}/{arch}/meta.json")
-                meta_json = get_json_from_s3(s3_client, bucket, meta_prefix)
-                # Make sure the meta.json doesn't contain any cloud_platform that is not supported for pruning yet.
-                images = get_supported_images(meta_json)
-                current_build = Build(id=build_id, images=images, arch=arch, meta_json=meta_json)
+                # Check if build date is beyond the reference date
+                if build_date < ref_date:
+                    previous_cleanup = build.get("policy-cleanup", {})
 
-                match action:
-                    case "cloud-uploads":
-                        prune_cloud_uploads(current_build, cloud_config, args.dry_run)
-                    # Prune through images that are not mentioned in images-keep
-                    case "images":
-                        prune_images(s3_client, current_build, images_to_keep, args.dry_run, bucket, prefix)
-                    # Fully prune releases that are very old including deleting the directory in s3 for that build.
-                    case "build":
-                        prune_build(s3_client, bucket, prefix, build_id, args.dry_run)
-                        pruned_build_ids.append(build_id)
-            # Update policy-cleanup after processing all arches for the build
-            policy_cleanup = build.setdefault("policy-cleanup", {})
+                    # Skip if the action has been handled previously for the build
+                    if action in previous_cleanup:
+                        # If we are in here then there has been some previous cleanup of
+                        # this type run for this build. For all types except `images` we
+                        # can just continue.
+                        if action != "images":
+                            print(f"Build {build_id} has already had {action} pruning completed")
+                            continue
+                        # OK `images` has been pruned before, but we need to check
+                        # that all the images were pruned that match the current policy.
+                        # i.e. there may be additional images we need prune
+                        elif set(images_to_keep) == set(previous_cleanup.get("images-kept", [])):
+                            print(f"Build {build_id} has already had {action} pruning completed")
+                            continue
+
+                    # Pruning actions based on type
+                    print(f"Pruning {arch} {action} for {build_id}")
+                    match action:
+                        case "cloud-uploads":
+                            prune_cloud_uploads(current_build, cloud_config, args.dry_run)
+                        # Prune through images that are not mentioned in images-keep
+                        case "images":
+                            prune_images(s3_client, current_build, images_to_keep, args.dry_run, bucket, prefix)
+                        # Fully prune releases that are very old including deleting the directory in s3 for that build.
+                        case "build":
+                            prune_build(s3_client, bucket, prefix, build_id, args.dry_run)
+                            pruned_build_ids.append(build_id)
+
+        # Update policy-cleanup after pruning actions for the architecture
+        policy_cleanup = build.setdefault("policy-cleanup", {})
+        for action in policy[stream].keys():  # Only update actions specified in policy[stream]
             match action:
                 case "cloud-uploads":
                     if "cloud-uploads" not in policy_cleanup:
