@@ -116,20 +116,6 @@ fi
 # reread these values from the build itself rather than rely on the ones loaded
 # by prepare_build since the config might've changed since then
 name=$(meta_key name)
-ref=$(meta_key ref)
-if [ "${ref}" = "None" ]; then
-    ref=""
-fi
-commit=$(meta_key ostree-commit)
-
-ostree_repo=${tmprepo}
-# Ensure that we have the cached unpacked commit
-import_ostree_commit_for_build "${build}"
-# Note this overwrote the bits generated in prepare_build
-# for image_json.  In the future we expect to split prepare_build
-# into prepare_ostree_build and prepare_diskimage_build; the
-# latter path would only run this.
-image_json=${workdir}/tmp/image.json
 
 image_format=raw
 if [[ "${image_type}" == "qemu" || "${image_type}" == "qemu-secex" ]]; then
@@ -163,6 +149,23 @@ generate_runvm_osbuild_config() {
     fi
     rm -f "${workdir}"/tmp/runvm-osbuild-config-*.json # clean up any previous configs
 
+    # reread these values from the build itself rather than rely on the ones loaded
+    # by prepare_build since the config might've changed since then
+    ostree_commit=$(meta_key ostree-commit)
+    ostree_ref=$(meta_key ref)
+    if [ "${ostree_ref}" = "None" ]; then
+        ostree_ref=""
+    fi
+
+    ostree_repo=${tmprepo}
+    # Ensure that we have the cached unpacked commit
+    import_ostree_commit_for_build "${build}"
+    # Note this overwrote the bits generated in prepare_build
+    # for image_json.  In the future we expect to split prepare_build
+    # into prepare_ostree_build and prepare_diskimage_build; the
+    # latter path would only run this.
+    image_json=${workdir}/tmp/image.json
+
     # Grab a few values from $image_json
     deploy_via_container=$(getconfig_def "deploy-via-container" "" "${image_json}")
     extra_kargs="$(python3 -c 'import sys, json; args = json.load(sys.stdin)["extra-kargs"]; print(" ".join(args))' < "${image_json}")"
@@ -177,7 +180,7 @@ generate_runvm_osbuild_config() {
     echo "Estimating disk size..." >&2
     # The additional 35% here is obviously a hack, but we can't easily completely fill the filesystem,
     # and doing so has apparently negative performance implications.
-    ostree_size_json="$(/usr/lib/coreos-assembler/estimate-commit-disk-size --repo "$ostree_repo" "$commit" --add-percent 35)"
+    ostree_size_json="$(/usr/lib/coreos-assembler/estimate-commit-disk-size --repo "$ostree_repo" "$ostree_commit" --add-percent 35)"
     rootfs_size_mb="$(jq '."estimate-mb".final' <<< "${ostree_size_json}")"
     # The minimum size of a disk image we'll need will be the rootfs_size
     # estimate plus the size of the non-root partitions. We'll use this
