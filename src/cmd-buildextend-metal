@@ -21,6 +21,11 @@ case "$(basename "$0")" in
         image_type=qemu
         image_suffix=-secex
         ;;
+    "cmd-buildextend-qemu-secex")
+        secure_execution=1
+        image_type=qemu
+        image_suffix=-secex
+        ;;
     *) fatal "called as unexpected name $0";;
 esac
 
