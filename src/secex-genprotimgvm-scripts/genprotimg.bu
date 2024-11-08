@@ -3,8 +3,6 @@ version: 1.5.0
 passwd:
   users:
     - name: core
-      ssh_authorized_keys_local:
-        - id_rsa.pub
       groups:
         - wheel
 storage:
