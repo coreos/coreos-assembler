@@ -31,6 +31,33 @@ getconfig_def() {
     jq -re .\""$k"\"//\""${default}"\" < "${config}"
 }
 
+# Store information about the artifact into meta.json and also
+# "finalize" it, copying it into the builddir.
+postprocess_artifact() {
+    local artifact_name=$1
+    local local_filepath=$2
+    local target_filename=$3
+    local skip_compress=$4
+    if [[ ! "${skip_compress}" =~ ^(True|False)$ ]]; then
+        fatal "Must specify 'True' or 'False' for skip_compress. Provided: '${skip_compress}'"
+    fi
+    cosa meta --workdir "${workdir}" --build "${build}" --dump | python3 -c "
+import sys, json
+j = json.load(sys.stdin)
+j['images']['${artifact_name}'] = {
+    'path': '${target_filename}',
+    'sha256': '$(sha256sum_str < "${local_filepath}")',
+    'size': $(stat -c '%s' "${local_filepath}")
+}
+if ${skip_compress}:
+    j['images']['${artifact_name}']['skip-compression'] = True
+json.dump(j, sys.stdout, indent=4)
+" > meta.json.new
+    cosa meta --workdir "${workdir}" --build "${build}" --artifact-json meta.json.new
+    /usr/lib/coreos-assembler/finalize-artifact "${local_filepath}" "${builddir}/${target_filename}"
+    echo "Successfully generated: ${target_filename}"
+}
+
 # Here we generate the input JSON we pass to runvm_osbuild for all of our image builds
 generate_runvm_osbuild_config() {
     runvm_osbuild_config_json="${workdir}/tmp/runvm-osbuild-config-${build}.json"
@@ -282,44 +309,18 @@ main() {
         rm -f "${genprotimg_img}"
         exec 9>&-
 
-        # Now store the ${ignition_pubkey} in the builddir and meta.json
-        gpg_key=${name}-${build}-ignition-secex-key.gpg.pub
-        python3 -c "
-import sys, json
-j = json.load(sys.stdin)
-j['images']['ignition-gpg-key'] = {
-    'path': '${gpg_key}',
-    'sha256': '$(sha256sum_str < "${ignition_pubkey}")',
-    'size': $(stat -c '%s' "${ignition_pubkey}"),
-    'skip-compression': True
-}
-json.dump(j, sys.stdout, indent=4)
-" > meta.json.new
-        cosa meta --workdir "${workdir}" --build "${build}" --artifact-json "$(readlink -f meta.json.new)"
-        /usr/lib/coreos-assembler/finalize-artifact "${ignition_pubkey}" "${builddir}/${gpg_key}"
+        # Now store the generated ${ignition_pubkey} in the builddir and meta.json
+        gpg_key_filename="${name}-${build}-ignition-secex-key.gpg.pub"
+        postprocess_artifact "ignition-gpg-key" "${ignition_pubkey}" "${gpg_key_filename}" 'True'
     fi
 
-    sha256=$(sha256sum_str < "${imgpath}")
-    cosa meta --workdir "${workdir}" --build "${build}" --dump | python3 -c "
-import sys, json
-j = json.load(sys.stdin)
-j['images']['${platform}'] = {
-    'path': '${imgname}',
-    'sha256': '${sha256}',
-    'size': $(stat -c '%s' "${imgpath}")
-}
-json.dump(j, sys.stdout, indent=4)
-" > meta.json.new
-    # Now store the built artifact in the builddir and meta.json
-    cosa meta --workdir "${workdir}" --build "${build}" --artifact-json "$(readlink -f meta.json.new)"
-    /usr/lib/coreos-assembler/finalize-artifact "${imgpath}" "${builddir}/${imgname}"
+    # Now store the generated artifact in the builddir and meta.json
+    postprocess_artifact "${platform}" "${imgpath}" "${imgname}" 'False'
 
     # Quiet for the rest of this so the last thing we see is a success message
     set +x
     # clean up the tmpbuild
     rm -rf "${tmp_builddir}"
-    echo "Successfully generated: ${imgname}"
-
 }
 
 main "$@"
