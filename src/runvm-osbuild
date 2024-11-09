@@ -11,7 +11,7 @@ Options:
     --help: show this help
     --mpp: the path to the OSBuild mpp.yaml file
     --outdir: where to write the created files
-    --platform: the platform to generate an artifact for
+    --platforms: the platforms to generate an artifact for
 
 You probably don't want to run this script by hand. This script is
 run as part of 'coreos-assembler build'.
@@ -40,7 +40,10 @@ do
         --help)                    usage; exit;;
         --mpp)                     mppyaml="${1}"; shift;;
         --outdir)                  outdir="${1}"; shift;;
-        --platform)                platform="${1}"; shift;;
+        --platforms)
+            # Split the comma separated string of platforms into an array
+            IFS=, read -ra platforms <<<"$1"; shift
+            ;;
          *) echo "${flag} is not understood."; usage; exit 10;;
      esac;
 done
@@ -107,6 +110,7 @@ osbuild-mpp                                             \
     "${mppyaml}" "${processed_json}"
 
 # Build the image
+# shellcheck disable=SC2068
 osbuild \
     --out "$outdir"              \
     --store "$storedir"          \
@@ -114,7 +118,8 @@ osbuild \
     --checkpoint build           \
     --checkpoint tree            \
     --checkpoint raw-image       \
-    --export "$platform" "${processed_json}"
+    ${platforms[@]/#/--export=}  \
+    "${processed_json}"
 
 mv "${outdir}"/* "${orig_outdir}/"
 rm -f "${processed_json}"

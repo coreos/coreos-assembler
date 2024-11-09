@@ -5,13 +5,25 @@ dn=$(dirname "$0")
 # shellcheck source=src/cmdlib.sh
 . "${dn}"/cmdlib.sh
 
+# A list of supported platforms and the filename suffix of the main
+# artifact that platform produces.
+declare -A SUPPORTED_PLATFORMS=(
+    ['applehv']='raw'
+    ['gcp']='tar.gz'
+    ['hyperv']='vhdx'
+    ['metal4k']='raw'
+    ['metal']='raw'
+    ['qemu']='qcow2'
+    ['qemu-secex']='qcow2'
+)
 
 print_help() {
     cat 1>&2 <<EOF
-Usage: coreos-assembler buildextend-${platform} --help
-       coreos-assembler buildextend-${platform} [--build ID]
+Usage: coreos-assembler osbuild --help
+       coreos-assembler osbuild --supported-platforms
+       coreos-assembler osbuild [--build ID] qemu metal metal4k...
 
-  Build a bare metal image.
+  Build artifacts for the given platforms using OSBuild.
 EOF
 }
 
@@ -196,15 +208,16 @@ main() {
     # This script is used for creating several artifacts. For example,
     # `cmd-buildextend-qemu` is a symlink to `cmd-buildextend-metal`.
     case "$(basename "$0")" in
-        "cmd-buildextend-metal") platform=metal;;
-        "cmd-buildextend-metal4k") platform=metal4k;;
-        "cmd-buildextend-qemu") platform=qemu;;
-        "cmd-buildextend-qemu-secex") platform=qemu-secex;;
-        "cmd-buildextend-secex") platform=qemu-secex;;
+        "cmd-osbuild") platforms=();;
+        "cmd-buildextend-metal") platforms=(metal);;
+        "cmd-buildextend-metal4k") platforms=(metal4k);;
+        "cmd-buildextend-qemu") platforms=(qemu);;
+        "cmd-buildextend-qemu-secex") platforms=(qemu-secex);;
+        "cmd-buildextend-secex") platforms=(qemu-secex);;
         *) fatal "called as unexpected name $0";;
     esac
 
-    options=$(getopt --options h --longoptions help,force,build:,genprotimgvm: -- "$@") || {
+    options=$(getopt --options h --longoptions help,force,build:,genprotimgvm:,supported-platforms -- "$@") || {
         print_help
         exit 1
     }
@@ -226,6 +239,16 @@ main() {
                 genprotimgvm="$2"
                 shift
                 ;;
+            --platforms)
+                shift # The arg is next in position args
+                # Split the comma separated string of platforms into an array
+                IFS=, read -ra platforms <<<"$1"
+                ;;
+            --supported-platforms)
+                # Just print the platforms we support and exit
+                echo "${!SUPPORTED_PLATFORMS[*]}"
+                exit 0
+                ;;
             --)
                 shift
                 break
@@ -240,9 +263,15 @@ main() {
         shift
     done
 
-    if [ $# -ne 0 ]; then
-        print_help
-        fatal "Too many arguments passed"
+    # If we didn't come in via one of the buildextend symlinks then
+    # pick up the platforms from positional args.
+    if [ ${#platforms[@]} == "0" ]; then
+        if [ $# -eq 0 ]; then
+            print_help
+            fatal "Too few arguments arguments passed to cosa osbuild"
+        fi
+        # The platforms are in the remaining positional arguments
+        read -ra platforms <<<"$@"
     fi
 
     case "$basearch" in
@@ -252,7 +281,7 @@ main() {
 
     # shellcheck disable=SC2031
     export LIBGUESTFS_BACKEND=direct
-    export IMAGE_TYPE="${platform}"
+    export IMAGE_TYPE="${platforms[0]}"
     prepare_build
 
     if [ -z "${build}" ]; then
@@ -268,66 +297,85 @@ main() {
     fi
 
     # add building sempahore
-    build_semaphore="${builddir}/.${platform}.building"
+    build_semaphore="${builddir}/.${platforms[0]}.building"
     if [ -e "${build_semaphore}" ]; then
-        fatal "${build_semaphore} found: another process is building ${platform}"
+        fatal "${build_semaphore} found: another process is running a build for ${platforms[0]}"
     fi
     touch "${build_semaphore}"
     trap 'rm -f ${build_semaphore}' EXIT
-
-    # check if the image already exists in the meta.json
-    if [ -z "${force}" ]; then
-        meta_img=$(meta_key "images.${platform}.path")
-        if [ "${meta_img}" != "None" ]; then
-            echo "${platform} image already exists:"
-            echo "$meta_img"
-            exit 0
-        fi
-    fi
 
     # reread these values from the build itself rather than rely on the ones loaded
     # by prepare_build since the config might've changed since then
     name=$(meta_key name)
 
-    image_format=raw
-    if [[ "${platform}" == "qemu" || "${platform}" == "qemu-secex" ]]; then
-        image_format=qcow2
+    for platform in "${platforms[@]}"; do
+        if [ -z "${SUPPORTED_PLATFORMS[$platform]:-}" ]; then
+            fatal "unknown platform provided: ${platform}"
+        fi
+    done
+
+    tobuild=()
+    building_qemu=0
+    for platform in "${platforms[@]}"; do
+        # check if the image already exists in the meta.json
+        meta_img=$(meta_key "images.${platform}.path")
+        if [ -z "${force}" ] && [ "${meta_img}" != "None" ]; then
+                echo "${platform} image already exists: $meta_img"
+                echo "Removing ${platform} from list of platforms to build"
+        else
+            tobuild+=("${platform}")
+            echo "Will build $platform"
+            [ "${platform}" == 'qemu' ] && building_qemu=1
+        fi
+    done
+    if [ ${#tobuild[@]} == "0" ]; then
+        echo "All requested platforms have already been built"
+        exit 0
     fi
+    platforms=("${tobuild[@]}")
 
-    imgname=${name}-${build}-${platform}.${basearch}.${image_format}
-    imgpath=${PWD}/${imgname}
-
-    # In the jenkins pipelines we build the qemu image first and that operation
-    # will do a lot of the same work required for later artifacts (metal, metal4k, etc)
-    # so we want the cached output from that run to persist. The later artifacts get
-    # built in parallel, so we need to be able to access the cache by multiple processes,
+    # Run OSBuild now to build the platforms that were requested. In the jenkins
+    # pipelines we build the qemu image first and that operation will do a lot of
+    # the same work required for later artifacts (metal, metal4k, etc) so we want
+    # the cached output from that run to persist. For now, later artifacts get built
+    # in parallel, so we need to be able to access the cache by multiple processes,
     # so for those we'll set `snapshot=on` so that each will get their own disk image.
     # This is OK because we don't checkpoint (cache) any of those stages.
-    [ "${platform}" == "qemu" ] && snapshot="off" || snapshot="on"
+    [ "${building_qemu}" == '1' ] && snapshot="off" || snapshot="on"
     runvm_osbuild_config_json="$(generate_runvm_osbuild_config)"
     outdir=$(mktemp -p "${tmp_builddir}" -d)
     runvm_with_cache_snapshot "$snapshot" -- /usr/lib/coreos-assembler/runvm-osbuild                    \
                 --config "${runvm_osbuild_config_json}"                                                 \
                 --mpp "/usr/lib/coreos-assembler/osbuild-manifests/coreos.osbuild.${basearch}.mpp.yaml" \
                 --outdir "${outdir}"                                                                    \
-                --platform "${platform}"
+                --platforms "$(IFS=,; echo "${platforms[*]}")"
 
-    mv "${outdir}/${platform}/${platform}" "${imgpath}"
+    for platform in "${platforms[@]}"; do
+        suffix="${SUPPORTED_PLATFORMS[$platform]}"
 
-    case "$platform" in
-        qemu-secex)
-            # Massage the generated artifact through an extra VM for secex. This
-            # will also create an Ignition pubkey and store it in the meta.json
-            # and builddir.
-            postprocess_qemu_secex
-            # Also need to update the meta.json and builddir with the main artifact.
-            postprocess_artifact "${platform}" "${imgpath}" "${imgname}" 'False'
-            ;;
-        *)
-            # Update the meta.json and builddir with the generated artifact.
-            postprocess_artifact "${platform}" "${imgpath}" "${imgname}" 'False'
-            ;;
-    esac
+        # Set the filename of the artifact and the local image path
+        # where the file will reside temporarily and move it there
+        # from the OSBuild out directory.
+        imgname=${name}-${build}-${platform}.${basearch}.${suffix}
+        imgpath=${PWD}/${imgname}
+        mv "${outdir}/${platform}/${platform}" "${imgpath}"
+
+        # Perform postprocessing
+        case "$platform" in
+            qemu-secex)
+                # Massage the generated artifact through an extra VM for secex. This
+                # will also create an Ignition pubkey and store it in the meta.json
+                # and builddir.
+                postprocess_qemu_secex
+                # Also need to update the meta.json and builddir with the main artifact.
+                postprocess_artifact "${platform}" "${imgpath}" "${imgname}" 'False'
+                ;;
+            *)
+                # Update the meta.json and builddir with the generated artifact.
+                postprocess_artifact "${platform}" "${imgpath}" "${imgname}" 'False'
+                ;;
+        esac
+    done
 
     # clean up the tmpbuild
     rm -rf "${tmp_builddir}"
