@@ -58,6 +58,56 @@ json.dump(j, sys.stdout, indent=4)
     echo "Successfully generated: ${target_filename}"
 }
 
+# For qemu-secex we need to do a few extra things like spin up a
+# VM to run genprotimg and save off the pubkey for Ignition.
+postprocess_qemu_secex() {
+   if [ ! -f "${genprotimgvm}" ]; then
+    fatal "No genprotimgvm provided at ${genprotimgvm}"
+   fi
+
+   # Basic qemu args:
+   qemu_args=(); blk_size="512"
+   [[ $platform == metal4k ]] && blk_size="4096"
+   qemu_args+=("-drive" "if=none,id=target,format=${image_format},file=${imgpath},cache=unsafe" \
+    "-device" "virtio-blk,serial=target,drive=target,physical_block_size=${blk_size},logical_block_size=${blk_size}")
+
+   # SecureVM (holding Universal Key for all IBM Z Mainframes) requires scripts to execute genprotimg
+   se_script_dir="/usr/lib/coreos-assembler/secex-genprotimgvm-scripts"
+   genprotimg_img="${PWD}/secex-genprotimg.img"
+   genprotimg_dir=$(mktemp -p "${tmp_builddir}" -d)
+   cp "${se_script_dir}/genprotimg-script.sh" "${se_script_dir}/post-script.sh" "${genprotimg_dir}"
+   # Extra kargs with dm-verity hashes
+   secex_kargs="ignition.firstboot"
+   secex_kargs+=" rootfs.roothash=$(<"${outdir}/${platform}/rootfs_hash")"
+   secex_kargs+=" bootfs.roothash=$(<"${outdir}/${platform}/bootfs_hash")"
+   echo "${secex_kargs}" > "${genprotimg_dir}/parmfile"
+   virt-make-fs --format=raw --type=ext4 "${genprotimg_dir}" "${genprotimg_img}"
+   rm -rf "${genprotimg_dir}"
+   qemu_args+=("-drive" "if=none,id=genprotimg,format=raw,file=${genprotimg_img}" \
+            "-device" "virtio-blk,serial=genprotimg,drive=genprotimg")
+
+   # GPG keys used for protecting Ignition config
+   tmp_gpg_home=$(mktemp -p "${tmp_builddir}" -d)
+   ignition_pubkey=$(mktemp -p "${tmp_builddir}")
+   ignition_prikey=$(mktemp -p "${tmp_builddir}")
+   gpg --homedir "${tmp_gpg_home}" --batch --passphrase '' --yes --quick-gen-key "Secure Execution (secex) ${build}" rsa4096 encr none
+   gpg --homedir "${tmp_gpg_home}" --armor --export secex > "${ignition_pubkey}"
+   gpg --homedir "${tmp_gpg_home}" --armor --export-secret-key secex > "${ignition_prikey}"
+   exec 9<"${ignition_prikey}"
+   rm -rf "${tmp_gpg_home}" "${ignition_prikey}"
+   qemu_args+=("-add-fd" "fd=9,set=3" "-drive" "if=none,id=gpgkey,format=raw,file=/dev/fdset/3,readonly=on" \
+    "-device" "virtio-blk,serial=gpgkey,drive=gpgkey")
+
+   /usr/lib/coreos-assembler/secex-genprotimgvm-scripts/runvm.sh \
+    --genprotimgvm "${genprotimgvm}" -- "${qemu_args[@]}"
+   rm -f "${genprotimg_img}"
+   exec 9>&-
+
+   # Now store the generated ${ignition_pubkey} in the builddir and meta.json
+   gpg_key_filename="${name}-${build}-ignition-secex-key.gpg.pub"
+   postprocess_artifact "ignition-gpg-key" "${ignition_pubkey}" "${gpg_key_filename}" 'True'
+}
+
 # Here we generate the input JSON we pass to runvm_osbuild for all of our image builds
 generate_runvm_osbuild_config() {
     runvm_osbuild_config_json="${workdir}/tmp/runvm-osbuild-config-${build}.json"
@@ -266,56 +316,20 @@ main() {
 
     mv "${outdir}/${platform}/${platform}" "${imgpath}"
 
-    if [[ "${platform}" == "qemu-secex" ]]; then
-        if [ ! -f "${genprotimgvm}" ]; then
-            fatal "No genprotimgvm provided at ${genprotimgvm}"
-        fi
-
-        # Basic qemu args:
-        qemu_args=(); blk_size="512"
-        [[ $platform == metal4k ]] && blk_size="4096"
-        qemu_args+=("-drive" "if=none,id=target,format=${image_format},file=${imgpath},cache=unsafe" \
-            "-device" "virtio-blk,serial=target,drive=target,physical_block_size=${blk_size},logical_block_size=${blk_size}")
-
-        # SecureVM (holding Universal Key for all IBM Z Mainframes) requires scripts to execute genprotimg
-        se_script_dir="/usr/lib/coreos-assembler/secex-genprotimgvm-scripts"
-        genprotimg_img="${PWD}/secex-genprotimg.img"
-        genprotimg_dir=$(mktemp -p "${tmp_builddir}" -d)
-        cp "${se_script_dir}/genprotimg-script.sh" "${se_script_dir}/post-script.sh" "${genprotimg_dir}"
-        # Extra kargs with dm-verity hashes
-        secex_kargs="ignition.firstboot"
-        secex_kargs+=" rootfs.roothash=$(<"${outdir}/${platform}/rootfs_hash")"
-        secex_kargs+=" bootfs.roothash=$(<"${outdir}/${platform}/bootfs_hash")"
-        echo "${secex_kargs}" > "${genprotimg_dir}/parmfile"
-        virt-make-fs --format=raw --type=ext4 "${genprotimg_dir}" "${genprotimg_img}"
-        rm -rf "${genprotimg_dir}"
-        qemu_args+=("-drive" "if=none,id=genprotimg,format=raw,file=${genprotimg_img}" \
-                    "-device" "virtio-blk,serial=genprotimg,drive=genprotimg")
-
-        # GPG keys used for protecting Ignition config
-        tmp_gpg_home=$(mktemp -p "${tmp_builddir}" -d)
-        ignition_pubkey=$(mktemp -p "${tmp_builddir}")
-        ignition_prikey=$(mktemp -p "${tmp_builddir}")
-        gpg --homedir "${tmp_gpg_home}" --batch --passphrase '' --yes --quick-gen-key "Secure Execution (secex) ${build}" rsa4096 encr none
-        gpg --homedir "${tmp_gpg_home}" --armor --export secex > "${ignition_pubkey}"
-        gpg --homedir "${tmp_gpg_home}" --armor --export-secret-key secex > "${ignition_prikey}"
-        exec 9<"${ignition_prikey}"
-        rm -rf "${tmp_gpg_home}" "${ignition_prikey}"
-        qemu_args+=("-add-fd" "fd=9,set=3" "-drive" "if=none,id=gpgkey,format=raw,file=/dev/fdset/3,readonly=on" \
-            "-device" "virtio-blk,serial=gpgkey,drive=gpgkey")
-
-        /usr/lib/coreos-assembler/secex-genprotimgvm-scripts/runvm.sh \
-            --genprotimgvm "${genprotimgvm}" -- "${qemu_args[@]}"
-        rm -f "${genprotimg_img}"
-        exec 9>&-
-
-        # Now store the generated ${ignition_pubkey} in the builddir and meta.json
-        gpg_key_filename="${name}-${build}-ignition-secex-key.gpg.pub"
-        postprocess_artifact "ignition-gpg-key" "${ignition_pubkey}" "${gpg_key_filename}" 'True'
-    fi
-
-    # Now store the generated artifact in the builddir and meta.json
-    postprocess_artifact "${platform}" "${imgpath}" "${imgname}" 'False'
+    case "$platform" in
+        qemu-secex)
+            # Massage the generated artifact through an extra VM for secex. This
+            # will also create an Ignition pubkey and store it in the meta.json
+            # and builddir.
+            postprocess_qemu_secex
+            # Also need to update the meta.json and builddir with the main artifact.
+            postprocess_artifact "${platform}" "${imgpath}" "${imgname}" 'False'
+            ;;
+        *)
+            # Update the meta.json and builddir with the generated artifact.
+            postprocess_artifact "${platform}" "${imgpath}" "${imgname}" 'False'
+            ;;
+    esac
 
     # Quiet for the rest of this so the last thing we see is a success message
     set +x
