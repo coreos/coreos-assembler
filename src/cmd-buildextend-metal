@@ -331,8 +331,6 @@ main() {
             ;;
     esac
 
-    # Quiet for the rest of this so the last thing we see is a success message
-    set +x
     # clean up the tmpbuild
     rm -rf "${tmp_builddir}"
 }
