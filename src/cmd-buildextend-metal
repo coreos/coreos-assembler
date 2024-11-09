@@ -315,8 +315,7 @@ json.dump(j, sys.stdout, indent=4)
     fi
 
     # and now the crucial bits
-    cosa meta --workdir "${workdir}" --build "${build}" \
-        --artifact "${platform}" --artifact-json "$(readlink -f meta.json.new)"
+    cosa meta --workdir "${workdir}" --build "${build}" --artifact-json "$(readlink -f meta.json.new)"
     /usr/lib/coreos-assembler/finalize-artifact "${imgpath}" "${builddir}/${imgname}"
 
     # Quiet for the rest of this so the last thing we see is a success message
