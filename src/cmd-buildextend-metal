@@ -68,7 +68,7 @@ postprocess_qemu_secex() {
    # Basic qemu args:
    qemu_args=(); blk_size="512"
    [[ $platform == metal4k ]] && blk_size="4096"
-   qemu_args+=("-drive" "if=none,id=target,format=${image_format},file=${imgpath},cache=unsafe" \
+   qemu_args+=("-drive" "if=none,id=target,format=qcow,file=${imgpath},cache=unsafe" \
     "-device" "virtio-blk,serial=target,drive=target,physical_block_size=${blk_size},logical_block_size=${blk_size}")
 
    # SecureVM (holding Universal Key for all IBM Z Mainframes) requires scripts to execute genprotimg
