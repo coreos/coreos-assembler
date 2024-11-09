@@ -12,7 +12,7 @@ import (
 )
 
 // commands we'd expect to use in the local dev path
-var buildCommands = []string{"init", "fetch", "build", "run", "prune", "clean", "list"}
+var buildCommands = []string{"init", "fetch", "build", "osbuild", "run", "prune", "clean", "list"}
 var advancedBuildCommands = []string{"buildfetch", "buildupload", "oc-adm-release", "push-container"}
 var buildextendCommands = []string{"aliyun", "applehv", "aws", "azure", "digitalocean", "exoscale", "extensions-container", "gcp", "hyperv", "ibmcloud", "kubevirt", "live", "metal", "metal4k", "nutanix", "openstack", "qemu", "secex", "virtualbox", "vmware", "vultr"}
 
