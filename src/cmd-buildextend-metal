@@ -125,7 +125,6 @@ main() {
 
     # Parse options
     genprotimgvm=/data.secex/genprotimgvm.qcow2
-    ignition_pubkey=
     rc=0
     build=
     force=
@@ -282,6 +281,22 @@ main() {
             --genprotimgvm "${genprotimgvm}" -- "${qemu_args[@]}"
         rm -f "${genprotimg_img}"
         exec 9>&-
+
+        # Now store the ${ignition_pubkey} in the builddir and meta.json
+        gpg_key=${name}-${build}-ignition-secex-key.gpg.pub
+        python3 -c "
+import sys, json
+j = json.load(sys.stdin)
+j['images']['ignition-gpg-key'] = {
+    'path': '${gpg_key}',
+    'sha256': '$(sha256sum_str < "${ignition_pubkey}")',
+    'size': $(stat -c '%s' "${ignition_pubkey}"),
+    'skip-compression': True
+}
+json.dump(j, sys.stdout, indent=4)
+" > meta.json.new
+        cosa meta --workdir "${workdir}" --build "${build}" --artifact-json "$(readlink -f meta.json.new)"
+        /usr/lib/coreos-assembler/finalize-artifact "${ignition_pubkey}" "${builddir}/${gpg_key}"
     fi
 
     sha256=$(sha256sum_str < "${imgpath}")
@@ -294,27 +309,8 @@ j['images']['${platform}'] = {
     'size': $(stat -c '%s' "${imgpath}")
 }
 json.dump(j, sys.stdout, indent=4)
-" | jq -s add > "meta.json.new"
-
-    # one more artifact for Secure Execution
-    if [[ -n "${ignition_pubkey}" ]]; then
-        gpg_key=${name}-${build}-ignition-secex-key.gpg.pub
-        python3 -c "
-import sys, json
-j = json.load(sys.stdin)
-j['images']['ignition-gpg-key'] = {
-    'path': '${gpg_key}',
-    'sha256': '$(sha256sum_str < "${ignition_pubkey}")',
-    'size': $(stat -c '%s' "${ignition_pubkey}"),
-    'skip-compression': True
-}
-json.dump(j, sys.stdout, indent=4)
-" < "meta.json.new" | jq -s add > "key.json"
-        mv key.json meta.json.new
-        /usr/lib/coreos-assembler/finalize-artifact "${ignition_pubkey}" "${builddir}/${gpg_key}"
-    fi
-
-    # and now the crucial bits
+" > meta.json.new
+    # Now store the built artifact in the builddir and meta.json
     cosa meta --workdir "${workdir}" --build "${build}" --artifact-json "$(readlink -f meta.json.new)"
     /usr/lib/coreos-assembler/finalize-artifact "${imgpath}" "${builddir}/${imgname}"
 
