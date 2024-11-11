@@ -71,3 +71,16 @@ systemd:
         Options=rw,noatime
         [Install]
         WantedBy=default.target
+    - name: autohalt.service
+      enabled: true
+      contents: |
+        [Unit]
+        Description=Halts system on firstboot
+        ConditionKernelCommandLine=ignition.firstboot
+        After=multi-user.target
+        [Service]
+        Type=oneshot
+        ExecStartPre=/bin/echo "Shutting down"
+        ExecStart=/usr/bin/systemctl --no-block poweroff
+        [Install]
+        WantedBy=multi-user.target
