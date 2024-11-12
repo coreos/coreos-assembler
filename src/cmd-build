@@ -623,18 +623,24 @@ mv -T tmp "${saved_build_tmpdir}"
 # just keep the last 3 commits as a rough guideline; this matches
 # DEFAULT_KEEP_LAST_N in `cmd-prune`
 ostree prune --repo="${tmprepo}" --refs-only --depth=2
-# Back to the toplevel work directory, so we can rename this one
-cd "${workdir}"
-# We create a .build-commit file to note that we're in the
-# middle of a "commit".  This may be useful in the future
-# for having things be transactional.  If for example we
-# were interrupted between the rename() and linkat() below,
-# things would be inconsistent and future builds would fail
-# on the `mv`.
-touch builds/.build-commit
 builddir=$(get_build_dir "${buildid}")
+# And now mv the final artifacts to the build dir
 mkdir -p "${builddir}"
-mv -T "${tmp_builddir}" "${builddir}"
+# "loose" objects; i.e. untracked by meta.json
+loose_objs=()
+# commit metadata
+loose_objs+=("commitmeta.json" "ostree-commit-object")
+loose_objs+=("manifest-lock.generated.$basearch.json")
+# source metadata
+loose_objs+=("coreos-assembler-config-git.json" "coreos-assembler-config.tar.gz")
+mv -vt "${builddir}" "${loose_objs[@]}"
+# official more public artifacts; tracked by meta.json
+jq -r .images[].path meta.json | xargs mv -vt "${builddir}"
+# and finally, meta.json itself
+mv -vt "${builddir}" meta.json
+# and now go back to the workdir so we can nuke this dir
+cd "${workdir}"
+rm -rf "${tmp_builddir}"
 # Replace the latest link
 ln -Tsf "${buildid}" builds/latest
 
@@ -643,7 +649,6 @@ if [ "${SKIP_PRUNE}" == 1 ]; then
 else
   "${dn}"/cmd-prune --workdir "${workdir}"
 fi
-rm builds/.build-commit
 
 if [ -n "${TAG}" ]; then
     # ideally, we'd do this atomically before moving to builds/latest, but
