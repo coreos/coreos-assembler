@@ -313,10 +313,33 @@ func runFnAndWaitForRebootIntoVersion(c cluster.TestCluster, m platform.Machine,
 	}
 }
 
+func waitForUpgradeToBeStaged(c cluster.TestCluster, m platform.Machine) {
+	// Here we set up a systemd path unit to watch for when ostree
+	// behind the scenes updates the refs in the repo under the
+	// /ostree/deploy directory.
+	// Using /ostree/deploy as the canonical API for monitoring deployment changes.
+	// This path is updated by ostree for deployment changes.
+	// refchanged.path will trigger when it gets updated and will then stop wait.service.
+	// The systemd-run --wait causes it to not return here (and thus
+	// continue execution of code here) until wait.service has been
+	// stopped by refchanged.service. This is an effort to make us
+	// start waiting inside runFnAndWaitForRebootIntoVersion until
+	// later in the upgrade process because we are seeing failures due
+	// to timeouts and we're trying to reduce the variability by
+	// minimizing the wait inside that function to just the actual reboot.
+	// https://github.com/coreos/fedora-coreos-tracker/issues/1805
+	//
+	// Note: if systemd-run ever gains the ability to --wait when
+	// generating a path unit then the below can be simplified.
+	c.RunCmdSync(m, "sudo systemd-run -u refchanged --path-property=PathChanged=/ostree/deploy systemctl stop wait.service")
+	c.RunCmdSync(m, "sudo systemd-run --wait -u wait sleep infinity")
+}
+
 func waitForUpgradeToVersion(c cluster.TestCluster, m platform.Machine, version string) {
 	runFnAndWaitForRebootIntoVersion(c, m, version, func() {
 		// Start Zincati so it will apply the update
 		c.RunCmdSync(m, "sudo systemctl start zincati.service")
+		waitForUpgradeToBeStaged(c, m)
 	})
 }
 
@@ -328,6 +351,7 @@ func rpmostreeRebase(c cluster.TestCluster, m platform.Machine, ref, version str
 		// we use systemd-run here so that we can test the --reboot path
 		// without having SSH not exit cleanly, which would cause an error
 		c.RunCmdSyncf(m, "sudo systemd-run rpm-ostree rebase --reboot %s", ref)
+		waitForUpgradeToBeStaged(c, m)
 	})
 }
 
