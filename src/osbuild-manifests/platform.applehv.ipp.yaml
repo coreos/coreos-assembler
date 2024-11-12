@@ -65,4 +65,5 @@ pipelines:
         options:
           paths:
             - from: input://tree/disk.img
-              to: tree:///applehv
+              to:
+                mpp-format-string: 'tree:///{artifact_name_prefix}-applehv.{arch}.raw'
