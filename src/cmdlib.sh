@@ -157,8 +157,8 @@ prepare_build() {
         fatal "No ${workdir}/builds found; did you run coreos-assembler init?"
     fi
 
-    if [ "$(stat -f --printf="%T" .)" = "overlayfs" ] && [ -z "${COSA_SKIP_OVERLAY:-}" ]; then
-        fatal "${workdir} must be a volume"
+    if has_privileges && [ "$(stat -f --printf="%T" .)" = "overlayfs" ] && [ -z "${COSA_SKIP_OVERLAY:-}" ]; then
+        fatal "${workdir} must be a volume when privileged"
     fi
 
     if test '!' -w "${workdir}"; then
