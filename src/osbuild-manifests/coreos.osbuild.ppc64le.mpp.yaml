@@ -1,5 +1,6 @@
 version: '2'
 mpp-vars:
+  artifact_name_prefix: $artifact_name_prefix
   ostree_repo: $ostree_repo
   ostree_ref: $ostree_ref
   ociarchive: $ociarchive

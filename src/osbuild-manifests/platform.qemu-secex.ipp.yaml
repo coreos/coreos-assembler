@@ -288,7 +288,8 @@ pipelines:
               name:raw-qemu-secex-image:
                 file: disk.img
         options:
-          filename: qemu-secex
+          filename:
+            mpp-format-string: '{artifact_name_prefix}-qemu-secex.{arch}.qcow2'
           format:
             type: qcow2
             compression: false

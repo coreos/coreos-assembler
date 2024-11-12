@@ -183,6 +183,7 @@ generate_runvm_osbuild_config() {
 
     # Generate the JSON describing the disk we want to build
     yaml2json /dev/stdin "${runvm_osbuild_config_json}" <<EOF
+artifact-name-prefix: "${name}-${build}"
 container-imgref: "${container_imgref}"
 deploy-via-container: "${deploy_via_container}"
 osname: "${name}"
@@ -351,14 +352,11 @@ main() {
                 --platforms "$(IFS=,; echo "${platforms[*]}")"
 
     for platform in "${platforms[@]}"; do
-        suffix="${SUPPORTED_PLATFORMS[$platform]}"
-
         # Set the filename of the artifact and the local image path
-        # where the file will reside temporarily and move it there
-        # from the OSBuild out directory.
+        # where from the OSBuild out directory where it resides.
+        suffix="${SUPPORTED_PLATFORMS[$platform]}"
         imgname=${name}-${build}-${platform}.${basearch}.${suffix}
-        imgpath=${PWD}/${imgname}
-        mv "${outdir}/${platform}/${platform}" "${imgpath}"
+        imgpath="${outdir}/${platform}/${imgname}"
 
         # Perform postprocessing
         case "$platform" in

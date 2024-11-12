@@ -90,7 +90,8 @@ pipelines:
         options:
           paths:
             - from: input://tree/disk.img
-              to: tree:///metal
+              to:
+                mpp-format-string: 'tree:///{artifact_name_prefix}-metal.{arch}.raw'
   - name: raw-metal4k-image
     build:
       mpp-format-string: '{buildroot}'
@@ -183,4 +184,5 @@ pipelines:
         options:
           paths:
             - from: input://tree/disk.img
-              to: tree:///metal4k
+              to:
+                mpp-format-string: 'tree:///{artifact_name_prefix}-metal4k.{arch}.raw'

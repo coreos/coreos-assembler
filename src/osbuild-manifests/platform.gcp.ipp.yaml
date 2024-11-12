@@ -62,7 +62,7 @@ pipelines:
           tree:
             type: org.osbuild.tree
             origin: org.osbuild.pipeline
-            references:                 
+            references:
               - name:raw-gcp-image
         options:
           filename: disk.tar
@@ -85,4 +85,5 @@ pipelines:
               name:raw-gcp-image-tar:
                 file: disk.tar
         options:
-          filename: gcp
+          filename:
+            mpp-format-string: '{artifact_name_prefix}-gcp.{arch}.tar.gz'

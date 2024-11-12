@@ -64,6 +64,7 @@ pipelines:
               name:raw-hyperv-image:
                 file: disk.img
         options:
-          filename: hyperv
+          filename:
+            mpp-format-string: '{artifact_name_prefix}-hyperv.{arch}.vhdx'
           format:
             type: vhdx

@@ -48,6 +48,7 @@ do
      esac;
 done
 
+artifact_name_prefix=$(getconfig_def "artifact-name-prefix" "custom-coreos")
 ostree_container=$(getconfig "ostree-container")
 osname=$(getconfig "osname")
 deploy_via_container=$(getconfig_def "deploy-via-container" "")
@@ -94,19 +95,20 @@ podman images > /dev/null
 
 # Run through the preprocessor
 # Note: don't quote the size arguements since they are numbers, not strings
-osbuild-mpp                                             \
-    -D arch=\""$(arch)"\"                               \
-    -D ostree_ref=\""${ostree_ref}"\"                   \
-    -D ostree_repo=\""${ostree_repo}"\"                 \
-    -D ociarchive=\""${ostree_container}"\"             \
-    -D osname=\""${osname}"\"                           \
-    -D container_imgref=\""${container_imgref}"\"       \
-    -D container_repo=\""${container_repo}"\"           \
-    -D container_tag=\""${container_tag}"\"             \
-    -D extra_kargs=\""${extra_kargs}"\"                 \
-    -D metal_image_size_mb="${metal_image_size_mb}"     \
-    -D cloud_image_size_mb="${cloud_image_size_mb}"     \
-    -D rootfs_size_mb="${rootfs_size_mb}"               \
+osbuild-mpp                                               \
+    -D arch=\""$(arch)"\"                                 \
+    -D artifact_name_prefix=\""${artifact_name_prefix}"\" \
+    -D ostree_ref=\""${ostree_ref}"\"                     \
+    -D ostree_repo=\""${ostree_repo}"\"                   \
+    -D ociarchive=\""${ostree_container}"\"               \
+    -D osname=\""${osname}"\"                             \
+    -D container_imgref=\""${container_imgref}"\"         \
+    -D container_repo=\""${container_repo}"\"             \
+    -D container_tag=\""${container_tag}"\"               \
+    -D extra_kargs=\""${extra_kargs}"\"                   \
+    -D metal_image_size_mb="${metal_image_size_mb}"       \
+    -D cloud_image_size_mb="${cloud_image_size_mb}"       \
+    -D rootfs_size_mb="${rootfs_size_mb}"                 \
     "${mppyaml}" "${processed_json}"
 
 # Build the image
