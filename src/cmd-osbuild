@@ -61,7 +61,11 @@ j['images']['${artifact_name}'] = {
     'sha256': '$(sha256sum_str < "${local_filepath}")',
     'size': $(stat -c '%s' "${local_filepath}")
 }
-if ${skip_compress}:
+# backwards conditional here because of a invalid (for this code) CI check
+# https://github.com/coreos/coreos-assembler/pull/3930#issuecomment-2473714222
+if False:
+    pass
+elif ${skip_compress}:
     j['images']['${artifact_name}']['skip-compression'] = True
 json.dump(j, sys.stdout, indent=4)
 " > meta.json.new
