@@ -51,7 +51,7 @@ pipelines:
              partition:
                mpp-format-int: '{image.layout[''boot''].partnum}'
              target: /boot
-  - name: hyperv
+  - name: raw-hyperv-image-vhdx
     build:
       mpp-format-string: '{qemu_stage_buildroot}'
     stages:
@@ -68,3 +68,18 @@ pipelines:
             mpp-format-string: '{artifact_name_prefix}-hyperv.{arch}.vhdx'
           format:
             type: vhdx
+  - name: hyperv
+    build:
+      mpp-format-string: '{qemu_stage_buildroot}'
+    stages:
+      - type: org.osbuild.zip
+        inputs:
+          tree:
+            type: org.osbuild.tree
+            origin: org.osbuild.pipeline
+            references:
+              - name:raw-hyperv-image-vhdx
+        options:
+          level: 9
+          filename:
+            mpp-format-string: '{artifact_name_prefix}-hyperv.{arch}.vhdx.zip'

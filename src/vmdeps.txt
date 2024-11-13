@@ -37,7 +37,7 @@ tar
 podman
 
 # For running osbuild
-osbuild osbuild-ostree osbuild-selinux osbuild-tools python3-pyrsistent
+osbuild osbuild-ostree osbuild-selinux osbuild-tools python3-pyrsistent zip
 
 # For resetting the terminal inside supermin shell
 /usr/bin/reset
