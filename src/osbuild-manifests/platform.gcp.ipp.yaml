@@ -85,5 +85,6 @@ pipelines:
               name:raw-gcp-image-tar:
                 file: disk.tar
         options:
+          level: 9
           filename:
             mpp-format-string: '{artifact_name_prefix}-gcp.{arch}.tar.gz'
