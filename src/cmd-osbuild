@@ -8,7 +8,7 @@ dn=$(dirname "$0")
 # A list of supported platforms and the filename suffix of the main
 # artifact that platform produces.
 declare -A SUPPORTED_PLATFORMS=(
-    ['applehv']='raw'
+    ['applehv']='raw.gz'
     ['gcp']='tar.gz'
     ['hyperv']='vhdx'
     ['metal4k']='raw'
@@ -360,6 +360,11 @@ main() {
 
         # Perform postprocessing
         case "$platform" in
+            applehv|gcp)
+                # Update the meta.json and builddir with the generated artifact.
+                # Skip Compression on these platforms as they are already compressed.
+                postprocess_artifact "${platform}" "${imgpath}" "${imgname}" 'True'
+                ;;
             qemu-secex)
                 # Massage the generated artifact through an extra VM for secex. This
                 # will also create an Ignition pubkey and store it in the meta.json
