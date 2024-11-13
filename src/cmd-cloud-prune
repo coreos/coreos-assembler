@@ -34,8 +34,10 @@
 
 import argparse
 import json
+import subprocess
 from urllib.parse import urlparse
 import pytz
+import requests
 import yaml
 import collections
 import datetime
@@ -59,6 +61,8 @@ CACHE_MAX_AGE_METADATA = 60 * 5
 # is up to date.
 SUPPORTED = ["amis", "gcp"]
 UNSUPPORTED = ["aliyun", "azure", "ibmcloud", "powervs"]
+# list of known streams with containers
+STREAMS = {"next", "testing", "stable", "next-devel", "testing-devel", "rawhide", "branched"}
 
 
 def parse_args():
@@ -70,6 +74,8 @@ def parse_args():
     parser.add_argument("--gcp-json-key", help="GCP Service Account JSON Auth", default=os.environ.get("GCP_JSON_AUTH"))
     parser.add_argument("--acl", help="ACL for objects", action='store', default='private')
     parser.add_argument("--aws-config-file", default=os.environ.get("AWS_CONFIG_FILE"), help="Path to AWS config file")
+    parser.add_argument("--registry-auth-file", default=os.environ.get("REGISTRY_AUTH_FILE"),
+                        help="Path to docker registry auth file. Directly passed to skopeo.")
     return parser.parse_args()
 
 
@@ -110,6 +116,12 @@ def main():
     builds = builds_json_data["builds"]
     pruned_build_ids = []
     images_to_keep = policy.get(stream, {}).get("images-keep", [])
+    barrier_releases = set()
+    # Get the update graph for stable streams
+    if stream in ['stable', 'testing', 'next']:
+        update_graph = get_update_graph(stream)['releases']
+        # Keep only the barrier releases
+        barrier_releases = set([release["version"] for release in update_graph if "barrier" in release])
 
     # Iterate through builds from oldest to newest
     for build in reversed(builds):
@@ -125,7 +137,7 @@ def main():
             current_build = Build(id=build_id, images=images, arch=arch, meta_json=meta_json)
 
             # Iterate over actions (policy types) to apply pruning
-            for action in ['cloud-uploads', 'images', 'build']:
+            for action in ['cloud-uploads', 'images', 'build', 'containers']:
                 if action not in policy[stream]:
                     continue
                 action_duration = convert_duration_to_days(policy[stream][action])
@@ -162,7 +174,22 @@ def main():
                         case "build":
                             prune_build(s3_client, bucket, prefix, build_id, args.dry_run)
                             pruned_build_ids.append(build_id)
-
+                        case "containers":
+                            # Our containers are manifest listed, which means deleting the container tag
+                            # for one architecture deletes it for all of them. We'll choose to only prune
+                            # for x86_64 since it is the one architecture that exists for all builds.
+                            if arch == "x86_64":
+                                if build_id in barrier_releases:
+                                    # Since containers are used for updates we need to keep around containers for barrier releases.
+                                    print(f"Release {build_id} is a barrier release. Skipping container prune.")
+                                    continue
+                                # Retrieve container tags excluding the stream name since it updates with each release.
+                                container_tags, container_repo = get_container_tags(meta_json, exclude=[stream])
+                                if container_tags:
+                                    for tag in container_tags:
+                                        prune_container(tag, args.dry_run, container_repo, args.registry_auth_file)
+                                else:
+                                    print(f"No container tags to prune for build {build_id}.")
         # Update policy-cleanup after pruning actions for the architecture
         policy_cleanup = build.setdefault("policy-cleanup", {})
         for action in policy[stream].keys():  # Only update actions specified in policy[stream]
@@ -174,6 +201,9 @@ def main():
                     if "images" not in policy_cleanup:
                         policy_cleanup["images"] = True
                     policy_cleanup["images-kept"] = images_to_keep
+                case "containers":
+                    if "containers" not in policy_cleanup:
+                        policy_cleanup["containers"] = True
 
     if pruned_build_ids:
         if "tombstone-builds" not in builds_json_data:
@@ -412,6 +442,64 @@ def prune_build(s3_client, bucket, prefix, build_id, dry_run):
                 print(f"{bucket}/{build_prefix} already pruned or doesn't exist.")
             else:
                 raise Exception(f"Error pruning {build_id}: {e.response['Error']['Message']}")
+
+
+def get_container_tags(meta_json, exclude):
+    base_oscontainer = meta_json.get("base-oscontainer")
+    if base_oscontainer:
+        tags = base_oscontainer.get("tags", [])
+        filtered_tags = [tag for tag in tags if tag not in exclude]
+        container_repo = base_oscontainer.get("image", "")
+        return filtered_tags, container_repo
+    return [], ""
+
+
+def prune_container(tag, dry_run, container_repo, registry_auth_file):
+    if dry_run:
+        print(f"Would prune image {container_repo}:{tag}")
+    else:
+        skopeo_delete(container_repo, tag, registry_auth_file)
+
+
+def get_update_graph(stream):
+    url = f"https://builds.coreos.fedoraproject.org/updates/{stream}.json"
+    r = requests.get(url, timeout=5)
+    if r.status_code != 200:
+        raise Exception(f"Could not download update graph for {stream}. HTTP {r.status_code}")
+    return r.json()
+
+
+def skopeo_inspect(repo, tag, auth):
+    skopeo_args = ["skopeo", "inspect", "--no-tags", "--retry-times=10", f"docker://{repo}:{tag}"]
+    if auth:
+        skopeo_args.extend(["--authfile", auth])
+    try:
+        subprocess.check_output(skopeo_args, stderr=subprocess.STDOUT)
+        return True  # Inspection succeeded
+    except subprocess.CalledProcessError as e:
+        exit_code = e.returncode
+        error_message = e.output.decode("utf-8")
+
+        # Exit code 2 indicates the image tag does not exist. We will consider it as pruned.
+        if exit_code == 2:
+            print(f"Skipping deletion for {repo}:{tag} since the tag does not exist.")
+            return False
+        else:
+            # Handle other types of errors
+            raise Exception(f"Inspection failed for {repo}:{tag} with exit code {exit_code}: {error_message}")
+
+
+def skopeo_delete(repo, image, auth):
+    if skopeo_inspect(repo, image, auth):  # Only proceed if inspection succeeds
+        skopeo_args = ["skopeo", "delete", f"docker://{repo}:{image}"]
+        if auth:
+            skopeo_args.extend(["--authfile", auth])
+        try:
+            subprocess.check_output(skopeo_args, stderr=subprocess.STDOUT)
+            print(f"Image {repo}:{image} deleted successfully.")
+        except subprocess.CalledProcessError as e:
+            # Throw an exception in case the delete command fail despite the image existing
+            raise Exception("An error occurred during deletion:", e.output.decode("utf-8"))
 
 
 if __name__ == "__main__":
