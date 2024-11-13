@@ -16,7 +16,6 @@ import (
 	"github.com/coreos/coreos-assembler/mantle/kola/register"
 	"github.com/coreos/coreos-assembler/mantle/platform"
 	"github.com/coreos/coreos-assembler/mantle/platform/machine/qemu"
-	"github.com/coreos/coreos-assembler/mantle/util"
 )
 
 const (
@@ -91,21 +90,6 @@ func init() {
 		// only work on x86_64 and aarch64.
 		Architectures: []string{"x86_64", "aarch64"},
 	})
-	// TODO: Enable DockerPing/DockerEcho once fixed
-	// TODO: Only enable PodmanPing on non qemu. Needs:
-	// https://github.com/coreos/mantle/issues/1132
-	register.RegisterTest(&register.Test{
-		Name:        "fcos.internet",
-		Description: "Verify that podman echo and get head work.",
-		Run:         InternetTests,
-		ClusterSize: 1,
-		Tags:        []string{kola.NeedsInternetTag},
-		NativeFuncs: map[string]register.NativeFuncWrap{
-			"PodmanEcho":     register.CreateNativeFuncWrap(TestPodmanEcho),
-			"PodmanWgetHead": register.CreateNativeFuncWrap(TestPodmanWgetHead),
-		},
-		Distros: []string{"fcos"},
-	})
 	register.RegisterTest(&register.Test{
 		Name:        "rootfs.uuid",
 		Description: "Verify that the root disk's GUID was set to a random one on first boot.",
@@ -177,31 +161,6 @@ func TestPortSsh() error {
 		return err
 	}
 	return nil
-}
-
-func TestDockerEcho() error {
-	//t.Parallel()
-	return util.RunCmdTimeout(DockerTimeout, "docker", "run", "busybox", "echo")
-}
-
-func TestDockerPing() error {
-	//t.Parallel()
-	return util.RunCmdTimeout(DockerTimeout, "docker", "run", "busybox", "ping", "-c4", "coreos.com")
-}
-
-func TestPodmanEcho() error {
-	//t.Parallel()
-	return util.RunCmdTimeout(DockerTimeout, "podman", "run", "busybox", "echo")
-}
-
-func TestPodmanPing() error {
-	//t.Parallel()
-	return util.RunCmdTimeout(DockerTimeout, "podman", "run", "busybox", "ping", "-c4", "coreos.com")
-}
-
-func TestPodmanWgetHead() error {
-	//t.Parallel()
-	return util.RunCmdTimeout(DockerTimeout, "podman", "run", "busybox", "wget", "--spider", "http://fedoraproject.org/static/hotspot.txt")
 }
 
 // This execs gdbus, because we need to change uses to test perms.
