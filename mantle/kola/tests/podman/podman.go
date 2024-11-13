@@ -129,8 +129,8 @@ func podmanWorkflow(c cluster.TestCluster) {
 	m := c.Machines()[0]
 
 	// Test: Verify container can run with volume mount and port forwarding
-	image := "docker.io/library/nginx"
-	wwwRoot := "/usr/share/nginx/html"
+	image := "quay.io/fedora/fedora"
+	wwwRoot := "/var/html"
 	var id string
 
 	c.Run("run", func(c cluster.TestCluster) {
@@ -138,7 +138,8 @@ func podmanWorkflow(c cluster.TestCluster) {
 		cmd := fmt.Sprintf("echo TEST PAGE > %s/index.html", string(dir))
 		c.RunCmdSync(m, cmd)
 
-		cmd = fmt.Sprintf("sudo podman run -d -p 80:80 -v %s/index.html:%s/index.html:z %s", string(dir), wwwRoot, image)
+		webServerCmd := fmt.Sprintf("sh -c 'dnf install -y python3 && python3 -m http.server -d %s 80'", wwwRoot)
+		cmd = fmt.Sprintf("sudo podman run -d -p 80:80 -v %s/index.html:%s/index.html:z %s %s", string(dir), wwwRoot, image, webServerCmd)
 		out := c.MustSSH(m, cmd)
 		id = string(out)[0:64]
 
