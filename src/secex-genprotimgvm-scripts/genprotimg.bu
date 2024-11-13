@@ -13,7 +13,7 @@ storage:
     - path: /etc/se-hostkeys/ibm-z-hostkey-1
       overwrite: true
       contents:
-        local: secex-hostkey
+        local: HOSTKEY-FILE
     - path: /usr/local/bin/do_genprotimg
       overwrite: true
       mode: 0755

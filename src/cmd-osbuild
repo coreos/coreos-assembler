@@ -86,14 +86,20 @@ postprocess_qemu_secex() {
             if [ ! -f "${hostkey}" ]; then
                 fatal "No hostkey and no genprotimgvm provided"
             fi
-            ignition=$(mktemp -p "${tmp_builddir}")
-            butane -p -d "$(dirname "${hostkey}")" /usr/lib/coreos-assembler/secex-genprotimgvm-scripts/genprotimg.bu -o "${ignition}"
+            echo "Injecting user-provided hostkey into config"
+            ignition_cfg=$(mktemp -p "${tmp_builddir}")
+            butane_cfg=$(mktemp -p "${tmp_builddir}")
+            hostkey_name=$(basename "${hostkey}")
+            hostkey_path=$(dirname "${hostkey}")
+            cp /usr/lib/coreos-assembler/secex-genprotimgvm-scripts/genprotimg.bu "${butane_cfg}"
+            sed -i 's/HOSTKEY-FILE/'"${hostkey_name}"'/g' "${butane_cfg}"
+            butane -p -d "${hostkey_path}" "${butane_cfg}" -o "${ignition_cfg}"
 
             cp "/srv/builds/latest/${basearch}/${name}-${build}-qemu.${basearch}.${suffix}" "${genprotimgvm}"
             chmod +w "${genprotimgvm}"
             genvm_args=("-drive" "if=none,id=hda,format=qcow2,file=${genprotimgvm},auto-read-only=off,cache=unsafe" \
                         "-device" "virtio-blk,drive=hda,bootindex=1")
-            kola qemuexec -i "${ignition}" -- "${genvm_args[@]}"
+            kola qemuexec -i "${ignition_cfg}" -- "${genvm_args[@]}"
         fi
     fi
 
