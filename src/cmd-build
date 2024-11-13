@@ -571,9 +571,10 @@ cat > tmp/images.json <<EOF
         "skip-compression": true
     },
     "oci-manifest": {
-      "path": "${ostree_oci_manifest_path}",
-      "sha256": "${ostree_oci_manifest_sha256}",
-      "size": ${ostree_oci_manifest_size}
+        "path": "${ostree_oci_manifest_path}",
+        "sha256": "${ostree_oci_manifest_sha256}",
+        "size": ${ostree_oci_manifest_size},
+        "skip-compression": true
     }
   }
 }
