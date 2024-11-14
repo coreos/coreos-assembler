@@ -174,12 +174,6 @@ var enableCrioIgn = conf.Ignition(`{
   "ignition": {
     "version": "3.0.0"
   },
-  "storage": {
-	"directories": [{
-		"path": "/tmp/test",
-		"mode": 511
-	}]
-  },
   "systemd": {
     "units": [
       {
