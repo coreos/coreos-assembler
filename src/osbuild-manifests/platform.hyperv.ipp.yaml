@@ -53,7 +53,7 @@ pipelines:
              target: /boot
   - name: raw-hyperv-image-vhdx
     build:
-      mpp-format-string: '{qemu_stage_buildroot}'
+      mpp-format-string: '{host_as_buildroot}'
     stages:
       - type: org.osbuild.qemu
         inputs:
@@ -70,7 +70,7 @@ pipelines:
             type: vhdx
   - name: hyperv
     build:
-      mpp-format-string: '{qemu_stage_buildroot}'
+      mpp-format-string: '{host_as_buildroot}'
     stages:
       - type: org.osbuild.zip
         inputs:

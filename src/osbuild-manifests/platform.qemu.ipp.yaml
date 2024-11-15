@@ -82,7 +82,7 @@ pipelines:
               target: /boot
   - name: qemu
     build:
-      mpp-format-string: '{qemu_stage_buildroot}'
+      mpp-format-string: '{host_as_buildroot}'
     stages:
       - type: org.osbuild.qemu
         inputs:

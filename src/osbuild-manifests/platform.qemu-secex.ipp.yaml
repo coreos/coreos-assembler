@@ -353,7 +353,7 @@ pipelines:
                 mpp-format-int: '{image_secex.layout[''roothash''].size}'
   - name: qemu-secex
     build:
-      mpp-format-string: '{qemu_stage_buildroot}'
+      mpp-format-string: '{host_as_buildroot}'
     stages:
       - type: org.osbuild.qemu
         inputs:
