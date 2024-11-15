@@ -34,12 +34,15 @@ mpp-vars:
     mpp-if: osname in ['rhcos', 'scos']
     then: "name:deployed-tree"
     else: ""
-  # For the qemu stages we'll use the host buildroot (COSA)
-  # because we definitely don't include qemu-img in CoreOS. ""
+  # For some stages (i.e. the qemu stages) we'll use the host as
+  # the buildroot (i.e. COSA in most cases but sometimes just
+  # the actual HOST filesystem like in coreos/custom-coreos-disk-images).
+  # This is useful/necessary because we definitely don't include
+  # qemu-img or tools like zip in the actual CoreOS OS. "" here
   # means to use the host as buildroot. It is worth noting that
   # the host buildroot is the default if nothing is specified.
   # We're still defining it here in an attempt to be explicit.
-  qemu_stage_buildroot: ""
+  host_as_buildroot: ""
 mpp-define-images:
   - id: image
     sector_size:
