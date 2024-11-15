@@ -14,7 +14,7 @@ storage:
       overwrite: true
       contents:
         local: secex-hostkey
-    - path: /etc/do_genprotimg
+    - path: /usr/local/bin/do_genprotimg
       overwrite: true
       mode: 0755
       contents:
@@ -52,7 +52,7 @@ systemd:
         [Service]
         Type=oneshot
         StandardOutput=journal+console
-        ExecStart=/etc/do_genprotimg
+        ExecStart=/usr/local/bin/do_genprotimg
         ExecStopPost=/sbin/halt
         [Install]
         WantedBy=default.target
