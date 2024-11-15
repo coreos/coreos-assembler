@@ -32,7 +32,7 @@ mpp-vars:
   # the host (COSA) gets used as the buildroot there.
   buildroot:
     mpp-if: osname in ['rhcos', 'scos']
-    then: "name:build"
+    then: "name:deployed-tree"
     else: ""
   # For the qemu stages we'll use the host buildroot (COSA)
   # because we definitely don't include qemu-img in CoreOS. ""
@@ -111,12 +111,17 @@ pipelines:
                 to: tree:///coreos.ociarchive
         else:
           type: org.osbuild.noop
-  # Construct a buildroot here from the input container reference (either
-  # ociarchive or registry/tag). Note that this is only used as a buildroot
-  # on RHCOS (FCOS doesn't ship python), but it is used everywhere as
-  # file_context input to the org.osbuild.selinux stages.
-  # unless used somewhere later in the manifest.
-  - name: build
+  # Construct a tree here that is a representation of the filesystem
+  # that you would see on a running OSTree system. i.e. instead of just
+  # /ostree and /sysroot at the toplevel we see /usr/ /var/ /etc/ ... that
+  # you would see inside an OSTree deployment. Having the plain files accessible
+  # allows for this pipeline to be used as a buildroot for some stages
+  # or as inputs for others (i.e. file_context input to the org.osbuild.selinux
+  # stages). This pipeline isn't actually used for built artifacts but
+  # to help during build.
+  #
+  # NOTE: this is only used as a buildroot on RHCOS (FCOS doesn't ship python).
+  - name: deployed-tree
     stages:
       - mpp-if: ociarchive != ''
         then:
@@ -154,7 +159,7 @@ pipelines:
             type: org.osbuild.tree
             origin: org.osbuild.pipeline
             references:
-              - name:build
+              - name:deployed-tree
       - type: org.osbuild.ostree.init-fs
       - type: org.osbuild.ostree.os-init
         options:
@@ -351,7 +356,7 @@ pipelines:
             type: org.osbuild.tree
             origin: org.osbuild.pipeline
             references:
-              - name:build
+              - name:deployed-tree
         devices:
           disk:
             type: org.osbuild.loopback
@@ -374,7 +379,7 @@ pipelines:
             type: org.osbuild.tree
             origin: org.osbuild.pipeline
             references:
-              - name:build
+              - name:deployed-tree
         devices:
           disk:
             type: org.osbuild.loopback
@@ -572,7 +577,7 @@ pipelines:
             type: org.osbuild.tree
             origin: org.osbuild.pipeline
             references:
-              - name:build
+              - name:deployed-tree
         devices:
           disk:
             type: org.osbuild.loopback
@@ -597,7 +602,7 @@ pipelines:
             type: org.osbuild.tree
             origin: org.osbuild.pipeline
             references:
-              - name:build
+              - name:deployed-tree
         devices:
           disk:
             type: org.osbuild.loopback

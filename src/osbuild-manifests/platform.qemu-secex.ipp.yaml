@@ -142,7 +142,7 @@ pipelines:
             type: org.osbuild.tree
             origin: org.osbuild.pipeline
             references:
-              - name:build
+              - name:deployed-tree
         devices:
           disk:
             type: org.osbuild.loopback
@@ -165,7 +165,7 @@ pipelines:
             type: org.osbuild.tree
             origin: org.osbuild.pipeline
             references:
-              - name:build
+              - name:deployed-tree
         devices:
           disk:
             type: org.osbuild.loopback
