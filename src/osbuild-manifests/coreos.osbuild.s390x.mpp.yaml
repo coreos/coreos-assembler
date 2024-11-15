@@ -29,15 +29,6 @@ mpp-vars:
   boot_fs_label: boot
   root_fs_uuid: 910678ff-f77e-4a7d-8d53-86f2ac47a823
   root_fs_label: root
-  # Set the buildroot string to use for most operations here. We create
-  # the buildroot from the target OSTree contents so we have version
-  # matches. Unfortunately for FCOS there is no python so we can't
-  # really use FCOS as the buildroot so we'll set it to "" so that
-  # the host (COSA) gets used as the buildroot there.
-  buildroot:
-    mpp-if: osname in ['rhcos', 'scos']
-    then: "name:deployed-tree"
-    else: ""
   # For some stages (i.e. the qemu stages) we'll use the host as
   # the buildroot (i.e. COSA in most cases but sometimes just
   # the actual HOST filesystem like in coreos/custom-coreos-disk-images).
@@ -47,6 +38,16 @@ mpp-vars:
   # the host buildroot is the default if nothing is specified.
   # We're still defining it here in an attempt to be explicit.
   host_as_buildroot: ""
+  # Set the buildroot string to use for most operations here. We create
+  # the buildroot from the target OSTree contents so we have version
+  # matches. Unfortunately for FCOS there is no python so we can't
+  # really use FCOS as the buildroot so we'll use the host as the
+  # buildroot there.
+  buildroot:
+    mpp-if: osname in ['rhcos', 'scos']
+    then: "name:deployed-tree"
+    else:
+      mpp-format-string: '{host_as_buildroot}'
 mpp-define-images:
   - id: image
     sector_size:
