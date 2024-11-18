@@ -259,10 +259,11 @@ prepare_build() {
     rpm-ostree compose tree --repo="${tmprepo}" --print-only "${manifest}" > "${flattened_manifest}"
     export flattened_manifest
 
-    # Abuse the rojig/name as the name of the VM images
-    # Also grab rojig summary for image upload descriptions
-    name=$(jq -r '.rojig.name' < "${flattened_manifest}")
-    summary=$(jq -r '.rojig.summary' < "${flattened_manifest}")
+    # Use metadata.name as the name of the VM images
+    # Also grab metadata.summary for image upload descriptions
+    # XXX: delete the rojig fallbacks once we've moved over to metadata
+    name=$(jq -r '.metadata.name//.rojig.name' < "${flattened_manifest}")
+    summary=$(jq -r '.metadata.summary//.rojig.summary' < "${flattened_manifest}")
     ref=$(jq -r '.ref//""' < "${flattened_manifest}")
     export name ref summary
     # And validate fields coreos-assembler requires, but not rpm-ostree
