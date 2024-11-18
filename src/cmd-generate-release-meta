@@ -143,9 +143,11 @@ def append_build(out, input_):
     arch_dict = {"media": {}}
     ensure_dup(input_, arch_dict, "ostree-commit", "commit")
 
-    # we always expect base-oscontainer so error out if missing
-    assert 'base-oscontainer' in input_
-    arch_dict['oci-image'] = populate_oci_image(input_['buildid'], input_['base-oscontainer'])
+    # within the CoreOS pipelines, we always expect base-oscontainer to be set,
+    # but this script is also currently used by OKD but they only care about
+    # bootimages
+    if 'base-oscontainer' in input_:
+        arch_dict['oci-image'] = populate_oci_image(input_['buildid'], input_['base-oscontainer'])
 
     platforms = ["aliyun", "applehv", "aws", "azure", "azurestack", "digitalocean", "exoscale", "gcp", "hyperv", "ibmcloud", "kubevirt", "metal", "nutanix", "openstack", "powervs", "qemu", "virtualbox", "vmware", "vultr", "qemu-secex"]
     for platform in platforms:
