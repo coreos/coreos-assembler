@@ -64,7 +64,7 @@ UNSUPPORTED = ["aliyun", "azure", "ibmcloud", "powervs"]
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(prog="coreos-assembler cloud-prune")
+    parser = argparse.ArgumentParser(prog="coreos-assembler coreos-prune")
     parser.add_argument("--policy", required=True, type=str, help="Path to policy YAML file")
     parser.add_argument("--dry-run", help="Don't actually delete anything", action='store_true')
     parser.add_argument("--upload-builds-json", help="Push builds.json", action='store_true')
