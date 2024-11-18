@@ -15,6 +15,7 @@ declare -A SUPPORTED_PLATFORMS=(
     ['metal']='raw'
     ['qemu']='qcow2'
     ['qemu-secex']='qcow2'
+    ['live']='iso'
 )
 
 print_help() {
@@ -175,7 +176,7 @@ generate_runvm_osbuild_config() {
     # Grab a few values from $image_json
     deploy_via_container=$(getconfig_def "deploy-via-container" "" "${image_json}")
     extra_kargs="$(python3 -c 'import sys, json; args = json.load(sys.stdin)["extra-kargs"]; print(" ".join(args))' < "${image_json}")"
-
+    squashfs_compression=$(getconfig_def "squashfs-compression" "" "${image_json}")
     # OStree container ociarchive file path
     ostree_container="${builddir}/$(meta_key images.ostree.path)"
     # If no container_imgref was set let's just set it to some professional
@@ -219,6 +220,7 @@ extra-kargs-string: "${extra_kargs}"
 ostree-repo: "${ostree_repo}"
 metal-image-size: "${metal_image_size_mb}"
 cloud-image-size: "${cloud_image_size_mb}"
+squashfs-compression: "${squashfs_compression}"
 # Note: this is only used in the secex case; there, the rootfs is
 # not the last partition on the disk so we need to explicitly size it
 rootfs-size: "${rootfs_size_mb}"
@@ -242,6 +244,7 @@ main() {
         "cmd-buildextend-qemu") platforms=(qemu);;
         "cmd-buildextend-qemu-secex") platforms=(qemu-secex);;
         "cmd-buildextend-secex") platforms=(qemu-secex);;
+        "cmd-buildextend-live") platforms=(live);;
         *) fatal "called as unexpected name $0";;
     esac
 
@@ -395,6 +398,19 @@ main() {
                 # Update the meta.json and builddir with the generated artifact.
                 # Skip Compression on these platforms as they are already compressed.
                 postprocess_artifact "${platform}" "${imgpath}" "${imgname}" 'True'
+                ;;
+            live)
+                # For live we have more artifacts
+                artifact_types=("iso.${basearch}.${suffix}" "kernel.${basearch}" "rootfs.${basearch}.img" "initramfs.${basearch}.img")
+                artifact_prefixes=("-iso" "-kernel" "-rootfs" "-initramfs")
+                for i in "${!artifact_types[@]}"; do
+                    artifact_type="${artifact_types[$i]}"
+                    artifact_prefix="${artifact_prefixes[$i]}"
+                    artifact_name="${name}-${build}-${platform}-${artifact_type}"
+                    imgpath="${outdir}/${platform}/${artifact_name}"
+                    #TODO: For Live, seems we want the full artifact name here, not live-iso
+                    postprocess_artifact "${platform}${artifact_prefix}" "${imgpath}" "${artifact_name}" 'True'
+                done
                 ;;
             qemu-secex)
                 # Massage the generated artifact through an extra VM for secex. This
