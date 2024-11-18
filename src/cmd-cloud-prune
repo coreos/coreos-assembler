@@ -49,7 +49,7 @@ from cosalib.gcp import remove_gcp_image
 from cosalib.aws import deregister_aws_resource
 from cosalib.builds import BUILDFILES
 from cosalib.s3 import s3_copy
-from cosalib.cmdlib import parse_fcos_version_to_timestamp_and_stream
+from cosalib.cmdlib import parse_fcos_version_to_timestamp
 from cosalib.cmdlib import convert_duration_to_days
 
 Build = collections.namedtuple("Build", ["id", "images", "arch", "meta_json"])
@@ -61,8 +61,6 @@ CACHE_MAX_AGE_METADATA = 60 * 5
 # is up to date.
 SUPPORTED = ["amis", "gcp"]
 UNSUPPORTED = ["aliyun", "azure", "ibmcloud", "powervs"]
-# list of known streams with containers
-STREAMS = {"next", "testing", "stable", "next-devel", "testing-devel", "rawhide", "branched"}
 
 
 def parse_args():
@@ -126,7 +124,7 @@ def main():
     # Iterate through builds from oldest to newest
     for build in reversed(builds):
         build_id = build["id"]
-        build_date, _ = parse_fcos_version_to_timestamp_and_stream(build_id)
+        build_date = parse_fcos_version_to_timestamp(build_id)
 
         # For each build, iterate over arches first to minimize downloads of meta.json per arch
         for arch in build["arches"]:

@@ -339,7 +339,7 @@ def get_basearch():
         return get_basearch.saved
 
 
-def parse_fcos_version_to_timestamp_and_stream(version):
+def parse_fcos_version_to_timestamp(version):
     '''
     Parses an FCOS build ID and verifies the versioning is accurate. Then
     it verifies that the parsed timestamp has %Y%m%d format and returns that.
@@ -351,7 +351,7 @@ def parse_fcos_version_to_timestamp_and_stream(version):
         timestamp = datetime.datetime.strptime(m.group(2), '%Y%m%d')
     except ValueError:
         raise Exception(f"FCOS build {version} has incorrect date format. It should be in (%Y%m%d)")
-    return (timestamp, m.group(3))
+    return timestamp
 
 
 def convert_duration_to_days(duration_arg):
