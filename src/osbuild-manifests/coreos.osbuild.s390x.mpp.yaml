@@ -11,6 +11,7 @@ mpp-vars:
   extra_kargs: $extra_kargs
   metal_image_size_mb: $metal_image_size_mb
   cloud_image_size_mb: $cloud_image_size_mb
+  squashfs_compression: $squashfs_compression
   bios_boot_size_mb: 1
   ppc_prep_size_mb: 4
   reserved_part_size_mb: 1
@@ -666,3 +667,5 @@ pipelines:
       path: platform.qemu.ipp.yaml
   - mpp-import-pipelines:
       path: platform.qemu-secex.ipp.yaml
+  - mpp-import-pipelines:
+      path: platform.live.ipp.yaml

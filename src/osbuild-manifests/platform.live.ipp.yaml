@@ -1,0 +1,99 @@
+# This file defines the pipeline for building the live ISO.
+version: '2'
+pipelines:
+  - name: live-build-tree
+    stages:
+      - type: org.osbuild.copy
+        inputs:
+          tree:
+            type: org.osbuild.tree
+            origin: org.osbuild.pipeline
+            references:
+              - name:metal
+        options:
+          paths:
+            - from: 
+                mpp-format-string: "input://tree/{artifact_name_prefix}-metal.{arch}.raw"
+              to: tree:///metal.raw
+      - type: org.osbuild.copy
+        inputs:
+          tree:
+            type: org.osbuild.tree
+            origin: org.osbuild.pipeline
+            references:
+              - name:metal4k
+        options:
+          paths:
+            - from:
+                mpp-format-string: "input://tree/{artifact_name_prefix}-metal4k.{arch}.raw"
+              to: tree:///metal4k.raw
+      # We need to be able to create efiboot.img, a FAT filesystem image. It's
+      # hard to setup loopback devices from within the stage, so just do it
+      # here. This should normally be conditional on the architecture but it
+      # doesn't hurt either since it's a tiny file.
+      - type: org.osbuild.truncate
+        options:
+          filename: efiboot.img
+          size:
+            mpp-format-string: '{16 * 1024 * 1024}'
+      - type: org.osbuild.coreos.live-iso
+        inputs:
+          tree:
+            type: org.osbuild.tree
+            origin: org.osbuild.pipeline
+            references:
+              - name:deployed-tree
+        devices:
+          metal:
+            type: org.osbuild.loopback
+            options:
+              filename: metal.raw
+              partscan: true
+              read-only: true
+              sector-size: 512
+          metal4k:
+            type: org.osbuild.loopback
+            options:
+              filename: metal4k.raw
+              partscan: true
+              read-only: true
+              sector-size: 4096
+          efiboot_img:
+            type: org.osbuild.loopback
+            options:
+              filename: efiboot.img
+        options:
+          efiboot_img_filename:
+            mpp-format-string: 'efiboot.img'
+          filename:
+            mpp-format-string: '{artifact_name_prefix}-live-iso.{arch}.iso'
+          squashfs_compression:
+            mpp-format-string: '{squashfs_compression}'
+  - name: live
+    stages:
+        - type: org.osbuild.copy
+          inputs:
+            tree:
+              type: org.osbuild.tree
+              origin: org.osbuild.pipeline
+              references:
+                - name:live-build-tree
+          options:
+            paths:
+              - from:
+                  mpp-format-string: 'input://tree/{artifact_name_prefix}-live.{arch}.iso'
+                to:
+                  mpp-format-string: 'tree:///{artifact_name_prefix}-live-iso.{arch}.iso'
+              - from:
+                  mpp-format-string: input://tree/live/images/pxeboot/vmlinuz
+                to:
+                  mpp-format-string: 'tree:///{artifact_name_prefix}-live-kernel.{arch}'
+              - from:
+                  mpp-format-string: input://tree/live/images//pxeboot/initrd.img
+                to:
+                  mpp-format-string: 'tree:///{artifact_name_prefix}-live-initramfs.{arch}.img'
+              - from:
+                  mpp-format-string: input://tree/rootfs.img
+                to:
+                  mpp-format-string: 'tree:///{artifact_name_prefix}-live-rootfs.{arch}.img'
+
