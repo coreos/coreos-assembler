@@ -1,0 +1,38 @@
+# This file defines the pipeline for building the live ISO.
+version: '2'
+pipelines:
+  - name: live
+    build:
+      mpp-format-string: '{host_as_buildroot}'
+    stages:
+      - type: org.osbuild.coreos.live-artifacts.mono
+        inputs:
+          deployed-tree:
+            type: org.osbuild.tree
+            origin: org.osbuild.pipeline
+            references:
+              - name:deployed-tree
+          metal:
+            type: org.osbuild.files
+            origin: org.osbuild.pipeline
+            references:
+              name:metal:
+                file:
+                  mpp-format-string: '/{artifact_name_prefix}-metal.{arch}.raw'
+          metal4k:
+            type: org.osbuild.files
+            origin: org.osbuild.pipeline
+            references:
+              name:metal4k:
+                file:
+                  mpp-format-string: '/{artifact_name_prefix}-metal4k.{arch}.raw'
+        options:
+          filenames:
+            live-iso:
+              mpp-format-string: '{artifact_name_prefix}-live-iso.{arch}.iso'
+            live-kernel:
+              mpp-format-string: '{artifact_name_prefix}-live-kernel.{arch}'
+            live-initramfs:
+              mpp-format-string: '{artifact_name_prefix}-live-initramfs.{arch}.img'
+            live-rootfs:
+              mpp-format-string: '{artifact_name_prefix}-live-rootfs.{arch}.img'

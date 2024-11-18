@@ -3,8 +3,8 @@ set -eux -o pipefail
 
 usage() {
     cat <<EOC
-${0} creates a supermin virtual machine that then
-runs OSBuild to build a CoreOS style disk image.
+${0} runs in a supermin virtual machine to then
+run OSBuild to build a CoreOS style disk image.
 
 Options:
     --config: JSON-formatted image.yaml
@@ -122,6 +122,8 @@ osbuild \
     --checkpoint raw-image       \
     ${platforms[@]/#/--export=}  \
     "${processed_json}"
+
+#   --break org.osbuild.coreos.live-artifacts.mono \
 
 mv "${outdir}"/* "${orig_outdir}/"
 rm -f "${processed_json}"
