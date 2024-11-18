@@ -91,7 +91,7 @@ schema-check:
 	# Is the generated Go code synced with the schema?
 	grep -q "$(DIGEST)" pkg/builds/cosa_v1.go
 	grep -q "$(DIGEST)" pkg/builds/schema_doc.go
-	grep -q "$(DIGEST)" src/cmd-cloud-prune
+	grep -q "$(DIGEST)" src/cmd-coreos-prune
 
 install:
 	install -d $(DESTDIR)$(PREFIX)/lib/coreos-assembler
