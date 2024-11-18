@@ -784,3 +784,5 @@ pipelines:
       path: platform.metal.ipp.yaml
   - mpp-import-pipelines:
       path: platform.qemu.ipp.yaml
+  - mpp-import-pipelines:
+      path: platform.live.ipp.yaml

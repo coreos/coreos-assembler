@@ -15,6 +15,7 @@ declare -A SUPPORTED_PLATFORMS=(
     ['metal']='raw'
     ['qemu']='qcow2'
     ['qemu-secex']='qcow2'
+    ['live']='iso'
 )
 
 print_help() {
@@ -242,6 +243,7 @@ main() {
         "cmd-buildextend-qemu") platforms=(qemu);;
         "cmd-buildextend-qemu-secex") platforms=(qemu-secex);;
         "cmd-buildextend-secex") platforms=(qemu-secex);;
+        "cmd-buildextend-live") platforms=(live);;
         *) fatal "called as unexpected name $0";;
     esac
 
@@ -386,6 +388,18 @@ main() {
                 # Update the meta.json and builddir with the generated artifact.
                 # Skip Compression on these platforms as they are already compressed.
                 postprocess_artifact "${platform}" "${imgpath}" "${imgname}" 'True'
+                ;;
+            live)
+                # For live we have more artifacts
+                artifact_types=("iso.${basearch}.${suffix}" "kernel.${basearch}" "rootfs.${basearch}.img" "initramfs.${basearch}.img")
+                artifact_prefixes=("-iso" "-kernel" "-rootfs" "-initramfs")
+                for i in "${!artifact_types[@]}"; do
+                    artifact_type="${artifact_types[$i]}"
+                    artifact_prefix="${artifact_prefixes[$i]}"
+                    artifact_name="${name}-${build}-${platform}-${artifact_type}"
+                    imgpath="${outdir}/${platform}/${artifact_name}"
+                    postprocess_artifact "${platform}${artifact_prefix}" "${imgpath}" "${artifact_name}" 'True'
+                done
                 ;;
             qemu-secex)
                 # Massage the generated artifact through an extra VM for secex. This
