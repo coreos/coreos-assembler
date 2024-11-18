@@ -116,10 +116,12 @@ osbuild-mpp                                               \
 osbuild \
     --out "$outdir"              \
     --store "$storedir"          \
-    --cache-max-size 14GiB       \
+    --cache-max-size 20GiB       \
     --checkpoint deployed-tree   \
     --checkpoint tree            \
     --checkpoint raw-image       \
+    --checkpoint metal           \
+    --checkpoint metal4k         \
     ${platforms[@]/#/--export=}  \
     "${processed_json}"
 
