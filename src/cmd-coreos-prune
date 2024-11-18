@@ -125,6 +125,7 @@ def main():
     for build in reversed(builds):
         build_id = build["id"]
         build_date = parse_fcos_version_to_timestamp(build_id)
+        actions_completed = []
 
         # For each build, iterate over arches first to minimize downloads of meta.json per arch
         for arch in build["arches"]:
@@ -188,20 +189,14 @@ def main():
                                         prune_container(tag, args.dry_run, container_repo, args.registry_auth_file)
                                 else:
                                     print(f"No container tags to prune for build {build_id}.")
-        # Update policy-cleanup after pruning actions for the architecture
+                    actions_completed.append(action)  # Append action to completed list
+        # Update policy-cleanup for completed actions
         policy_cleanup = build.setdefault("policy-cleanup", {})
-        for action in policy[stream].keys():  # Only update actions specified in policy[stream]
-            match action:
-                case "cloud-uploads":
-                    if "cloud-uploads" not in policy_cleanup:
-                        policy_cleanup["cloud-uploads"] = True
-                case "images":
-                    if "images" not in policy_cleanup:
-                        policy_cleanup["images"] = True
-                    policy_cleanup["images-kept"] = images_to_keep
-                case "containers":
-                    if "containers" not in policy_cleanup:
-                        policy_cleanup["containers"] = True
+        for action in actions_completed:
+            if action == "images":
+                policy_cleanup["images-kept"] = images_to_keep
+            else:
+                policy_cleanup[action] = True
 
     if pruned_build_ids:
         if "tombstone-builds" not in builds_json_data:
