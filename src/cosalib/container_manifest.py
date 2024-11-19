@@ -20,6 +20,24 @@ def create_local_container_manifest(repo, tag, images) -> dict:
     return json.loads(manifest_info)
 
 
+def local_container_manifest_exists(repo, tag):
+    '''
+    Delete local manifest list
+    @param repo str registry repository
+    @param tag str manifest tag
+    '''
+    cmd = ["podman", "manifest", "exists", f"{repo}:{tag}"]
+    cp = runcmd(cmd, check=False)
+    # The commands returns 0 (exists), 1 (doesn't exist), 125 (other error)
+    if cp.returncode == 125:
+        if cp.stdout:
+            print(f" STDOUT: {cp.stdout.decode()}")
+        if cp.stderr:
+            print(f" STDERR: {cp.stderr.decode()}")
+        raise Exception("Error encountered when checking if manifest exists")
+    return cp.returncode == 0
+
+
 def delete_local_container_manifest(repo, tag):
     '''
     Delete local manifest list
@@ -56,6 +74,9 @@ def create_and_push_container_manifest(repo, tags, images, v2s2) -> dict:
     @param images list of image specifications (including transport)
     @param v2s2 boolean use to force v2s2 format
     '''
+    if local_container_manifest_exists(repo, tags[0]):
+        # perhaps left over from a previous failed run -> delete
+        delete_local_container_manifest(repo, tags[0])
     manifest_info = create_local_container_manifest(repo, tags[0], images)
     push_container_manifest(repo, tags, v2s2)
     delete_local_container_manifest(repo, tags[0])
