@@ -149,12 +149,12 @@ func podmanWorkflow(c cluster.TestCluster) {
 				return err
 			}
 			if !bytes.Contains(b, []byte("TEST PAGE")) {
-				return fmt.Errorf("nginx pod is not running %s", b)
+				return fmt.Errorf("Fedora container is not running %s", b)
 			}
 			return nil
 		}
 
-		if err := util.Retry(6, 5*time.Second, podIsRunning); err != nil {
+		if err := util.Retry(6, 10*time.Second, podIsRunning); err != nil {
 			c.Fatal("Pod is not running")
 		}
 	})
