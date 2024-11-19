@@ -179,10 +179,6 @@ mkdir -p src
 # Default paths for manifest.yaml & image.yaml
 manifest="src/config/manifest.yaml"
 image="src/config/image.yaml"
-if [[ ! -f "${manifest}" ]] || [[ ! -f "${image}" ]]; then
-    echo 1>&2 "Could not find default manifests (${manifest} & ${image})"
-    fatal "If you are using a custom configuration, be sure it has a manifest.yaml & image.yaml."
-fi
 
 # Select the variant if requested
 if [[ -n "${VARIANT}" ]] && [[ "${VARIANT}" != "default" ]]; then
@@ -197,6 +193,9 @@ if [[ -n "${VARIANT}" ]] && [[ "${VARIANT}" != "default" ]]; then
   "coreos-assembler.config-variant": "${VARIANT}"
 }
 EOF
+elif [[ ! -f "${manifest}" ]] || [[ ! -f "${image}" ]]; then
+    echo 1>&2 "Could not find default manifests (${manifest} & ${image})"
+    fatal "If you are using a custom configuration, be sure it has a manifest.yaml & image.yaml."
 fi
 
 mkdir -p cache
