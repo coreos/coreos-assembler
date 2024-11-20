@@ -195,7 +195,7 @@ if [[ -n "${VARIANT}" ]] && [[ "${VARIANT}" != "default" ]]; then
 EOF
 elif [[ ! -f "${manifest}" ]] || [[ ! -f "${image}" ]]; then
     echo 1>&2 "Could not find default manifests (${manifest} & ${image})"
-    fatal "If you are using a custom configuration, be sure it has a manifest.yaml & image.yaml."
+    fatal "If you aren't using a custom configuration, be sure there are manifest.yaml & image.yaml files."
 fi
 
 mkdir -p cache
