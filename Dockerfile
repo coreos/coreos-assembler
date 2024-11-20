@@ -28,7 +28,7 @@ RUN ./build.sh patch_osbuild
 # clean up scripts (it will get cached in layers, but oh well)
 WORKDIR /srv/
 RUN chown builder: /srv
-RUN rm -rf /root/containerbuild /go
+RUN rm -rf /root/containerbuild
 
 # allow writing to /etc/passwd from arbitrary UID
 # https://docs.openshift.com/container-platform/4.8/openshift_images/create-images.html
