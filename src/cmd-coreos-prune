@@ -190,13 +190,16 @@ def main():
                                 else:
                                     print(f"No container tags to prune for build {build_id}.")
                     actions_completed.append(action)  # Append action to completed list
-        # Update policy-cleanup for completed actions
-        policy_cleanup = build.setdefault("policy-cleanup", {})
-        for action in actions_completed:
-            if action == "images":
-                policy_cleanup["images-kept"] = images_to_keep
-            else:
-                policy_cleanup[action] = True
+        # Only add policy-cleanup for the build in builds.json if any
+        # of the cleanup actions were completed.
+        if actions_completed:
+            policy_cleanup = build.setdefault("policy-cleanup", {})
+            # Update policy-cleanup for completed actions
+            for action in actions_completed:
+                if action == "images":
+                    policy_cleanup["images-kept"] = images_to_keep
+                else:
+                    policy_cleanup[action] = True
 
     if pruned_build_ids:
         if "tombstone-builds" not in builds_json_data:
