@@ -770,8 +770,10 @@ umount ${workdir}
 EOF
     chmod a+x "${vmpreparedir}"/init
     (cd "${vmpreparedir}" && tar -czf init.tar.gz --remove-files init)
+
+    size_default=10G
     # put the supermin output in a separate file since it's noisy
-    if ! supermin --build "${vmpreparedir}" --size 10G -f ext2 -o "${vmbuilddir}" \
+    if ! supermin --build "${vmpreparedir}" --size "${COSA_SUPERMIN_SIZE:-${size_default}}" -f ext2 -o "${vmbuilddir}" \
             &> "${tmp_builddir}/supermin.out"; then
         cat "${tmp_builddir}/supermin.out"
         fatal "Failed to run: supermin --build"
