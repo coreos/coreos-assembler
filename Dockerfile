@@ -14,11 +14,6 @@ RUN ./build.sh install_rpms
 RUN ./build.sh install_ocp_tools
 RUN ./build.sh trust_redhat_gpg_keys
 
-# This allows Prow jobs for other projects to use our cosa image as their
-# buildroot image (so clonerefs can copy the repo into `/go`). For cosa itself,
-# this same hack is inlined in the YAML (see openshift/release link above).
-RUN mkdir -p /go && chmod 777 /go
-
 COPY ./ /root/containerbuild/
 RUN ./build.sh write_archive_info
 RUN ./build.sh make_and_makeinstall
@@ -36,6 +31,11 @@ RUN chmod g=u /etc/passwd
 
 # also allow adding certificates
 RUN chmod -R g=u /etc/pki/ca-trust
+
+# This allows Prow jobs for other projects to use our cosa image as their
+# buildroot image (so clonerefs can copy the repo into `/go`). For cosa itself,
+# this same hack is inlined in the YAML (see openshift/release link above).
+RUN mkdir -p /go && chmod 777 /go
 
 # run as `builder` user
 USER builder
