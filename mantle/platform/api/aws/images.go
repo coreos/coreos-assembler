@@ -194,12 +194,21 @@ func (a *API) finishSnapshotTask(snapshotTaskID, imageName string) (*Snapshot, e
 
 		details := taskRes.ImportSnapshotTasks[0].SnapshotTaskDetail
 
+		if details == nil || details.Status == nil {
+			plog.Debugf("waiting for import task; no details provided")
+			return false, "", nil
+		}
+
 		// I dream of AWS specifying this as an enum shape, not string
 		switch *details.Status {
 		case "completed":
 			return true, *details.SnapshotId, nil
 		case "pending", "active":
-			plog.Debugf("waiting for import task: %v (%v): %v", *details.Status, *details.Progress, *details.StatusMessage)
+			if details.Progress != nil && details.StatusMessage != nil {
+				plog.Debugf("waiting for import task: %v (%v): %v", *details.Status, *details.Progress, *details.StatusMessage)
+			} else {
+				plog.Debugf("waiting for import task: %v", *details.Status)
+			}
 			return false, "", nil
 		case "cancelled", "cancelling":
 			return false, "", fmt.Errorf("import task cancelled")
