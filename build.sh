@@ -177,6 +177,9 @@ patch_osbuild() {
         /usr/lib/coreos-assembler/0002-parsing-treat-locations-without-scheme-as-belonging-.patch \
         /usr/lib/coreos-assembler/0003-org.osbuild.selinux-support-operating-on-mounts.patch      \
         /usr/lib/coreos-assembler/0004-org.osbuild.selinux-support-for-specifying-where-fil.patch \
+        /usr/lib/coreos-assembler/0001-util-osrelease.py-improve-whitespace-and-quote-strip.patch \
+        /usr/lib/coreos-assembler/0002-util-chroot-Add-support-for-custom-directory-bind-mo.patch \
+        /usr/lib/coreos-assembler/0003-stages-add-coreos.live-iso-stage.patch                     \
             | patch -d /usr/lib/osbuild -p1
 
     # And then move the files back; supermin appliance creation will need it back

@@ -1,0 +1,59 @@
+From f5f269eb31100c22390d35fd658bdd236a0a880e Mon Sep 17 00:00:00 2001
+From: Renata Ravanelli <rravanel@redhat.com>
+Date: Thu, 31 Oct 2024 14:13:50 -0300
+Subject: [PATCH 2/3] util/chroot: Add support for custom directory bind mounts
+
+ - Add optional bind_mounts parameter to __init__ method;
+ - Enhanced methods to accept an optional `bind_mounts`.
+This allows for more flexible for configurations when setting
+up bind mounts.
+
+Signed-off-by: Renata Ravanelli <rravanel@redhat.com>
+(cherry picked from commit 9b5fbadee6b170455d62c57eb315e20d57173110)
+---
+ osbuild/util/chroot.py | 14 +++++++++++++-
+ 1 file changed, 13 insertions(+), 1 deletion(-)
+
+diff --git a/osbuild/util/chroot.py b/osbuild/util/chroot.py
+index da14bf44..4090456b 100644
+--- a/osbuild/util/chroot.py
++++ b/osbuild/util/chroot.py
+@@ -12,8 +12,9 @@ class Chroot:
+     This mounts /proc, /dev, and /sys.
+     """
+ 
+-    def __init__(self, root: str):
++    def __init__(self, root: str, bind_mounts=None):
+         self.root = root
++        self._bind_mounts = bind_mounts or []
+ 
+     def __enter__(self):
+         for d in ["/proc", "/dev", "/sys"]:
+@@ -33,6 +34,13 @@ class Chroot:
+                         "sysfs", f"{self.root}/sys"],
+                        check=True)
+ 
++        for d in self._bind_mounts:
++            target_path = os.path.join(self.root, d.lstrip("/"))
++            if not os.path.exists(target_path):
++                    print(f"Making missing chroot directory: {d}")
++                    os.makedirs(target_path)
++            subprocess.run(["mount", "--rbind", d, target_path], check=True)
++
+         return self
+ 
+     def __exit__(self, exc_type, exc_value, tracebk):
+@@ -43,6 +51,10 @@ class Chroot:
+         if failed_umounts:
+             print(f"Error unmounting paths from chroot: {failed_umounts}")
+ 
++        for d in self._bind_mounts[::-1]:
++            target_path = os.path.join(self.root, d.lstrip("/"))
++            if subprocess.run(["umount", "--lazy", target_path], check=False).returncode != 0:
++                print(f"Error unmounting paths from chroot: {d}")
+     def run(self, cmd, **kwargs):
+         cmd = ["chroot", self.root] + cmd
+         # pylint: disable=subprocess-run-check
+-- 
+2.47.0
+

@@ -2,6 +2,8 @@
 version: '2'
 pipelines:
   - name: live-build-tree
+    build:
+      mpp-format-string: '{host_as_buildroot}'
     stages:
       - type: org.osbuild.copy
         inputs:
@@ -36,7 +38,7 @@ pipelines:
           filename: efiboot.img
           size:
             mpp-format-string: '{16 * 1024 * 1024}'
-      - type: org.osbuild.coreos.live-iso
+      - type: org.osbuild.coreos.live-artifacts.mono
         inputs:
           tree:
             type: org.osbuild.tree
@@ -50,14 +52,16 @@ pipelines:
               filename: metal.raw
               partscan: true
               read-only: true
-              sector-size: 512
+              sector-size:
+                mpp-format-int: "{sector_size}"
           metal4k:
             type: org.osbuild.loopback
             options:
               filename: metal4k.raw
               partscan: true
               read-only: true
-              sector-size: 4096
+              sector-size:
+                mpp-format-int: "{four_k_sector_size}"
           efiboot_img:
             type: org.osbuild.loopback
             options:
@@ -66,7 +70,7 @@ pipelines:
           efiboot_img_filename:
             mpp-format-string: 'efiboot.img'
           filename:
-            mpp-format-string: '{artifact_name_prefix}-live-iso.{arch}.iso'
+            mpp-format-string: 'live.iso'
           squashfs_compression:
             mpp-format-string: '{squashfs_compression}'
   - name: live
@@ -81,7 +85,7 @@ pipelines:
           options:
             paths:
               - from:
-                  mpp-format-string: 'input://tree/{artifact_name_prefix}-live.{arch}.iso'
+                  mpp-format-string: 'input://tree/live.iso'
                 to:
                   mpp-format-string: 'tree:///{artifact_name_prefix}-live-iso.{arch}.iso'
               - from:
