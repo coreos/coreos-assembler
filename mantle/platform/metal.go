@@ -668,6 +668,10 @@ func (inst *Install) InstallViaISOEmbed(kargs []string, liveIgnition, targetIgni
 	if err := cmd.Run(); err != nil {
 		return nil, errors.Wrapf(err, "copying iso")
 	}
+	// Make it writable so we can modify it
+	if err := os.Chmod(newIso, 0644); err != nil {
+		return nil, errors.Wrapf(err, "setting permissions on iso")
+	}
 	srcisopath = newIso
 
 	var metalimg string

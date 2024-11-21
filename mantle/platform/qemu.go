@@ -1500,6 +1500,10 @@ func (builder *QemuBuilder) setupIso() error {
 	if err := cpcmd.Run(); err != nil {
 		return errors.Wrapf(err, "copying iso")
 	}
+	// Make it writable so we can modify it
+	if err := os.Chmod(isoEmbeddedPath, 0644); err != nil {
+		return errors.Wrapf(err, "setting permissions on iso")
+	}
 	if builder.ConfigFile != "" {
 		if builder.configInjected {
 			panic("config already injected?")
