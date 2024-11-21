@@ -1,0 +1,303 @@
+#!/usr/bin/env python3
+
+import argparse
+import os
+import shutil
+import subprocess
+import sys
+import tempfile
+
+from dataclasses import dataclass
+from typing import Callable
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from cosalib.builds import Builds
+from cosalib.cmdlib import runcmd, import_ostree_commit
+
+
+@dataclass
+class DiffBuildTarget:
+    id: str
+    dir: str
+    meta: dict
+
+    @staticmethod
+    def from_build(builds, build):
+        return DiffBuildTarget(build, builds.get_build_dir(build),
+                               builds.get_build_meta(build))
+
+
+@dataclass
+class Differ:
+    name: str
+    description: str
+    needs_ostree: bool
+    function: Callable[[DiffBuildTarget, DiffBuildTarget], None]
+
+
+TMP_REPO = 'tmp/repo'
+
+DIFF_CACHE = 'tmp/diff-cache'
+
+
+def main():
+    args = parse_args()
+    builds = Builds()
+
+    latest_build = builds.get_latest()
+
+    os.makedirs(DIFF_CACHE, exist_ok=True)
+
+    # finalize diff targets
+    if args.diff_from is None and args.diff_to is None:
+        # default to previous and current build
+        args.diff_from = builds.get_previous()
+        args.diff_to = latest_build
+    elif args.diff_from is None:
+        args.diff_from = latest_build
+    elif args.diff_to is None:
+        args.diff_to = latest_build
+
+    if args.diff_from == 'latest':
+        args.diff_from = latest_build
+    if args.diff_to == 'latest':
+        args.diff_to = latest_build
+
+    if args.diff_from == args.diff_to:
+        raise Exception("from and to builds are the same")
+
+    diff_from = DiffBuildTarget.from_build(builds, args.diff_from)
+    diff_to = DiffBuildTarget.from_build(builds, args.diff_to)
+
+    # get activated differs
+    active_differs = []
+    for differ in DIFFERS:
+        if getattr(args, differ.name.replace('-', '_')):
+            active_differs += [differ]
+
+    # ensure commits are imported if we know we'll need them
+    if any(differ.needs_ostree for differ in active_differs):
+        for target in [diff_from, diff_to]:
+            import_ostree_commit('.', target.dir, target.meta, extract_json=0)
+
+    # start diff'ing
+    for differ in active_differs:
+        differ.function(diff_from, diff_to)
+
+    if args.gc:
+        # some of the dirs in the rootfs are dumb and have "private" bits
+        runcmd(['find', DIFF_CACHE, '-type', 'd', '-exec', 'chmod', 'u+rwx', '{}', '+'])
+        shutil.rmtree(DIFF_CACHE)
+
+
+def parse_args():
+    # Parse args and dispatch
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--from", dest='diff_from', help="First build ID")
+    parser.add_argument("--to", dest='diff_to', help="Second build ID")
+    parser.add_argument("--gc", action='store_true', help="Delete cached diff content")
+    for differ in DIFFERS:
+        parser.add_argument("--" + differ.name, action='store_true', default=False,
+                            help=differ.description)
+    return parser.parse_args()
+
+
+def diff_rpms(diff_from, diff_to):
+    commit_from = diff_from.meta['ostree-commit']
+    commit_to = diff_to.meta['ostree-commit']
+    runcmd(['rpm-ostree', 'db', 'diff', '--repo', TMP_REPO, commit_from, commit_to])
+
+
+def diff_ostree_ls(diff_from, diff_to):
+    commit_from = diff_from.meta['ostree-commit']
+    commit_to = diff_to.meta['ostree-commit']
+    runcmd(['ostree', 'diff', '--repo', TMP_REPO, commit_from, commit_to])
+
+
+def diff_ostree(diff_from, diff_to):
+    commit_from = diff_from.meta['ostree-commit']
+    commit_to = diff_to.meta['ostree-commit']
+    checkout_from = os.path.join(cache_dir("ostree"), diff_from.id)
+    checkout_to = os.path.join(cache_dir("ostree"), diff_to.id)
+    if not os.path.exists(checkout_from):
+        runcmd(['ostree', 'checkout', '-U', '--repo', TMP_REPO, commit_from, checkout_from])
+    if not os.path.exists(checkout_to):
+        runcmd(['ostree', 'checkout', '-U', '--repo', TMP_REPO, commit_to, checkout_to])
+    git_diff(checkout_from, checkout_to)
+
+
+def diff_initrd(diff_from, diff_to):
+    commit_from = diff_from.meta['ostree-commit']
+    commit_to = diff_to.meta['ostree-commit']
+    initrd_from = os.path.join(cache_dir("initrd"), diff_from.id)
+    initrd_to = os.path.join(cache_dir("initrd"), diff_to.id)
+
+    def get_initrd_path(commit):
+        ls = runcmd(['ostree', 'ls', '--repo', TMP_REPO, commit, "/usr/lib/modules",
+                     "--nul-filenames-only"], capture_output=True).stdout
+        entries = [entry.decode('utf-8') for entry in ls.strip(b'\0').split(b'\0')]
+        assert len(entries) == 2  # there should only be the modules/ dir and the kver dir
+        return os.path.join(entries[1], "initramfs.img")
+
+    def extract_initrd(commit, dir):
+        ostree_path = get_initrd_path(commit)
+        cat = subprocess.Popen(['ostree', 'cat', '--repo', TMP_REPO, commit, ostree_path], stdout=subprocess.PIPE)
+        runcmd(['coreos-installer', 'dev', 'extract', 'initrd', '-', '-C', dir], stdin=cat.stdout)
+        cat.wait()
+
+    if not os.path.exists(initrd_from):
+        extract_initrd(commit_from, initrd_from)
+    if not os.path.exists(initrd_to):
+        extract_initrd(commit_to, initrd_to)
+    git_diff(initrd_from, initrd_to)
+
+
+def diff_live_iso_tree(diff_from, diff_to):
+    iso_from = os.path.join(diff_from.dir, diff_from.meta['images']['live-iso']['path'])
+    iso_to = os.path.join(diff_to.dir, diff_to.meta['images']['live-iso']['path'])
+    diff_cmd_outputs(['coreos-installer', 'dev', 'show', 'iso'], iso_from, iso_to)
+    diff_cmd_outputs(['isoinfo', '-R', '-l', '-i'], iso_from, iso_to)
+
+
+def diff_live_iso(diff_from, diff_to):
+    iso_from = os.path.join(diff_from.dir, diff_from.meta['images']['live-iso']['path'])
+    iso_to = os.path.join(diff_to.dir, diff_to.meta['images']['live-iso']['path'])
+    dir_from = os.path.join(cache_dir("iso"), diff_from.id)
+    dir_to = os.path.join(cache_dir("iso"), diff_to.id)
+
+    def extract_iso(iso, dir):
+        iso = os.path.abspath(iso)
+        os.mkdir(dir)
+        runcmd(['bsdtar', 'xpf', iso], cwd=dir)
+
+    if not os.path.exists(dir_from):
+        extract_iso(iso_from, dir_from)
+    if not os.path.exists(dir_to):
+        extract_iso(iso_to, dir_to)
+    git_diff(dir_from, dir_to)
+
+
+def diff_live_initrd_tree(diff_from, diff_to):
+    initramfs_from = os.path.join(diff_from.dir, diff_from.meta['images']['live-initramfs']['path'])
+    initramfs_to = os.path.join(diff_to.dir, diff_to.meta['images']['live-initramfs']['path'])
+    diff_cmd_outputs(['coreos-installer', 'dev', 'show', 'initrd'], initramfs_from, initramfs_to)
+
+
+def diff_live_initrd(diff_from, diff_to):
+    initramfs_from = os.path.join(diff_from.dir, diff_from.meta['images']['live-initramfs']['path'])
+    initramfs_to = os.path.join(diff_to.dir, diff_to.meta['images']['live-initramfs']['path'])
+    dir_from = os.path.join(cache_dir("live-initrd"), diff_from.id)
+    dir_to = os.path.join(cache_dir("live-initrd"), diff_to.id)
+
+    if not os.path.exists(dir_from):
+        runcmd(['coreos-installer', 'dev', 'extract', 'initrd', initramfs_from, '-C', dir_from])
+    if not os.path.exists(dir_to):
+        runcmd(['coreos-installer', 'dev', 'extract', 'initrd', initramfs_to, '-C', dir_to])
+    git_diff(dir_from, dir_to)
+
+
+def diff_live_rootfs_tree(diff_from, diff_to):
+    rootfs_from = os.path.join(diff_from.dir, diff_from.meta['images']['live-rootfs']['path'])
+    rootfs_to = os.path.join(diff_to.dir, diff_to.meta['images']['live-rootfs']['path'])
+    diff_cmd_outputs(['coreos-installer', 'dev', 'show', 'initrd'], rootfs_from, rootfs_to)
+
+
+def ensure_extracted_rootfses(diff_from, diff_to):
+    rootfs_from = os.path.join(diff_from.dir, diff_from.meta['images']['live-rootfs']['path'])
+    rootfs_to = os.path.join(diff_to.dir, diff_to.meta['images']['live-rootfs']['path'])
+    dir_from = os.path.join(cache_dir("live-rootfs"), diff_from.id)
+    dir_to = os.path.join(cache_dir("live-rootfs"), diff_to.id)
+
+    def extract_rootfs(img, dir):
+        runcmd(['coreos-installer', 'dev', 'extract', 'initrd', img, '-C', dir])
+
+    if not os.path.exists(dir_from):
+        extract_rootfs(rootfs_from, dir_from)
+    if not os.path.exists(dir_to):
+        extract_rootfs(rootfs_to, dir_to)
+
+    return (dir_from, dir_to)
+
+
+def diff_live_rootfs(diff_from, diff_to):
+    (dir_from, dir_to) = ensure_extracted_rootfses(diff_from, diff_to)
+    git_diff(dir_from, dir_to)
+
+
+def diff_live_squashfs_tree(diff_from, diff_to):
+    (dir_from, dir_to) = ensure_extracted_rootfses(diff_from, diff_to)
+    diff_cmd_outputs(['unsquashfs', '-d', '', '-l', '-excludes', '{}',
+                      '/ostree/deploy', '/ostree/repo/objects'],
+                     os.path.join(dir_from, "root.squashfs"),
+                     os.path.join(dir_to, "root.squashfs"))
+
+
+def diff_live_squashfs(diff_from, diff_to):
+    (rootfs_dir_from, rootfs_dir_to) = ensure_extracted_rootfses(diff_from, diff_to)
+    squashfs_from = os.path.join(rootfs_dir_from, "root.squashfs")
+    squashfs_to = os.path.join(rootfs_dir_to, "root.squashfs")
+    dir_from = os.path.join(cache_dir("live-squashfs"), diff_from.id)
+    dir_to = os.path.join(cache_dir("live-squashfs"), diff_to.id)
+
+    if not os.path.exists(dir_from):
+        runcmd(['unsquashfs', '-d', dir_from, '-no-xattrs', '-excludes', squashfs_from, '/ostree/deploy', '/ostree/repo/objects'])
+    if not os.path.exists(dir_to):
+        runcmd(['unsquashfs', '-d', dir_to, '-no-xattrs', '-excludes', squashfs_to, '/ostree/deploy', '/ostree/repo/objects'])
+
+    git_diff(dir_from, dir_to)
+
+
+def diff_cmd_outputs(cmd, file_from, file_to):
+    with tempfile.NamedTemporaryFile(prefix=cmd[0] + '-') as f_from, \
+         tempfile.NamedTemporaryFile(prefix=cmd[0] + '-') as f_to:
+        if '{}' not in cmd:
+            cmd += ['{}']
+        idx = cmd.index('{}')
+        cmd_from = list(cmd)
+        cmd_from[idx] = file_from
+        subprocess.run(cmd_from, check=True, stdout=f_from).stdout
+        cmd_to = list(cmd)
+        cmd_to[idx] = file_to
+        subprocess.run(cmd_to, check=True, stdout=f_to).stdout
+        git_diff(f_from.name, f_to.name)
+
+
+def git_diff(arg_from, arg_to):
+    runcmd(['git', 'diff', '--no-index', arg_from, arg_to], check=False)
+
+
+def cache_dir(dir):
+    dir = os.path.join(DIFF_CACHE, dir)
+    os.makedirs(dir, exist_ok=True)
+    return dir
+
+
+# unfortunately, this has to come at the end to resolve functions
+DIFFERS = [
+    Differ("rpms", "Diff RPMs", needs_ostree=True, function=diff_rpms),
+    Differ("ostree-ls", "Diff OSTree contents using 'ostree diff'",
+           needs_ostree=True, function=diff_ostree_ls),
+    Differ("ostree", "Diff OSTree contents using 'git diff'",
+           needs_ostree=True, function=diff_ostree),
+    Differ("initrd", "Diff initramfs contents",
+           needs_ostree=True, function=diff_initrd),
+    Differ("live-iso-ls", "Diff live ISO listings",
+           needs_ostree=False, function=diff_live_iso_tree),
+    Differ("live-iso", "Diff live ISO content",
+           needs_ostree=False, function=diff_live_iso),
+    Differ("live-initrd-ls", "Diff live initramfs listings",
+           needs_ostree=False, function=diff_live_initrd_tree),
+    Differ("live-initrd", "Diff live initramfs content",
+           needs_ostree=False, function=diff_live_initrd),
+    Differ("live-rootfs-ls", "Diff live rootfs listings",
+           needs_ostree=False, function=diff_live_rootfs_tree),
+    Differ("live-rootfs", "Diff live rootfs content",
+           needs_ostree=False, function=diff_live_rootfs),
+    Differ("live-squashfs-ls", "Diff live squashfs listings",
+           needs_ostree=False, function=diff_live_squashfs_tree),
+    Differ("live-squashfs", "Diff live squashfs content",
+           needs_ostree=False, function=diff_live_squashfs),
+]
+
+if __name__ == '__main__':
+    main()

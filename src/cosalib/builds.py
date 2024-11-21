@@ -64,6 +64,10 @@ class Builds:  # pragma: nocover
         # just let throw if there are none
         return self._data['builds'][0]['id']
 
+    def get_previous(self):
+        # just let throw if there are none
+        return self._data['builds'][1]['id']
+
     def get_latest_for_arch(self, basearch):
         for build in self._data['builds']:
             if basearch in build['arches']:
