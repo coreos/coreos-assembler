@@ -117,7 +117,7 @@ osbuild \
     --out "$outdir"              \
     --store "$storedir"          \
     --cache-max-size 14GiB       \
-    --checkpoint build           \
+    --checkpoint deployed-tree   \
     --checkpoint tree            \
     --checkpoint raw-image       \
     ${platforms[@]/#/--export=}  \
