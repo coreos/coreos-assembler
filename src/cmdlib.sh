@@ -574,10 +574,8 @@ runcompose_tree() {
     fi
 }
 
-# Run with cache disk with optional snapshot=on, which means no changes get written back to
-# the cache disk. `runvm_with_cache_snapshot on` will set snapshotting to on.
-runvm_with_cache_snapshot() {
-    local snapshot=$1; shift
+# Run with cache disk.
+runvm_with_cache() {
     local cache_size=${RUNVM_CACHE_SIZE:-30G}
     # "cache2" has an explicit label so we can find it in qemu easily
     if [ ! -f "${workdir}"/cache/cache2.qcow2 ]; then
@@ -590,14 +588,9 @@ runvm_with_cache_snapshot() {
     fi
     # And remove the old one
     rm -vf "${workdir}"/cache/cache.qcow2
-    cache_args+=("-drive" "if=none,id=cache,discard=unmap,snapshot=${snapshot},file=${workdir}/cache/cache2.qcow2" \
+    cache_args+=("-drive" "if=none,id=cache,discard=unmap,file=${workdir}/cache/cache2.qcow2" \
                         "-device" "virtio-blk,drive=cache")
     runvm "${cache_args[@]}" "$@"
-}
-
-runvm_with_cache() {
-    local snapshot='off'
-    runvm_with_cache_snapshot $snapshot "$@"
 }
 
 # Strips out the digest field from lockfiles since they subtly conflict with
