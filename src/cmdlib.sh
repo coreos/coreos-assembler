@@ -566,7 +566,9 @@ runcompose_tree() {
         # with a consistent value, regardless of the environment
         (umask 0022 && sudo -E "$@")
         sudo chown -R -h "${USER}":"${USER}" "${tmprepo}"
-        sudo chown "${USER}":"${USER}" "${composejson}"
+        if [ -f "${composejson}" ]; then
+            sudo chown "${USER}":"${USER}" "${composejson}"
+        fi
     else
         runvm_with_cache -- "$@" --repo "${repo}" --write-composejson-to "${composejson}"
     fi
