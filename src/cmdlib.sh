@@ -574,34 +574,6 @@ runcompose_tree() {
     fi
 }
 
-runcompose_extensions() {
-    local outputdir=$1; shift
-    local workdir=${workdir:-$(pwd)}
-    local repo=${tmprepo:-${workdir}/tmp/repo}
-
-    rm -f "${changed_stamp}"
-    # shellcheck disable=SC2086
-    set - ${COSA_RPMOSTREE_GDB:-} rpm-ostree compose extensions --repo="${repo}" \
-            --touch-if-changed "${changed_stamp}" --cachedir="${workdir}"/cache \
-            ${COSA_RPMOSTREE_ARGS:-} "$@" --output-dir "$outputdir"
-
-    echo "Running: $*"
-
-    # this is the heart of the privs vs no privs dual path
-    if has_privileges; then
-        # we hardcode a umask of 0022 here to make sure that composes are run
-        # with a consistent value, regardless of the environment
-        (umask 0022 && sudo -E "$@")
-        sudo chown -R -h "${USER}":"${USER}" "${outputdir}"
-    else
-        # Use a snapshot version of the cache qcow2 to allow multiple users
-        # of the cache at the same time. This is needed because the extensions
-        # and other artifacts are built in parallel.
-        local snapshot='on'
-        runvm_with_cache_snapshot "${snapshot}" -- "$@"
-    fi
-}
-
 # Run with cache disk with optional snapshot=on, which means no changes get written back to
 # the cache disk. `runvm_with_cache_snapshot on` will set snapshotting to on.
 runvm_with_cache_snapshot() {
