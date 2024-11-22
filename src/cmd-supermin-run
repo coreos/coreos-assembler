@@ -6,7 +6,7 @@ dn=$(dirname "$0")
 . "${dn}"/cmdlib.sh
 
 print_help() {
-    echo "Usage: cosa supermin-run [--cache|--snapshot] COMMAND [ARG...]" >&2
+    echo "Usage: cosa supermin-run [--cache] COMMAND [ARG...]" >&2
 }
 
 if [ $# = 0 ]; then
@@ -19,11 +19,6 @@ case "$1" in
     --cache)
         shift
         set -- runvm_with_cache -- "$@"
-        need_cache_dir=1
-        ;;
-    --snapshot)
-        shift
-        set -- runvm_with_cache_snapshot on -- "$@"
         need_cache_dir=1
         ;;
     --*)
