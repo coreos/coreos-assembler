@@ -347,7 +347,6 @@ main() {
     done
 
     tobuild=()
-    building_qemu=0
     for platform in "${platforms[@]}"; do
         # check if the image already exists in the meta.json
         meta_img=$(meta_key "images.${platform}.path")
@@ -357,7 +356,6 @@ main() {
         else
             tobuild+=("${platform}")
             echo "Will build $platform"
-            [ "${platform}" == 'qemu' ] && building_qemu=1
         fi
     done
     if [ ${#tobuild[@]} == "0" ]; then
@@ -366,17 +364,10 @@ main() {
     fi
     platforms=("${tobuild[@]}")
 
-    # Run OSBuild now to build the platforms that were requested. In the jenkins
-    # pipelines we build the qemu image first and that operation will do a lot of
-    # the same work required for later artifacts (metal, metal4k, etc) so we want
-    # the cached output from that run to persist. For now, later artifacts get built
-    # in parallel, so we need to be able to access the cache by multiple processes,
-    # so for those we'll set `snapshot=on` so that each will get their own disk image.
-    # This is OK because we don't checkpoint (cache) any of those stages.
-    [ "${building_qemu}" == '1' ] && snapshot="off" || snapshot="on"
+    # Run OSBuild now to build the platforms that were requested.
     runvm_osbuild_config_json="$(generate_runvm_osbuild_config)"
     outdir=$(mktemp -p "${tmp_builddir}" -d)
-    runvm_with_cache_snapshot "$snapshot" -- /usr/lib/coreos-assembler/runvm-osbuild                    \
+    runvm_with_cache -- /usr/lib/coreos-assembler/runvm-osbuild                                         \
                 --config "${runvm_osbuild_config_json}"                                                 \
                 --mpp "/usr/lib/coreos-assembler/osbuild-manifests/coreos.osbuild.${basearch}.mpp.yaml" \
                 --outdir "${outdir}"                                                                    \
