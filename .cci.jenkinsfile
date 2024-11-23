@@ -30,7 +30,7 @@ pod(image: imageName + ":latest", kvm: true, cpu: "${cpuCount}", memory: "${memo
     kola(cosaDir: "/srv", addExtTests: ["${env.WORKSPACE}/ci/run-kola-self-tests"])
 
     stage("Build Metal") {
-        cosaParallelCmds(cosaDir: "/srv", commands: ["metal", "metal4k"])
+        utils.cosaCmd(cosaDir: "/srv", args: "osbuild metal metal4k")
     }
 
     stage("Build Live Images") {
