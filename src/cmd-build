@@ -633,7 +633,10 @@ loose_objs=()
 loose_objs+=("commitmeta.json" "ostree-commit-object")
 loose_objs+=("manifest-lock.generated.$basearch.json")
 # source metadata
-loose_objs+=("coreos-assembler-config-git.json" "coreos-assembler-config.tar.gz")
+loose_objs+=("coreos-assembler-config-git.json")
+if [ "${CONFIG_ARCHIVE}"  != 0 ]; then
+    loose_objs+=("coreos-assembler-config.tar.gz")
+fi
 mv -vt "${builddir}" "${loose_objs[@]}"
 # official more public artifacts; tracked by meta.json
 jq -r .images[].path meta.json | xargs mv -vt "${builddir}"
