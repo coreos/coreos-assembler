@@ -96,10 +96,10 @@ def get_floating_tag(rel, tags):
     for tag in tags:
         if rel not in tag:
             if found != "":
-                raise f"multiple floating tags within: {tags}"
+                raise ValueError(f"multiple floating tags within: {tags}")
             found = tag
     if found == "":
-        raise f"failed to find floating tag within: {tags}"
+        raise ValueError(f"failed to find floating tag within: {tags}")
     return found
 
 

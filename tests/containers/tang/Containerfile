@@ -1,6 +1,6 @@
-FROM registry.fedoraproject.org/fedora-minimal:40
+FROM registry.fedoraproject.org/fedora-minimal:41
 
-RUN microdnf -y install tang && microdnf clean all && rm -rf /var/cache/yum
+RUN dnf -y install tang && dnf clean all && rm -rf /var/cache/yum
 EXPOSE 80
 
 RUN systemctl enable tangd.socket
