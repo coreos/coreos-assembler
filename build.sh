@@ -168,16 +168,12 @@ patch_osbuild() {
     # To make it easier to apply patches we'll move around the osbuild
     # code on the system first:
     rmdir /usr/lib/osbuild/osbuild
-    mv /usr/lib/python3.12/site-packages/osbuild /usr/lib/osbuild/
+    mv /usr/lib/python3.13/site-packages/osbuild /usr/lib/osbuild/
     mkdir /usr/lib/osbuild/tools
     mv /usr/bin/osbuild-mpp /usr/lib/osbuild/tools/
 
     # Now all the software is under the /usr/lib/osbuild dir and we can patch
-    cat /usr/lib/coreos-assembler/0001-parsing-add-parse_location_into_parts.patch                \
-        /usr/lib/coreos-assembler/0002-parsing-treat-locations-without-scheme-as-belonging-.patch \
-        /usr/lib/coreos-assembler/0003-org.osbuild.selinux-support-operating-on-mounts.patch      \
-        /usr/lib/coreos-assembler/0004-org.osbuild.selinux-support-for-specifying-where-fil.patch \
-        /usr/lib/coreos-assembler/0001-osbuild-remoteloop-add-more-loop-device-options.patch      \
+    cat /usr/lib/coreos-assembler/0001-osbuild-remoteloop-add-more-loop-device-options.patch      \
         /usr/lib/coreos-assembler/0002-osbuild-loop-make-the-loop-device-if-missing.patch         \
         /usr/lib/coreos-assembler/0003-util-osrelease.py-improve-whitespace-and-quote-strip.patch \
         /usr/lib/coreos-assembler/0004-util-chroot-Add-support-for-custom-directory-bind-mo.patch \
@@ -187,7 +183,7 @@ patch_osbuild() {
     # And then move the files back; supermin appliance creation will need it back
     # in the places delivered by the RPM.
     mv /usr/lib/osbuild/tools/osbuild-mpp /usr/bin/osbuild-mpp
-    mv /usr/lib/osbuild/osbuild /usr/lib/python3.12/site-packages/osbuild
+    mv /usr/lib/osbuild/osbuild /usr/lib/python3.13/site-packages/osbuild
     mkdir /usr/lib/osbuild/osbuild
 }
 

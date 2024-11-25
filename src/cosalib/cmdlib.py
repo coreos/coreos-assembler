@@ -106,10 +106,10 @@ def merge_dicts(x, y):
             if k in sd:
                 # the key is only present in one dict, add it directly
                 ret.update({k: v})
-            elif type(x[k]) == dict and type(y[k]) == dict:
+            elif isinstance(x[k], dict) and isinstance(y[k], dict):
                 # recursively merge
                 ret.update({k: merge_dicts(x[k], y[k])})
-            elif type(x[k]) == list and type(y[k]) == list:
+            elif isinstance(x[k], list) and isinstance(y[k], list):
                 ret.update({k: x[k]})
                 merge_lists(ret, y, k)
             else:
@@ -460,9 +460,9 @@ def write_image_json(srcfile, outfile):
 # but we have no use case for them right now in our official images.
 def merge_lists(x, y, k):
     x[k] = x.get(k, [])
-    assert type(x[k]) == list
+    assert isinstance(x[k], list)
     y[k] = y.get(k, [])
-    assert type(y[k]) == list
+    assert isinstance(y[k], list)
     x[k].extend([i for i in y[k] if i not in x[k]])
 
 
