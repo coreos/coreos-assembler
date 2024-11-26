@@ -400,7 +400,8 @@ prepare_compose_overlays() {
     fi
 
     if [ -d "${overridesdir}" ] || [ -d "${ovld}" ] || [ -d "${workdir}/src/yumrepos" ]; then
-        mkdir -p "${tmp_overridesdir}"
+        rm -rf "${tmp_overridesdir}"
+        mkdir  "${tmp_overridesdir}"
         cat > "${override_manifest}" <<EOF
 include: ${manifest}
 EOF
