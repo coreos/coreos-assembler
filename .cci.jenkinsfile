@@ -29,14 +29,8 @@ pod(image: imageName + ":latest", kvm: true, cpu: "${cpuCount}", memory: "${memo
     // Run stage Kola QEMU (basic-qemu-scenarios, upgrade and self tests)
     kola(cosaDir: "/srv", addExtTests: ["${env.WORKSPACE}/ci/run-kola-self-tests"])
 
-    stage("Build Metal") {
-        utils.cosaCmd(cosaDir: "/srv", args: "osbuild metal metal4k")
-    }
-
-    stage("Build Live Images") {
-        // Explicitly test re-importing the ostree repo
-        shwrap("cd /srv && rm tmp/repo -rf")
-        utils.cosaCmd(cosaDir: "/srv", args: "buildextend-live --fast")
+    stage("Build Metal/Live Artifacts") {
+        utils.cosaCmd(cosaDir: "/srv", args: "osbuild metal metal4k live")
     }
 
     kolaTestIso(cosaDir: "/srv")
