@@ -819,7 +819,7 @@ func testPXE(ctx context.Context, inst platform.Install, outdir string) (time.Du
 	liveConfig.AddSystemdUnit("coreos-test-entered-emergency-target.service", signalFailureUnit, conf.Enable)
 
 	if isOffline {
-		contents := fmt.Sprintf(downloadCheck, kola.CosaBuild.Meta.BuildID, kola.CosaBuild.Meta.OstreeCommit)
+		contents := fmt.Sprintf(downloadCheck, kola.CosaBuild.Meta.OstreeVersion, kola.CosaBuild.Meta.OstreeCommit)
 		liveConfig.AddSystemdUnit("coreos-installer-offline-check.service", contents, conf.Enable)
 	}
 
