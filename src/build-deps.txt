@@ -2,6 +2,8 @@
 time
 # Used by mantle
 golang
+# Used for syntax validation of manifests
+shellcheck
 # Use tmux for developer multi-arch builder access UX 
 #https://github.com/coreos/fedora-coreos-pipeline/issues/803
 tmux
