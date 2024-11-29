@@ -450,7 +450,7 @@ EOF
         # the same RPMs: the `dnf repoquery` below is to pick the latest one
         dnf repoquery  --repofrompath=tmp,"file://${overridesdir}/rpm" \
             --disablerepo '*' --enablerepo tmp --refresh --latest-limit 1 \
-            --exclude '*.src' --qf '%{name}\t%{evr}\t%{arch}' \
+            --exclude '*.src' --qf 'pkg: %{name} %{evr} %{arch}\n' \
             --quiet > "${tmp_overridesdir}/pkgs.txt"
 
         # shellcheck disable=SC2002
@@ -458,7 +458,9 @@ EOF
 import sys, json
 lockfile = {"packages": {}}
 for line in sys.stdin:
-    name, evr, arch = line.strip().split("\t")
+    if not line.startswith("pkg: "):
+        continue
+    _, name, evr, arch = line.strip().split()
     lockfile["packages"][name] = {"evra": f"{evr}.{arch}"}
 json.dump(lockfile, sys.stdout)' > "${local_overrides_lockfile}"
 
