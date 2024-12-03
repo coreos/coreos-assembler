@@ -53,7 +53,7 @@ else:
 print(f"Targeting build: {build}")
 
 # common extensions for known compressors
-ext_dict = {'xz': '.xz', 'gzip': '.gz', 'zstd': '.zst'}
+ext_dict = {'xz': '.xz', 'gzip': '.gz', 'zstd': '.zst', 'zip': '.zip'}
 
 
 def get_cpu_param(param):
@@ -65,7 +65,7 @@ def strip_ext(path):
     return path.rsplit(".", 1)[0]
 
 
-def compress_one_builddir(builddir):
+def compress_one_builddir(builddir, platform_compressors):
     print(f"Compressing: {builddir}")
     buildmeta_path = os.path.join(builddir, 'meta.json')
     # In the case where we are doing builds for different architectures
@@ -76,9 +76,6 @@ def compress_one_builddir(builddir):
         return False
     with open(buildmeta_path) as f:
         buildmeta = json.load(f)
-
-    # Find what extension to use based on the selected compressor
-    ext = ext_dict[args.compressor]
 
     tmpdir = 'tmp/compress'
     if os.path.isdir(tmpdir):
@@ -106,6 +103,10 @@ def compress_one_builddir(builddir):
         if only_artifacts is not None and img_format not in only_artifacts:
             continue
 
+        compressor = platform_compressors.get(img_format) or args.compressor
+        # Find what extension to use based on the selected compressor
+        ext = ext_dict[compressor]
+
         file = img['path']
         filepath = os.path.join(builddir, file)
         if img.get('uncompressed-sha256') is None:
@@ -116,12 +117,16 @@ def compress_one_builddir(builddir):
             img['uncompressed-size'] = img['size']
             with open(tmpfile, 'wb') as f:
                 t = ncpu()
-                if args.compressor == 'xz':
+                if compressor == 'xz':
                     runcmd(['xz', '-c9', f'-T{t}', filepath], stdout=f)
-                elif args.compressor == 'zstd':
+                elif compressor == 'zstd':
                     runcmd(['zstd', '-10', '-c', f'-T{t}', filepath], stdout=f)
-                else:
+                elif compressor == 'gzip':
                     runcmd(['gzip', f'-{gzip_level}', '-c', filepath], stdout=f)  # pylint: disable=E0606
+                elif compressor == 'zip':
+                    runcmd(['zip', '-9j', '-', filepath], stdout=f)  # pylint: disable=E0606
+                else:
+                    raise Exception(f"Unknown compressor: {compressor}")
             file_with_ext = file + ext
             filepath_with_ext = filepath + ext
             compressed_size = os.path.getsize(tmpfile)
@@ -202,6 +207,8 @@ def uncompress_one_builddir(builddir):
                     runcmd(['zstd', '-dc', filepath], stdout=f)
                 elif file.endswith('gz'):
                     runcmd(['gzip', '-dc', filepath], stdout=f)
+                elif file.endswith('zip'):
+                    runcmd(['unzip', '-p', filepath], stdout=f)
                 else:
                     print(f"Unknown sufix of file {file}")
             file_without_ext = strip_ext(file)
@@ -266,16 +273,17 @@ changed = []
 if args.mode == "compress":
     # Find what compressor we should use, either picking it up from
     # CLI args or from image.json
+    image_json = get_image_json()
     gzip_level = 6
     if args.fast:
         args.compressor = 'gzip'
         gzip_level = 1
     elif not args.compressor:
-        image_json = get_image_json()
         args.compressor = image_json.get('compressor', DEFAULT_COMPRESSOR)
     for arch in builds.get_build_arches(build):
         builddir = builds.get_build_dir(build, arch)
-        changed.append(compress_one_builddir(builddir))
+        changed.append(compress_one_builddir(builddir,
+                                             image_json.get('platform-compressor', {})))
         if not any(changed):
             print("All builds already compressed")
 elif args.mode == "uncompress":
