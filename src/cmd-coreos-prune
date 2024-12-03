@@ -126,10 +126,11 @@ def main():
         build_id = build["id"]
         build_date = parse_fcos_version_to_timestamp(build_id)
         actions_completed = []
+        print(f"Processing build {build_id}")
 
         # For each build, iterate over arches first to minimize downloads of meta.json per arch
         for arch in build["arches"]:
-            print(f"Processing {arch} for build {build_id}")
+            print(f"\tProcessing {arch} for build {build_id}")
             meta_prefix = os.path.join(prefix, f"{build_id}/{arch}/meta.json")
             meta_json = get_json_from_s3(s3_client, bucket, meta_prefix)  # Download meta.json once per arch
             images = get_supported_images(meta_json)
@@ -152,17 +153,17 @@ def main():
                         # this type run for this build. For all types except `images` we
                         # can just continue.
                         if action != "images":
-                            print(f"Build {build_id} has already had {action} pruning completed")
+                            print(f"\t\tBuild {build_id} has already had {action} pruning completed")
                             continue
                         # OK `images` has been pruned before, but we need to check
                         # that all the images were pruned that match the current policy.
                         # i.e. there may be additional images we need prune
                         elif set(images_to_keep) == set(previous_cleanup.get("images-kept", [])):
-                            print(f"Build {build_id} has already had {action} pruning completed")
+                            print(f"\t\tBuild {build_id} has already had {action} pruning completed")
                             continue
 
                     # Pruning actions based on type
-                    print(f"Pruning {arch} {action} for {build_id}")
+                    print(f"\t\t{arch} {action} for {build_id}")
                     match action:
                         case "cloud-uploads":
                             prune_cloud_uploads(current_build, cloud_config, args.dry_run)
@@ -180,7 +181,7 @@ def main():
                             if arch == "x86_64":
                                 if build_id in barrier_releases:
                                     # Since containers are used for updates we need to keep around containers for barrier releases.
-                                    print(f"Release {build_id} is a barrier release. Skipping container prune.")
+                                    print(f"\t\t\tRelease {build_id} is a barrier release. Skipping container prune.")
                                     continue
                                 # Retrieve container tags excluding the stream name since it updates with each release.
                                 container_tags, container_repo = get_container_tags(meta_json, exclude=[stream])
@@ -188,7 +189,7 @@ def main():
                                     for tag in container_tags:
                                         prune_container(tag, args.dry_run, container_repo, args.registry_auth_file)
                                 else:
-                                    print(f"No container tags to prune for build {build_id}.")
+                                    print(f"\t\t\tNo container tags to prune for build {build_id}.")
                     actions_completed.append(action)  # Append action to completed list
         # Only add policy-cleanup for the build in builds.json if any
         # of the cleanup actions were completed.
@@ -337,7 +338,7 @@ def prune_cloud_uploads(build, cloud_config, dry_run):
     errors.extend(delete_gcp_image(build, cloud_config, dry_run))
 
     if errors:
-        print(f"Found errors when removing cloud-uploads for {build.id}:")
+        print(f"\t\t\tFound errors when removing cloud-uploads for {build.id}:")
         for e in errors:
             print(e)
         raise Exception("Some errors were encountered")
@@ -348,7 +349,7 @@ def deregister_aws_amis(build, cloud_config, dry_run):
     aws_credentials = cloud_config.get("aws", {}).get("credentials")
     amis = build.images.get("amis")
     if not amis:
-        print(f"No AMI/Snapshot to prune for {build.id} for {build.arch}")
+        print(f"\t\t\tNo AMI/Snapshot to prune for {build.id} for {build.arch}")
         return errors
     for ami in amis:
         region_name = ami.get("name")
@@ -357,7 +358,7 @@ def deregister_aws_amis(build, cloud_config, dry_run):
         # then let's instruct ore to detect the snapshot ID from the AMI.
         snapshot_id = ami.get("snapshot", "detectFromAMI")
         if dry_run:
-            print(f"Would delete {ami_id} and {snapshot_id} for {build.id}")
+            print(f"\t\t\tWould delete {ami_id} and {snapshot_id} for {build.id}")
             continue
         if (ami_id or snapshot_id) and region_name:
             try:
@@ -373,13 +374,13 @@ def delete_gcp_image(build, cloud_config, dry_run):
     errors = []
     gcp = build.images.get("gcp")
     if not gcp:
-        print(f"No GCP image to prune for {build.id} for {build.arch}")
+        print(f"\t\t\tNo GCP image to prune for {build.id} for {build.arch}")
         return errors
     gcp_image = gcp.get("image")
     project = gcp.get("project") or "fedora-coreos-cloud"
     json_key = cloud_config.get("gcp", {}).get("json-key")
     if dry_run:
-        print(f"Would delete {gcp_image} GCP image for {build.id}")
+        print(f"\t\t\tWould delete {gcp_image} GCP image for {build.id}")
     elif gcp_image and json_key and project:
         try:
             remove_gcp_image(gcp_image, json_key, project)
@@ -400,18 +401,18 @@ def prune_images(s3, build, images_to_keep, dry_run, bucket, prefix):
         if name not in images_to_keep:
             image_prefix = os.path.join(prefix, f"{build.id}/{build.arch}/{path}")
             if dry_run:
-                print(f"Would prune {bucket}/{image_prefix}")
+                print(f"\t\t\tWould prune {bucket}/{image_prefix}")
             else:
                 try:
                     s3.delete_object(Bucket=bucket, Key=image_prefix)
-                    print(f"Pruned {name} image for {build.id} for {build.arch}")
+                    print(f"\t\t\tPruned {name} image for {build.id} for {build.arch}")
                 except botocore.exceptions.ClientError as e:
                     if e.response['Error']['Code'] == 'NoSuchKey':
-                        print(f"{bucket}/{image_prefix} already pruned.")
+                        print(f"\t\t\t{bucket}/{image_prefix} already pruned.")
                     else:
                         errors.append(e)
     if errors:
-        print(f"Found errors when pruning images for {build.id}:")
+        print(f"\t\t\tFound errors when pruning images for {build.id}:")
         for e in errors:
             print(e)
         raise Exception("Some errors were encountered")
@@ -420,7 +421,7 @@ def prune_images(s3, build, images_to_keep, dry_run, bucket, prefix):
 def prune_build(s3_client, bucket, prefix, build_id, dry_run):
     build_prefix = os.path.join(prefix, f"{build_id}/")
     if dry_run:
-        print(f"Would delete all resources in {bucket}/{build_prefix}.")
+        print(f"\t\t\tWould delete all resources in {bucket}/{build_prefix}.")
     else:
         try:
             # List all objects under the specified prefix
@@ -430,12 +431,12 @@ def prune_build(s3_client, bucket, prefix, build_id, dry_run):
                 delete_keys = [{'Key': obj['Key']} for obj in objects_to_delete['Contents']]
                 # Delete objects
                 s3_client.delete_objects(Bucket=bucket, Delete={'Objects': delete_keys})
-                print(f"Pruned {build_id} completely from {bucket}/{build_prefix}.")
+                print(f"\t\t\tPruned {build_id} completely from {bucket}/{build_prefix}.")
             else:
-                print(f"No objects found to delete in {bucket}/{build_prefix}.")
+                print(f"\t\t\tNo objects found to delete in {bucket}/{build_prefix}.")
         except botocore.exceptions.ClientError as e:
             if e.response['Error']['Code'] == 'NoSuchKey':
-                print(f"{bucket}/{build_prefix} already pruned or doesn't exist.")
+                print(f"\t\t\t{bucket}/{build_prefix} already pruned or doesn't exist.")
             else:
                 raise Exception(f"Error pruning {build_id}: {e.response['Error']['Message']}")
 
@@ -452,7 +453,7 @@ def get_container_tags(meta_json, exclude):
 
 def prune_container(tag, dry_run, container_repo, registry_auth_file):
     if dry_run:
-        print(f"Would prune image {container_repo}:{tag}")
+        print(f"\t\t\tWould prune image {container_repo}:{tag}")
     else:
         skopeo_delete(container_repo, tag, registry_auth_file)
 
@@ -478,7 +479,7 @@ def skopeo_inspect(repo, tag, auth):
 
         # Exit code 2 indicates the image tag does not exist. We will consider it as pruned.
         if exit_code == 2:
-            print(f"Skipping deletion for {repo}:{tag} since the tag does not exist.")
+            print(f"\t\t\tSkipping deletion for {repo}:{tag} since the tag does not exist.")
             return False
         else:
             # Handle other types of errors
@@ -492,7 +493,7 @@ def skopeo_delete(repo, image, auth):
             skopeo_args.extend(["--authfile", auth])
         try:
             subprocess.check_output(skopeo_args, stderr=subprocess.STDOUT)
-            print(f"Image {repo}:{image} deleted successfully.")
+            print(f"\t\t\tImage {repo}:{image} deleted successfully.")
         except subprocess.CalledProcessError as e:
             # Throw an exception in case the delete command fail despite the image existing
             raise Exception("An error occurred during deletion:", e.output.decode("utf-8"))
