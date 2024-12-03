@@ -51,7 +51,7 @@ pipelines:
              partition:
                mpp-format-int: '{image.layout[''boot''].partnum}'
              target: /boot
-  - name: raw-hyperv-image-vhdx
+  - name: hyperv
     build:
       mpp-format-string: '{host_as_buildroot}'
     stages:
@@ -68,18 +68,3 @@ pipelines:
             mpp-format-string: '{artifact_name_prefix}-hyperv.{arch}.vhdx'
           format:
             type: vhdx
-  - name: hyperv
-    build:
-      mpp-format-string: '{host_as_buildroot}'
-    stages:
-      - type: org.osbuild.zip
-        inputs:
-          tree:
-            type: org.osbuild.tree
-            origin: org.osbuild.pipeline
-            references:
-              - name:raw-hyperv-image-vhdx
-        options:
-          level: 9
-          filename:
-            mpp-format-string: '{artifact_name_prefix}-hyperv.{arch}.vhdx.zip'
