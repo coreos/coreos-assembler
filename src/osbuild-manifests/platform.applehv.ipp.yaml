@@ -55,15 +55,15 @@ pipelines:
     build:
       mpp-format-string: '{buildroot}'
     stages:
-      - type: org.osbuild.gzip
+      - type: org.osbuild.copy
         inputs:
-          file:
-            type: org.osbuild.files
+          tree:
+            type: org.osbuild.tree
             origin: org.osbuild.pipeline
             references:
-              name:raw-applehv-image:
-                file: disk.img
+              - name:raw-applehv-image
         options:
-          level: 9
-          filename:
-            mpp-format-string: '{artifact_name_prefix}-applehv.{arch}.raw.gz'
+          paths:
+            - from: input://tree/disk.img
+              to:
+                mpp-format-string: 'tree:///{artifact_name_prefix}-applehv.{arch}.raw'

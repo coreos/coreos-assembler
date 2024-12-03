@@ -8,9 +8,9 @@ dn=$(dirname "$0")
 # A list of supported platforms and the filename suffix of the main
 # artifact that platform produces.
 declare -A SUPPORTED_PLATFORMS=(
-    ['applehv']='raw.gz'
+    ['applehv']='raw'
     ['gcp']='tar.gz'
-    ['hyperv']='vhdx.zip'
+    ['hyperv']='vhdx'
     ['metal4k']='raw'
     ['metal']='raw'
     ['qemu']='qcow2'
@@ -384,7 +384,7 @@ main() {
 
         # Perform postprocessing
         case "$platform" in
-            applehv|gcp|hyperv)
+            gcp)
                 # Update the meta.json and builddir with the generated artifact.
                 # Skip Compression on these platforms as they are already compressed.
                 postprocess_artifact "${platform}" "${imgpath}" "${imgname}" 'True'
