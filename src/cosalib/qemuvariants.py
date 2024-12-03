@@ -54,9 +54,7 @@ VARIANTS = {
     },
     "applehv": {
         "image_format": "raw",
-        "image_suffix": "raw.gz",
-        "platform": "applehv",
-        "compression": "gzip"
+        "platform": "applehv"
     },
     "azure": {
         "image_format": "vpc",
@@ -99,9 +97,7 @@ VARIANTS = {
     },
     "hyperv": {
         "image_format": "vhdx",
-        "image_suffix": "vhdx.zip",
-        "platform": "hyperv",
-        "compression": "zip"
+        "platform": "hyperv"
     },
     "kubevirt": {
         "image_format": "qcow2",
