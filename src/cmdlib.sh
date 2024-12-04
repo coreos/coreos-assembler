@@ -5,6 +5,27 @@ set -euo pipefail
 DIR=$(dirname "$(realpath "${BASH_SOURCE[0]}")")
 RFC3339="%Y-%m-%dT%H:%M:%SZ"
 
+# Fix 'sudo' in case we're running as root
+if [ "$(id -u)" != "0" ]; then
+    export SUDO=sudo
+    export SUDO_W_ENV='sudo -E'
+    # always provide the sudo_w_env alias so python scripts can be sure it always exists
+    alias sudo_w_env='sudo -E'
+else
+    export SUDO=
+    export SUDO_W_ENV=
+    fake-sudo() {
+        # pass thru the exit code implicitly
+        set -e
+        "$@"
+    }
+    export -f fake-sudo
+    # Spoof 'sudo' in the environment to go to our wrapper that does nothing instead, including a sudo_w_env that drops the -E options as well.
+    # Python code doesn't use the ${SUDO} or ${SUDO_W_ENV} variables, so this forces them to the right thing when hardcoding the subprocess commands.
+    alias sudo='fake-sudo'
+    alias sudo_w_env='fake-sudo'
+fi
+
 info() {
     echo "info: $*" 1>&2
 }
@@ -113,9 +134,9 @@ preflight_kvm() {
             if ! has_privileges; then
                 fatal "running unprivileged, and /dev/kvm not writable"
             else
-                sudo rm -f /dev/kvm
-                sudo mknod /dev/kvm c 10 232
-                sudo setfacl -m u:"$USER":rw /dev/kvm
+                ${SUDO} rm -f /dev/kvm
+                ${SUDO} mknod /dev/kvm c 10 232
+                ${SUDO} setfacl -m u:"$USER":rw /dev/kvm
             fi
         fi
     fi
@@ -567,10 +588,10 @@ runcompose_tree() {
         set - "$@" --repo "${repo}" --write-composejson-to "${composejson}"
         # we hardcode a umask of 0022 here to make sure that composes are run
         # with a consistent value, regardless of the environment
-        (umask 0022 && sudo -E "$@")
-        sudo chown -R -h "${USER}":"${USER}" "${tmprepo}"
+        (umask 0022 && ${SUDO_W_ENV} -E "$@")
+        ${SUDO} chown -R -h "${USER}":"${USER}" "${tmprepo}"
         if [ -f "${composejson}" ]; then
-            sudo chown "${USER}":"${USER}" "${composejson}"
+            ${SUDO} chown "${USER}":"${USER}" "${composejson}"
         fi
     else
         runvm_with_cache -- "$@" --repo "${repo}" --write-composejson-to "${composejson}"

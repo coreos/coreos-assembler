@@ -147,7 +147,7 @@ source=$1; shift
 preflight
 
 if has_privileges; then
-    sudo chown "$USER:" .
+    ${SUDO} chown "$USER:" .
 elif [ ! -w . ]; then
     fatal "init: running unprivileged, and current directory not writable"
 fi
