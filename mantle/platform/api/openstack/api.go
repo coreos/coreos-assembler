@@ -637,6 +637,21 @@ func (a *API) DeleteKey(name string) error {
 	return keypairs.Delete(a.computeClient, name, nil).ExtractErr()
 }
 
+func (a *API) ListKeyPairs() ([]keypairs.KeyPair, error) {
+	opts := keypairs.ListOpts{}
+	// Retrieve all pages of keypairs
+	allPages, err := keypairs.List(a.computeClient, opts).AllPages()
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch keypair pages: %w", err)
+	}
+	// Extract keypairs from the pages
+	allKeyPairs, err := keypairs.ExtractKeyPairs(allPages)
+	if err != nil {
+		return nil, fmt.Errorf("failed to extract keypairs: %w", err)
+	}
+	return allKeyPairs, nil
+}
+
 func (a *API) listServersWithMetadata(metadata map[string]string) ([]servers.Server, error) {
 	pager := servers.List(a.computeClient, servers.ListOpts{})
 
@@ -667,7 +682,7 @@ func (a *API) listServersWithMetadata(metadata map[string]string) ([]servers.Ser
 
 func (a *API) GC(gracePeriod time.Duration) error {
 	threshold := time.Now().Add(-gracePeriod)
-
+	// Clean up servers
 	servers, err := a.listServersWithMetadata(map[string]string{
 		"CreatedBy": "mantle",
 	})
@@ -681,6 +696,18 @@ func (a *API) GC(gracePeriod time.Duration) error {
 
 		if err := a.DeleteServer(server.ID); err != nil {
 			return fmt.Errorf("couldn't delete server %s: %v", server.ID, err)
+		}
+	}
+	// Clean up keypairs
+	keypairs, err := a.ListKeyPairs()
+	if err != nil {
+		return err
+	}
+	for _, keypair := range keypairs {
+		if strings.HasPrefix(keypair.Name, "kola-") {
+			if err := a.DeleteKey(keypair.Name); err != nil {
+				return fmt.Errorf("couldn't delete keypair %s: %v", keypair.Name, err)
+			}
 		}
 	}
 	return nil

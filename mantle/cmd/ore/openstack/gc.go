@@ -26,7 +26,7 @@ var (
 	cmdGC = &cobra.Command{
 		Use:   "gc",
 		Short: "GC resources in OpenStack",
-		Long:  `Delete instances created over the given duration ago`,
+		Long:  `Delete instances and keypairs created over the given duration ago`,
 		RunE:  runGC,
 
 		SilenceUsage: true,
