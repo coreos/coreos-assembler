@@ -32,6 +32,17 @@ getconfig_def() {
     jq -re .\""$k"\"//\""${default}"\" < "${config}"
 }
 
+log_disk_usage(){
+    # spawn off a subshell in the background to log disk usage every
+    # 10 seconds.
+    yellow="\033[33m"; default="\033[39m"
+    (while true; do
+        echo -e "$yellow"; df -kh ./cache; echo -e "$default";
+        sleep 10;
+        pgrep --exact osbuild >/dev/null || break;
+    done) &
+}
+
 while [ $# -gt 0 ];
 do
     flag="${1}"; shift;
@@ -111,6 +122,8 @@ set -x; osbuild-mpp                                       \
     -D rootfs_size_mb="${rootfs_size_mb}"                 \
     "${mppyaml}" "${processed_json}"
 set +x
+
+log_disk_usage
 
 # Build the image
 set -x
