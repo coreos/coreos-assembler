@@ -125,7 +125,5 @@ osbuild \
     ${platforms[@]/#/--export=}  \
     "${processed_json}"
 
-#   --break org.osbuild.coreos.live-artifacts.mono \
-
 mv "${outdir}"/* "${orig_outdir}/"
 rm -f "${processed_json}"
