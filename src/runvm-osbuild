@@ -1,5 +1,5 @@
 #!/bin/bash
-set -eux -o pipefail
+set -euo pipefail
 
 usage() {
     cat <<EOC
@@ -95,7 +95,7 @@ podman images > /dev/null
 
 # Run through the preprocessor
 # Note: don't quote the size arguements since they are numbers, not strings
-osbuild-mpp                                               \
+set -x; osbuild-mpp                                       \
     -D arch=\""$(arch)"\"                                 \
     -D artifact_name_prefix=\""${artifact_name_prefix}"\" \
     -D ostree_ref=\""${ostree_ref}"\"                     \
@@ -110,8 +110,10 @@ osbuild-mpp                                               \
     -D cloud_image_size_mb="${cloud_image_size_mb}"       \
     -D rootfs_size_mb="${rootfs_size_mb}"                 \
     "${mppyaml}" "${processed_json}"
+set +x
 
 # Build the image
+set -x
 # shellcheck disable=SC2068
 osbuild \
     --out "$outdir"              \
@@ -124,6 +126,7 @@ osbuild \
     --checkpoint metal4k         \
     ${platforms[@]/#/--export=}  \
     "${processed_json}"
+set +x
 
 mv "${outdir}"/* "${orig_outdir}/"
 rm -f "${processed_json}"
