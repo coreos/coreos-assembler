@@ -68,6 +68,7 @@ pipelines:
           filename: disk.tar
           format: oldgnu
           root-node: omit
+          sparse: true
           # Set these to false so GCP image upload/create will succeed
           acls: false
           selinux: false
