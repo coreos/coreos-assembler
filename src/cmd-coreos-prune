@@ -112,7 +112,7 @@ def main():
         builds_json_data = json.load(f)
     # Original list of builds
     builds = builds_json_data["builds"]
-    pruned_build_ids = []
+    builds_to_prune = set()
     images_to_keep = policy.get(stream, {}).get("images-keep", [])
     barrier_releases = set()
     # Get the update graph for stable streams
@@ -137,7 +137,7 @@ def main():
             current_build = Build(id=build_id, images=images, arch=arch, meta_json=meta_json)
 
             # Iterate over actions (policy types) to apply pruning
-            for action in ['cloud-uploads', 'images', 'build', 'containers']:
+            for action in ['cloud-uploads', 'images', 'containers', 'build']:
                 if action not in policy[stream]:
                     continue
                 action_duration = convert_duration_to_days(policy[stream][action])
@@ -172,8 +172,11 @@ def main():
                             prune_images(s3_client, current_build, images_to_keep, args.dry_run, bucket, prefix)
                         # Fully prune releases that are very old including deleting the directory in s3 for that build.
                         case "build":
-                            prune_build(s3_client, bucket, prefix, build_id, args.dry_run)
-                            pruned_build_ids.append(build_id)
+                            # Since pruning a build prunes s3 for all architectures
+                            # we'll prune later so that we do it only once and we
+                            # make sure we've completed any architecture specific
+                            # operations, (i.e. pruning aarch64 AMIs).
+                            builds_to_prune.add(build_id)
                         case "containers":
                             # Our containers are manifest listed, which means deleting the container tag
                             # for one architecture deletes it for all of them. We'll choose to only prune
@@ -202,12 +205,14 @@ def main():
                 else:
                     policy_cleanup[action] = True
 
-    if pruned_build_ids:
+    if builds_to_prune:
+        for build_id in builds_to_prune:
+            prune_build(s3_client, bucket, prefix, build_id, args.dry_run)
         if "tombstone-builds" not in builds_json_data:
             builds_json_data["tombstone-builds"] = []
         # Separate the builds into remaining builds and tombstone builds
-        remaining_builds = [build for build in builds if build["id"] not in pruned_build_ids]
-        tombstone_builds = [build for build in builds if build["id"] in pruned_build_ids]
+        remaining_builds = [build for build in builds if build["id"] not in builds_to_prune]
+        tombstone_builds = [build for build in builds if build["id"] in builds_to_prune]
         # Update the data structure
         builds_json_data["builds"] = remaining_builds
         builds_json_data["tombstone-builds"].extend(tombstone_builds)
