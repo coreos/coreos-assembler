@@ -1,7 +1,7 @@
-From 9edf8572ad4797033e7342c308ac617aa284f3ae Mon Sep 17 00:00:00 2001
+From f4b899873b1f108edbf12d81ee5dbed037238a7e Mon Sep 17 00:00:00 2001
 From: Dusty Mabe <dusty@dustymabe.com>
 Date: Fri, 22 Nov 2024 19:02:57 -0500
-Subject: [PATCH 1/5] osbuild/remoteloop: add more loop device options
+Subject: [PATCH] osbuild/remoteloop: add more loop device options
 
 This adds lock, partscan, read_only, sector_size to _create_device()
 similar to make_loop() from devices/org.osbuild.loopback.
