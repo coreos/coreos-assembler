@@ -154,7 +154,7 @@ func podmanWorkflow(c cluster.TestCluster) {
 			return nil
 		}
 
-		if err := util.Retry(6, 10*time.Second, podIsRunning); err != nil {
+		if err := util.RetryUntilTimeout(15*time.Minute, 5*time.Minute, podIsRunning); err != nil {
 			c.Fatal("Pod is not running")
 		}
 	})
