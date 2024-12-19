@@ -18,6 +18,12 @@ type CreateResult struct {
 	commonResult
 }
 
+// UpdateResult is the response of a Put operation. Call its Extract method to
+// interpret it as a Flavor.
+type UpdateResult struct {
+	commonResult
+}
+
 // GetResult is the response of a Get operations. Call its Extract method to
 // interpret it as a Flavor.
 type GetResult struct {
@@ -69,6 +75,11 @@ type Flavor struct {
 
 	// Ephemeral is the amount of ephemeral disk space, measured in GB.
 	Ephemeral int `json:"OS-FLV-EXT-DATA:ephemeral"`
+
+	// Description is a free form description of the flavor. Limited to
+	// 65535 characters in length. Only printable characters are allowed.
+	// New in version 2.55
+	Description string `json:"description"`
 }
 
 func (r *Flavor) UnmarshalJSON(b []byte) error {
@@ -110,6 +121,10 @@ type FlavorPage struct {
 
 // IsEmpty determines if a FlavorPage contains any results.
 func (page FlavorPage) IsEmpty() (bool, error) {
+	if page.StatusCode == 204 {
+		return true, nil
+	}
+
 	flavors, err := ExtractFlavors(page)
 	return len(flavors) == 0, err
 }
@@ -144,6 +159,10 @@ type AccessPage struct {
 
 // IsEmpty indicates whether an AccessPage is empty.
 func (page AccessPage) IsEmpty() (bool, error) {
+	if page.StatusCode == 204 {
+		return true, nil
+	}
+
 	v, err := ExtractAccesses(page)
 	return len(v) == 0, err
 }

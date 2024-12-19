@@ -116,9 +116,17 @@ type ErrDefault400 struct {
 	ErrUnexpectedResponseCode
 }
 
+func (e ErrDefault400) Unwrap() error {
+	return e.ErrUnexpectedResponseCode
+}
+
 // ErrDefault401 is the default error type returned on a 401 HTTP response code.
 type ErrDefault401 struct {
 	ErrUnexpectedResponseCode
+}
+
+func (e ErrDefault401) Unwrap() error {
+	return e.ErrUnexpectedResponseCode
 }
 
 // ErrDefault403 is the default error type returned on a 403 HTTP response code.
@@ -126,9 +134,17 @@ type ErrDefault403 struct {
 	ErrUnexpectedResponseCode
 }
 
+func (e ErrDefault403) Unwrap() error {
+	return e.ErrUnexpectedResponseCode
+}
+
 // ErrDefault404 is the default error type returned on a 404 HTTP response code.
 type ErrDefault404 struct {
 	ErrUnexpectedResponseCode
+}
+
+func (e ErrDefault404) Unwrap() error {
+	return e.ErrUnexpectedResponseCode
 }
 
 // ErrDefault405 is the default error type returned on a 405 HTTP response code.
@@ -136,9 +152,17 @@ type ErrDefault405 struct {
 	ErrUnexpectedResponseCode
 }
 
+func (e ErrDefault405) Unwrap() error {
+	return e.ErrUnexpectedResponseCode
+}
+
 // ErrDefault408 is the default error type returned on a 408 HTTP response code.
 type ErrDefault408 struct {
 	ErrUnexpectedResponseCode
+}
+
+func (e ErrDefault408) Unwrap() error {
+	return e.ErrUnexpectedResponseCode
 }
 
 // ErrDefault409 is the default error type returned on a 409 HTTP response code.
@@ -146,9 +170,17 @@ type ErrDefault409 struct {
 	ErrUnexpectedResponseCode
 }
 
+func (e ErrDefault409) Unwrap() error {
+	return e.ErrUnexpectedResponseCode
+}
+
 // ErrDefault429 is the default error type returned on a 429 HTTP response code.
 type ErrDefault429 struct {
 	ErrUnexpectedResponseCode
+}
+
+func (e ErrDefault429) Unwrap() error {
+	return e.ErrUnexpectedResponseCode
 }
 
 // ErrDefault500 is the default error type returned on a 500 HTTP response code.
@@ -156,9 +188,35 @@ type ErrDefault500 struct {
 	ErrUnexpectedResponseCode
 }
 
+func (e ErrDefault500) Unwrap() error {
+	return e.ErrUnexpectedResponseCode
+}
+
+// ErrDefault502 is the default error type returned on a 502 HTTP response code.
+type ErrDefault502 struct {
+	ErrUnexpectedResponseCode
+}
+
+func (e ErrDefault502) Unwrap() error {
+	return e.ErrUnexpectedResponseCode
+}
+
 // ErrDefault503 is the default error type returned on a 503 HTTP response code.
 type ErrDefault503 struct {
 	ErrUnexpectedResponseCode
+}
+
+func (e ErrDefault503) Unwrap() error {
+	return e.ErrUnexpectedResponseCode
+}
+
+// ErrDefault504 is the default error type returned on a 504 HTTP response code.
+type ErrDefault504 struct {
+	ErrUnexpectedResponseCode
+}
+
+func (e ErrDefault504) Unwrap() error {
+	return e.ErrUnexpectedResponseCode
 }
 
 func (e ErrDefault400) Error() string {
@@ -198,9 +256,15 @@ func (e ErrDefault429) Error() string {
 func (e ErrDefault500) Error() string {
 	return "Internal Server Error"
 }
+func (e ErrDefault502) Error() string {
+	return "Bad Gateway"
+}
 func (e ErrDefault503) Error() string {
 	return "The service is currently unable to handle the request due to a temporary" +
 		" overloading or maintenance. This is a temporary condition. Try again later."
+}
+func (e ErrDefault504) Error() string {
+	return "Gateway Timeout"
 }
 
 // Err400er is the interface resource error types implement to override the error message
@@ -257,10 +321,22 @@ type Err500er interface {
 	Error500(ErrUnexpectedResponseCode) error
 }
 
+// Err502er is the interface resource error types implement to override the error message
+// from a 502 error.
+type Err502er interface {
+	Error502(ErrUnexpectedResponseCode) error
+}
+
 // Err503er is the interface resource error types implement to override the error message
 // from a 503 error.
 type Err503er interface {
 	Error503(ErrUnexpectedResponseCode) error
+}
+
+// Err504er is the interface resource error types implement to override the error message
+// from a 504 error.
+type Err504er interface {
+	Error504(ErrUnexpectedResponseCode) error
 }
 
 // ErrTimeOut is the error type returned when an operations times out.
@@ -277,10 +353,11 @@ func (e ErrTimeOut) Error() string {
 type ErrUnableToReauthenticate struct {
 	BaseError
 	ErrOriginal error
+	ErrReauth   error
 }
 
 func (e ErrUnableToReauthenticate) Error() string {
-	e.DefaultErrString = fmt.Sprintf("Unable to re-authenticate: %s", e.ErrOriginal)
+	e.DefaultErrString = fmt.Sprintf("Unable to re-authenticate: %s: %s", e.ErrOriginal, e.ErrReauth)
 	return e.choseErrString()
 }
 

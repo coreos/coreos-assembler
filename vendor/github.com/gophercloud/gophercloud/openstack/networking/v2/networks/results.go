@@ -90,6 +90,9 @@ type Network struct {
 
 	// Tags optionally set via extensions/attributestags
 	Tags []string `json:"tags"`
+
+	// RevisionNumber optionally set via extensions/standard-attr-revisions
+	RevisionNumber int `json:"revision_number"`
 }
 
 func (r *Network) UnmarshalJSON(b []byte) error {
@@ -152,6 +155,10 @@ func (r NetworkPage) NextPageURL() (string, error) {
 
 // IsEmpty checks whether a NetworkPage struct is empty.
 func (r NetworkPage) IsEmpty() (bool, error) {
+	if r.StatusCode == 204 {
+		return true, nil
+	}
+
 	is, err := ExtractNetworks(r)
 	return len(is) == 0, err
 }
