@@ -14,6 +14,7 @@ import (
 	"github.com/gophercloud/utils/gnocchi"
 	"github.com/gophercloud/utils/internal"
 
+	"github.com/hashicorp/go-uuid"
 	yaml "gopkg.in/yaml.v2"
 )
 
@@ -183,6 +184,10 @@ func LoadPublicCloudsYAML() (map[string]Cloud, error) {
 
 // GetCloudFromYAML will return a cloud entry from a clouds.yaml file.
 func GetCloudFromYAML(opts *ClientOpts) (*Cloud, error) {
+	if opts == nil {
+		opts = new(ClientOpts)
+	}
+
 	if opts.YAMLOpts == nil {
 		opts.YAMLOpts = new(YAMLOpts)
 	}
@@ -197,19 +202,18 @@ func GetCloudFromYAML(opts *ClientOpts) (*Cloud, error) {
 	// Determine which cloud to use.
 	// First see if a cloud name was explicitly set in opts.
 	var cloudName string
-	if opts != nil && opts.Cloud != "" {
+	if opts.Cloud != "" {
 		cloudName = opts.Cloud
-	}
+	} else {
+		// If not, see if a cloud name was specified as an environment variable.
+		envPrefix := "OS_"
+		if opts.EnvPrefix != "" {
+			envPrefix = opts.EnvPrefix
+		}
 
-	// Next see if a cloud name was specified as an environment variable.
-	// This is supposed to override an explicit opts setting.
-	envPrefix := "OS_"
-	if opts.EnvPrefix != "" {
-		envPrefix = opts.EnvPrefix
-	}
-
-	if v := env.Getenv(envPrefix + "CLOUD"); v != "" {
-		cloudName = v
+		if v := env.Getenv(envPrefix + "CLOUD"); v != "" {
+			cloudName = v
+		}
 	}
 
 	var cloud *Cloud
@@ -351,16 +355,17 @@ func AuthOptions(opts *ClientOpts) (*gophercloud.AuthOptions, error) {
 	var cloudName string
 	if opts.Cloud != "" {
 		cloudName = opts.Cloud
-	}
+	} else {
+		// If not, see if a cloud name was specified as an environment
+		// variable.
+		envPrefix := "OS_"
+		if opts.EnvPrefix != "" {
+			envPrefix = opts.EnvPrefix
+		}
 
-	// Next see if a cloud name was specified as an environment variable.
-	envPrefix := "OS_"
-	if opts.EnvPrefix != "" {
-		envPrefix = opts.EnvPrefix
-	}
-
-	if v := env.Getenv(envPrefix + "CLOUD"); v != "" {
-		cloudName = v
+		if v := env.Getenv(envPrefix + "CLOUD"); v != "" {
+			cloudName = v
+		}
 	}
 
 	// If a cloud name was determined, try to look it up in clouds.yaml.
@@ -375,7 +380,7 @@ func AuthOptions(opts *ClientOpts) (*gophercloud.AuthOptions, error) {
 
 	// If cloud.AuthInfo is nil, then no cloud was specified.
 	if cloud.AuthInfo == nil {
-		// If opts.Auth is not nil, then try using the auth settings from it.
+		// If opts.AuthInfo is not nil, then try using the auth settings from it.
 		if opts.AuthInfo != nil {
 			cloud.AuthInfo = opts.AuthInfo
 		}
@@ -512,6 +517,7 @@ func v2auth(cloud *Cloud, opts *ClientOpts) (*gophercloud.AuthOptions, error) {
 		Password:         cloud.AuthInfo.Password,
 		TenantID:         cloud.AuthInfo.ProjectID,
 		TenantName:       cloud.AuthInfo.ProjectName,
+		AllowReauth:      cloud.AuthInfo.AllowReauth,
 	}
 
 	return ao, nil
@@ -639,6 +645,12 @@ func v3auth(cloud *Cloud, opts *ClientOpts) (*gophercloud.AuthOptions, error) {
 		}
 	}
 
+	if cloud.AuthInfo.SystemScope == "" {
+		if v := env.Getenv(envPrefix + "SYSTEM_SCOPE"); v != "" {
+			cloud.AuthInfo.SystemScope = v
+		}
+	}
+
 	// Build a scope and try to do it correctly.
 	// https://github.com/openstack/os-client-config/blob/master/os_client_config/config.py#L595
 	scope := new(gophercloud.AuthScope)
@@ -654,6 +666,9 @@ func v3auth(cloud *Cloud, opts *ClientOpts) (*gophercloud.AuthOptions, error) {
 				scope.DomainID = cloud.AuthInfo.DomainID
 			} else if cloud.AuthInfo.DomainName != "" {
 				scope.DomainName = cloud.AuthInfo.DomainName
+			}
+			if cloud.AuthInfo.SystemScope != "" {
+				scope.System = true
 			}
 		} else {
 			// If Domain* is set, but UserDomain* or ProjectDomain* aren't,
@@ -684,6 +699,7 @@ func v3auth(cloud *Cloud, opts *ClientOpts) (*gophercloud.AuthOptions, error) {
 		ApplicationCredentialID:     cloud.AuthInfo.ApplicationCredentialID,
 		ApplicationCredentialName:   cloud.AuthInfo.ApplicationCredentialName,
 		ApplicationCredentialSecret: cloud.AuthInfo.ApplicationCredentialSecret,
+		AllowReauth:                 cloud.AuthInfo.AllowReauth,
 	}
 
 	// If an auth_type of "token" was specified, then make sure
@@ -869,6 +885,10 @@ func NewServiceClient(service string, opts *ClientOpts) (*gophercloud.ServiceCli
 	}
 
 	switch service {
+	case "baremetal":
+		return openstack.NewBareMetalV1(pClient, eo)
+	case "baremetal-introspection":
+		return openstack.NewBareMetalIntrospectionV1(pClient, eo)
 	case "clustering":
 		return openstack.NewClusteringV1(pClient, eo)
 	case "compute":
@@ -899,18 +919,28 @@ func NewServiceClient(service string, opts *ClientOpts) (*gophercloud.ServiceCli
 		}
 	case "image":
 		return openstack.NewImageServiceV2(pClient, eo)
+	case "key-manager":
+		return openstack.NewKeyManagerV1(pClient, eo)
 	case "load-balancer":
 		return openstack.NewLoadBalancerV2(pClient, eo)
+	case "messaging":
+		clientID, err := uuid.GenerateUUID()
+		if err != nil {
+			return nil, fmt.Errorf("failed to generate UUID: %w", err)
+		}
+		return openstack.NewMessagingV2(pClient, clientID, eo)
 	case "network":
 		return openstack.NewNetworkV2(pClient, eo)
 	case "object-store":
 		return openstack.NewObjectStorageV1(pClient, eo)
 	case "orchestration":
 		return openstack.NewOrchestrationV1(pClient, eo)
+	case "placement":
+		return openstack.NewPlacementV1(pClient, eo)
 	case "sharev2":
 		return openstack.NewSharedFileSystemV2(pClient, eo)
 	case "volume":
-		volumeVersion := "2"
+		volumeVersion := "3"
 		if v := cloud.VolumeAPIVersion; v != "" {
 			volumeVersion = v
 		}
@@ -925,6 +955,8 @@ func NewServiceClient(service string, opts *ClientOpts) (*gophercloud.ServiceCli
 		default:
 			return nil, fmt.Errorf("invalid volume API version")
 		}
+	case "workflowv2":
+		return openstack.NewWorkflowV2(pClient, eo)
 	}
 
 	return nil, fmt.Errorf("unable to create a service client for %s", service)

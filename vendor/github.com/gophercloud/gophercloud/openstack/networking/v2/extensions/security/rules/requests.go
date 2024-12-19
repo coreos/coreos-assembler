@@ -60,6 +60,7 @@ const (
 	ProtocolGRE       RuleProtocol  = "gre"
 	ProtocolICMP      RuleProtocol  = "icmp"
 	ProtocolIGMP      RuleProtocol  = "igmp"
+	ProtocolIPIP      RuleProtocol  = "ipip"
 	ProtocolIPv6Encap RuleProtocol  = "ipv6-encap"
 	ProtocolIPv6Frag  RuleProtocol  = "ipv6-frag"
 	ProtocolIPv6ICMP  RuleProtocol  = "ipv6-icmp"
@@ -74,6 +75,7 @@ const (
 	ProtocolUDP       RuleProtocol  = "udp"
 	ProtocolUDPLite   RuleProtocol  = "udplite"
 	ProtocolVRRP      RuleProtocol  = "vrrp"
+	ProtocolAny       RuleProtocol  = ""
 )
 
 // CreateOptsBuilder allows extensions to add additional parameters to the

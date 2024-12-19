@@ -15,7 +15,6 @@ Example to Create a Provider Client From clouds.yaml
 		panic(err)
 	}
 
-
 Example to Manually Create a Provider Client
 
 	opts := &clientconfig.ClientOpts{
@@ -33,17 +32,15 @@ Example to Manually Create a Provider Client
 		panic(err)
 	}
 
-
 Example to Create a Service Client from clouds.yaml
 
 	opts := &clientconfig.ClientOpts{
-		Name: "hawaii",
+		Cloud: "hawaii",
 	}
 
 	computeClient, err := clientconfig.NewServiceClient("compute", opts)
 	if err != nil {
 		panic(err)
 	}
-
 */
 package clientconfig
