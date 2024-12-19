@@ -22,6 +22,7 @@ import (
 
 	"github.com/coreos/pkg/capnslog"
 	"github.com/gophercloud/gophercloud"
+	"github.com/gophercloud/gophercloud/openstack/blockstorage/v3/volumes"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/bootfromvolume"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/floatingips"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/keypairs"
@@ -76,10 +77,11 @@ type Server struct {
 }
 
 type API struct {
-	opts          *Options
-	computeClient *gophercloud.ServiceClient
-	imageClient   *gophercloud.ServiceClient
-	networkClient *gophercloud.ServiceClient
+	opts               *Options
+	computeClient      *gophercloud.ServiceClient
+	imageClient        *gophercloud.ServiceClient
+	networkClient      *gophercloud.ServiceClient
+	blockStorageClient *gophercloud.ServiceClient
 }
 
 // LoadCloudsYAML defines how to load a clouds.yaml file.
@@ -143,11 +145,18 @@ func New(opts *Options) (*API, error) {
 		return nil, fmt.Errorf("failed to create network client: %v", err)
 	}
 
+	blockStorageClient, err := clientconfig.NewServiceClient("volume", osOpts)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create block storage client: %v", err)
+	}
+
+	// Initialize the API struct
 	a := &API{
-		opts:          opts,
-		computeClient: computeClient,
-		imageClient:   imageClient,
-		networkClient: networkClient,
+		opts:               opts,
+		computeClient:      computeClient,
+		imageClient:        imageClient,
+		networkClient:      networkClient,
+		blockStorageClient: blockStorageClient,
 	}
 
 	if a.opts.Flavor != "" {
@@ -637,6 +646,24 @@ func (a *API) DeleteKey(name string) error {
 	return keypairs.Delete(a.computeClient, name, nil).ExtractErr()
 }
 
+func (a *API) DeleteVolume(volumeID string) error {
+	return volumes.Delete(a.blockStorageClient, volumeID, volumes.DeleteOpts{}).ExtractErr()
+}
+
+func (a *API) ListVolumes() ([]volumes.Volume, error) {
+	opts := volumes.ListOpts{}
+	allPages, err := volumes.List(a.blockStorageClient, opts).AllPages()
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch volume pages: %w", err)
+	}
+
+	allVolumes, err := volumes.ExtractVolumes(allPages)
+	if err != nil {
+		return nil, fmt.Errorf("failed to extract volumes: %w", err)
+	}
+	return allVolumes, nil
+}
+
 func (a *API) ListKeyPairs() ([]keypairs.KeyPair, error) {
 	opts := keypairs.ListOpts{}
 	// Retrieve all pages of keypairs
@@ -708,6 +735,29 @@ func (a *API) GC(gracePeriod time.Duration) error {
 			if err := a.DeleteKey(keypair.Name); err != nil {
 				return fmt.Errorf("couldn't delete keypair %s: %v", keypair.Name, err)
 			}
+		}
+	}
+	// Clean up volumes
+	volumes, err := a.ListVolumes()
+	if err != nil {
+		return err
+	}
+
+	for _, volume := range volumes {
+		// Skip volumes that are not in "available" state and don't start with "error"
+		if volume.Status != "available" && !strings.HasPrefix(volume.Status, "error") {
+			continue
+		}
+		// Skip volumes created after the threshold
+		if volume.CreatedAt.After(threshold) {
+			continue
+		}
+		// Skip volumes with names that do not start with "kola"
+		if !strings.HasPrefix(volume.Name, "kola") {
+			continue
+		}
+		if err := a.DeleteVolume(volume.ID); err != nil {
+			return fmt.Errorf("couldn't delete volume %s: %v", volume.ID, err)
 		}
 	}
 	return nil
