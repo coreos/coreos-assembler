@@ -22,9 +22,9 @@ class DiffBuildTarget:
     meta: dict
 
     @staticmethod
-    def from_build(builds, build):
-        return DiffBuildTarget(build, builds.get_build_dir(build),
-                               builds.get_build_meta(build))
+    def from_build(builds, build, arch):
+        return DiffBuildTarget(build, builds.get_build_dir(build, arch),
+                               builds.get_build_meta(build, arch))
 
 
 @dataclass
@@ -66,8 +66,8 @@ def main():
     if args.diff_from == args.diff_to:
         raise Exception("from and to builds are the same")
 
-    diff_from = DiffBuildTarget.from_build(builds, args.diff_from)
-    diff_to = DiffBuildTarget.from_build(builds, args.diff_to)
+    diff_from = DiffBuildTarget.from_build(builds, args.diff_from, args.arch)
+    diff_to = DiffBuildTarget.from_build(builds, args.diff_to, args.arch)
 
     # get activated differs
     active_differs = []
@@ -96,6 +96,8 @@ def parse_args():
     parser.add_argument("--from", dest='diff_from', help="First build ID")
     parser.add_argument("--to", dest='diff_to', help="Second build ID")
     parser.add_argument("--gc", action='store_true', help="Delete cached diff content")
+    parser.add_argument("--arch", dest='arch', help="Architecture of builds")
+
     for differ in DIFFERS:
         parser.add_argument("--" + differ.name, action='store_true', default=False,
                             help=differ.description)
