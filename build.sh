@@ -43,7 +43,7 @@ install_rpms() {
     local frozendeps
 
     frozendeps=""
-
+    curl -vvv  https://kojipkgs.fedoraproject.org/repos-dist/f41-coreos-continuous/latest/x86_64/
     # First, a general update; this is best practice.  We also hit an issue recently
     # where qemu implicitly depended on an updated libusbx but didn't have a versioned
     # requires https://bugzilla.redhat.com/show_bug.cgi?id=1625641
