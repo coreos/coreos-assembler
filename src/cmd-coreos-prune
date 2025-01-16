@@ -36,7 +36,6 @@ import argparse
 import json
 import subprocess
 from urllib.parse import urlparse
-import pytz
 import requests
 import yaml
 import collections
@@ -273,7 +272,7 @@ def get_json_from_s3(s3, bucket, key):
 
 
 def save_builds_json(builds_json_data, location):
-    builds_json_data["timestamp"] = datetime.datetime.now(pytz.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    builds_json_data["timestamp"] = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     with open(location, "w") as json_file:
         json.dump(builds_json_data, json_file, indent=4)
 
