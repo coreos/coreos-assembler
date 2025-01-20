@@ -21,8 +21,9 @@ import (
 
 var (
 	urlsToFetch = []string{
-		"https://www.example.com/",
-		"https://www.wikipedia.org/",
+		"https://cloud.google.com",
+		"https://aws.amazon.com/",
+		"https://azure.microsoft.com",
 		"https://start.fedoraproject.org/",
 	}
 )
