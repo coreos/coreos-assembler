@@ -125,7 +125,7 @@ func init() {
 	sv(&kola.GCPOptions.ServiceAcct, "gcp-service-account", "", "GCP service account to attach to instance (default project default)")
 	bv(&kola.GCPOptions.ServiceAuth, "gcp-service-auth", false, "for non-interactive auth when running within GCP")
 	sv(&kola.GCPOptions.JSONKeyFile, "gcp-json-key", "", "use a service account's JSON key for authentication (default \"~/"+auth.GCPConfigPath+"\")")
-	sv(&kola.GCPOptions.ConfidentialType, "gcp-confidential-type", "", "create confidential instances: sev, sev_snp")
+	sv(&kola.GCPOptions.ConfidentialType, "gcp-confidential-type", "", "create confidential instances: sev, sev_snp, tdx")
 
 	// openstack-specific options
 	sv(&kola.OpenStackOptions.ConfigPath, "openstack-config-file", "", "Path to a clouds.yaml formatted OpenStack config file. The underlying library defaults to ./clouds.yaml")
@@ -250,7 +250,11 @@ func syncOptionsImpl(useCosa bool) error {
 			if kola.GCPOptions.ConfidentialType != "" {
 				// https://cloud.google.com/compute/confidential-vm/docs/locations
 				fmt.Printf("Setting instance type for confidential computing\n")
-				kola.GCPOptions.MachineType = "n2d-standard-2"
+				if kola.GCPOptions.ConfidentialType == "tdx" {
+					kola.GCPOptions.MachineType = "c3-standard-4"
+				} else {
+					kola.GCPOptions.MachineType = "n2d-standard-2"
+				}
 			} else {
 				kola.GCPOptions.MachineType = "n1-standard-1"
 			}
