@@ -15,6 +15,7 @@
 package misc
 
 import (
+	"slices"
 	"strings"
 
 	"github.com/coreos/coreos-assembler/mantle/kola/cluster"
@@ -42,6 +43,12 @@ func CheckUserShells(c cluster.TestCluster) {
 		"halt":     "/sbin/halt",
 		"core":     "/bin/bash",
 	}
+	nologins := []string{
+		"/usr/bin/nologin",
+		"/usr/sbin/nologin",
+		"/sbin/nologin",
+		"/bin/nologin",
+	}
 
 	output := c.MustSSH(m, "getent passwd")
 
@@ -61,7 +68,7 @@ func CheckUserShells(c cluster.TestCluster) {
 			if shell != "/bin/bash" && shell != "/bin/sh" {
 				badusers = append(badusers, user)
 			}
-		} else if shell != ValidUsers[username] && shell != "/sbin/nologin" && shell != "/usr/sbin/nologin" {
+		} else if shell != ValidUsers[username] && !slices.Contains(nologins, shell) {
 			badusers = append(badusers, user)
 		}
 	}
