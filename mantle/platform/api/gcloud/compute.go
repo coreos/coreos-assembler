@@ -150,7 +150,7 @@ func (a *API) mkinstance(userdata, name string, keys []*agent.Key, opts platform
 	if a.options.ConfidentialType != "" {
 		ConfidentialType := strings.ToUpper(a.options.ConfidentialType)
 		ConfidentialType = strings.Replace(ConfidentialType, "-", "_", -1)
-		if ConfidentialType == "SEV" || ConfidentialType == "SEV_SNP" {
+		if ConfidentialType == "SEV" || ConfidentialType == "SEV_SNP" || ConfidentialType == "TDX" {
 			fmt.Printf("Using confidential type for confidential computing %s\n", ConfidentialType)
 			instance.ConfidentialInstanceConfig = &compute.ConfidentialInstanceConfig{
 				ConfidentialInstanceType: ConfidentialType,
@@ -159,7 +159,7 @@ func (a *API) mkinstance(userdata, name string, keys []*agent.Key, opts platform
 				OnHostMaintenance: "TERMINATE",
 			}
 		} else {
-			return nil, fmt.Errorf("Does not support confidential type %s, should be: sev, sev_snp\n", a.options.ConfidentialType)
+			return nil, fmt.Errorf("Does not support confidential type %s, should be: sev, sev_snp, tdx\n", a.options.ConfidentialType)
 		}
 	}
 	// metal instances can only have a TERMINATE maintenance policy

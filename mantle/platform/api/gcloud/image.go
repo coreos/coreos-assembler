@@ -111,6 +111,10 @@ func (a *API) CreateImage(spec *ImageSpec, overwrite bool) (*compute.Operation, 
 		{
 			Type: "IDPF",
 		},
+		// https://cloud.google.com/blog/products/identity-security/confidential-vms-on-intel-cpus-your-datas-new-intelligent-defense
+		{
+			Type: "TDX_CAPABLE",
+		},
 	}
 
 	if spec.Architecture == "" {
