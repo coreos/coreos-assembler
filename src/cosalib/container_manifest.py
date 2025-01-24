@@ -20,31 +20,36 @@ def create_local_container_manifest(repo, tag, images) -> dict:
     return json.loads(manifest_info)
 
 
-def local_container_manifest_exists(repo, tag):
+def local_container_manifest_or_image_exists(repo, tag):
     '''
-    Delete local manifest list
+    Delete local manifest list or image associated with repo:tag
+    @param repo str registry repository
+    @param tag str tag
+    '''
+    cmds = [["podman", "manifest", "exists", f"{repo}:{tag}"],
+            ["podman", "image", "exists", f"{repo}:{tag}"]]
+    for cmd in cmds:
+        cp = runcmd(cmd, check=False)
+        # The commands returns 0 (exists), 1 (doesn't exist), 125 (other error)
+        if cp.returncode == 125:
+            if cp.stdout:
+                print(f" STDOUT: {cp.stdout.decode()}")
+            if cp.stderr:
+                print(f" STDERR: {cp.stderr.decode()}")
+            raise Exception("Error encountered when checking if manifest exists")
+        if cp.returncode == 0:
+            return True
+    return False
+
+
+def delete_local_container_imgref(repo, tag):
+    '''
+    Delete local manifest list or image associated with repo:tag
     @param repo str registry repository
     @param tag str manifest tag
     '''
-    cmd = ["podman", "manifest", "exists", f"{repo}:{tag}"]
-    cp = runcmd(cmd, check=False)
-    # The commands returns 0 (exists), 1 (doesn't exist), 125 (other error)
-    if cp.returncode == 125:
-        if cp.stdout:
-            print(f" STDOUT: {cp.stdout.decode()}")
-        if cp.stderr:
-            print(f" STDERR: {cp.stderr.decode()}")
-        raise Exception("Error encountered when checking if manifest exists")
-    return cp.returncode == 0
-
-
-def delete_local_container_manifest(repo, tag):
-    '''
-    Delete local manifest list
-    @param repo str registry repository
-    @param tag str manifest tag
-    '''
-    cmd = ["podman", "manifest", "rm", f"{repo}:{tag}"]
+    # Note `podman image rm` will delete a manifest or plain image
+    cmd = ["podman", "image", "rm", f"{repo}:{tag}"]
     runcmd(cmd)
 
 
@@ -74,10 +79,10 @@ def create_and_push_container_manifest(repo, tags, images, v2s2) -> dict:
     @param images list of image specifications (including transport)
     @param v2s2 boolean use to force v2s2 format
     '''
-    if local_container_manifest_exists(repo, tags[0]):
+    if local_container_manifest_or_image_exists(repo, tags[0]):
         # perhaps left over from a previous failed run -> delete
-        delete_local_container_manifest(repo, tags[0])
+        delete_local_container_imgref(repo, tags[0])
     manifest_info = create_local_container_manifest(repo, tags[0], images)
     push_container_manifest(repo, tags, v2s2)
-    delete_local_container_manifest(repo, tags[0])
+    delete_local_container_imgref(repo, tags[0])
     return manifest_info
