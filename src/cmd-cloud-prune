@@ -90,7 +90,7 @@ def main():
         return handle_upload_builds_json(s3_client, bucket, prefix, args.dry_run, args.acl)
 
     # These lists are up to date as of schema hash
-    # 4c19aed3b3d84af278780bff63728510bb3e70613e4c4eef8cabd7939eb31bd8. If changing
+    # 5bfdfee75d432a4c3ef2a44f82ad94ffc83cc29873b24dba38e85ab9ce10c556. If changing
     # this hash, ensure that the list of supported and unsupported artifacts below
     # is up to date.
     supported = ["amis", "gcp"]
