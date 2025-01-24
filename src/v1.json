@@ -704,10 +704,12 @@
       "$id": "#/properties/extensions",
       "type": "object",
       "title": "Extensions",
-      "required": [
+      "optional": [
         "path",
         "sha256",
-        "rpm-ostree-state",
+        "rpm-ostree-state"
+      ],
+      "required": [
         "manifest"
       ],
       "properties": {
