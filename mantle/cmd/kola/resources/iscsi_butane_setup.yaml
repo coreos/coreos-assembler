@@ -110,6 +110,8 @@ storage:
           # Start by default on boot
           WantedBy=multi-user.target
           [Service]
+          # Extend start time. COSA is a large image we are pulling from quay.
+          TimeoutStartSec=600
           # fix permissions on the serial device before passing it as a volume
           ExecStartPre=chmod 777 /dev/virtio-ports/testisocompletion
           # Pipe the logs to a virtio port so kola saves them
