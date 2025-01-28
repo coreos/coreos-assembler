@@ -20,8 +20,13 @@ else
     schematyper=$(which schematyper 2>/dev/null || true)
 fi
 if test -z "${schematyper}"; then
-    env GOBIN=${topdir}/bin go install github.com/idubinskiy/schematyper@latest
-    schematyper=${topdir}/bin/schematyper
+    if [ ! -d "${topdir}/schematyper" ]; then
+        git clone https://github.com/idubinskiy/schematyper.git ${topdir}/schematyper
+        go -C ${topdir}/schematyper mod edit -replace gopkg.in/alecthomas/kingpin.v2=github.com/alecthomas/kingpin/v2@v2.4.0
+        go -C ${topdir}/schematyper mod tidy && go -C ${topdir}/schematyper mod vendor
+        go -C ${topdir}/schematyper build
+    fi
+    schematyper=${topdir}/schematyper/schematyper
 fi
 
 ${schematyper} \
