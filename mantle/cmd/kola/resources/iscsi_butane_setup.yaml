@@ -87,6 +87,16 @@ storage:
             -i /var/nested-ign.json
           # Unmount the disk
           iscsiadm --mode node --logoutall=all
+    # Use a separate unit to pull the image so it can be downloading
+    # in the background while the `coreos-installer install` is running.
+    - path: /etc/containers/systemd/coreos-assembler.image
+      contents:
+        inline: |
+          [Image]
+          Image=quay.io/coreos-assembler/coreos-assembler
+          [Service]
+          # Extend start time. COSA is a large image we are pulling from quay.
+          TimeoutStartSec=600
     - path: /etc/containers/systemd/coreos-iscsi-vm.container
       contents:
         inline: |
@@ -98,7 +108,7 @@ storage:
           OnFailure=emergency.target
           OnFailureJobMode=isolate
           [Container]
-          Image=quay.io/coreos-assembler/coreos-assembler
+          Image=coreos-assembler.image
           ContainerName=iscsiboot
           Volume=/var/boot.ipxe:/var/boot.ipxe
           Volume=/dev/virtio-ports/testisocompletion:/mnt/serial
@@ -110,8 +120,6 @@ storage:
           # Start by default on boot
           WantedBy=multi-user.target
           [Service]
-          # Extend start time. COSA is a large image we are pulling from quay.
-          TimeoutStartSec=600
           # fix permissions on the serial device before passing it as a volume
           ExecStartPre=chmod 777 /dev/virtio-ports/testisocompletion
           # Pipe the logs to a virtio port so kola saves them
