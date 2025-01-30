@@ -27,6 +27,8 @@ pipelines:
                 file:
                   mpp-format-string: '/{artifact_name_prefix}-metal4k.{arch}.raw'
         options:
+          live_rootfs_fstype: 'erofs'
+          live_rootfs_fsoptions: '-Eall-fragments,fragdedupe=inode -C131072 --quiet'
           filenames:
             live-iso:
               mpp-format-string: '{artifact_name_prefix}-live-iso.{arch}.iso'
