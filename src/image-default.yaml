@@ -32,3 +32,7 @@ vmware-secure-boot: true
 aws-imdsv2-only: true
 aws-volume-type: "gp3"
 aws-x86-boot-mode: "uefi-preferred"
+
+# Use erofs by default
+live-rootfs-fstype: "erofs"
+live-rootfs-fsoptions: "-zlzma,level=6 -Eall-fragments,fragdedupe=inode -C1048576 --quiet"
