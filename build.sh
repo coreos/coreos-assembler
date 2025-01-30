@@ -158,28 +158,26 @@ write_archive_info() {
 }
 
 patch_osbuild() {
-    return # we have no patches right now
-
     # Add a few patches that either haven't made it into a release or
     # that will be obsoleted with other work that will be done soon.
 
     # To make it easier to apply patches we'll move around the osbuild
     # code on the system first:
-    #rmdir /usr/lib/osbuild/osbuild
-    #mv /usr/lib/python3.13/site-packages/osbuild /usr/lib/osbuild/
-    #mkdir /usr/lib/osbuild/tools
-    #mv /usr/bin/osbuild-mpp /usr/lib/osbuild/tools/
+    rmdir /usr/lib/osbuild/osbuild
+    mv /usr/lib/python3.13/site-packages/osbuild /usr/lib/osbuild/
+    mkdir /usr/lib/osbuild/tools
+    mv /usr/bin/osbuild-mpp /usr/lib/osbuild/tools/
 
     # Now all the software is under the /usr/lib/osbuild dir and we can patch
-    #cat patch1.patch \
-    #    patch2.patch \
-    #        | patch -d /usr/lib/osbuild -p1
+    cat /usr/lib/coreos-assembler/0001-stages-coreos.live-artifacts-add-erofs-support.patch       \
+        /usr/lib/coreos-assembler/0002-stages-coreos.live-artifacts-update-comments-names-t.patch \
+            | patch -d /usr/lib/osbuild -p1
 
     # And then move the files back; supermin appliance creation will need it back
     # in the places delivered by the RPM.
-    #mv /usr/lib/osbuild/tools/osbuild-mpp /usr/bin/osbuild-mpp
-    #mv /usr/lib/osbuild/osbuild /usr/lib/python3.13/site-packages/osbuild
-    #mkdir /usr/lib/osbuild/osbuild
+    mv /usr/lib/osbuild/tools/osbuild-mpp /usr/bin/osbuild-mpp
+    mv /usr/lib/osbuild/osbuild /usr/lib/python3.13/site-packages/osbuild
+    mkdir /usr/lib/osbuild/osbuild
 }
 
 if [ $# -ne 0 ]; then

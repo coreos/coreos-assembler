@@ -98,3 +98,6 @@ fedora-repos-ostree
 
 # For graphing manifest includes using `manifest_graph`
 python-anytree
+
+# For mkfs.erofs
+erofs-utils

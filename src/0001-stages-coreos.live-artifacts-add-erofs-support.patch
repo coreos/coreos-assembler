@@ -1,0 +1,149 @@
+From 2f26befc8213831950ca415b739c98eeb0d904bc Mon Sep 17 00:00:00 2001
+From: Nikita Dubrovskii <nikita@linux.ibm.com>
+Date: Tue, 28 Jan 2025 12:20:40 +0100
+Subject: [PATCH] stages/coreos.live-artifacts: add erofs support
+
+---
+ stages/org.osbuild.coreos.live-artifacts.mono | 65 ++++++++++++-------
+ 1 file changed, 42 insertions(+), 23 deletions(-)
+
+diff --git a/stages/org.osbuild.coreos.live-artifacts.mono b/stages/org.osbuild.coreos.live-artifacts.mono
+index ca5891cc..f3f7178f 100755
+--- a/stages/org.osbuild.coreos.live-artifacts.mono
++++ b/stages/org.osbuild.coreos.live-artifacts.mono
+@@ -83,13 +83,14 @@ def mkinitrd_pipe(tmproot, destf, compress=True):
+     files = subprocess.check_output(['find', '.', '-mindepth', '1', '-print0'],
+                                     cwd=tmproot)
+     file_list = files.split(b'\0')
+-    # If there's a root.squashfs, it _must_ be the first file in the cpio
++    # If there's a root.[squash|ero]fs, it _must_ be the first file in the cpio
+     # archive, since the dracut 20live module assumes its contents are at
+     # a fixed offset in the archive.
+-    squashfs = b'./root.squashfs'
+-    if squashfs in file_list:
+-        file_list.remove(squashfs)
+-        file_list.insert(0, squashfs)
++    for filename in [b'./root.squashfs', b'./root.erofs']:
++        if filename in file_list:
++            file_list.remove(filename)
++            file_list.insert(0, filename)
++            break
+     cpioproc = subprocess.Popen(['cpio', '-o', '-H', 'newc', '-R', 'root:root',
+                                  '--quiet', '--reproducible', '--force-local', '--null',
+                                  '-D', tmproot], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+@@ -544,14 +545,13 @@ boot
+     return "images/efiboot.img"
+ 
+ 
+-def mksquashfs_metal(paths, workdir, img_metal, loop_client):
++def mkrootfs_metal(paths, workdir, img_metal, fstype, fsoptions, loop_client):
+     """
+-    Mounts a copy of the metal image and modifies it accordingly to create a (squashfs) rootfs from its contents for the
+-    live ISO.
++    Mounts a copy of the metal image and modifies it accordingly to create a (fstype) rootfs from its contents for the
++    live ISO. fstype must be squashfs or erofs.
+ 
+     Returns the bls entry kernel arguments for the ISO bootloader.
+     """
+-    squashfs_compression = 'zstd'
+     basearch = os.uname().machine
+     tmp_squashfs_dir = os.path.join(workdir, 'tmp-squashfs-dir')
+     os.mkdir(tmp_squashfs_dir)
+@@ -601,17 +601,23 @@ def mksquashfs_metal(paths, workdir, img_metal, loop_client):
+             print(f"Kernel binary linked: {tmp_squashfs_dir}/boot/{kernel_binary_basename}")
+             print(f"Kernel HMAC linked: {tmp_squashfs_dir}/boot/{kernel_hmac_basename}")
+             # Generate root squashfs
+-            print(f'Compressing squashfs with {squashfs_compression}')
++            print(f'Creating {fstype} with {fsoptions}')
+ 
+             # Note the filename must be exactly "root.squashfs" because the 20live
+             # dracut module makes assumptions about the length of the name in sysroot.mount
+             # this matches the set of flags we implicitly passed when doing this
+             # through libguestfs' mksquashfs command
+-            subprocess.check_call(['mksquashfs', tmp_squashfs_dir,
+-                                   paths["initrd-rootfs/root.squashfs"],
+-                                   '-root-becomes', tmp_squashfs_dir,
+-                                   '-wildcards', '-no-recovery',
+-                                   '-comp', squashfs_compression])
++            if fstype == "erofs":
++                subprocess.check_call(['mkfs.erofs',
++                                       *fsoptions.split(' '),
++                                       paths["initrd-rootfs/root.erofs"],
++                                       tmp_squashfs_dir])
++            else:
++                subprocess.check_call(['mksquashfs', tmp_squashfs_dir,
++                                       paths["initrd-rootfs/root.squashfs"],
++                                       '-root-becomes', tmp_squashfs_dir,
++                                       '-wildcards', '-no-recovery',
++                                       *fsoptions.split(' ')])
+ 
+             # while it's mounted here, also get the kargs
+             blsentry = ensure_glob(os.path.join(tmp_squashfs_dir, 'boot/loader/entries/*.conf'), n=1)[0]
+@@ -776,7 +782,7 @@ def mk_osmet_files(deployed_tree, img_metal, img_metal4k, loop_client, paths, os
+                 chroot.run(cmd, check=True)
+ 
+ 
+-def mk_paths(workdir):
++def mk_paths(workdir, fstype):
+     """
+     Returns a dictionary with all the paths under workdir needed throughout multiple functions in the stage.
+     """
+@@ -808,7 +814,7 @@ def mk_paths(workdir):
+         "initrd/etc/coreos-live-want-rootfs": "",
+         "initrd/etc/coreos-live-initramfs": "",
+         "initrd-rootfs": "",
+-        "initrd-rootfs/root.squashfs": "",
++        f"initrd-rootfs/root.{fstype}": ""
+     }
+     for key in paths:
+         paths[key] = os.path.join(workdir, key)
+@@ -864,7 +870,13 @@ def main(workdir, tree, inputs, options, loop_client):
+     os_release = osrelease.parse_files(os.path.join(deployed_tree, 'etc', 'os-release'))
+     version = os_release['OSTREE_VERSION']
+ 
+-    paths = mk_paths(workdir)
++    # Check whether live-rootfs options set
++    with open(os.path.join(deployed_tree, "usr/share/coreos-assembler", "image.json"), "r", encoding="utf8") as f:
++        parsed = json.load(f)
++        fstype = parsed.get("live-rootfs-fstype", "squashfs")
++        fsoptions = parsed.get("live-rootfs-fsoptions", "-comp zstd" if fstype == "squashfs" else "--quiet")
++
++    paths = mk_paths(workdir, fstype)
+     mk_workdirs(paths)
+ 
+     # Find the directory under `/usr/lib/modules/<kver>` where the
+@@ -905,19 +917,26 @@ def main(workdir, tree, inputs, options, loop_client):
+ 
+     mk_osmet_files(deployed_tree, img_metal, img_metal4k, loop_client, paths, os_release)
+ 
+-    blsentry_kargs = mksquashfs_metal(paths, workdir, img_metal, loop_client)
++    blsentry_kargs = mkrootfs_metal(paths, workdir, img_metal, fstype, fsoptions, loop_client)
+ 
+     # Generate rootfs image
+     # The rootfs must be uncompressed because the ISO mounts root.squashfs
+     # directly from the middle of the file
+     extend_initramfs(initramfs=paths["iso/images/pxeboot/rootfs.img"],
+                      tree=paths["initrd-rootfs"], compress=False)
+-    # Check that the root.squashfs magic number is in the offset hardcoded
++    # Check that the root.[squash|ero]fs magic number is in the offset hardcoded
+     # in sysroot.mount in 20live/live-generator
++    offset = 124
++    magic = b'hsqs'  # squashfs magic
++    if fstype == "erofs":
++        # The erofs's superblock starts at an absolute offset 1024 bytes
++        # https://erofs.docs.kernel.org/en/latest/core_ondisk.html#superblock
++        offset += 1024
++        magic = bytes.fromhex("e2e1f5e0")
+     with open(paths["iso/images/pxeboot/rootfs.img"], 'rb') as fh:
+-        fh.seek(124)
+-        if fh.read(4) != b'hsqs':
+-            raise ValueError("root.squashfs not at expected offset in rootfs image")
++        fh.seek(offset)
++        if fh.read(4) != magic:
++            raise ValueError(f"root.{fstype} not at expected offset in rootfs image")
+     # Save stream hash of rootfs for verifying out-of-band fetches
+     os.makedirs(os.path.dirname(paths["initrd/etc/coreos-live-want-rootfs"]), exist_ok=True)
+     make_stream_hash(paths["iso/images/pxeboot/rootfs.img"],
+-- 
+2.48.1
+
