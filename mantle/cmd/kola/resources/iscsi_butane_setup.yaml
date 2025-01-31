@@ -57,7 +57,7 @@ storage:
             # Will return 0 if the discovery yield a valid portal
             iscsiadm --mode discovery --type sendtargets --portal 127.0.0.1 | \
               grep iqn.2024-05.com.coreos
-    - path: /var/boot.ipxe
+    - path: /srv/boot.ipxe
       mode: 0644
       contents:
         inline: |
@@ -87,16 +87,6 @@ storage:
             -i /var/nested-ign.json
           # Unmount the disk
           iscsiadm --mode node --logoutall=all
-    # Use a separate unit to pull the image so it can be downloading
-    # in the background while the `coreos-installer install` is running.
-    - path: /etc/containers/systemd/coreos-assembler.image
-      contents:
-        inline: |
-          [Image]
-          Image=quay.io/coreos-assembler/coreos-assembler
-          [Service]
-          # Extend start time. COSA is a large image we are pulling from quay.
-          TimeoutStartSec=600
     - path: /etc/containers/systemd/coreos-iscsi-vm.container
       contents:
         inline: |
@@ -108,14 +98,23 @@ storage:
           OnFailure=emergency.target
           OnFailureJobMode=isolate
           [Container]
-          Image=coreos-assembler.image
           ContainerName=iscsiboot
-          Volume=/var/boot.ipxe:/var/boot.ipxe
-          Volume=/dev/virtio-ports/testisocompletion:/mnt/serial
+          # Use the read-only virtiofs shared rootfs from COSA. This
+          # saves us pulling 4+ GiB COSA container from quay.
+          # makes it so we don't have to pull down COSA from quay
+          Rootfs=/var/cosaroot
+          Volume=/srv/boot.ipxe:/srv/boot.ipxe
+          AddDevice=/dev/virtio-ports/testisocompletion:/dev/virtio-ports/testisocompletion
+          # Create a few writable directories from empty volumes. We
+          # must use named volumes for now so we can pass :nocopy.
+          # https://github.com/containers/podman/issues/25176
+          Volume=root:/root/:nocopy
+          Volume=vartmp:/var/tmp/:nocopy
+          WorkingDir=/root
           PodmanArgs=--privileged
           Network=host
           LogDriver=passthrough
-          Exec=shell -- kola qemuexec --netboot /var/boot.ipxe --usernet-addr 10.0.3.0/24 -- -device virtio-serial -chardev file,id=iscsi-completion-virtio,path=/mnt/serial,append=on -device virtserialport,chardev=iscsi-completion-virtio,name=testisocompletion
+          Exec=kola qemuexec --netboot /srv/boot.ipxe --qemu-swtpm=false --usernet-addr 10.0.3.0/24 -- -device virtio-serial -chardev file,id=iscsi-completion-virtio,path=/dev/virtio-ports/testisocompletion,append=on -device virtserialport,chardev=iscsi-completion-virtio,name=testisocompletion
           [Install]
           # Start by default on boot
           WantedBy=multi-user.target
