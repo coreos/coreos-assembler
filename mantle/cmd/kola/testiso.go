@@ -1123,6 +1123,12 @@ func testLiveInstalliscsi(ctx context.Context, inst platform.Install, outdir str
 
 	builder.SetConfig(config)
 
+	// Bind mount in the COSA rootfs into the VM so we can use it as a
+	// read-only rootfs for quickly starting the container to kola
+	// qemuexec the nested VM for the test. See resources/iscsi_butane_setup.yaml
+	builder.MountHost("/", "/var/cosaroot", true)
+	config.MountHost("/var/cosaroot", true)
+
 	mach, err := builder.Exec()
 	if err != nil {
 		return 0, errors.Wrapf(err, "running iso")
