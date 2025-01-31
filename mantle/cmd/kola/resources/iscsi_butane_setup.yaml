@@ -104,6 +104,11 @@ storage:
           # makes it so we don't have to pull down COSA from quay
           Rootfs=/var/cosaroot
           Volume=/srv/boot.ipxe:/srv/boot.ipxe
+          # Add the testisocompletion virtio-serial device. Usually
+          # you don't need to explicitly specify devices when running
+          # as --privileged, but without this the /dev/virtio-ports/*
+          # symlink that points back to the real device won't exist:
+          # /dev/virtio-ports/testisocompletion -> ../vport1p1
           AddDevice=/dev/virtio-ports/testisocompletion:/dev/virtio-ports/testisocompletion
           # Create a few writable directories from empty volumes. We
           # must use named volumes for now so we can pass :nocopy.
