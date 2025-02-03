@@ -185,8 +185,34 @@ func buildExtensionContainer() error {
 		SizeInBytes:     float64(stat.Size()),
 		SkipCompression: true,
 	}
-	cosaBuild.MetaStamp = float64(time.Now().UnixNano())
+	fmt.Printf("Generating meta.json `extensions` entry for: %s\n", buildID)
+	// The /tmp/extensions.json file is generated as part of the extension container build process.
+	// For more details, refer to:
+	// https://github.com/openshift/os/blob/master/extensions/Dockerfile
+	extensionsFilePath:= "./tmp/extensions.json"
+	fileContent, err := os.ReadFile(extensionsFilePath)
+	if err != nil {
+		fmt.Printf("Error reading JSON file: %v\n", err)
+		return err
+	}
+	// Parse the JSON content into a map
+	packages := make(map[string]string)
+	err = json.Unmarshal(fileContent, &packages)
+	if err != nil {
+		fmt.Printf("Error parsing JSON content: %v\n", err)
+		return err
+	}
 
+	// Convert to extensionsInterfaceMap
+	extensionsInterfaceMap := make(map[string]interface{})
+	for key, value := range packages {
+		extensionsInterfaceMap[key] = value
+	}
+
+	cosaBuild.Extensions = &cosa.Extensions {
+		Manifest:        extensionsInterfaceMap,
+	}
+	cosaBuild.MetaStamp = float64(time.Now().UnixNano())
 	newBytes, err := json.MarshalIndent(cosaBuild, "", "    ")
 	if err != nil {
 		return err
