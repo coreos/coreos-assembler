@@ -104,7 +104,7 @@ storage:
           # makes it so we don't have to pull down COSA from quay
           Rootfs=/var/cosaroot
           Volume=/srv/boot.ipxe:/srv/boot.ipxe
-          AddDevice=/dev/virtio-ports/testisocompletion:/dev/virtio-ports/testisocompletion
+          Volume=/dev/virtio-ports/testisocompletion:/dev/virtio-ports/testisocompletion
           # Create a few writable directories from empty volumes. We
           # must use named volumes for now so we can pass :nocopy.
           # https://github.com/containers/podman/issues/25176
