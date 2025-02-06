@@ -410,10 +410,11 @@ def prune_images(s3, build, images_to_keep, dry_run, bucket, prefix):
                     s3.delete_object(Bucket=bucket, Key=image_prefix)
                     print(f"\t\t\tPruned {name} image for {build.id} for {build.arch}")
                 except botocore.exceptions.ClientError as e:
-                    if e.response['Error']['Code'] == 'NoSuchKey':
-                        print(f"\t\t\t{bucket}/{image_prefix} already pruned.")
-                    else:
-                        errors.append(e)
+                    # Note that even if the object doesn't exist the delete_object()
+                    # will still return Success (`204 Success (No Content)`) so we
+                    # don't need to handle that error case here.
+                    # https://docs.aws.amazon.com/AmazonS3/latest/API/API_DeleteObject.html#API_DeleteObject_RequestSyntax
+                    errors.append(e)
     if errors:
         print(f"\t\t\tFound errors when pruning images for {build.id}:")
         for e in errors:
