@@ -148,16 +148,15 @@ def main():
 
                     # Skip if the action has been handled previously for the build
                     if action in previous_cleanup:
-                        # If we are in here then there has been some previous cleanup of
-                        # this type run for this build. For all types except `images` we
-                        # can just continue.
-                        if action != "images":
-                            print(f"\t\tBuild {build_id} has already had {action} pruning completed")
-                            continue
+                        print(f"\t\tBuild {build_id} has already had {action} pruning completed")
+                        continue
+                    # We have to handle the "images" action separately because the key in the previous
+                    # cleanup is "images-kept" and not "images"
+                    if action == 'images' and 'images-kept' in previous_cleanup:
                         # OK `images` has been pruned before, but we need to check
                         # that all the images were pruned that match the current policy.
                         # i.e. there may be additional images we need prune
-                        elif set(images_to_keep) == set(previous_cleanup.get("images-kept", [])):
+                        if set(images_to_keep) == set(previous_cleanup.get("images-kept", [])):
                             print(f"\t\tBuild {build_id} has already had {action} pruning completed")
                             continue
 
