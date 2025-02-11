@@ -27,6 +27,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -389,6 +390,14 @@ func newBaseQemuBuilder(outdir string) (*platform.QemuBuilder, error) {
 	builder.InheritConsole = console
 	if !console {
 		builder.ConsoleFile = filepath.Join(outdir, "console.txt")
+	}
+
+	if kola.QEMUOptions.Memory != "" {
+		parsedMem, err := strconv.ParseInt(kola.QEMUOptions.Memory, 10, 32)
+		if err != nil {
+			return nil, err
+		}
+		builder.MemoryMiB = int(parsedMem)
 	}
 
 	return builder, nil
