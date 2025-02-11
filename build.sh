@@ -16,14 +16,14 @@ fi
 arch=$(uname -m)
 
 if [ $# -gt 1 ]; then
-  echo Usage: "build.sh [CMD]"
-  echo "Supported commands:"
-  echo "    configure_user"
-  echo "    configure_yum_repos"
-  echo "    install_rpms"
-  echo "    make_and_makeinstall"
-  echo "    patch_osbuild"
-  exit 1
+    echo Usage: "build.sh [CMD]"
+    echo "Supported commands:"
+    echo "    configure_user"
+    echo "    configure_yum_repos"
+    echo "    install_rpms"
+    echo "    make_and_makeinstall"
+    echo "    patch_osbuild"
+    exit 1
 fi
 
 set -x
@@ -160,41 +160,41 @@ write_archive_info() {
 patch_osbuild() {
     return # we have no patches right now
 
-   ## Add a few patches that either haven't made it into a release or
-   ## that will be obsoleted with other work that will be done soon.
+    # Add a few patches that either haven't made it into a release or
+    # that will be obsoleted with other work that will be done soon.
 
-   ## To make it easier to apply patches we'll move around the osbuild
-   ## code on the system first:
-   #rmdir /usr/lib/osbuild/osbuild
-   #mv /usr/lib/python3.13/site-packages/osbuild /usr/lib/osbuild/
-   #mkdir /usr/lib/osbuild/tools
-   #mv /usr/bin/osbuild-mpp /usr/lib/osbuild/tools/
+    # To make it easier to apply patches we'll move around the osbuild
+    # code on the system first:
+    #rmdir /usr/lib/osbuild/osbuild
+    #mv /usr/lib/python3.13/site-packages/osbuild /usr/lib/osbuild/
+    #mkdir /usr/lib/osbuild/tools
+    #mv /usr/bin/osbuild-mpp /usr/lib/osbuild/tools/
 
-   ## Now all the software is under the /usr/lib/osbuild dir and we can patch
-   #cat patch1.patch \
-   #    patch2.patch \
-   #        | patch -d /usr/lib/osbuild -p1
+    # Now all the software is under the /usr/lib/osbuild dir and we can patch
+    #cat patch1.patch \
+    #    patch2.patch \
+    #        | patch -d /usr/lib/osbuild -p1
 
-   ## And then move the files back; supermin appliance creation will need it back
-   ## in the places delivered by the RPM.
-   #mv /usr/lib/osbuild/tools/osbuild-mpp /usr/bin/osbuild-mpp
-   #mv /usr/lib/osbuild/osbuild /usr/lib/python3.13/site-packages/osbuild
-   #mkdir /usr/lib/osbuild/osbuild
+    # And then move the files back; supermin appliance creation will need it back
+    # in the places delivered by the RPM.
+    #mv /usr/lib/osbuild/tools/osbuild-mpp /usr/bin/osbuild-mpp
+    #mv /usr/lib/osbuild/osbuild /usr/lib/python3.13/site-packages/osbuild
+    #mkdir /usr/lib/osbuild/osbuild
 }
 
 if [ $# -ne 0 ]; then
-  # Run the function specified by the calling script
-  ${1}
+    # Run the function specified by the calling script
+    ${1}
 else
-  # Otherwise, just run all the steps.  NOTE: This is presently not actually
-  # used in `Dockerfile`, so if you add a stage you'll need to do it both
-  # here and there.
-  configure_yum_repos
-  install_rpms
-  write_archive_info
-  make_and_makeinstall
-  install_ocp_tools
-  trust_redhat_gpg_keys
-  configure_user
-  patch_osbuild
+    # Otherwise, just run all the steps.  NOTE: This is presently not actually
+    # used in `Dockerfile`, so if you add a stage you'll need to do it both
+    # here and there.
+    configure_yum_repos
+    install_rpms
+    write_archive_info
+    make_and_makeinstall
+    install_ocp_tools
+    trust_redhat_gpg_keys
+    configure_user
+    patch_osbuild
 fi
