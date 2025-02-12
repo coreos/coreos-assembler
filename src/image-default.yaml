@@ -33,6 +33,7 @@ aws-imdsv2-only: true
 aws-volume-type: "gp3"
 aws-x86-boot-mode: "uefi-preferred"
 
-# Use erofs by default
-live-rootfs-fstype: "erofs"
-live-rootfs-fsoptions: "-zlzma,level=6 -Eall-fragments,fragdedupe=inode -C1048576 --quiet"
+# Defaults for the root filesystem in the Live ISO/PXE artifacts. Left unset
+# for now as we ratchet in erofs support.
+# live-rootfs-fstype: "erofs"
+# live-rootfs-fsoptions: "-zlzma,level=6 -Eall-fragments,fragdedupe=inode -C1048576 --quiet"
