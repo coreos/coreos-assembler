@@ -21,6 +21,7 @@ deploy-via-container: false
 # container-imgref: ""
 
 # Format used when generating a squashfs image.  Can also be e.g. gzip or lz4
+# XXX: Legacy. Delete this when buildextend-live is either deleted or becomes a symlink.
 squashfs-compression: zstd
 
 # Defaults for VMware OVA, matching historical behavior
