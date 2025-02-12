@@ -198,7 +198,7 @@ def diff_live_initrd(diff_from, diff_to):
     git_diff(dir_from, dir_to)
 
 
-def diff_live_rootfs_tree(diff_from, diff_to):
+def diff_live_rootfs_img_tree(diff_from, diff_to):
     rootfs_from = os.path.join(diff_from.dir, diff_from.meta['images']['live-rootfs']['path'])
     rootfs_to = os.path.join(diff_to.dir, diff_to.meta['images']['live-rootfs']['path'])
     diff_cmd_outputs(['coreos-installer', 'dev', 'show', 'initrd'], rootfs_from, rootfs_to)
@@ -221,31 +221,50 @@ def ensure_extracted_rootfses(diff_from, diff_to):
     return (dir_from, dir_to)
 
 
-def diff_live_rootfs(diff_from, diff_to):
+def diff_live_rootfs_img(diff_from, diff_to):
     (dir_from, dir_to) = ensure_extracted_rootfses(diff_from, diff_to)
     git_diff(dir_from, dir_to)
 
 
-def diff_live_squashfs_tree(diff_from, diff_to):
-    (dir_from, dir_to) = ensure_extracted_rootfses(diff_from, diff_to)
-    diff_cmd_outputs(['unsquashfs', '-d', '', '-l', '-excludes', '{}',
-                      '/ostree/deploy', '/ostree/repo/objects'],
-                     os.path.join(dir_from, "root.squashfs"),
-                     os.path.join(dir_to, "root.squashfs"))
-
-
-def diff_live_squashfs(diff_from, diff_to):
+def extract_live_sysroot_img(diff_from, diff_to):
     (rootfs_dir_from, rootfs_dir_to) = ensure_extracted_rootfses(diff_from, diff_to)
-    squashfs_from = os.path.join(rootfs_dir_from, "root.squashfs")
-    squashfs_to = os.path.join(rootfs_dir_to, "root.squashfs")
-    dir_from = os.path.join(cache_dir("live-squashfs"), diff_from.id)
-    dir_to = os.path.join(cache_dir("live-squashfs"), diff_to.id)
+
+    def get_sysroot_img(dir):
+        for fstype in ["erofs", "squashfs"]:
+            img = os.path.join(dir, f"root.{fstype}")
+            if os.path.exists(img):
+                return img
+        raise Exception(f"Cannot find root.[squash|ero]fs in {dir}")
+
+    def run_unpack_sysroot_img(img, dest):
+        if img.endswith(".squashfs"):
+            runcmd(['unsquashfs', '-d', dest, '-no-xattrs', '-excludes', img, '/ostree/deploy', '/ostree/repo/objects'])
+        else:
+            runcmd(['fsck.erofs', f'--extract={dest}', '--no-xattrs', img])
+            runcmd(['sudo', 'rm', '-r', '-f', os.path.join(dest, "ostree/deploy")], quiet=True)
+            runcmd(['sudo', 'rm', '-r', '-f', os.path.join(dest, "ostree/repo/objects")], quiet=True)
+
+    fs_from = get_sysroot_img(rootfs_dir_from)
+    fs_to = get_sysroot_img(rootfs_dir_to)
+
+    dir_from = os.path.join(cache_dir("live-sysroot-img"), diff_from.id)
+    dir_to = os.path.join(cache_dir("live-sysroot-img"), diff_to.id)
 
     if not os.path.exists(dir_from):
-        runcmd(['unsquashfs', '-d', dir_from, '-no-xattrs', '-excludes', squashfs_from, '/ostree/deploy', '/ostree/repo/objects'])
+        run_unpack_sysroot_img(fs_from, dir_from)
     if not os.path.exists(dir_to):
-        runcmd(['unsquashfs', '-d', dir_to, '-no-xattrs', '-excludes', squashfs_to, '/ostree/deploy', '/ostree/repo/objects'])
+        run_unpack_sysroot_img(fs_to, dir_to)
 
+    return (dir_from, dir_to)
+
+
+def diff_live_sysroot_tree(diff_from, diff_to):
+    (dir_from, dir_to) = extract_live_sysroot_img(diff_from, diff_to)
+    diff_cmd_outputs(['find', '{}', '-printf', "%P\n"], dir_from, dir_to)
+
+
+def diff_live_sysroot(diff_from, diff_to):
+    (dir_from, dir_to) = extract_live_sysroot_img(diff_from, diff_to)
     git_diff(dir_from, dir_to)
 
 
@@ -291,14 +310,14 @@ DIFFERS = [
            needs_ostree=False, function=diff_live_initrd_tree),
     Differ("live-initrd", "Diff live initramfs content",
            needs_ostree=False, function=diff_live_initrd),
-    Differ("live-rootfs-ls", "Diff live rootfs listings",
-           needs_ostree=False, function=diff_live_rootfs_tree),
-    Differ("live-rootfs", "Diff live rootfs content",
-           needs_ostree=False, function=diff_live_rootfs),
-    Differ("live-squashfs-ls", "Diff live squashfs listings",
-           needs_ostree=False, function=diff_live_squashfs_tree),
-    Differ("live-squashfs", "Diff live squashfs content",
-           needs_ostree=False, function=diff_live_squashfs),
+    Differ("live-rootfs-img-ls", "Diff live-rootfs.img listings",
+           needs_ostree=False, function=diff_live_rootfs_img_tree),
+    Differ("live-rootfs-img", "Diff live-rootfs.img content",
+           needs_ostree=False, function=diff_live_rootfs_img),
+    Differ("live-sysroot-ls", "Diff live '/root.[erofs|squash]fs' (embed into live-rootfs) listings",
+           needs_ostree=False, function=diff_live_sysroot_tree),
+    Differ("live-sysroot", "Diff live '/root.[ero|squash]fs' (embed into live-rootfs) content",
+           needs_ostree=False, function=diff_live_sysroot),
 ]
 
 if __name__ == '__main__':
