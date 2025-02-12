@@ -452,6 +452,7 @@
         "legacy-oscontainer",
         "gcp",
         "kubevirt",
+        "hetzner",
         "hyperv",
         "ibmcloud",
         "powervs",
@@ -677,6 +678,12 @@
           "$id": "#/properties/images/properties/hyperv",
           "type": "object",
           "title": "HyperV",
+          "$ref": "#/definitions/artifact"
+        },
+        "hetzner": {
+          "$id": "#/properties/images/properties/hetzner",
+          "type": "object",
+          "title": "Hetzner",
           "$ref": "#/definitions/artifact"
         }
       }
