@@ -10,6 +10,7 @@ dn=$(dirname "$0")
 declare -A SUPPORTED_PLATFORMS=(
     ['applehv']='raw'
     ['gcp']='tar.gz'
+    ['hetzner']='raw'
     ['hyperv']='vhdx'
     ['metal4k']='raw'
     ['metal']='raw'
