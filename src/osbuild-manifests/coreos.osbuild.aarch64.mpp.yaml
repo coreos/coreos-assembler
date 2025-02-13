@@ -773,6 +773,8 @@ pipelines:
   - mpp-import-pipelines:
       path: platform.applehv.ipp.yaml
   - mpp-import-pipelines:
+      path: platform.aws.ipp.yaml
+  - mpp-import-pipelines:
       path: platform.gcp.ipp.yaml
   - mpp-import-pipelines:
       path: platform.hetzner.ipp.yaml
