@@ -16,6 +16,7 @@ declare -A SUPPORTED_PLATFORMS=(
     ['gcp']='tar.gz'
     ['hetzner']='raw'
     ['hyperv']='vhdx'
+    ['ibmcloud']='qcow2'
     ['metal4k']='raw'
     ['metal']='raw'
     ['openstack']='qcow2'

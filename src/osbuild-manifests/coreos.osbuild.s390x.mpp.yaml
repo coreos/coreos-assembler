@@ -661,6 +661,8 @@ pipelines:
               deployment:
                 default: true
   - mpp-import-pipelines:
+      path: platform.ibmcloud.ipp.yaml
+  - mpp-import-pipelines:
       path: platform.metal.ipp.yaml
   - mpp-import-pipelines:
       path: platform.openstack.ipp.yaml
