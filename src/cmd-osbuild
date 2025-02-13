@@ -16,6 +16,7 @@ declare -A SUPPORTED_PLATFORMS=(
     ['hyperv']='vhdx'
     ['metal4k']='raw'
     ['metal']='raw'
+    ['openstack']='qcow2'
     ['qemu']='qcow2'
     ['qemu-secex']='qcow2'
     ['live']='iso'
