@@ -19,6 +19,7 @@ declare -A SUPPORTED_PLATFORMS=(
     ['openstack']='qcow2'
     ['qemu']='qcow2'
     ['qemu-secex']='qcow2'
+    ['vultr']='raw'
     ['live']='iso'
 )
 
