@@ -1,4 +1,4 @@
-# This file defines the pipeline for building the live ISO.
+# This file defines the pipeline for building the live ISO/PXE artifacts.
 version: '2'
 pipelines:
   - name: live

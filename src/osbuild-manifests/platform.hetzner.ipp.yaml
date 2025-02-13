@@ -1,7 +1,7 @@
-# This file defines the artifact to be used for the hyperv platform.
+# This file defines the artifact to be used for the hetzner platform.
 version: '2'
 pipelines:
-  - name: raw-hyperv-image
+  - name: raw-hetzner-image
     build:
       mpp-format-string: '{buildroot}'
     stages:
@@ -24,7 +24,7 @@ pipelines:
             mpp-format-string: "{cloud_image_size_mb * 1024 * 1024}"
       - type: org.osbuild.coreos.platform
         options:
-          platform: hyperv
+          platform: hetzner
         devices:
           disk:
             type: org.osbuild.loopback
@@ -50,20 +50,19 @@ pipelines:
              partition:
                mpp-format-int: '{image.layout[''boot''].partnum}'
              target: /boot
-  - name: hyperv
+  - name: hetzner
     build:
-      mpp-format-string: '{host_as_buildroot}'
+      mpp-format-string: '{buildroot}'
     stages:
-      - type: org.osbuild.qemu
+      - type: org.osbuild.copy
         inputs:
-          image:
-            type: org.osbuild.files
+          tree:
+            type: org.osbuild.tree
             origin: org.osbuild.pipeline
             references:
-              name:raw-hyperv-image:
-                file: disk.img
+              - name:raw-hetzner-image
         options:
-          filename:
-            mpp-format-string: '{artifact_name_prefix}-hyperv.{arch}.vhdx'
-          format:
-            type: vhdx
+          paths:
+            - from: input://tree/disk.img
+              to:
+                mpp-format-string: 'tree:///{artifact_name_prefix}-hetzner.{arch}.raw'
