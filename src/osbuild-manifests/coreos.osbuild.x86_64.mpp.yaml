@@ -775,6 +775,8 @@ pipelines:
               deployment:
                 default: true
   - mpp-import-pipelines:
+      path: platform.aliyun.ipp.yaml
+  - mpp-import-pipelines:
       path: platform.applehv.ipp.yaml
   - mpp-import-pipelines:
       path: platform.gcp.ipp.yaml

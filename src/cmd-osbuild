@@ -8,6 +8,7 @@ dn=$(dirname "$0")
 # A list of supported platforms and the filename suffix of the main
 # artifact that platform produces.
 declare -A SUPPORTED_PLATFORMS=(
+    ['aliyun']='qcow2'
     ['applehv']='raw'
     ['gcp']='tar.gz'
     ['hetzner']='raw'
