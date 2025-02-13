@@ -1,5 +1,4 @@
-# This file isn't yet being used today but holds an OSBuild image
-# definition for the applehv platform.
+# This file defines the artifact to be used for the applehv platform.
 version: '2'
 pipelines:
   - name: raw-applehv-image
