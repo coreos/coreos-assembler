@@ -11,6 +11,7 @@ declare -A SUPPORTED_PLATFORMS=(
     ['aliyun']='qcow2'
     ['applehv']='raw'
     ['aws']='vmdk'
+    ['digitalocean']='qcow2'
     ['exoscale']='qcow2'
     ['gcp']='tar.gz'
     ['hetzner']='raw'
