@@ -12,6 +12,7 @@ declare -A SUPPORTED_PLATFORMS=(
     ['applehv']='raw'
     ['aws']='vmdk'
     ['azure']='vhd'
+    ['azurestack']='vhd'
     ['digitalocean']='qcow2'
     ['exoscale']='qcow2'
     ['gcp']='tar.gz'
