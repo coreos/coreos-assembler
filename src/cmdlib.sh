@@ -767,7 +767,7 @@ EOF
 
     # There seems to be some false positives in shellcheck
     # https://github.com/koalaman/shellcheck/issues/2217
-    memory_default=2048
+    memory_default=3072
     # shellcheck disable=2031
     case $arch in
     # Power 8 page faults with 2G of memory in rpm-ostree
