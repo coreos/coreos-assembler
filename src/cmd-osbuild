@@ -21,6 +21,7 @@ declare -A SUPPORTED_PLATFORMS=(
     ['ibmcloud']='qcow2'
     ['metal4k']='raw'
     ['metal']='raw'
+    ['nutanix']='qcow2'
     ['openstack']='qcow2'
     ['qemu']='qcow2'
     ['qemu-secex']='qcow2'
@@ -394,9 +395,10 @@ main() {
 
         # Perform postprocessing
         case "$platform" in
-            gcp)
+            gcp|nutanix)
                 # Update the meta.json and builddir with the generated artifact.
-                # Skip Compression on these platforms as they are already compressed.
+                # Skip Compression on these platforms as they are either already
+                # compressed or the artifact itself has internal compression enabled.
                 postprocess_artifact "${platform}" "${imgpath}" "${imgname}" 'True'
                 ;;
             live)
