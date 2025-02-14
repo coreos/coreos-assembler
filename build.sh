@@ -172,6 +172,7 @@ patch_osbuild() {
     cat /usr/lib/coreos-assembler/0001-stages-coreos.live-artifacts-add-erofs-support.patch       \
         /usr/lib/coreos-assembler/0002-stages-coreos.live-artifacts-update-comments-names-t.patch \
         /usr/lib/coreos-assembler/0001-stages-add-more-options-to-qemu-vmdk-disk-type.patch       \
+        /usr/lib/coreos-assembler/0001-stages-coreos.live-artifacts-use-var-tmp-for-mkfs.er.patch \
             | patch -d /usr/lib/osbuild -p1
 
     # And then move the files back; supermin appliance creation will need it back
