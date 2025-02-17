@@ -33,30 +33,35 @@ var nfs_server_butane = conf.Butane(`variant: fcos
 version: 1.5.0
 storage:
   directories:
-  - path: /var/nfs1/share
+  - path: /var/nfs/share1
     mode: 0777
-  - path: /var/nfs2/share
+  - path: /var/nfs/share2
     mode: 0777
-  - path: /var/nfs3/share
+  - path: /var/nfs/share3
     mode: 0777
-  - path: /var/nfs4/share
+  - path: /var/nfs/share4
     mode: 0777
-  - path: /var/nfs5/share
+  - path: /var/nfs/share5
     mode: 0777
-  - path: /var/nfs6/share
+  - path: /var/nfs/share6
     mode: 0777
   files:
     - path: "/etc/exports"
       overwrite: true
       contents:
         inline: |
-          /var/nfs1/share  *(rw,insecure,no_root_squash)
-          /var/nfs2/share  *(rw,insecure,no_root_squash)
-          /var/nfs3/share  *(rw,insecure,no_root_squash)
-          /var/nfs4/share  *(rw,insecure,no_root_squash)
-          /var/nfs5/share  *(rw,insecure,no_root_squash)
-          /var/nfs6/share  *(rw,insecure,no_root_squash)
+          /var/nfs  *(rw,no_root_squash,insecure,fsid=0)
+          /var/nfs/share1  *(rw,no_root_squash,insecure)
+          /var/nfs/share2  *(rw,no_root_squash,insecure)
+          /var/nfs/share3  *(rw,no_root_squash,insecure)
+          /var/nfs/share4  *(rw,no_root_squash,insecure)
+          /var/nfs/share5  *(rw,no_root_squash,insecure)
+          /var/nfs/share6  *(rw,no_root_squash,insecure)
     - path: "/var/lib/nfs/etab"
+      user:
+        name: nfsnobody
+      group:
+        name: nfsnobody
 systemd:
   units:
     - name: "nfs-server.service"
@@ -92,7 +97,6 @@ func setupNFSMachine(c cluster.TestCluster) NfsServer {
 		},
 	}
 	options.MinMemory = 2048
-
 	// start the machine
 	switch c := c.Cluster.(type) {
 	// These cases have to be separated because when put together to the same case statement
@@ -112,8 +116,10 @@ func setupNFSMachine(c cluster.TestCluster) NfsServer {
 
 	// Wait for nfs server to become active
 	err = util.Retry(6, 10*time.Second, func() error {
-		nfs_status := c.MustSSH(m, "systemctl is-active nfs-server.service")
-		if string(nfs_status) != "active" {
+		nfs_status, err := c.SSH(m, "systemctl is-active nfs-server.service")
+		if err != nil {
+			return err
+		} else if string(nfs_status) != "active" {
 			return fmt.Errorf("nfs-server.service is not ready: %s.", string(nfs_status))
 		}
 		return nil
@@ -170,8 +176,7 @@ storage:
                 sleep 0.5;
               done;
             done) &
-          done
-`)
+          done`)
 	opts := platform.MachineOptions{
 		MinMemory: 2048,
 	}
@@ -190,8 +195,10 @@ storage:
 
 	// Wait for test machine
 	err = util.Retry(6, 10*time.Second, func() error {
+		// entry point /var/nfs with fsid=0 will be root for clients
+		// refer to https://access.redhat.com/solutions/107793
 		_ = c.MustSSHf(nfs_client, `for i in $(seq 6); do
-			sudo mount -t nfs4 %s:/var/nfs$i/share /var/tmp/data$i
+			sudo mount -t nfs4 %s:/share$i /var/tmp/data$i
 			done`, nfs_server.MachineAddress)
 
 		mounts := c.MustSSH(nfs_client, "sudo df -Th | grep nfs | wc -l")
@@ -210,7 +217,7 @@ storage:
 
 func doSyncTest(c cluster.TestCluster, client platform.Machine) {
 	c.RunCmdSync(client, "sudo touch /var/tmp/data3/test")
-	// Continue write
+	// Continue writing while doing test
 	go func() {
 		_, err := c.SSH(client, "sudo sh /usr/local/bin/nfs-random-write.sh")
 		if err != nil {
