@@ -23,7 +23,6 @@ import (
 	"github.com/coreos/pkg/capnslog"
 	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/openstack/blockstorage/v3/volumes"
-	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/bootfromvolume"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/floatingips"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/keypairs"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/flavors"
@@ -295,6 +294,7 @@ func (a *API) CreateServer(name, sshKeyID, userdata string) (*Server, error) {
 		CreateOptsBuilder: servers.CreateOpts{
 			Name:      name,
 			FlavorRef: a.opts.Flavor,
+			ImageRef:  a.opts.Image,
 			Metadata: map[string]string{
 				"CreatedBy": "mantle",
 			},
@@ -308,23 +308,7 @@ func (a *API) CreateServer(name, sshKeyID, userdata string) (*Server, error) {
 		},
 		KeyName: sshKeyID,
 	}
-	// Create a boot device volume and create an instance from that by
-	// using "boot-from-volume". This means the instances boot a bit faster.
-	// Previously we were timing out because it was taking 10+ minutes for
-	// instances to come up in VexxHost. This helps with that.
-	bootVolume := []bootfromvolume.BlockDevice{
-		{
-			UUID:                a.opts.Image,
-			VolumeSize:          10,
-			DeleteOnTermination: true,
-			SourceType:          bootfromvolume.SourceImage,
-			DestinationType:     bootfromvolume.DestinationVolume,
-		},
-	}
-	server, err := bootfromvolume.Create(a.computeClient, bootfromvolume.CreateOptsExt{
-		CreateOptsBuilder: serverCreateOpts,
-		BlockDevice:       bootVolume,
-	}).Extract()
+	server, err := servers.Create(a.computeClient, serverCreateOpts).Extract()
 	if err != nil {
 		return nil, fmt.Errorf("creating server: %v", err)
 	}
