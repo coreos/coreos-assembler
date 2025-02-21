@@ -204,7 +204,7 @@ func runCexTest(c cluster.TestCluster) {
 
 	ignition := conf.Ignition(`{
 		"ignition": {
-			"version": "3.5.0-experimental"
+			"version": "3.5.0"
 		},
 		"kernelArguments": {
 			"shouldExist": [
