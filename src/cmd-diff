@@ -8,6 +8,7 @@ import sys
 import tempfile
 
 from dataclasses import dataclass
+from enum import IntEnum
 from typing import Callable
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -27,11 +28,17 @@ class DiffBuildTarget:
                                builds.get_build_meta(build, arch))
 
 
+class OSTreeImport(IntEnum):
+    NO = 1
+    PARTIAL = 2
+    FULL = 3
+
+
 @dataclass
 class Differ:
     name: str
     description: str
-    needs_ostree: bool
+    needs_ostree: OSTreeImport
     function: Callable[[DiffBuildTarget, DiffBuildTarget], None]
 
 
@@ -76,9 +83,11 @@ def main():
             active_differs += [differ]
 
     # ensure commits are imported if we know we'll need them
-    if any(differ.needs_ostree for differ in active_differs):
+    ostree_import = max([d.needs_ostree for d in active_differs])
+    if ostree_import > OSTreeImport.NO:
         for target in [diff_from, diff_to]:
-            import_ostree_commit('.', target.dir, target.meta, extract_json=False)
+            import_ostree_commit('.', target.dir, target.meta, extract_json=False,
+                                 partial_import=(ostree_import == OSTreeImport.PARTIAL))
 
     # start diff'ing
     for differ in active_differs:
@@ -295,29 +304,29 @@ def cache_dir(dir):
 
 # unfortunately, this has to come at the end to resolve functions
 DIFFERS = [
-    Differ("rpms", "Diff RPMs", needs_ostree=True, function=diff_rpms),
+    Differ("rpms", "Diff RPMs", needs_ostree=OSTreeImport.PARTIAL, function=diff_rpms),
     Differ("ostree-ls", "Diff OSTree contents using 'ostree diff'",
-           needs_ostree=True, function=diff_ostree_ls),
+           needs_ostree=OSTreeImport.FULL, function=diff_ostree_ls),
     Differ("ostree", "Diff OSTree contents using 'git diff'",
-           needs_ostree=True, function=diff_ostree),
+           needs_ostree=OSTreeImport.FULL, function=diff_ostree),
     Differ("initrd", "Diff initramfs contents",
-           needs_ostree=True, function=diff_initrd),
+           needs_ostree=OSTreeImport.FULL, function=diff_initrd),
     Differ("live-iso-ls", "Diff live ISO listings",
-           needs_ostree=False, function=diff_live_iso_tree),
+           needs_ostree=OSTreeImport.NO, function=diff_live_iso_tree),
     Differ("live-iso", "Diff live ISO content",
-           needs_ostree=False, function=diff_live_iso),
+           needs_ostree=OSTreeImport.NO, function=diff_live_iso),
     Differ("live-initrd-ls", "Diff live initramfs listings",
-           needs_ostree=False, function=diff_live_initrd_tree),
+           needs_ostree=OSTreeImport.NO, function=diff_live_initrd_tree),
     Differ("live-initrd", "Diff live initramfs content",
-           needs_ostree=False, function=diff_live_initrd),
+           needs_ostree=OSTreeImport.NO, function=diff_live_initrd),
     Differ("live-rootfs-img-ls", "Diff live-rootfs.img listings",
-           needs_ostree=False, function=diff_live_rootfs_img_tree),
+           needs_ostree=OSTreeImport.NO, function=diff_live_rootfs_img_tree),
     Differ("live-rootfs-img", "Diff live-rootfs.img content",
-           needs_ostree=False, function=diff_live_rootfs_img),
+           needs_ostree=OSTreeImport.NO, function=diff_live_rootfs_img),
     Differ("live-sysroot-ls", "Diff live '/root.[erofs|squash]fs' (embed into live-rootfs) listings",
-           needs_ostree=False, function=diff_live_sysroot_tree),
+           needs_ostree=OSTreeImport.NO, function=diff_live_sysroot_tree),
     Differ("live-sysroot", "Diff live '/root.[ero|squash]fs' (embed into live-rootfs) content",
-           needs_ostree=False, function=diff_live_sysroot),
+           needs_ostree=OSTreeImport.NO, function=diff_live_sysroot),
 ]
 
 if __name__ == '__main__':
