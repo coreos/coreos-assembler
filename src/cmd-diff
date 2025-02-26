@@ -78,7 +78,7 @@ def main():
     # ensure commits are imported if we know we'll need them
     if any(differ.needs_ostree for differ in active_differs):
         for target in [diff_from, diff_to]:
-            import_ostree_commit('.', target.dir, target.meta, extract_json=0)
+            import_ostree_commit('.', target.dir, target.meta, extract_json=False)
 
     # start diff'ing
     for differ in active_differs:
