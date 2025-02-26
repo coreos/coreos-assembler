@@ -668,7 +668,7 @@ class Upload(_KojiBase):
         if self._manifest is not None:
             return self._manifest
 
-        now = datetime.datetime.utcnow()
+        now = datetime.datetime.now(datetime.UTC)
         stamp = now.strftime("%s")
 
         """
