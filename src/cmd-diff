@@ -114,6 +114,30 @@ def parse_args():
     return parser.parse_args()
 
 
+def diff_source_control(diff_from, diff_to):
+    for source in ['coreos-assembler.container-config-git', 'coreos-assembler.container-image-git']:
+        config_from = diff_from.meta[source]
+        config_to = diff_to.meta[source]
+        config_shared_history = True
+        for item in ['origin', 'branch', 'dirty']:
+            if config_from[item] != config_to[item]:
+                config_shared_history = False
+                break
+        if not config_shared_history:
+            # If they weren't from the same repo/branch, etc then
+            # there's not really any way to compare them easily
+            # so just output the details gorry details and move on.
+            print(f"from: {config_from}")
+            print(f"to: {config_to}")
+        else:
+            print(f"{config_from['origin']}: {config_from['commit'][:7]}..{config_to['commit'][:7]}")
+            # Admittedly this link working relies on a GitHub like API, but it's a safe
+            # assumption for us for now. We'll also pull off `.git` if it is on the end
+            # of the URL since the compare API won't work if `.git` is in there.
+            origin_url = f"{config_from['origin']}".removesuffix('.git')
+            print(f"    --> {origin_url}/compare/{config_from['commit'][:7]}...{config_to['commit'][:7]}")
+
+
 def diff_rpms(diff_from, diff_to):
     commit_from = diff_from.meta['ostree-commit']
     commit_to = diff_to.meta['ostree-commit']
@@ -306,6 +330,8 @@ def cache_dir(dir):
 # unfortunately, this has to come at the end to resolve functions
 DIFFERS = [
     Differ("rpms", "Diff RPMs", needs_ostree='partial', function=diff_rpms),
+    Differ("source-control", "Diff config and COSA input commits",
+           needs_ostree='no', function=diff_source_control),
     Differ("ostree-ls", "Diff OSTree contents using 'ostree diff'",
            needs_ostree='yes', function=diff_ostree_ls),
     Differ("ostree", "Diff OSTree contents using 'git diff'",
