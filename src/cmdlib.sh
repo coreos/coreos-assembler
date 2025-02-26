@@ -1066,7 +1066,7 @@ workdir = '${workdir:-$(pwd)}'
 builds = Builds(workdir)
 builddir = builds.get_build_dir('${buildid}')
 buildmeta = builds.get_build_meta('${buildid}')
-cmdlib.import_ostree_commit(workdir, builddir, buildmeta, ${extractjson})
+cmdlib.import_ostree_commit(workdir, builddir, buildmeta, extract_json=('${extractjson}' == '1'))
 ")
 }
 
