@@ -230,7 +230,7 @@ def rfc3339_time(t=None):
     :rtype: str
     """
     if t is None:
-        t = datetime.datetime.utcnow()
+        t = datetime.datetime.now(datetime.UTC)
     else:
         # if the need arises, we can convert to UTC, but let's just enforce
         # this doesn't slip by for now
