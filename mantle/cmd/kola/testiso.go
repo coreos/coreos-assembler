@@ -57,8 +57,7 @@ var (
 
 	instInsecure bool
 
-	pxeAppendRootfs bool
-	pxeKernelArgs   []string
+	pxeKernelArgs []string
 
 	console bool
 
@@ -101,6 +100,8 @@ var (
 		"pxe-offline-install.4k.uefi",
 		"pxe-online-install.bios",
 		"pxe-online-install.4k.uefi",
+		"pxe-online-install.rootfs-appended.bios",
+		"pxe-offline-install.rootfs-appended.4k.uefi",
 	}
 	tests_s390x = []string{
 		"iso-live-login.s390fw",
@@ -112,6 +113,8 @@ var (
 		"miniso-install.s390fw",
 		"miniso-install.nm.s390fw",
 		"miniso-install.4k.nm.s390fw",
+		"pxe-online-install.rootfs-appended.s390fw",
+		"pxe-offline-install.rootfs-appended.s390fw",
 		// FIXME https://github.com/coreos/fedora-coreos-tracker/issues/1657
 		//"iso-offline-install-iscsi.ibft.s390fw,
 		//"iso-offline-install-iscsi.ibft-with-mpath.s390fw",
@@ -128,6 +131,8 @@ var (
 		"miniso-install.4k.nm.ppcfw",
 		"pxe-online-install.ppcfw",
 		"pxe-offline-install.4k.ppcfw",
+		"pxe-online-install.rootfs-appended.ppcfw",
+		"pxe-offline-install.rootfs-appended.4k.ppcfw",
 		// FIXME https://github.com/coreos/fedora-coreos-tracker/issues/1657
 		//"iso-offline-install-iscsi.ibft.ppcfw",
 		//"iso-offline-install-iscsi.ibft-with-mpath.ppcfw",
@@ -147,6 +152,8 @@ var (
 		"pxe-offline-install.4k.uefi",
 		"pxe-online-install.uefi",
 		"pxe-online-install.4k.uefi",
+		"pxe-online-install.rootfs-appended.uefi",
+		"pxe-offline-install.rootfs-appended.4k.uefi",
 		// FIXME https://github.com/coreos/fedora-coreos-tracker/issues/1657
 		//"iso-offline-install-iscsi.ibft.uefi",
 		//"iso-offline-install-iscsi.ibft-with-mpath.uefi",
@@ -340,7 +347,6 @@ var iscsi_butane_config string
 func init() {
 	cmdTestIso.Flags().BoolVarP(&instInsecure, "inst-insecure", "S", false, "Do not verify signature on metal image")
 	cmdTestIso.Flags().BoolVar(&console, "console", false, "Connect qemu console to terminal, turn off automatic initramfs failure checking")
-	cmdTestIso.Flags().BoolVar(&pxeAppendRootfs, "pxe-append-rootfs", false, "Append rootfs to PXE initrd instead of fetching at runtime")
 	cmdTestIso.Flags().StringSliceVar(&pxeKernelArgs, "pxe-kargs", nil, "Additional kernel arguments for PXE")
 
 	root.AddCommand(cmdTestIso)
@@ -542,9 +548,8 @@ func runTestIso(cmd *cobra.Command, args []string) (err error) {
 	}()
 
 	baseInst := platform.Install{
-		CosaBuild:       kola.CosaBuild,
-		PxeAppendRootfs: pxeAppendRootfs,
-		NmKeyfiles:      make(map[string]string),
+		CosaBuild:  kola.CosaBuild,
+		NmKeyfiles: make(map[string]string),
 	}
 
 	if instInsecure {
@@ -580,6 +585,8 @@ func runTestIso(cmd *cobra.Command, args []string) (err error) {
 
 		fmt.Printf("Running test: %s\n", test)
 		components := strings.Split(test, ".")
+
+		inst.PxeAppendRootfs = kola.HasString("rootfs-appended", components)
 
 		if kola.HasString("4k", components) {
 			enable4k = true
