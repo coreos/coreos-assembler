@@ -230,7 +230,7 @@ def rfc3339_time(t=None):
     :rtype: str
     """
     if t is None:
-        t = datetime.datetime.utcnow()
+        t = datetime.datetime.now(datetime.UTC)
     else:
         # if the need arises, we can convert to UTC, but let's just enforce
         # this doesn't slip by for now
@@ -283,7 +283,13 @@ def extract_image_json(workdir, commit):
 # a metal image, we may not have preserved that cache.
 #
 # Call this function to ensure that the ostree commit for a given build is in tmp/repo.
-def import_ostree_commit(workdir, buildpath, buildmeta, extract_json=1):
+#
+# Note also a user can request a partial import where just the commit object is
+# imported. This is a really lightweight way to get basic information like
+# version/commit metadata and enables things like rpm-ostree db diff.
+def import_ostree_commit(workdir, buildpath, buildmeta, extract_json=True, partial_import=False):
+    if extract_json and partial_import:
+        raise Exception("can't extract json from a partial import")
     tmpdir = os.path.join(workdir, 'tmp')
     with Lock(os.path.join(workdir, 'tmp/repo.import.lock'),
               lifetime=LOCK_DEFAULT_LIFETIME):
@@ -298,10 +304,27 @@ def import_ostree_commit(workdir, buildpath, buildmeta, extract_json=1):
         commitpartial = os.path.join(repo, f'state/{commit}.commitpartial')
         if (subprocess.call(['ostree', 'show', '--repo', repo, commit],
                             stdout=subprocess.DEVNULL,
-                            stderr=subprocess.DEVNULL) == 0
-                and not os.path.isfile(commitpartial)):
-            if extract_json == 1:
-                extract_image_json(workdir, commit)
+                            stderr=subprocess.DEVNULL) == 0):
+            if os.path.isfile(commitpartial):
+                if partial_import:
+                    # We have a partial commit (just the object), but the user only
+                    # requested a partial import so that's OK. We can return.
+                    return
+            else:
+                # We have the full commit. We can extract the json if requested and return.
+                if extract_json:
+                    extract_image_json(workdir, commit)
+                return
+
+        # If the user only requested a partial import then we'll just "import" the
+        # commit object itself into the repo.
+        if partial_import:
+            print(f"Importing {commit} object (partial import)")
+            commitobject = os.path.join(buildpath, 'ostree-commit-object')
+            commitpath = os.path.join(repo, f'objects/{commit[:2]}/{commit[2:]}.commit')
+            os.makedirs(os.path.dirname(commitpath), exist_ok=True)
+            shutil.copy(commitobject, commitpath)
+            open(commitpartial, 'w').close()
             return
 
         print(f"Extracting {commit}")
@@ -327,7 +350,7 @@ def import_ostree_commit(workdir, buildpath, buildmeta, extract_json=1):
                 subprocess.check_call(['ostree', f'--repo={repo}', 'pull-local', tmpd, buildmeta['buildid']])
 
         # Also extract image.json since it's commonly needed by image builds
-        if extract_json == 1:
+        if extract_json:
             extract_image_json(workdir, commit)
 
 

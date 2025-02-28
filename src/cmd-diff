@@ -8,6 +8,7 @@ import sys
 import tempfile
 
 from dataclasses import dataclass
+from enum import IntEnum
 from typing import Callable
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -27,11 +28,17 @@ class DiffBuildTarget:
                                builds.get_build_meta(build, arch))
 
 
+class OSTreeImport(IntEnum):
+    NO = 1
+    PARTIAL = 2
+    FULL = 3
+
+
 @dataclass
 class Differ:
     name: str
     description: str
-    needs_ostree: bool
+    needs_ostree: OSTreeImport
     function: Callable[[DiffBuildTarget, DiffBuildTarget], None]
 
 
@@ -76,9 +83,11 @@ def main():
             active_differs += [differ]
 
     # ensure commits are imported if we know we'll need them
-    if any(differ.needs_ostree for differ in active_differs):
+    ostree_import = max([d.needs_ostree for d in active_differs])
+    if ostree_import > OSTreeImport.NO:
         for target in [diff_from, diff_to]:
-            import_ostree_commit('.', target.dir, target.meta, extract_json=0)
+            import_ostree_commit('.', target.dir, target.meta, extract_json=False,
+                                 partial_import=(ostree_import == OSTreeImport.PARTIAL))
 
     # start diff'ing
     for differ in active_differs:
@@ -102,6 +111,33 @@ def parse_args():
         parser.add_argument("--" + differ.name, action='store_true', default=False,
                             help=differ.description)
     return parser.parse_args()
+
+
+def diff_source_control(diff_from, diff_to):
+    for source in ['coreos-assembler.container-config-git', 'coreos-assembler.container-image-git']:
+        config_from = diff_from.meta[source]
+        config_to = diff_to.meta[source]
+        config_shared_history = True
+        for item in ['origin', 'branch', 'dirty']:
+            if config_from[item] != config_to[item]:
+                config_shared_history = False
+                break
+        if not config_shared_history:
+            # If they weren't from the same repo/branch, etc then
+            # there's not really any way to compare them easily
+            # so just output the details gory details and move on.
+            print(f"from: {config_from}")
+            print(f"to: {config_to}")
+        else:
+            print(f"{config_from['origin']}: {config_from['commit'][:7]}..{config_to['commit'][:7]}")
+            # If the git repo is on github (which our repos are) let's print a link
+            # where a user can click (or share) and view the changes from one commit
+            # to another.
+            if 'github.com' in config_from['origin']:
+                # Also pull off `.git` if it is on the end of the URL since the
+                # compare API won't work if `.git` is in there.
+                origin_url = f"{config_from['origin']}".removesuffix('.git')
+                print(f"    --> {origin_url}/compare/{config_from['commit'][:7]}...{config_to['commit'][:7]}")
 
 
 def diff_rpms(diff_from, diff_to):
@@ -295,29 +331,31 @@ def cache_dir(dir):
 
 # unfortunately, this has to come at the end to resolve functions
 DIFFERS = [
-    Differ("rpms", "Diff RPMs", needs_ostree=True, function=diff_rpms),
+    Differ("rpms", "Diff RPMs", needs_ostree=OSTreeImport.PARTIAL, function=diff_rpms),
+    Differ("source-control", "Diff config and COSA input commits",
+           needs_ostree=OSTreeImport.NO, function=diff_source_control),
     Differ("ostree-ls", "Diff OSTree contents using 'ostree diff'",
-           needs_ostree=True, function=diff_ostree_ls),
+           needs_ostree=OSTreeImport.FULL, function=diff_ostree_ls),
     Differ("ostree", "Diff OSTree contents using 'git diff'",
-           needs_ostree=True, function=diff_ostree),
+           needs_ostree=OSTreeImport.FULL, function=diff_ostree),
     Differ("initrd", "Diff initramfs contents",
-           needs_ostree=True, function=diff_initrd),
+           needs_ostree=OSTreeImport.FULL, function=diff_initrd),
     Differ("live-iso-ls", "Diff live ISO listings",
-           needs_ostree=False, function=diff_live_iso_tree),
+           needs_ostree=OSTreeImport.NO, function=diff_live_iso_tree),
     Differ("live-iso", "Diff live ISO content",
-           needs_ostree=False, function=diff_live_iso),
+           needs_ostree=OSTreeImport.NO, function=diff_live_iso),
     Differ("live-initrd-ls", "Diff live initramfs listings",
-           needs_ostree=False, function=diff_live_initrd_tree),
+           needs_ostree=OSTreeImport.NO, function=diff_live_initrd_tree),
     Differ("live-initrd", "Diff live initramfs content",
-           needs_ostree=False, function=diff_live_initrd),
+           needs_ostree=OSTreeImport.NO, function=diff_live_initrd),
     Differ("live-rootfs-img-ls", "Diff live-rootfs.img listings",
-           needs_ostree=False, function=diff_live_rootfs_img_tree),
+           needs_ostree=OSTreeImport.NO, function=diff_live_rootfs_img_tree),
     Differ("live-rootfs-img", "Diff live-rootfs.img content",
-           needs_ostree=False, function=diff_live_rootfs_img),
+           needs_ostree=OSTreeImport.NO, function=diff_live_rootfs_img),
     Differ("live-sysroot-ls", "Diff live '/root.[erofs|squash]fs' (embed into live-rootfs) listings",
-           needs_ostree=False, function=diff_live_sysroot_tree),
+           needs_ostree=OSTreeImport.NO, function=diff_live_sysroot_tree),
     Differ("live-sysroot", "Diff live '/root.[ero|squash]fs' (embed into live-rootfs) content",
-           needs_ostree=False, function=diff_live_sysroot),
+           needs_ostree=OSTreeImport.NO, function=diff_live_sysroot),
 ]
 
 if __name__ == '__main__':
