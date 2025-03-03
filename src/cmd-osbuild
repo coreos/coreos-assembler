@@ -193,7 +193,7 @@ generate_runvm_osbuild_config() {
     # If no container_imgref was set let's just set it to some professional
     # looking default. The name of the ociarchive file should suffice.
     container_imgref_default="ostree-image-signed:oci-archive:/$(basename "${ostree_container}")"
-    container_imgref=$(getconfig_def "container_imgref" "${container_imgref_default}" "${image_json}")
+    container_imgref=$(getconfig_def "container-imgref" "${container_imgref_default}" "${image_json}")
 
     echo "Estimating disk size..." >&2
     # The additional 35% here is obviously a hack, but we can't easily completely fill the filesystem,
