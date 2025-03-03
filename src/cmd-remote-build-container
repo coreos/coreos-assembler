@@ -15,7 +15,8 @@ logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s %(levelname)s - %(message)s")
 
 
-def build_container_image(labels, buildDir, fromimage, cacheTTL, repo, tag):
+def build_container_image(labels, buildDir, fromimage, cacheTTL,
+                          repo, tag, secret, mount_ca, security_opt):
     '''
     Build the image  using podman remote and push to the registry
     @param labels list labels to add to image
@@ -30,6 +31,13 @@ def build_container_image(labels, buildDir, fromimage, cacheTTL, repo, tag):
         cmd.extend([f"--label={label}"])
     if fromimage:
         cmd.extend([f"--from={fromimage}"])
+    if secret:
+        for s in secret:
+            cmd.append(f"--secret={s}")
+    if mount_ca:
+        cmd.extend(["-v", "/etc/pki/ca-trust:/etc/pki/ca-trust:ro"])
+    if security_opt:
+        cmd.extend(["--security-opt", security_opt])
     # Long running command. Send output to stdout for logging
     runcmd(cmd)
 
@@ -173,7 +181,9 @@ def main():
             logging.info("Building container via podman")
             builddir = os.path.join(gitdir, args.git_sub_dir)
             build_container_image(args.labels, builddir, args.fromimage,
-                                  args.cache_ttl, args.repo, args.tag)
+                                  args.cache_ttl, args.repo, args.tag,
+                                  args.secret, args.mount_host_ca_certs,
+                                  args.security_opt)
 
     # Push to the registry if needed, else save the image to a file
     if args.push_to_registry:
@@ -200,6 +210,8 @@ Examples:
         --git-ref main \
         --git-url https://github.com/coreos/coreos-assembler.git \
         --repo quay.io/coreos/coreos-assembler-staging \
+        --mount-host-ca-certs \
+        --secret id=yumrepos,src=/path/to/rhel-9.6.repo \
         --push-to-registry """)
 
     parser.add_argument(
@@ -212,9 +224,6 @@ Examples:
         '--cache-ttl', default="0.1s", required=False,
         help="""Pass along --cache-ttl=<value> to `podman build`.
                 Defaults to 0.1s, which is effectively `--no-cache`""")
-    parser.add_argument(
-        '--label', dest="labels", default=[], action='append',
-        required=False, help='Add image label(s)')
     parser.add_argument(
         '--force', required=False, action='store_true',
         help='Force image overwrite')
@@ -231,8 +240,20 @@ Examples:
         '--git-sub-dir', default='', required=False,
         help='Git sub directory to use for container build')
     parser.add_argument(
+        '--label', dest="labels", default=[], action='append',
+        required=False, help='Add image label(s)')
+    parser.add_argument(
+        '--mount-host-ca-certs', required=False, action='store_true',
+        help='Mount the CA certificate from the remote host')
+    parser.add_argument(
         '--repo', default='localhost', required=False,
         help='Registry repository')
+    parser.add_argument(
+        '--secret', required=False, action='append', default=[],
+        help='Provide a local secret for remote access. Uses the same syntax as `podman build --secret`')
+    parser.add_argument(
+        '--security-opt', required=False,
+        help='Set SELinux options. Uses the same syntax as `podman build --security-opt`')
     parser.add_argument(
         '--tag', required=False,
         help='Force image tag. The default is arch-commit')
