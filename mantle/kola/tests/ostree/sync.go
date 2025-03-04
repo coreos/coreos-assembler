@@ -41,10 +41,6 @@ storage:
     mode: 0777
   - path: /var/nfs/share4
     mode: 0777
-  - path: /var/nfs/share5
-    mode: 0777
-  - path: /var/nfs/share6
-    mode: 0777
   files:
     - path: "/etc/exports"
       overwrite: true
@@ -55,13 +51,20 @@ storage:
           /var/nfs/share2  *(rw,no_root_squash,insecure)
           /var/nfs/share3  *(rw,no_root_squash,insecure)
           /var/nfs/share4  *(rw,no_root_squash,insecure)
-          /var/nfs/share5  *(rw,no_root_squash,insecure)
-          /var/nfs/share6  *(rw,no_root_squash,insecure)
     - path: "/var/lib/nfs/etab"
       user:
         name: nfsnobody
       group:
         name: nfsnobody
+    - path: /usr/local/bin/block-nfs.sh
+      mode: 0755
+      overwrite: true
+      contents:
+        inline: |
+          #!/bin/bash
+          nft add table inet nfs
+          nft add chain inet nfs INPUT { type filter hook input priority filter \; policy accept \; }
+          nft add rule inet nfs INPUT tcp dport 2049 drop
 systemd:
   units:
     - name: "nfs-server.service"
@@ -152,10 +155,6 @@ storage:
     mode: 0777
   - path: /var/tmp/data4
     mode: 0777
-  - path: /var/tmp/data5
-    mode: 0777
-  - path: /var/tmp/data6
-    mode: 0777
   files:
     - path: /etc/systemd/system.conf
       overwrite: true
@@ -169,13 +168,11 @@ storage:
       contents:
         inline: |
           #!/bin/bash
-          for i in $(seq 6); do
-            (while sudo rm -f /var/tmp/data$i/test; do
-              for x in $(seq 6); do
-                sudo dd if=/dev/urandom of=/var/tmp/data$i/test bs=4096 count=2048 conv=notrunc oflag=append &> /dev/null;
-                sleep 0.5;
-              done;
-            done) &
+          i=$1
+          while true; do
+            sudo dd if=/dev/urandom of=/var/tmp/data$i/test bs=4096 count=2048 conv=notrunc oflag=append &> /dev/null
+            sleep 0.1
+            sudo rm -f /var/tmp/data$i/test
           done`)
 	opts := platform.MachineOptions{
 		MinMemory: 2048,
@@ -197,12 +194,12 @@ storage:
 	err = util.Retry(6, 10*time.Second, func() error {
 		// entry point /var/nfs with fsid=0 will be root for clients
 		// refer to https://access.redhat.com/solutions/107793
-		_ = c.MustSSHf(nfs_client, `for i in $(seq 6); do
+		_ = c.MustSSHf(nfs_client, `for i in $(seq 4); do
 			sudo mount -t nfs4 %s:/share$i /var/tmp/data$i
 			done`, nfs_server.MachineAddress)
 
 		mounts := c.MustSSH(nfs_client, "sudo df -Th | grep nfs | wc -l")
-		if string(mounts) != "6" {
+		if string(mounts) != "4" {
 			c.Fatalf("Can not mount all nfs")
 		}
 		c.Log("Got NFS mount.")
@@ -212,34 +209,33 @@ storage:
 		c.Fatalf("Timeout(1m) to get nfs mount: %v", err)
 	}
 
-	doSyncTest(c, nfs_client)
+	doSyncTest(c, nfs_client, nfs_server.Machine)
 }
 
-func doSyncTest(c cluster.TestCluster, client platform.Machine) {
+func doSyncTest(c cluster.TestCluster, client platform.Machine, m platform.Machine) {
+	// Do simple touch to make sure nfs server works
 	c.RunCmdSync(client, "sudo touch /var/tmp/data3/test")
 	// Continue writing while doing test
-	go func() {
-		_, err := c.SSH(client, "sudo sh /usr/local/bin/nfs-random-write.sh")
+	// gets run using systemd unit
+	for i := 1; i <= 4; i++ {
+		cmd := fmt.Sprintf("sudo systemd-run --unit=nfs%d --no-block sh -c '/usr/local/bin/nfs-random-write.sh %d'", i, i)
+		_, err := c.SSH(client, cmd)
 		if err != nil {
-			c.Fatalf("failed to start write-to-nfs: %v", err)
+			c.Fatalf("failed to run nfs-random-write: %v", err)
 		}
-	}()
+	}
 
+	// block NFS traffic on nfs server
+	c.RunCmdSync(m, "sudo /usr/local/bin/block-nfs.sh")
 	// Create a stage deploy using kargs while writing
 	c.RunCmdSync(client, "sudo rpm-ostree kargs --append=test=1")
 
-	netdevices := c.MustSSH(client, "ls /sys/class/net | grep -v lo")
-	netdevice := string(netdevices)
-	if netdevice == "" {
-		c.Fatalf("failed to get net device")
+	err := client.Reboot()
+	if err != nil {
+		c.Fatalf("Couldn't reboot machine: %v", err)
 	}
-	c.Log("Set link down and rebooting.")
-	// Skip the error check as it is expected
-	cmd := fmt.Sprintf("sudo systemd-run sh -c 'ip link set %s down && sleep 2 && systemctl reboot'", netdevice)
-	_, _ = c.SSH(client, cmd)
 
-	time.Sleep(5 * time.Second)
-	err := util.Retry(8, 10*time.Second, func() error {
+	err = util.Retry(12, 10*time.Second, func() error {
 		// Look for the kernel argument test=1
 		kernelArguments, err := c.SSH(client, "cat /proc/cmdline")
 		if err != nil {
