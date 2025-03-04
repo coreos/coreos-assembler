@@ -60,6 +60,7 @@ do
 done
 
 artifact_name_prefix=$(getconfig_def "artifact-name-prefix" "custom-coreos")
+build_version=$(getconfig_def "build-version" "0")
 ostree_container=$(getconfig "ostree-container")
 osname=$(getconfig "osname")
 deploy_via_container=$(getconfig_def "deploy-via-container" "")
@@ -109,6 +110,7 @@ podman images > /dev/null
 set -x; osbuild-mpp                                       \
     -D arch=\""$(arch)"\"                                 \
     -D artifact_name_prefix=\""${artifact_name_prefix}"\" \
+    -D build_version=\""${build_version}"\"               \
     -D ostree_ref=\""${ostree_ref}"\"                     \
     -D ostree_repo=\""${ostree_repo}"\"                   \
     -D ociarchive=\""${ostree_container}"\"               \
