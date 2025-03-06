@@ -106,7 +106,8 @@ var (
 		"iso-offline-install.s390fw",
 		"iso-offline-install.mpath.s390fw",
 		"iso-offline-install.4k.s390fw",
-		"pxe-online-install.rootfs-appended.s390fw",
+		// FIXME: https://github.com/coreos/fedora-coreos-tracker/issues/1883
+		//"pxe-online-install.rootfs-appended.s390fw",
 		"pxe-offline-install.s390fw",
 		"miniso-install.s390fw",
 		"miniso-install.nm.s390fw",
