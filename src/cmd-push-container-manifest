@@ -122,11 +122,17 @@ def main():
             arch = manifest['platform']['architecture']
             if arch in map_arch:
                 arch = map_arch[arch]
-            buildmetas[arch][args.metajsonname] = {
+            image = {
                 'image': args.repo,
                 'digest': manifest['digest'],
                 'tags': args.tags
             }
+            if buildmetas[arch].get(args.metajsonname):
+                additional_images = buildmetas[arch][args.metajsonname].get('additional-images', [])
+                additional_images.append(image)
+                buildmetas[arch][args.metajsonname]['additional-images'] = additional_images
+            else:
+                buildmetas[arch][args.metajsonname] = image
             buildmetas[arch].write(artifact_name=args.metajsonname)
 
 
