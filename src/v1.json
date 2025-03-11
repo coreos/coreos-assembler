@@ -87,11 +87,41 @@
     },
     "primary-image": {
       "type": "object",
-      "extends": "#/image",
+      "required": [
+        "image"
+      ],
       "optional": [
+        "digest",
+        "tags",
+        "comment",
         "additional-images"
       ],
       "properties": {
+        "digest": {
+          "$id": "#/image/digest",
+          "type": "string",
+          "title": "Digest"
+        },
+        "comment": {
+          "$id": "#/image/comment",
+          "type": "string",
+          "title": "Comment"
+        },
+        "image": {
+          "$id": "#/image/image",
+          "type": "string",
+          "title": "Image"
+        },
+        "tags": {
+          "$id": "#/image/tags",
+          "type": "array",
+          "title": "Tags",
+          "items": {
+            "$id": "#/image/tags/item",
+            "title": "Tag",
+            "type": "string"
+          }
+       },
         "additional-images": {
           "$id": "#/image",
           "type": "array",
