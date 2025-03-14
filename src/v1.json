@@ -85,6 +85,20 @@
         }
       }
     },
+    "primary-image": {
+      "type": "object",
+      "extends": "#/image",
+      "optional": [
+        "additional-images"
+      ],
+      "properties": {
+        "additional-images": {
+          "$id": "#/image",
+          "type": "array",
+          "title": "Additional images"
+        }
+      }
+    },
     "cloudartifact": {
       "type": "object",
       "required": [
@@ -702,7 +716,7 @@
       "$id": "#/properties/oscontainer",
       "type": "object",
       "title": "Oscontainer",
-      "$ref": "#/definitions/image"
+      "$ref": "#/definitions/primary-image"
     },
     "extensions": {
       "$id": "#/properties/extensions",
@@ -921,13 +935,13 @@
       "$id": "#/properties/base-oscontainer",
       "type": "object",
       "title": "Base OS container",
-      "$ref": "#/definitions/image"
+      "$ref": "#/definitions/primary-image"
     },
     "extensions-container": {
       "$id": "#/properties/extensions-container",
       "type": "object",
       "title": "Extensions container",
-      "$ref": "#/definitions/image"
+      "$ref": "#/definitions/primary-image"
     },
     "gcp": {
       "$id": "#/properties/gcp",
@@ -968,7 +982,7 @@
       "$id": "#/properties/kubevirt",
       "type": "object",
       "title": "Kubevirt container",
-      "$ref": "#/definitions/image"
+      "$ref": "#/definitions/primary-image"
     },
     "ibmcloud": {
       "$id": "#/properties/ibmcloud",
