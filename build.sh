@@ -40,7 +40,7 @@ configure_yum_repos() {
 
 install_rpms() {
     local builddeps
-    local frozendeps
+    local frozendeps=""
 
     # freeze grub2 for https://github.com/coreos/fedora-coreos-tracker/issues/1886
     case "${arch}" in
