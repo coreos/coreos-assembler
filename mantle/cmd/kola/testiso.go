@@ -155,7 +155,7 @@ var (
 )
 
 const (
-	installTimeoutMins = 10
+	installTimeoutMins = 12
 	// https://github.com/coreos/fedora-coreos-config/pull/2544
 	liveISOFromRAMKarg = "coreos.liveiso.fromram"
 )
