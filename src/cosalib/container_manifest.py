@@ -26,8 +26,8 @@ def local_container_manifest_or_image_exists(repo, tag):
     @param repo str registry repository
     @param tag str tag
     '''
-    cmds = [["podman", "manifest", "exists", f"{repo}:{tag}"],
-            ["podman", "image", "exists", f"{repo}:{tag}"]]
+    cmds = [["podman", "image", "exists", f"{repo}:{tag}"],
+            ["podman", "manifest", "exists", f"{repo}:{tag}"]]
     for cmd in cmds:
         cp = runcmd(cmd, check=False)
         # The commands returns 0 (exists), 1 (doesn't exist), 125 (other error)
