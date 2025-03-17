@@ -15,12 +15,13 @@ logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s %(levelname)s - %(message)s")
 
 
-def build_container_image(labels, buildDir, fromimage, cacheTTL,
+def build_container_image(labels, buildDir, containerfile, fromimage, cacheTTL,
                           repo, tag, secret, mount_ca, security_opt):
     '''
     Build the image  using podman remote and push to the registry
     @param labels list labels to add to image
     @param buildDir str the location of the directory to build from
+    @param containerfile str the location of the containerfile relative to buildDir
     @param fromimage str value to pass to `podman build --from=`
     @param cacheTTL str value to pass to `podman build --cache-ttl=`
     @param repo str registry repository
@@ -31,6 +32,8 @@ def build_container_image(labels, buildDir, fromimage, cacheTTL,
         cmd.extend([f"--label={label}"])
     if fromimage:
         cmd.extend([f"--from={fromimage}"])
+    if containerfile:
+        cmd.extend([f"--file={containerfile}"])
     if secret:
         for s in secret:
             cmd.append(f"--secret={s}")
@@ -180,10 +183,10 @@ def main():
         if needbuild:
             logging.info("Building container via podman")
             builddir = os.path.join(gitdir, args.git_sub_dir)
-            build_container_image(args.labels, builddir, args.fromimage,
-                                  args.cache_ttl, args.repo, args.tag,
-                                  args.secret, args.mount_host_ca_certs,
-                                  args.security_opt)
+            build_container_image(args.labels, builddir, args.git_containerfile,
+                                  args.fromimage, args.cache_ttl,
+                                  args.repo, args.tag, args.secret,
+                                  args.mount_host_ca_certs, args.security_opt)
 
     # Push to the registry if needed, else save the image to a file
     if args.push_to_registry:
@@ -239,6 +242,9 @@ Examples:
     parser.add_argument(
         '--git-sub-dir', default='', required=False,
         help='Git sub directory to use for container build')
+    parser.add_argument(
+        '--git-containerfile', default='', required=False,
+        help='Path to Containerfile (relative to git clone and sub dir, if specified)')
     parser.add_argument(
         '--label', dest="labels", default=[], action='append',
         required=False, help='Add image label(s)')
