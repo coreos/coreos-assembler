@@ -150,6 +150,8 @@ def main():
         runcmd(cmd, quiet=True, capture_output=True)
         cmd = ["git", "-C", gitdir, "checkout", "FETCH_HEAD"]
         runcmd(cmd, quiet=True, capture_output=True)
+        cmd = ["git", "-C", gitdir, "submodule", "update", "--recursive", "--init"]
+        runcmd(cmd, quiet=True, capture_output=True)
         cmd = ["git", "-C", gitdir, "rev-parse", "FETCH_HEAD"]
         commit = runcmd(cmd, quiet=True, capture_output=True).stdout.strip().decode()
         shortcommit = commit[0:7]
