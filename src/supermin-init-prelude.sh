@@ -8,6 +8,11 @@ mount -t sysfs /sys /sys
 mount -t cgroup2 cgroup2 -o rw,nosuid,nodev,noexec,relatime,seclabel,nsdelegate,memory_recursiveprot /sys/fs/cgroup
 mount -t devtmpfs devtmpfs /dev
 
+# this is also normally set up by systemd in early boot
+ln -s /proc/self/fd/0 /dev/stdin
+ln -s /proc/self/fd/1 /dev/stdout
+ln -s /proc/self/fd/2 /dev/stderr
+
 # need /dev/shm for podman
 mkdir -p /dev/shm
 mount -t tmpfs tmpfs /dev/shm
