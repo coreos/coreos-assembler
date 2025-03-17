@@ -161,6 +161,9 @@ github.com/IBM/ibm-cos-sdk-go/service/s3
 github.com/IBM/ibm-cos-sdk-go/service/s3/internal/arn
 github.com/IBM/ibm-cos-sdk-go/service/s3/s3iface
 github.com/IBM/ibm-cos-sdk-go/service/s3/s3manager
+# github.com/alecthomas/units v0.0.0-20211218093645-b94a6e3cc137
+## explicit; go 1.15
+github.com/alecthomas/units
 # github.com/aliyun/alibaba-cloud-sdk-go v1.61.1442
 ## explicit; go 1.13
 github.com/aliyun/alibaba-cloud-sdk-go/sdk
@@ -380,6 +383,9 @@ github.com/felixge/httpsnoop
 # github.com/frostschutz/go-fibmap v0.0.0-20160825162329-b32c231bfe6a
 ## explicit
 github.com/frostschutz/go-fibmap
+# github.com/gedex/inflector v0.0.0-20170307190818-16278e9db813
+## explicit
+github.com/gedex/inflector
 # github.com/go-logr/logr v1.4.2
 ## explicit; go 1.18
 github.com/go-logr/logr
@@ -441,7 +447,6 @@ github.com/googleapis/gax-go/v2/internal
 github.com/gophercloud/gophercloud
 github.com/gophercloud/gophercloud/openstack
 github.com/gophercloud/gophercloud/openstack/blockstorage/v3/volumes
-github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/bootfromvolume
 github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/floatingips
 github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/keypairs
 github.com/gophercloud/gophercloud/openstack/compute/v2/flavors
@@ -467,9 +472,15 @@ github.com/gophercloud/utils/gnocchi
 github.com/gophercloud/utils/internal
 github.com/gophercloud/utils/openstack/clientconfig
 github.com/gophercloud/utils/openstack/networking/v2/extensions/security/groups
+# github.com/gopherjs/gopherjs v1.17.2
+## explicit; go 1.17
+github.com/gopherjs/gopherjs/js
 # github.com/hashicorp/go-uuid v1.0.3
 ## explicit
 github.com/hashicorp/go-uuid
+# github.com/idubinskiy/schematyper v0.0.0-20190118213059-f71b40dac30d
+## explicit
+github.com/idubinskiy/schematyper/stringset
 # github.com/inconshreveable/mousetrap v1.0.0
 ## explicit
 github.com/inconshreveable/mousetrap
@@ -479,6 +490,9 @@ github.com/jmespath/go-jmespath
 # github.com/json-iterator/go v1.1.12
 ## explicit; go 1.12
 github.com/json-iterator/go
+# github.com/jtolds/gls v4.20.0+incompatible
+## explicit
+github.com/jtolds/gls
 # github.com/kballard/go-shellquote v0.0.0-20150810074751-d8ec1a69a250
 ## explicit
 github.com/kballard/go-shellquote
@@ -522,6 +536,17 @@ github.com/pmezard/go-difflib/difflib
 # github.com/sirupsen/logrus v1.9.3
 ## explicit; go 1.13
 github.com/sirupsen/logrus
+# github.com/smarty/assertions v1.15.0
+## explicit; go 1.18
+github.com/smarty/assertions
+github.com/smarty/assertions/internal/go-diff/diffmatchpatch
+github.com/smarty/assertions/internal/go-render/render
+github.com/smarty/assertions/internal/oglematchers
+# github.com/smartystreets/goconvey v1.8.1
+## explicit; go 1.18
+github.com/smartystreets/goconvey/convey
+github.com/smartystreets/goconvey/convey/gotest
+github.com/smartystreets/goconvey/convey/reporting
 # github.com/spf13/cobra v1.5.0
 ## explicit; go 1.15
 github.com/spf13/cobra
@@ -568,6 +593,9 @@ github.com/xeipuuv/gojsonreference
 # github.com/xeipuuv/gojsonschema v1.2.0
 ## explicit
 github.com/xeipuuv/gojsonschema
+# github.com/xhit/go-str2duration/v2 v2.1.0
+## explicit; go 1.13
+github.com/xhit/go-str2duration/v2
 # go.opencensus.io v0.24.0
 ## explicit; go 1.13
 go.opencensus.io
@@ -788,6 +816,9 @@ google.golang.org/protobuf/runtime/protoimpl
 google.golang.org/protobuf/types/known/anypb
 google.golang.org/protobuf/types/known/durationpb
 google.golang.org/protobuf/types/known/timestamppb
+# gopkg.in/alecthomas/kingpin.v2 v2.0.0-00010101000000-000000000000 => github.com/alecthomas/kingpin/v2 v2.4.0
+## explicit; go 1.17
+gopkg.in/alecthomas/kingpin.v2
 # gopkg.in/ini.v1 v1.66.2
 ## explicit
 gopkg.in/ini.v1
@@ -797,3 +828,4 @@ gopkg.in/yaml.v2
 # gopkg.in/yaml.v3 v3.0.1
 ## explicit
 gopkg.in/yaml.v3
+# gopkg.in/alecthomas/kingpin.v2 => github.com/alecthomas/kingpin/v2 v2.4.0
