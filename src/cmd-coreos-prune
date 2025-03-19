@@ -55,7 +55,7 @@ Build = collections.namedtuple("Build", ["id", "images", "arch", "meta_json"])
 # set metadata caching to 5m
 CACHE_MAX_AGE_METADATA = 60 * 5
 # These lists are up to date as of schema hash
-# 58da31f35c1405d5a752a297d0ee012f577720f810113d38cdabca102ec7edd8. If changing
+# 1711aa3ce997c644130139e1318d2683e2a5f11538e2b0528771a8658d62ee64. If changing
 # this hash, ensure that the list of SUPPORTED and UNSUPPORTED artifacts below
 # is up to date.
 SUPPORTED = ["amis", "gcp"]
@@ -185,12 +185,13 @@ def main():
                                     print(f"\t\t\tRelease {build_id} is a barrier release. Skipping container prune.")
                                     continue
                                 # Retrieve container tags excluding the stream name since it updates with each release.
-                                container_tags, container_repo = get_container_tags(meta_json, exclude=[stream])
-                                if container_tags:
-                                    for tag in container_tags:
-                                        prune_container(tag, args.dry_run, container_repo, args.registry_auth_file)
-                                else:
-                                    print(f"\t\t\tNo container tags to prune for build {build_id}.")
+                                containers = get_container_tags(meta_json, exclude=[stream])
+                                for (container_repo, container_tags) in containers:
+                                    if container_tags:
+                                        for tag in container_tags:
+                                            prune_container(tag, args.dry_run, container_repo, args.registry_auth_file)
+                                    else:
+                                        print(f"\t\t\tNo container tags to prune for build {build_id}.")
                     actions_completed.append(action)  # Append action to completed list
         # Only add policy-cleanup for the build in builds.json if any
         # of the cleanup actions were completed.
@@ -450,9 +451,14 @@ def get_container_tags(meta_json, exclude):
     if base_oscontainer:
         tags = base_oscontainer.get("tags", [])
         filtered_tags = [tag for tag in tags if tag not in exclude]
-        container_repo = base_oscontainer.get("image", "")
-        return filtered_tags, container_repo
-    return [], ""
+        container_repos = [(base_oscontainer.get("image", ""), filtered_tags)]
+        additional_images = base_oscontainer.get("additional-images", [])
+        for image in additional_images:
+            tags = image.get("tags", [])
+            filtered_tags = [tag for tag in tags if tag not in exclude]
+            container_repos.append((image.get("image", ""), filtered_tags))
+        return container_repos
+    return []
 
 
 def prune_container(tag, dry_run, container_repo, registry_auth_file):
