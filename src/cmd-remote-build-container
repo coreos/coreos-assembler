@@ -45,13 +45,15 @@ def build_container_image(labels, buildDir, containerfile, fromimage, cacheTTL,
     runcmd(cmd)
 
 
-def push_container_image(repo, tag):
+def push_container_image(repo, tag, digestfile):
     '''
     Push image to registry
     @param repo str registry repository
     @param tag str image tag
     '''
     cmd = ["podman", "push", f"{repo}:{tag}"]
+    if digestfile is not None:
+        cmd.extend(["--digestfile", digestfile])
     # Long running command. Send output to stdout for logging
     runcmd(cmd)
     # Quay seems to take some time to publish images in some occasions.
@@ -132,6 +134,8 @@ def main():
     # Check for requisite env vars
     if os.environ.get('CONTAINER_HOST') is None or os.environ.get('CONTAINER_SSHKEY') is None:
         sys.exit('You must have CONTAINER_HOST and CONTAINER_SSHKEY environment variables setup')
+    if args.write_digest_to_file is not None and not args.push_to_registry:
+        sys.exit('argument --write-digest-to-file can only be used with --push-to-registry')
 
     # Podman supports building from a specific commit
     # (https://github.com/containers/buildah/issues/4148), but the way
@@ -193,7 +197,7 @@ def main():
     # Push to the registry if needed, else save the image to a file
     if args.push_to_registry:
         logging.info("Pushing to remote registry")
-        push_container_image(args.repo, args.tag)
+        push_container_image(args.repo, args.tag, args.write_digest_to_file)
     else:
         logging.info("Archiving build container image from remote")
         pull_oci_archive_from_remote(args.repo, args.tag, args.write_to_file)
@@ -265,6 +269,9 @@ Examples:
     parser.add_argument(
         '--tag', required=False,
         help='Force image tag. The default is arch-commit')
+    parser.add_argument(
+        '--write-digest-to-file', required=False,
+        help='Write digest of pushed image to named file')
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument(
         '--push-to-registry', required=False, action='store_true',
