@@ -1954,6 +1954,7 @@ func CheckConsole(output []byte, t *register.Test) (bool, []string) {
 			if len(match) > 1 {
 				// include first subexpression
 				badline += fmt.Sprintf(" (%s)", match[1])
+				badline = strings.TrimSpace(badline) // trim potential newline
 			}
 			badlines = append(badlines, badline)
 			if !check.warnOnly {
