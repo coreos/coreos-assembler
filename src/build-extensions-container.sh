@@ -34,14 +34,9 @@ img=localhost/extensions-container
 (set -x; podman build --from oci-archive:"$ostree_ociarchive" --network=host \
     --build-arg COSA=true --build-arg VARIANT="${variant}" --label version="$buildid" \
     --volume /etc/pki/ca-trust:/etc/pki/ca-trust:ro \
-    --volume "${workdir}"/tmp/extensions.json:/tmp/extensions.json \
     -t "${img}" -f extensions/Dockerfile "${ctx_dir}")
 
-# In newer openshift/os, extensions.json is now part of the image itself. If our
-# bind-mounted one is empty, it means we're dealing with the new kind.
-if [ ! -s "${workdir}"/tmp/extensions.json ]; then
-    (set -x; podman run --rm "${img}" cat /usr/share/rpm-ostree/extensions.json > "${workdir}/tmp/extensions.json")
-fi
+(set -x; podman run --rm "${img}" cat /usr/share/rpm-ostree/extensions.json > "${workdir}/tmp/extensions.json")
 
 # Call skopeo to export it from the container storage to an oci-archive.
 (set -x; skopeo copy "containers-storage:${img}" oci-archive:"$filename")
