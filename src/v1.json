@@ -85,6 +85,50 @@
         }
       }
     },
+    "primary-image": {
+      "type": "object",
+      "required": [
+        "image"
+      ],
+      "optional": [
+        "digest",
+        "tags",
+        "comment",
+        "additional-images"
+      ],
+      "properties": {
+        "digest": {
+          "$id": "#/image/digest",
+          "type": "string",
+          "title": "Digest"
+        },
+        "comment": {
+          "$id": "#/image/comment",
+          "type": "string",
+          "title": "Comment"
+        },
+        "image": {
+          "$id": "#/image/image",
+          "type": "string",
+          "title": "Image"
+        },
+        "tags": {
+          "$id": "#/image/tags",
+          "type": "array",
+          "title": "Tags",
+          "items": {
+            "$id": "#/image/tags/item",
+            "title": "Tag",
+            "type": "string"
+          }
+       },
+        "additional-images": {
+          "$id": "#/image",
+          "type": "array",
+          "title": "Additional images"
+        }
+      }
+    },
     "cloudartifact": {
       "type": "object",
       "required": [
@@ -702,7 +746,7 @@
       "$id": "#/properties/oscontainer",
       "type": "object",
       "title": "Oscontainer",
-      "$ref": "#/definitions/image"
+      "$ref": "#/definitions/primary-image"
     },
     "extensions": {
       "$id": "#/properties/extensions",
@@ -921,13 +965,13 @@
       "$id": "#/properties/base-oscontainer",
       "type": "object",
       "title": "Base OS container",
-      "$ref": "#/definitions/image"
+      "$ref": "#/definitions/primary-image"
     },
     "extensions-container": {
       "$id": "#/properties/extensions-container",
       "type": "object",
       "title": "Extensions container",
-      "$ref": "#/definitions/image"
+      "$ref": "#/definitions/primary-image"
     },
     "gcp": {
       "$id": "#/properties/gcp",
@@ -968,7 +1012,7 @@
       "$id": "#/properties/kubevirt",
       "type": "object",
       "title": "Kubevirt container",
-      "$ref": "#/definitions/image"
+      "$ref": "#/definitions/primary-image"
     },
     "ibmcloud": {
       "$id": "#/properties/ibmcloud",
