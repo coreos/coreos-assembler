@@ -418,8 +418,8 @@ func (t *installerRun) completePxeSetup(kargs []string) error {
 		// this is only for s390x where the pxe image has to be created;
 		// s390 doesn't seem to have a pre-created pxe image although have to check on this
 		if t.pxe.pxeimagepath == "" {
-			kernelpath := filepath.Join(t.builddir, t.kern.kernel)
-			initrdpath := filepath.Join(t.builddir, t.kern.initramfs)
+			kernelpath := filepath.Join(t.tftpdir, t.kern.kernel)
+			initrdpath := filepath.Join(t.tftpdir, t.kern.initramfs)
 			err := exec.Command("/usr/bin/mk-s390image", kernelpath, "-r", initrdpath,
 				"-p", filepath.Join(pxeconfigdir, "default"), filepath.Join(t.tftpdir, pxeimages[0])).Run()
 			if err != nil {
