@@ -13,6 +13,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	armpolicy "github.com/Azure/azure-sdk-for-go/sdk/azcore/arm/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/cloud"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/internal/exported"
 	azpolicy "github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	azruntime "github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 )
@@ -28,19 +29,27 @@ func NewPipeline(module, version string, cred azcore.TokenCredential, plOpts azr
 	if err != nil {
 		return azruntime.Pipeline{}, err
 	}
-	authPolicy := NewBearerTokenPolicy(cred, &armpolicy.BearerTokenOptions{Scopes: []string{conf.Audience + "/.default"}})
-	perRetry := make([]azpolicy.Policy, 0, len(plOpts.PerRetry)+1)
+	authPolicy := NewBearerTokenPolicy(cred, &armpolicy.BearerTokenOptions{
+		AuxiliaryTenants:                options.AuxiliaryTenants,
+		InsecureAllowCredentialWithHTTP: options.InsecureAllowCredentialWithHTTP,
+		Scopes:                          []string{conf.Audience + "/.default"},
+	})
+	// we don't want to modify the underlying array in plOpts.PerRetry
+	perRetry := make([]azpolicy.Policy, len(plOpts.PerRetry), len(plOpts.PerRetry)+1)
 	copy(perRetry, plOpts.PerRetry)
-	plOpts.PerRetry = append(perRetry, authPolicy)
+	perRetry = append(perRetry, authPolicy, exported.PolicyFunc(httpTraceNamespacePolicy))
+	plOpts.PerRetry = perRetry
 	if !options.DisableRPRegistration {
 		regRPOpts := armpolicy.RegistrationOptions{ClientOptions: options.ClientOptions}
 		regPolicy, err := NewRPRegistrationPolicy(cred, &regRPOpts)
 		if err != nil {
 			return azruntime.Pipeline{}, err
 		}
-		perCall := make([]azpolicy.Policy, 0, len(plOpts.PerCall)+1)
+		// we don't want to modify the underlying array in plOpts.PerCall
+		perCall := make([]azpolicy.Policy, len(plOpts.PerCall), len(plOpts.PerCall)+1)
 		copy(perCall, plOpts.PerCall)
-		plOpts.PerCall = append(perCall, regPolicy)
+		perCall = append(perCall, regPolicy)
+		plOpts.PerCall = perCall
 	}
 	if plOpts.APIVersion.Name == "" {
 		plOpts.APIVersion.Name = "api-version"

@@ -59,6 +59,8 @@ var (
 	ErrNoLuksBootDevice        = errors.New("device is required for layouts: s390x-eckd, s390x-zfcp")
 	ErrMirrorNotSupport        = errors.New("mirroring not supported on layouts: s390x-eckd, s390x-zfcp, s390x-virt")
 	ErrLuksBootDeviceBadName   = errors.New("device name must start with /dev/dasd on s390x-eckd layout or /dev/sd on s390x-zfcp layout")
+	ErrCexArchitectureMismatch = errors.New("when using cex the targeted architecture must match s390x")
+	ErrCexNotSupported         = errors.New("cex is not currently supported on the target platform")
 
 	// partition
 	ErrReuseByLabel         = errors.New("partitions cannot be reused by label; number must be specified except on boot disk (/dev/disk/by-id/coreos-boot-disk) or when wipe_table is true")
