@@ -52,7 +52,7 @@ func runDeleteBlob(cmd *cobra.Command, args []string) {
 	if err != nil {
 		plog.Fatalf("Fetching storage service keys failed: %v", err)
 	}
-	if kr.Keys == nil || len(kr.Keys) == 0 {
+	if len(kr.Keys) == 0 {
 		plog.Fatalf("No storage service keys found")
 	}
 	k := kr.Keys
