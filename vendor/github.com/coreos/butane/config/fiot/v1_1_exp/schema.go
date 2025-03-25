@@ -15,7 +15,7 @@
 package v1_1_exp
 
 import (
-	base "github.com/coreos/butane/base/v0_6_exp"
+	base "github.com/coreos/butane/base/v0_7_exp"
 )
 
 type Config struct {
