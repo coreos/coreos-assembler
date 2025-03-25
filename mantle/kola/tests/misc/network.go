@@ -612,7 +612,8 @@ func checkExpectedInterfacesStatus(c cluster.TestCluster, m platform.Machine, ma
 	}
 
 	if len(failedConnections) != 0 {
-		return fmt.Errorf(strings.Join(failedConnections, ","))
+		failed := strings.Join(failedConnections, ",")
+		return fmt.Errorf("failed connections: %s", failed)
 	}
 	return nil
 }
@@ -642,7 +643,8 @@ func checkExpectedInterfacesIPAddress(c cluster.TestCluster, m platform.Machine,
 	}
 
 	if len(failedConnections) != 0 {
-		return fmt.Errorf(strings.Join(failedConnections, ","))
+		failed := strings.Join(failedConnections, ",")
+		return fmt.Errorf("failed connections: %s", failed)
 	}
 	return nil
 }

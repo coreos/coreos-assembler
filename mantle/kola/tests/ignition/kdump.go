@@ -189,7 +189,7 @@ kernel_arguments:
 		if err != nil {
 			return err
 		} else if string(kdump_status) == "inactive" {
-			return fmt.Errorf(fmt.Sprintf("Kdump.service is not ready: %s.", string(kdump_status)))
+			return fmt.Errorf("kdump.service is not ready: %s", string(kdump_status))
 		}
 		return nil
 	})
