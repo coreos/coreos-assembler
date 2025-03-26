@@ -71,15 +71,26 @@ func (client *Client) DescribeSendFileResultsWithCallback(request *DescribeSendF
 // DescribeSendFileResultsRequest is the request struct for api DescribeSendFileResults
 type DescribeSendFileResultsRequest struct {
 	*requests.RpcRequest
-	ResourceOwnerId      requests.Integer `position:"Query" name:"ResourceOwnerId"`
-	PageNumber           requests.Integer `position:"Query" name:"PageNumber"`
-	PageSize             requests.Integer `position:"Query" name:"PageSize"`
-	InvokeId             string           `position:"Query" name:"InvokeId"`
-	ResourceOwnerAccount string           `position:"Query" name:"ResourceOwnerAccount"`
-	OwnerAccount         string           `position:"Query" name:"OwnerAccount"`
-	OwnerId              requests.Integer `position:"Query" name:"OwnerId"`
-	InstanceId           string           `position:"Query" name:"InstanceId"`
-	Name                 string           `position:"Query" name:"Name"`
+	ResourceOwnerId      requests.Integer              `position:"Query" name:"ResourceOwnerId"`
+	PageNumber           requests.Integer              `position:"Query" name:"PageNumber"`
+	ResourceGroupId      string                        `position:"Query" name:"ResourceGroupId"`
+	NextToken            string                        `position:"Query" name:"NextToken"`
+	PageSize             requests.Integer              `position:"Query" name:"PageSize"`
+	Tag                  *[]DescribeSendFileResultsTag `position:"Query" name:"Tag"  type:"Repeated"`
+	InvokeId             string                        `position:"Query" name:"InvokeId"`
+	ResourceOwnerAccount string                        `position:"Query" name:"ResourceOwnerAccount"`
+	OwnerAccount         string                        `position:"Query" name:"OwnerAccount"`
+	OwnerId              requests.Integer              `position:"Query" name:"OwnerId"`
+	InstanceId           string                        `position:"Query" name:"InstanceId"`
+	InvocationStatus     string                        `position:"Query" name:"InvocationStatus"`
+	Name                 string                        `position:"Query" name:"Name"`
+	MaxResults           requests.Integer              `position:"Query" name:"MaxResults"`
+}
+
+// DescribeSendFileResultsTag is a repeated param struct in DescribeSendFileResultsRequest
+type DescribeSendFileResultsTag struct {
+	Key   string `name:"Key"`
+	Value string `name:"Value"`
 }
 
 // DescribeSendFileResultsResponse is the response struct for api DescribeSendFileResults
@@ -89,6 +100,7 @@ type DescribeSendFileResultsResponse struct {
 	RequestId   string                               `json:"RequestId" xml:"RequestId"`
 	PageNumber  int64                                `json:"PageNumber" xml:"PageNumber"`
 	TotalCount  int64                                `json:"TotalCount" xml:"TotalCount"`
+	NextToken   string                               `json:"NextToken" xml:"NextToken"`
 	Invocations InvocationsInDescribeSendFileResults `json:"Invocations" xml:"Invocations"`
 }
 

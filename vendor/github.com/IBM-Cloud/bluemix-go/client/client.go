@@ -91,11 +91,18 @@ func (c *Client) MakeRequest(r *rest.Request, respV interface{}) (*gohttp.Respon
 		return new(gohttp.Response), err
 	}
 	if err != nil {
-		if resp.StatusCode == 401 && c.TokenRefresher != nil {
+		if (resp.StatusCode == 401 || resp.StatusCode == 403) && c.TokenRefresher != nil {
 			log.Println("Authentication failed. Trying token refresh")
 			c.headerLock.Lock()
 			defer c.headerLock.Unlock()
-			_, err := c.TokenRefresher.RefreshToken()
+			var err error
+			if c.Config.BluemixAPIKey != "" {
+				log.Println("Retrying authentication using API Key")
+				err = c.TokenRefresher.AuthenticateAPIKey(c.Config.BluemixAPIKey)
+			} else {
+				log.Println("Retrying authentication using Refresh Token")
+				_, err = c.TokenRefresher.RefreshToken()
+			}
 			switch err.(type) {
 			case nil:
 				restClient.DefaultHeader = getDefaultAuthHeaders(c.ServiceName, c.Config)
@@ -289,16 +296,18 @@ func cleanPath(p string) string {
 }
 
 const (
-	userAgentHeader       = "User-Agent"
-	authorizationHeader   = "Authorization"
-	uaaAccessTokenHeader  = "X-Auth-Uaa-Token"
-	userAccessTokenHeader = "X-Auth-User-Token"
-	iamRefreshTokenHeader = "X-Auth-Refresh-Token"
-	crRefreshTokenHeader  = "RefreshToken"
+	userAgentHeader         = "User-Agent"
+	originalUserAgentHeader = "X-Original-User-Agent"
+	authorizationHeader     = "Authorization"
+	uaaAccessTokenHeader    = "X-Auth-Uaa-Token"
+	userAccessTokenHeader   = "X-Auth-User-Token"
+	iamRefreshTokenHeader   = "X-Auth-Refresh-Token"
+	crRefreshTokenHeader    = "RefreshToken"
 )
 
 func getDefaultAuthHeaders(serviceName bluemix.ServiceName, c *bluemix.Config) gohttp.Header {
 	h := gohttp.Header{}
+	h.Set(originalUserAgentHeader, c.UserAgent)
 	switch serviceName {
 	case bluemix.MccpService, bluemix.AccountService:
 		h.Set(userAgentHeader, http.UserAgent())
@@ -317,10 +326,12 @@ func getDefaultAuthHeaders(serviceName bluemix.ServiceName, c *bluemix.Config) g
 		h.Set(authorizationHeader, c.IAMAccessToken)
 		h.Set(iamRefreshTokenHeader, c.IAMRefreshToken)
 	case bluemix.ContainerRegistryService:
+		h.Set(userAgentHeader, http.UserAgent())
 		h.Set(authorizationHeader, c.IAMAccessToken)
 		h.Set(crRefreshTokenHeader, c.IAMRefreshToken)
 	case bluemix.IAMPAPService, bluemix.AccountServicev1, bluemix.ResourceCatalogrService, bluemix.ResourceControllerService, bluemix.ResourceControllerServicev2, bluemix.ResourceManagementService, bluemix.ResourceManagementServicev2, bluemix.IAMService, bluemix.IAMUUMService, bluemix.IAMUUMServicev2, bluemix.IAMPAPServicev2, bluemix.CseService:
 		h.Set(authorizationHeader, c.IAMAccessToken)
+		h.Set(userAgentHeader, http.UserAgent())
 	case bluemix.UserManagement:
 		h.Set(userAgentHeader, http.UserAgent())
 		h.Set(authorizationHeader, c.IAMAccessToken)
@@ -338,6 +349,7 @@ func getDefaultAuthHeaders(serviceName bluemix.ServiceName, c *bluemix.Config) g
 		h.Set(userAgentHeader, http.UserAgent())
 		h.Set(authorizationHeader, c.IAMAccessToken)
 	case bluemix.HPCService:
+		h.Set(userAgentHeader, http.UserAgent())
 		h.Set(authorizationHeader, c.IAMAccessToken)
 	case bluemix.FunctionsService:
 		h.Set(userAgentHeader, http.UserAgent())
@@ -352,7 +364,7 @@ func getDefaultAuthHeaders(serviceName bluemix.ServiceName, c *bluemix.Config) g
 func isTimeout(err error) bool {
 	if bmErr, ok := err.(bmxerror.RequestFailure); ok {
 		switch bmErr.StatusCode() {
-		case 408, 504, 599, 429, 500, 502, 520, 503:
+		case 408, 504, 599, 429, 500, 502, 520, 503, 403:
 			return true
 		}
 	}

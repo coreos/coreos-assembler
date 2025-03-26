@@ -41,7 +41,7 @@ func (m VirtualDiskManager) CopyVirtualDisk(
 	ctx context.Context,
 	sourceName string, sourceDatacenter *Datacenter,
 	destName string, destDatacenter *Datacenter,
-	destSpec *types.VirtualDiskSpec, force bool) (*Task, error) {
+	destSpec types.BaseVirtualDiskSpec, force bool) (*Task, error) {
 
 	req := types.CopyVirtualDisk_Task{
 		This:       m.Reference(),
@@ -87,6 +87,33 @@ func (m VirtualDiskManager) CreateVirtualDisk(
 	}
 
 	res, err := methods.CreateVirtualDisk_Task(ctx, m.c, &req)
+	if err != nil {
+		return nil, err
+	}
+
+	return NewTask(m.c, res.Returnval), nil
+}
+
+// ExtendVirtualDisk extends an existing virtual disk.
+func (m VirtualDiskManager) ExtendVirtualDisk(
+	ctx context.Context,
+	name string, datacenter *Datacenter,
+	capacityKb int64,
+	eagerZero *bool) (*Task, error) {
+
+	req := types.ExtendVirtualDisk_Task{
+		This:          m.Reference(),
+		Name:          name,
+		NewCapacityKb: capacityKb,
+		EagerZero:     eagerZero,
+	}
+
+	if datacenter != nil {
+		ref := datacenter.Reference()
+		req.Datacenter = &ref
+	}
+
+	res, err := methods.ExtendVirtualDisk_Task(ctx, m.c, &req)
 	if err != nil {
 		return nil, err
 	}
@@ -145,6 +172,47 @@ func (m VirtualDiskManager) DeleteVirtualDisk(ctx context.Context, name string, 
 	return NewTask(m.c, res.Returnval), nil
 }
 
+// InflateVirtualDisk inflates a virtual disk.
+func (m VirtualDiskManager) InflateVirtualDisk(ctx context.Context, name string, dc *Datacenter) (*Task, error) {
+	req := types.InflateVirtualDisk_Task{
+		This: m.Reference(),
+		Name: name,
+	}
+
+	if dc != nil {
+		ref := dc.Reference()
+		req.Datacenter = &ref
+	}
+
+	res, err := methods.InflateVirtualDisk_Task(ctx, m.c, &req)
+	if err != nil {
+		return nil, err
+	}
+
+	return NewTask(m.c, res.Returnval), nil
+}
+
+// ShrinkVirtualDisk shrinks a virtual disk.
+func (m VirtualDiskManager) ShrinkVirtualDisk(ctx context.Context, name string, dc *Datacenter, copy *bool) (*Task, error) {
+	req := types.ShrinkVirtualDisk_Task{
+		This: m.Reference(),
+		Name: name,
+		Copy: copy,
+	}
+
+	if dc != nil {
+		ref := dc.Reference()
+		req.Datacenter = &ref
+	}
+
+	res, err := methods.ShrinkVirtualDisk_Task(ctx, m.c, &req)
+	if err != nil {
+		return nil, err
+	}
+
+	return NewTask(m.c, res.Returnval), nil
+}
+
 // Queries virtual disk uuid
 func (m VirtualDiskManager) QueryVirtualDiskUuid(ctx context.Context, name string, dc *Datacenter) (string, error) {
 	req := types.QueryVirtualDiskUuid{
@@ -167,4 +235,20 @@ func (m VirtualDiskManager) QueryVirtualDiskUuid(ctx context.Context, name strin
 	}
 
 	return res.Returnval, nil
+}
+
+func (m VirtualDiskManager) SetVirtualDiskUuid(ctx context.Context, name string, dc *Datacenter, uuid string) error {
+	req := types.SetVirtualDiskUuid{
+		This: m.Reference(),
+		Name: name,
+		Uuid: uuid,
+	}
+
+	if dc != nil {
+		ref := dc.Reference()
+		req.Datacenter = &ref
+	}
+
+	_, err := methods.SetVirtualDiskUuid(ctx, m.c, &req)
+	return err
 }

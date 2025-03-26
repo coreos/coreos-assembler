@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/xml"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
@@ -15,17 +16,20 @@ import (
 //
 // objectKey    object name
 // options    the object constricts for upload. The valid options are CacheControl, ContentDisposition, ContentEncoding, Expires,
-//            ServerSideEncryption, Meta, check out the following link:
-//            https://help.aliyun.com/document_detail/oss/api-reference/multipart-upload/InitiateMultipartUpload.html
+//
+//	ServerSideEncryption, Meta, check out the following link:
+//	https://www.alibabacloud.com/help/en/object-storage-service/latest/initiatemultipartupload
 //
 // InitiateMultipartUploadResult    the return value of the InitiateMultipartUpload, which is used for calls later on such as UploadPartFromFile,UploadPartCopy.
 // error    it's nil if the operation succeeds, otherwise it's an error object.
-//
 func (bucket Bucket) InitiateMultipartUpload(objectKey string, options ...Option) (InitiateMultipartUploadResult, error) {
 	var imur InitiateMultipartUploadResult
-	opts := addContentType(options, objectKey)
-	params := map[string]interface{}{}
+	opts := AddContentType(options, objectKey)
+	params, _ := GetRawParams(options)
+	paramKeys := []string{"sequential", "withHashContext", "x-oss-enable-md5", "x-oss-enable-sha1", "x-oss-enable-sha256"}
+	ConvertEmptyValueToNil(params, paramKeys)
 	params["uploads"] = nil
+
 	resp, err := bucket.do("POST", objectKey, params, opts, nil, nil)
 	if err != nil {
 		return imur, err
@@ -50,7 +54,6 @@ func (bucket Bucket) InitiateMultipartUpload(objectKey string, options ...Option
 //
 // UploadPart    the return value of the upload part. It consists of PartNumber and ETag. It's valid when error is nil.
 // error    it's nil if the operation succeeds, otherwise it's an error object.
-//
 func (bucket Bucket) UploadPart(imur InitiateMultipartUploadResult, reader io.Reader,
 	partSize int64, partNumber int, options ...Option) (UploadPart, error) {
 	request := &UploadPartRequest{
@@ -75,7 +78,6 @@ func (bucket Bucket) UploadPart(imur InitiateMultipartUploadResult, reader io.Re
 //
 // UploadPart    the return value consists of PartNumber and ETag.
 // error    it's nil if the operation succeeds, otherwise it's an error object.
-//
 func (bucket Bucket) UploadPartFromFile(imur InitiateMultipartUploadResult, filePath string,
 	startPosition, partSize int64, partNumber int, options ...Option) (UploadPart, error) {
 	var part = UploadPart{}
@@ -104,9 +106,8 @@ func (bucket Bucket) UploadPartFromFile(imur InitiateMultipartUploadResult, file
 //
 // UploadPartResult    the result of uploading part.
 // error    it's nil if the operation succeeds, otherwise it's an error object.
-//
 func (bucket Bucket) DoUploadPart(request *UploadPartRequest, options []Option) (*UploadPartResult, error) {
-	listener := getProgressListener(options)
+	listener := GetProgressListener(options)
 	options = append(options, ContentLength(request.PartSize))
 	params := map[string]interface{}{}
 	params["partNumber"] = strconv.Itoa(request.PartNumber)
@@ -123,8 +124,8 @@ func (bucket Bucket) DoUploadPart(request *UploadPartRequest, options []Option) 
 		PartNumber: request.PartNumber,
 	}
 
-	if bucket.getConfig().IsEnableCRC {
-		err = checkCRC(resp, "DoUploadPart")
+	if bucket.GetConfig().IsEnableCRC {
+		err = CheckCRC(resp, "DoUploadPart")
 		if err != nil {
 			return &UploadPartResult{part}, err
 		}
@@ -141,12 +142,12 @@ func (bucket Bucket) DoUploadPart(request *UploadPartRequest, options []Option) 
 // partSize    the part size
 // partNumber    the part number, ranges from 1 to 10,000. If it exceeds the range OSS returns InvalidArgument error.
 // options    the constraints of source object for the copy. The copy happens only when these contraints are met. Otherwise it returns error.
-//            CopySourceIfNoneMatch, CopySourceIfModifiedSince  CopySourceIfUnmodifiedSince, check out the following link for the detail
-//            https://help.aliyun.com/document_detail/oss/api-reference/multipart-upload/UploadPartCopy.html
+//
+//	CopySourceIfNoneMatch, CopySourceIfModifiedSince  CopySourceIfUnmodifiedSince, check out the following link for the detail
+//	https://www.alibabacloud.com/help/en/object-storage-service/latest/uploadpartcopy
 //
 // UploadPart    the return value consists of PartNumber and ETag.
 // error    it's nil if the operation succeeds, otherwise it's an error object.
-//
 func (bucket Bucket) UploadPartCopy(imur InitiateMultipartUploadResult, srcBucketName, srcObjectKey string,
 	startPosition, partSize int64, partNumber int, options ...Option) (UploadPart, error) {
 	var out UploadPartCopyResult
@@ -155,14 +156,14 @@ func (bucket Bucket) UploadPartCopy(imur InitiateMultipartUploadResult, srcBucke
 
 	//first find version id
 	versionIdKey := "versionId"
-	versionId, _ := findOption(options, versionIdKey, nil)
+	versionId, _ := FindOption(options, versionIdKey, nil)
 	if versionId == nil {
 		opts = []Option{CopySource(srcBucketName, url.QueryEscape(srcObjectKey)),
 			CopySourceRange(startPosition, partSize)}
 	} else {
 		opts = []Option{CopySourceVersion(srcBucketName, url.QueryEscape(srcObjectKey), versionId.(string)),
 			CopySourceRange(startPosition, partSize)}
-		options = deleteOption(options, versionIdKey)
+		options = DeleteOption(options, versionIdKey)
 	}
 
 	opts = append(opts, options...)
@@ -193,12 +194,11 @@ func (bucket Bucket) UploadPartCopy(imur InitiateMultipartUploadResult, srcBucke
 //
 // CompleteMultipartUploadResponse    the return value when the call succeeds. Only valid when the error is nil.
 // error    it's nil if the operation succeeds, otherwise it's an error object.
-//
 func (bucket Bucket) CompleteMultipartUpload(imur InitiateMultipartUploadResult,
 	parts []UploadPart, options ...Option) (CompleteMultipartUploadResult, error) {
 	var out CompleteMultipartUploadResult
 
-	sort.Sort(uploadParts(parts))
+	sort.Sort(UploadParts(parts))
 	cxml := completeMultipartUploadXML{}
 	cxml.Part = parts
 	bs, err := xml.Marshal(cxml)
@@ -215,8 +215,28 @@ func (bucket Bucket) CompleteMultipartUpload(imur InitiateMultipartUploadResult,
 		return out, err
 	}
 	defer resp.Body.Close()
-
-	err = xmlUnmarshal(resp.Body, &out)
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return out, err
+	}
+	err = CheckRespCode(resp.StatusCode, []int{http.StatusOK})
+	if len(body) > 0 {
+		if err != nil {
+			err = tryConvertServiceError(body, resp, err)
+		} else {
+			callback, _ := FindOption(options, HTTPHeaderOssCallback, nil)
+			if callback == nil {
+				err = xml.Unmarshal(body, &out)
+			} else {
+				rb, _ := FindOption(options, responseBody, nil)
+				if rb != nil {
+					if rbody, ok := rb.(*[]byte); ok {
+						*rbody = body
+					}
+				}
+			}
+		}
+	}
 	return out, err
 }
 
@@ -225,7 +245,6 @@ func (bucket Bucket) CompleteMultipartUpload(imur InitiateMultipartUploadResult,
 // imur    the return value of InitiateMultipartUpload.
 //
 // error    it's nil if the operation succeeds, otherwise it's an error object.
-//
 func (bucket Bucket) AbortMultipartUpload(imur InitiateMultipartUploadResult, options ...Option) error {
 	params := map[string]interface{}{}
 	params["uploadId"] = imur.UploadID
@@ -234,7 +253,7 @@ func (bucket Bucket) AbortMultipartUpload(imur InitiateMultipartUploadResult, op
 		return err
 	}
 	defer resp.Body.Close()
-	return checkRespCode(resp.StatusCode, []int{http.StatusNoContent})
+	return CheckRespCode(resp.StatusCode, []int{http.StatusNoContent})
 }
 
 // ListUploadedParts lists the uploaded parts.
@@ -243,13 +262,12 @@ func (bucket Bucket) AbortMultipartUpload(imur InitiateMultipartUploadResult, op
 //
 // ListUploadedPartsResponse    the return value if it succeeds, only valid when error is nil.
 // error    it's nil if the operation succeeds, otherwise it's an error object.
-//
 func (bucket Bucket) ListUploadedParts(imur InitiateMultipartUploadResult, options ...Option) (ListUploadedPartsResult, error) {
 	var out ListUploadedPartsResult
 	options = append(options, EncodingType("url"))
 
 	params := map[string]interface{}{}
-	params, err := getRawParams(options)
+	params, err := GetRawParams(options)
 	if err != nil {
 		return out, err
 	}
@@ -272,22 +290,22 @@ func (bucket Bucket) ListUploadedParts(imur InitiateMultipartUploadResult, optio
 // ListMultipartUploads lists all ongoing multipart upload tasks
 //
 // options    listObject's filter. Prefix specifies the returned object's prefix; KeyMarker specifies the returned object's start point in lexicographic order;
-//            MaxKeys specifies the max entries to return; Delimiter is the character for grouping object keys.
+//
+//	MaxKeys specifies the max entries to return; Delimiter is the character for grouping object keys.
 //
 // ListMultipartUploadResponse    the return value if it succeeds, only valid when error is nil.
 // error    it's nil if the operation succeeds, otherwise it's an error object.
-//
 func (bucket Bucket) ListMultipartUploads(options ...Option) (ListMultipartUploadResult, error) {
 	var out ListMultipartUploadResult
 
 	options = append(options, EncodingType("url"))
-	params, err := getRawParams(options)
+	params, err := GetRawParams(options)
 	if err != nil {
 		return out, err
 	}
 	params["uploads"] = nil
 
-	resp, err := bucket.do("GET", "", params, options, nil, nil)
+	resp, err := bucket.doInner("GET", "", params, options, nil, nil)
 	if err != nil {
 		return out, err
 	}

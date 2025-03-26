@@ -71,14 +71,24 @@ func (client *Client) DescribeActivationsWithCallback(request *DescribeActivatio
 // DescribeActivationsRequest is the request struct for api DescribeActivations
 type DescribeActivationsRequest struct {
 	*requests.RpcRequest
-	ResourceOwnerId      requests.Integer `position:"Query" name:"ResourceOwnerId"`
-	PageNumber           requests.Integer `position:"Query" name:"PageNumber"`
-	PageSize             requests.Integer `position:"Query" name:"PageSize"`
-	ResourceOwnerAccount string           `position:"Query" name:"ResourceOwnerAccount"`
-	OwnerAccount         string           `position:"Query" name:"OwnerAccount"`
-	OwnerId              requests.Integer `position:"Query" name:"OwnerId"`
-	InstanceName         string           `position:"Query" name:"InstanceName"`
-	ActivationId         string           `position:"Query" name:"ActivationId"`
+	ResourceOwnerId      requests.Integer          `position:"Query" name:"ResourceOwnerId"`
+	PageNumber           requests.Integer          `position:"Query" name:"PageNumber"`
+	ResourceGroupId      string                    `position:"Query" name:"ResourceGroupId"`
+	NextToken            string                    `position:"Query" name:"NextToken"`
+	PageSize             requests.Integer          `position:"Query" name:"PageSize"`
+	Tag                  *[]DescribeActivationsTag `position:"Query" name:"Tag"  type:"Repeated"`
+	ResourceOwnerAccount string                    `position:"Query" name:"ResourceOwnerAccount"`
+	OwnerAccount         string                    `position:"Query" name:"OwnerAccount"`
+	OwnerId              requests.Integer          `position:"Query" name:"OwnerId"`
+	InstanceName         string                    `position:"Query" name:"InstanceName"`
+	MaxResults           requests.Integer          `position:"Query" name:"MaxResults"`
+	ActivationId         string                    `position:"Query" name:"ActivationId"`
+}
+
+// DescribeActivationsTag is a repeated param struct in DescribeActivationsRequest
+type DescribeActivationsTag struct {
+	Key   string `name:"Key"`
+	Value string `name:"Value"`
 }
 
 // DescribeActivationsResponse is the response struct for api DescribeActivations
@@ -88,6 +98,7 @@ type DescribeActivationsResponse struct {
 	RequestId      string       `json:"RequestId" xml:"RequestId"`
 	PageNumber     int64        `json:"PageNumber" xml:"PageNumber"`
 	TotalCount     int64        `json:"TotalCount" xml:"TotalCount"`
+	NextToken      string       `json:"NextToken" xml:"NextToken"`
 	ActivationList []Activation `json:"ActivationList" xml:"ActivationList"`
 }
 

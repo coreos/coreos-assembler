@@ -81,7 +81,9 @@ type DescribeTasksRequest struct {
 	OwnerAccount         string           `position:"Query" name:"OwnerAccount"`
 	EndTime              string           `position:"Query" name:"EndTime"`
 	OwnerId              requests.Integer `position:"Query" name:"OwnerId"`
+	TaskGroupId          string           `position:"Query" name:"TaskGroupId"`
 	TaskAction           string           `position:"Query" name:"TaskAction"`
+	ResourceIds          *[]string        `position:"Query" name:"ResourceIds"  type:"Repeated"`
 }
 
 // DescribeTasksResponse is the response struct for api DescribeTasks

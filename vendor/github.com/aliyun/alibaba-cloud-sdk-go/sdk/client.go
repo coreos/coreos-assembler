@@ -37,22 +37,20 @@ import (
 	"github.com/aliyun/alibaba-cloud-sdk-go/sdk/requests"
 	"github.com/aliyun/alibaba-cloud-sdk-go/sdk/responses"
 	"github.com/aliyun/alibaba-cloud-sdk-go/sdk/utils"
+	opentracing "github.com/opentracing/opentracing-go"
+	"github.com/opentracing/opentracing-go/ext"
 )
 
-var debug utils.Debug
+var debug = utils.Init("sdk")
 
-func init() {
-	debug = utils.Init("sdk")
-}
-
-// Version this value will be replaced while build: -ldflags="-X sdk.version=x.x.x"
-var Version = "0.0.1"
 var defaultConnectTimeout = 5 * time.Second
 var defaultReadTimeout = 10 * time.Second
 
 var DefaultUserAgent = fmt.Sprintf("AlibabaCloud (%s; %s) Golang/%s Core/%s", runtime.GOOS, runtime.GOARCH, strings.Trim(runtime.Version(), "go"), Version)
 
-var hookDo = func(fn func(req *http.Request) (*http.Response, error)) func(req *http.Request) (*http.Response, error) {
+type Do func(req *http.Request) (*http.Response, error)
+
+var hookDo = func(fn Do) Do {
 	return fn
 }
 
@@ -68,18 +66,23 @@ type Client struct {
 	noProxy         string
 	logger          *Logger
 	userAgent       map[string]string
-	signer          auth.Signer
-	httpClient      *http.Client
-	asyncTaskQueue  chan func()
-	readTimeout     time.Duration
-	connectTimeout  time.Duration
-	EndpointMap     map[string]string
-	EndpointType    string
-	Network         string
-	Domain          string
-	isOpenAsync     bool
+	// Deprecated: don't use it
+	signer              auth.Signer
+	httpClient          *http.Client
+	asyncTaskQueue      chan func()
+	readTimeout         time.Duration
+	connectTimeout      time.Duration
+	EndpointMap         map[string]string
+	EndpointType        string
+	Network             string
+	Domain              string
+	isOpenAsync         bool
+	isCloseTrace        bool
+	rootSpan            opentracing.Span
+	credentialsProvider credentials.CredentialsProvider
 }
 
+// Deprecated: don't use it
 func (client *Client) Init() (err error) {
 	panic("not support yet")
 }
@@ -129,6 +132,22 @@ func (client *Client) SetTransport(transport http.RoundTripper) {
 	client.httpClient.Transport = transport
 }
 
+func (client *Client) SetCloseTrace(isCloseTrace bool) {
+	client.isCloseTrace = isCloseTrace
+}
+
+func (client *Client) GetCloseTrace() bool {
+	return client.isCloseTrace
+}
+
+func (client *Client) SetTracerRootSpan(rootSpan opentracing.Span) {
+	client.rootSpan = rootSpan
+}
+
+func (client *Client) GetTracerRootSpan() opentracing.Span {
+	return client.rootSpan
+}
+
 // InitWithProviderChain will get credential from the providerChain,
 // the RsaKeyPairCredential Only applicable to regionID `ap-northeast-1`,
 // if your providerChain may return a credential type with RsaKeyPairCredential,
@@ -153,6 +172,7 @@ func (client *Client) InitWithOptions(regionId string, config *Config, credentia
 	client.regionId = regionId
 	client.config = config
 	client.httpClient = &http.Client{}
+	client.isCloseTrace = false
 
 	if config.Transport != nil {
 		client.httpClient.Transport = config.Transport
@@ -168,8 +188,7 @@ func (client *Client) InitWithOptions(regionId string, config *Config, credentia
 		client.EnableAsync(config.GoRoutinePoolSize, config.MaxTaskQueueSize)
 	}
 
-	client.signer, err = auth.NewSignerWithCredential(credential, client.ProcessCommonRequestWithSigner)
-
+	client.credentialsProvider, err = auth.ToCredentialsProvider(credential)
 	return
 }
 
@@ -211,7 +230,7 @@ func (client *Client) getHttpProxy(scheme string) (proxy *url.URL, err error) {
 	return proxy, err
 }
 
-func (client *Client) getNoProxy(scheme string) []string {
+func (client *Client) getNoProxy() []string {
 	var urls []string
 	if client.GetNoProxy() != "" {
 		urls = strings.Split(client.noProxy, ",")
@@ -328,7 +347,7 @@ func (client *Client) DoAction(request requests.AcsRequest, response responses.A
 		v := reflect.ValueOf(request).Elem()
 		for i := 0; i < t.NumField(); i++ {
 			value := v.FieldByName(t.Field(i).Name)
-			if t.Field(i).Name == "requests.RoaRequest" {
+			if t.Field(i).Name == "requests.RoaRequest" || t.Field(i).Name == "RoaRequest" {
 				request.GetHeaders()["x-acs-proxy-source-ip"] = client.SourceIp
 				request.GetHeaders()["x-acs-proxy-secure-transport"] = client.SecureTransport
 				return client.DoActionWithSigner(request, response, nil)
@@ -348,7 +367,7 @@ func (client *Client) DoAction(request requests.AcsRequest, response responses.A
 func (client *Client) GetEndpointRules(regionId string, product string) (endpointRaw string, err error) {
 	if client.EndpointType == "regional" {
 		if regionId == "" {
-			err = fmt.Errorf("RegionId is empty, please set a valid RegionId.")
+			err = fmt.Errorf("RegionId is empty, please set a valid RegionId")
 			return "", err
 		}
 		endpointRaw = strings.Replace("<product><network>.<region_id>.aliyuncs.com", "<region_id>", regionId, 1)
@@ -364,7 +383,7 @@ func (client *Client) GetEndpointRules(regionId string, product string) (endpoin
 	return endpointRaw, nil
 }
 
-func (client *Client) buildRequestWithSigner(request requests.AcsRequest, signer auth.Signer) (httpRequest *http.Request, err error) {
+func (client *Client) buildRequestWithSigner(request requests.AcsRequest) (httpRequest *http.Request, err error) {
 	// add clientVersion
 	request.GetHeaders()["x-sdk-core-version"] = Version
 
@@ -423,14 +442,8 @@ func (client *Client) buildRequestWithSigner(request requests.AcsRequest, signer
 		return
 	}
 
-	// signature
-	var finalSigner auth.Signer
-	if signer != nil {
-		finalSigner = signer
-	} else {
-		finalSigner = client.signer
-	}
-	httpRequest, err = buildHttpRequest(request, finalSigner, regionId)
+	credentialsProvider := client.credentialsProvider
+	httpRequest, err = buildHttpRequest(request, regionId, credentialsProvider)
 	if err == nil {
 		userAgent := DefaultUserAgent + getSendUserAgent(client.config.UserAgent, client.userAgent, request.GetUserAgent())
 		httpRequest.Header.Set("User-Agent", userAgent)
@@ -481,7 +494,7 @@ func (client *Client) AppendUserAgent(key, value string) {
 }
 
 func (client *Client) BuildRequestWithSigner(request requests.AcsRequest, signer auth.Signer) (err error) {
-	_, err = client.buildRequestWithSigner(request, signer)
+	_, err = client.buildRequestWithSigner(request)
 	return
 }
 
@@ -540,6 +553,7 @@ func (client *Client) getHTTPSInsecure(request requests.AcsRequest) (insecure bo
 	return insecure
 }
 
+// Deprecated: don't use it
 func (client *Client) DoActionWithSigner(request requests.AcsRequest, response responses.AcsResponse, signer auth.Signer) (err error) {
 	if client.Network != "" {
 		match, _ := regexp.MatchString("^[a-zA-Z0-9_-]+$", client.Network)
@@ -552,7 +566,7 @@ func (client *Client) DoActionWithSigner(request requests.AcsRequest, response r
 	defer func() {
 		client.printLog(fieldMap, err)
 	}()
-	httpRequest, err := client.buildRequestWithSigner(request, signer)
+	httpRequest, err := client.buildRequestWithSigner(request)
 	if err != nil {
 		return
 	}
@@ -563,7 +577,7 @@ func (client *Client) DoActionWithSigner(request requests.AcsRequest, response r
 		return err
 	}
 
-	noProxy := client.getNoProxy(httpRequest.URL.Scheme)
+	noProxy := client.getNoProxy()
 
 	var flag bool
 	for _, value := range noProxy {
@@ -596,13 +610,34 @@ func (client *Client) DoActionWithSigner(request requests.AcsRequest, response r
 		client.httpClient.Transport = trans
 	}
 
+	// Set tracer
+	var span opentracing.Span
+	if ok := opentracing.IsGlobalTracerRegistered(); ok && !client.isCloseTrace {
+		tracer := opentracing.GlobalTracer()
+		var rootCtx opentracing.SpanContext
+		var rootSpan opentracing.Span
+
+		if rootSpan = client.rootSpan; rootSpan != nil {
+			rootCtx = rootSpan.Context()
+		} else if rootSpan = request.GetTracerSpan(); rootSpan != nil {
+			rootCtx = rootSpan.Context()
+		}
+
+		span = tracer.StartSpan(
+			httpRequest.URL.RequestURI(),
+			opentracing.ChildOf(rootCtx),
+			opentracing.Tag{Key: string(ext.Component), Value: "aliyunApi"},
+			opentracing.Tag{Key: "actionName", Value: request.GetActionName()})
+
+		defer span.Finish()
+		tracer.Inject(
+			span.Context(),
+			opentracing.HTTPHeaders,
+			opentracing.HTTPHeadersCarrier(httpRequest.Header))
+	}
+
 	var httpResponse *http.Response
 	for retryTimes := 0; retryTimes <= client.config.MaxRetryTime; retryTimes++ {
-		if proxy != nil && proxy.User != nil {
-			if password, passwordSet := proxy.User.Password(); passwordSet {
-				httpRequest.SetBasicAuth(proxy.User.Username(), password)
-			}
-		}
 		if retryTimes > 0 {
 			client.printLog(fieldMap, err)
 			initLogMsg(fieldMap)
@@ -632,6 +667,9 @@ func (client *Client) DoActionWithSigner(request requests.AcsRequest, response r
 		// receive error
 		if err != nil {
 			debug(" Error: %s.", err.Error())
+			if span != nil {
+				ext.LogError(span, err)
+			}
 			if !client.config.AutoRetry {
 				return
 			} else if retryTimes >= client.config.MaxRetryTime {
@@ -655,14 +693,16 @@ func (client *Client) DoActionWithSigner(request requests.AcsRequest, response r
 		if client.config.AutoRetry && (err != nil || isServerError(httpResponse)) {
 			client.setTimeout(request)
 			// rewrite signatureNonce and signature
-			httpRequest, err = client.buildRequestWithSigner(request, signer)
-			// buildHttpRequest(request, finalSigner, regionId)
+			httpRequest, err = client.buildRequestWithSigner(request)
 			if err != nil {
 				return
 			}
 			continue
 		}
 		break
+	}
+	if span != nil {
+		ext.HTTPStatusCode.Set(span, uint16(httpResponse.StatusCode))
 	}
 
 	err = responses.Unmarshal(response, httpResponse, request.GetAcceptFormat())
@@ -697,8 +737,8 @@ func putMsgToMap(fieldMap map[string]string, request *http.Request) {
 	fieldMap["{target}"] = request.URL.Path + request.URL.RawQuery
 }
 
-func buildHttpRequest(request requests.AcsRequest, singer auth.Signer, regionId string) (httpRequest *http.Request, err error) {
-	err = auth.Sign(request, singer, regionId)
+func buildHttpRequest(request requests.AcsRequest, regionId string, credentialsProvider credentials.CredentialsProvider) (httpRequest *http.Request, err error) {
+	err = auth.Sign(request, nil, regionId, credentialsProvider)
 	if err != nil {
 		return
 	}
@@ -723,11 +763,11 @@ func isServerError(httpResponse *http.Response) bool {
 	return httpResponse.StatusCode >= http.StatusInternalServerError
 }
 
-/**
-only block when any one of the following occurs:
-1. the asyncTaskQueue is full, increase the queue size to avoid this
-2. Shutdown() in progressing, the client is being closed
-**/
+/*
+ * only block when any one of the following occurs:
+ * 1. the asyncTaskQueue is full, increase the queue size to avoid this
+ * 2. Shutdown() in progressing, the client is being closed
+ */
 func (client *Client) AddAsyncTask(task func()) (err error) {
 	if client.asyncTaskQueue != nil {
 		if client.isOpenAsync {
@@ -743,14 +783,17 @@ func (client *Client) GetConfig() *Config {
 	return client.config
 }
 
+// Deprecated: don't use it
 func (client *Client) GetSigner() auth.Signer {
 	return client.signer
 }
 
+// Deprecated: don't use it
 func (client *Client) SetSigner(signer auth.Signer) {
 	client.signer = signer
 }
 
+// Deprecated: don't use it
 func NewClient() (client *Client, err error) {
 	client = &Client{}
 	err = client.Init()
@@ -769,48 +812,67 @@ func NewClientWithProvider(regionId string, providers ...provider.Provider) (cli
 	return
 }
 
+// Usage:
+// ```go
+// credentialsProvider := credentials.NewStaticAKCredentialsProvider(accessKeyId, accessKeySecret)
+// sdk.NewClientWithOptions(regionId, config, credentialsProvider)
+// ```
+// More credentials provider, see: github.com/aliyun/alibaba-cloud-sdk-go/sdk/auth/credentials
+// - StaticAKCredentialsProvider
+// - StaticSTSCredentialsProvider
+// - BearerTokenCredentialsProvider
+// - RAMRoleARNCredentialsProvider
+// - ECSRAMRoleCredentialsProvider
+// - OIDCCredentialsProvider
 func NewClientWithOptions(regionId string, config *Config, credential auth.Credential) (client *Client, err error) {
 	client = &Client{}
 	err = client.InitWithOptions(regionId, config, credential)
 	return
 }
 
+// Deprecated: use NewClientWithOptions(regionId, config, credentialsProvider) instead of
 func NewClientWithAccessKey(regionId, accessKeyId, accessKeySecret string) (client *Client, err error) {
 	client = &Client{}
 	err = client.InitWithAccessKey(regionId, accessKeyId, accessKeySecret)
 	return
 }
 
+// Deprecated: use NewClientWithOptions(regionId, config, credentialsProvider) instead of
 func NewClientWithStsToken(regionId, stsAccessKeyId, stsAccessKeySecret, stsToken string) (client *Client, err error) {
 	client = &Client{}
 	err = client.InitWithStsToken(regionId, stsAccessKeyId, stsAccessKeySecret, stsToken)
 	return
 }
 
+// Deprecated: use NewClientWithOptions(regionId, config, credentialsProvider) instead of
 func NewClientWithRamRoleArn(regionId string, accessKeyId, accessKeySecret, roleArn, roleSessionName string) (client *Client, err error) {
 	client = &Client{}
 	err = client.InitWithRamRoleArn(regionId, accessKeyId, accessKeySecret, roleArn, roleSessionName)
 	return
 }
 
+// Deprecated: use NewClientWithOptions(regionId, config, credentialsProvider) instead of
 func NewClientWithRamRoleArnAndPolicy(regionId string, accessKeyId, accessKeySecret, roleArn, roleSessionName, policy string) (client *Client, err error) {
 	client = &Client{}
 	err = client.InitWithRamRoleArnAndPolicy(regionId, accessKeyId, accessKeySecret, roleArn, roleSessionName, policy)
 	return
 }
 
+// Deprecated: use NewClientWithOptions(regionId, config, credentialsProvider) instead of
 func NewClientWithEcsRamRole(regionId string, roleName string) (client *Client, err error) {
 	client = &Client{}
 	err = client.InitWithEcsRamRole(regionId, roleName)
 	return
 }
 
+// Deprecated: the RsaKeyPair is deprecated
 func NewClientWithRsaKeyPair(regionId string, publicKeyId, privateKey string, sessionExpiration int) (client *Client, err error) {
 	client = &Client{}
 	err = client.InitWithRsaKeyPair(regionId, publicKeyId, privateKey, sessionExpiration)
 	return
 }
 
+// Deprecated: use NewClientWithOptions(regionId, config, credentialsProvider) instead of
 func NewClientWithBearerToken(regionId, bearerToken string) (client *Client, err error) {
 	client = &Client{}
 	err = client.InitWithBearerToken(regionId, bearerToken)

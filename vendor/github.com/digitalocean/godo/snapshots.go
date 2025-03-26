@@ -10,10 +10,11 @@ const snapshotBasePath = "v2/snapshots"
 
 // SnapshotsService is an interface for interfacing with the snapshots
 // endpoints of the DigitalOcean API
-// See: https://developers.digitalocean.com/documentation/v2#snapshots
+// See: https://docs.digitalocean.com/reference/api/api-reference/#tag/Snapshots
 type SnapshotsService interface {
 	List(context.Context, *ListOptions) ([]Snapshot, *Response, error)
 	ListVolume(context.Context, *ListOptions) ([]Snapshot, *Response, error)
+	ListVolumeSnapshotByRegion(context.Context, string, *ListOptions) ([]Snapshot, *Response, error)
 	ListDroplet(context.Context, *ListOptions) ([]Snapshot, *Response, error)
 	Get(context.Context, string) (*Snapshot, *Response, error)
 	Delete(context.Context, string) (*Response, error)
@@ -52,6 +53,7 @@ type snapshotsRoot struct {
 
 type listSnapshotOptions struct {
 	ResourceType string `url:"resource_type,omitempty"`
+	Region       string `url:"region,omitempty"`
 }
 
 func (s Snapshot) String() string {
@@ -75,7 +77,13 @@ func (s *SnapshotsServiceOp) ListVolume(ctx context.Context, opt *ListOptions) (
 	return s.list(ctx, opt, &listOpt)
 }
 
-// Get retrieves an snapshot by id.
+// ListVolumeSnapshotByRegion lists all the volume snapshot for given region
+func (s *SnapshotsServiceOp) ListVolumeSnapshotByRegion(ctx context.Context, region string, opt *ListOptions) ([]Snapshot, *Response, error) {
+	listOpt := listSnapshotOptions{ResourceType: "volume", Region: region}
+	return s.list(ctx, opt, &listOpt)
+}
+
+// Get retrieves a snapshot by id.
 func (s *SnapshotsServiceOp) Get(ctx context.Context, snapshotID string) (*Snapshot, *Response, error) {
 	return s.get(ctx, snapshotID)
 }

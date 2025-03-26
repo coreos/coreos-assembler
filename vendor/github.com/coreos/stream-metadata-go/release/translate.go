@@ -145,6 +145,13 @@ func (releaseArch *Arch) toStreamArch(rel *Release) stream.Arch {
 		}
 	}
 
+	if releaseArch.Media.Hetzner != nil {
+		artifacts["hetzner"] = stream.PlatformArtifacts{
+			Release: rel.Release,
+			Formats: mapFormats(releaseArch.Media.Hetzner.Artifacts),
+		}
+	}
+
 	if releaseArch.Media.HyperV != nil {
 		artifacts["hyperv"] = stream.PlatformArtifacts{
 			Release: rel.Release,

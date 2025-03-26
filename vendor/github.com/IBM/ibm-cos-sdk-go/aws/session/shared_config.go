@@ -16,15 +16,19 @@ const (
 	sessionTokenKey = `aws_session_token`     // optional
 
 	// Assume Role Credentials group
-	roleArnKey          = `role_arn`          // group required
-	sourceProfileKey    = `source_profile`    // group required (or credential_source)
-	credentialSourceKey = `credential_source` // group required (or source_profile)
-	externalIDKey       = `external_id`       // optional
-	mfaSerialKey        = `mfa_serial`        // optional
-	roleSessionNameKey  = `role_session_name` // optional
+	roleArnKey             = `role_arn`          // group required
+	sourceProfileKey       = `source_profile`    // group required (or credential_source)
+	credentialSourceKey    = `credential_source` // group required (or source_profile)
+	externalIDKey          = `external_id`       // optional
+	mfaSerialKey           = `mfa_serial`        // optional
+	roleSessionNameKey     = `role_session_name` // optional
+	roleDurationSecondsKey = "duration_seconds"  // optional
 
 	// Additional Config fields
 	regionKey = `region`
+
+	// custom CA Bundle filename
+	customCABundleKey = `ca_bundle`
 
 	// endpoint discovery group
 	enableEndpointDiscoveryKey = `endpoint_discovery_enabled` // optional
@@ -45,10 +49,14 @@ const (
 
 	// S3 ARN Region Usage
 	s3UseARNRegionKey = "s3_use_arn_region"
+	// Use DualStack Endpoint Resolution
+	useDualStackEndpoint = "use_dualstack_endpoint"
 )
 
 // sharedConfig represents the configuration fields of the SDK config files.
 type sharedConfig struct {
+	Profile string
+
 	// Credentials values from the config file. Both aws_access_key_id and
 	// aws_secret_access_key must be provided together in the same file to be
 	// considered valid. The values will be ignored if not a complete group.
@@ -60,7 +68,6 @@ type sharedConfig struct {
 	//	aws_session_token
 	Creds credentials.Value
 
-	// An external process to request credentials
 	CredentialSource  string
 	CredentialProcess string
 
@@ -77,6 +84,15 @@ type sharedConfig struct {
 	//
 	//	region
 	Region string
+
+	// CustomCABundle is the file path to a PEM file the SDK will read and
+	// use to configure the HTTP transport with additional CA certs that are
+	// not present in the platforms default CA store.
+	//
+	// This value will be ignored if the file does not exist.
+	//
+	//  ca_bundle
+	CustomCABundle string
 
 	// EnableEndpointDiscovery can be enabled in the shared config by setting
 	// endpoint_discovery_enabled to true
@@ -95,6 +111,8 @@ type sharedConfig struct {
 	//
 	// s3_use_arn_region=true
 	S3UseARNRegion bool
+	// use_dualstack_endpoint=true
+	UseDualStackEndpoint endpoints.DualStackEndpointState
 }
 
 type sharedConfigFile struct {
@@ -153,6 +171,8 @@ func loadSharedConfigIniFiles(filenames []string) ([]sharedConfigFile, error) {
 }
 
 func (cfg *sharedConfig) setFromIniFiles(profiles map[string]struct{}, profile string, files []sharedConfigFile, exOpts bool) error {
+	cfg.Profile = profile
+
 	// Trim files from the list that don't exist.
 	var skippedFiles int
 	var profileNotFoundErr error
@@ -224,6 +244,7 @@ func (cfg *sharedConfig) setFromIniFile(profile string, file sharedConfigFile, e
 		updateString(&cfg.SourceProfileName, section, sourceProfileKey)
 		updateString(&cfg.CredentialSource, section, credentialSourceKey)
 		updateString(&cfg.Region, section, regionKey)
+		updateString(&cfg.CustomCABundle, section, customCABundleKey)
 
 		if v := section.String(s3UsEast1RegionalSharedKey); len(v) != 0 {
 			sre, err := endpoints.GetS3UsEast1RegionalEndpoint(v)
@@ -328,7 +349,8 @@ func updateBool(dst *bool, section ini.Section, key string) {
 	if !section.Has(key) {
 		return
 	}
-	*dst = section.Bool(key)
+	v, _ := section.Bool(key)
+	*dst = v
 }
 
 // updateBoolPtr will only update the dst with the value in the section key,
@@ -337,8 +359,9 @@ func updateBoolPtr(dst **bool, section ini.Section, key string) {
 	if !section.Has(key) {
 		return
 	}
+	v, _ := section.Bool(key)
 	*dst = new(bool)
-	**dst = section.Bool(key)
+	**dst = v
 }
 
 // SharedConfigLoadError is an error for the shared config file failed to load.

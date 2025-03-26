@@ -1,3 +1,5 @@
+export MAX_RETRIES ?= 0
+
 .PHONY : test
 test: test_deps vet
 	go test ./... -timeout 120m

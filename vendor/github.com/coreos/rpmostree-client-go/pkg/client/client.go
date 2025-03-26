@@ -40,6 +40,7 @@ type Deployment struct {
 	Origin                             string                 `json:"origin"`
 	CustomOrigin                       []string               `json:"custom-origin"`
 	ContainerImageReference            string                 `json:"container-image-reference"`
+	ContainerImageReferenceDigest      string                 `json:"container-image-reference-digest"`
 	Packages                           []string               `json:"packages"`
 	RequestedPackages                  []string               `json:"requested-packages"`
 	RequestedLocalPackages             []string               `json:"requested-local-packages"`
@@ -168,6 +169,17 @@ func (s *Status) GetStagedDeployment() *Deployment {
 	for num := range s.Deployments {
 		deployment := s.Deployments[num]
 		if deployment.Staged {
+			return &deployment
+		}
+	}
+	return nil
+}
+
+// GetRollbackDeployment finds the rollback deployment, or returns nil if none is found.
+func (s *Status) GetRollbackDeployment() *Deployment {
+	for num := range s.Deployments {
+		deployment := s.Deployments[num]
+		if !deployment.Booted && !deployment.Staged {
 			return &deployment
 		}
 	}

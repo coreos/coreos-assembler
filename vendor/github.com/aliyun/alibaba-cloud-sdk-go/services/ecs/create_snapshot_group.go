@@ -72,11 +72,13 @@ func (client *Client) CreateSnapshotGroupWithCallback(request *CreateSnapshotGro
 type CreateSnapshotGroupRequest struct {
 	*requests.RpcRequest
 	ResourceOwnerId            requests.Integer          `position:"Query" name:"ResourceOwnerId"`
+	ClientToken                string                    `position:"Query" name:"ClientToken"`
 	InstantAccess              requests.Boolean          `position:"Query" name:"InstantAccess"`
 	ExcludeDiskId              *[]string                 `position:"Query" name:"ExcludeDiskId"  type:"Repeated"`
 	Description                string                    `position:"Query" name:"Description"`
 	ResourceGroupId            string                    `position:"Query" name:"ResourceGroupId"`
 	InstantAccessRetentionDays requests.Integer          `position:"Query" name:"InstantAccessRetentionDays"`
+	StorageLocationArn         string                    `position:"Query" name:"StorageLocationArn"`
 	DiskId                     *[]string                 `position:"Query" name:"DiskId"  type:"Repeated"`
 	Tag                        *[]CreateSnapshotGroupTag `position:"Query" name:"Tag"  type:"Repeated"`
 	ResourceOwnerAccount       string                    `position:"Query" name:"ResourceOwnerAccount"`

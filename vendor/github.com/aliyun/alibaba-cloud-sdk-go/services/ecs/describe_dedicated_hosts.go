@@ -73,9 +73,11 @@ type DescribeDedicatedHostsRequest struct {
 	*requests.RpcRequest
 	DedicatedHostIds       string                       `position:"Query" name:"DedicatedHostIds"`
 	ResourceOwnerId        requests.Integer             `position:"Query" name:"ResourceOwnerId"`
+	SocketDetails          string                       `position:"Query" name:"SocketDetails"`
 	PageNumber             requests.Integer             `position:"Query" name:"PageNumber"`
 	ResourceGroupId        string                       `position:"Query" name:"ResourceGroupId"`
 	LockReason             string                       `position:"Query" name:"LockReason"`
+	NextToken              string                       `position:"Query" name:"NextToken"`
 	PageSize               requests.Integer             `position:"Query" name:"PageSize"`
 	DedicatedHostClusterId string                       `position:"Query" name:"DedicatedHostClusterId"`
 	DedicatedHostType      string                       `position:"Query" name:"DedicatedHostType"`
@@ -86,6 +88,7 @@ type DescribeDedicatedHostsRequest struct {
 	OwnerAccount           string                       `position:"Query" name:"OwnerAccount"`
 	OwnerId                requests.Integer             `position:"Query" name:"OwnerId"`
 	ZoneId                 string                       `position:"Query" name:"ZoneId"`
+	MaxResults             requests.Integer             `position:"Query" name:"MaxResults"`
 	Status                 string                       `position:"Query" name:"Status"`
 }
 
@@ -102,6 +105,7 @@ type DescribeDedicatedHostsResponse struct {
 	RequestId      string         `json:"RequestId" xml:"RequestId"`
 	PageNumber     int            `json:"PageNumber" xml:"PageNumber"`
 	TotalCount     int            `json:"TotalCount" xml:"TotalCount"`
+	NextToken      string         `json:"NextToken" xml:"NextToken"`
 	DedicatedHosts DedicatedHosts `json:"DedicatedHosts" xml:"DedicatedHosts"`
 }
 

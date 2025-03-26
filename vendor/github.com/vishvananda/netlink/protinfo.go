@@ -6,16 +6,24 @@ import (
 
 // Protinfo represents bridge flags from netlink.
 type Protinfo struct {
-	Hairpin   bool
-	Guard     bool
-	FastLeave bool
-	RootBlock bool
-	Learning  bool
-	Flood     bool
+	Hairpin       bool
+	Guard         bool
+	FastLeave     bool
+	RootBlock     bool
+	Learning      bool
+	Flood         bool
+	ProxyArp      bool
+	ProxyArpWiFi  bool
+	Isolated      bool
+	NeighSuppress bool
 }
 
 // String returns a list of enabled flags
 func (prot *Protinfo) String() string {
+	if prot == nil {
+		return "<nil>"
+	}
+
 	var boolStrings []string
 	if prot.Hairpin {
 		boolStrings = append(boolStrings, "Hairpin")
@@ -35,6 +43,18 @@ func (prot *Protinfo) String() string {
 	if prot.Flood {
 		boolStrings = append(boolStrings, "Flood")
 	}
+	if prot.ProxyArp {
+		boolStrings = append(boolStrings, "ProxyArp")
+	}
+	if prot.ProxyArpWiFi {
+		boolStrings = append(boolStrings, "ProxyArpWiFi")
+	}
+	if prot.Isolated {
+		boolStrings = append(boolStrings, "Isolated")
+	}
+	if prot.NeighSuppress {
+		boolStrings = append(boolStrings, "NeighSuppress")
+	}
 	return strings.Join(boolStrings, " ")
 }
 
@@ -46,8 +66,5 @@ func boolToByte(x bool) []byte {
 }
 
 func byteToBool(x byte) bool {
-	if uint8(x) != 0 {
-		return true
-	}
-	return false
+	return uint8(x) != 0
 }

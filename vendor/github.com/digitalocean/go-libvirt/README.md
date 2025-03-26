@@ -1,22 +1,53 @@
-libvirt [![GoDoc](http://godoc.org/github.com/digitalocean/go-libvirt?status.svg)](http://godoc.org/github.com/digitalocean/go-libvirt) [![Build Status](https://travis-ci.org/digitalocean/go-libvirt.svg?branch=master)](https://travis-ci.org/digitalocean/go-libvirt) [![Report Card](https://goreportcard.com/badge/github.com/digitalocean/go-libvirt)](https://goreportcard.com/report/github.com/digitalocean/go-libvirt)
+libvirt
+[![GoDoc](http://godoc.org/github.com/digitalocean/go-libvirt?status.svg)](http://godoc.org/github.com/digitalocean/go-libvirt)
+[![Build Status](https://github.com/digitalocean/go-libvirt/actions/workflows/main.yml/badge.svg)](https://github.com/digitalocean/go-libvirt/actions/)
+[![Report Card](https://goreportcard.com/badge/github.com/digitalocean/go-libvirt)](https://goreportcard.com/report/github.com/digitalocean/go-libvirt)
 ====
 
 Package `go-libvirt` provides a pure Go interface for interacting with libvirt.
 
 Rather than using libvirt's C bindings, this package makes use of
-libvirt's RPC interface, as documented [here](https://libvirt.org/internals/rpc.html).
+libvirt's RPC interface, as documented [here](https://libvirt.org/kbase/internals/rpc.html).
 Connections to the libvirt server may be local, or remote. RPC packets are encoded
 using the XDR standard as defined by [RFC 4506](https://tools.ietf.org/html/rfc4506.html).
 
-libvirt's RPC interface is quite extensive, and changes from one version to the next, so
-this project uses a code generator to build the go bindings. The code generator should
-be run whenever you want to build go-libvirt for a new version of libvirt. To do this,
-you'll need to set an environment variable `LIBVIRT_SOURCE` to the directory containing
-the untarred libvirt sources, and then run `go generate ./...` from the go-libvirt directory.
-The code generator consumes [src/remote/remote_protocol.x](https://github.com/libvirt/libvirt/blob/master/src/remote/remote_protocol.x)
-and produces go bindings for all the remote procedures defined there.
+libvirt's RPC interface is quite extensive, and changes from one version to the
+next, so this project uses a pair of code generators to build the go bindings.
+The code generators should be run whenever you want to build go-libvirt for a
+new version of libvirt. See the next section for directions on re-generating
+go-libvirt.
 
 [Pull requests are welcome](https://github.com/digitalocean/go-libvirt/blob/master/CONTRIBUTING.md)!
+
+Feel free to join us in [`#go-libvirt` on libera chat](https://web.libera.chat/)
+if you'd like to discuss the project.
+
+Running the Code Generators
+---------------------------
+
+The code generator doesn't run automatically when you build go-libvirt. It's
+meant to be run manually any time you change the version of libvirt you're
+using. When you download go-libvirt it will come with generated files
+corresponding to a particular version of libvirt. You can use the library as-is,
+but the generated code may be missing libvirt functions, if you're using a newer
+version of libvirt, or it may have extra functions that will return
+'unimplemented' errors if you try to call them. If this is a problem, you should
+re-run the code generator. To do this, follow these steps:
+
+- First, download a copy of the libvirt sources corresponding to the version you
+  want to use.
+- Change directories into where you've unpacked your distribution of libvirt.
+- The second step depends on the version of libvirt you'd like to build against.
+  It's not necessary to actually build libvirt, but it is necessary to run libvirt's
+  "configure" step because it generates required files.
+  - For libvirt < v6.7.0:
+    - `$ mkdir build; cd build`
+    - `$ ../autogen.sh`
+  - For libvirt >= v6.7.0:
+    - `$ meson setup build`
+- Finally, set the environment variable `LIBVIRT_SOURCE` to the directory you
+  put libvirt into, and run `go generate ./...` from the go-libvirt directory.
+  This runs both of the go-libvirt's code generators.
 
 How to Use This Library
 -----------------------
@@ -81,10 +112,6 @@ instead. Over time these handwritten routines will be removed from go-libvirt.
 Warning
 -------
 
-The libvirt project strongly recommends *against* talking to the RPC interface
-directly. They consider it to be a private implementation detail with the
-possibility of being entirely rearchitected in the future.
-
 While these package are reasonably well-tested and have seen some use inside of
 DigitalOcean, there may be subtle bugs which could cause the packages to act
 in unexpected ways.  Use at your own risk!
@@ -102,33 +129,26 @@ package main
 import (
 	"fmt"
 	"log"
-	"net"
-	"time"
+	"net/url"
 
 	"github.com/digitalocean/go-libvirt"
 )
 
 func main() {
-	// This dials libvirt on the local machine, but you can substitute the first
-	// two parameters with "tcp", "<ip address>:<port>" to connect to libvirt on
-	// a remote machine.
-	c, err := net.DialTimeout("unix", "/var/run/libvirt/libvirt-sock", 2*time.Second)
+	uri, _ := url.Parse(string(libvirt.QEMUSystem))
+	l, err := libvirt.ConnectToURI(uri)
 	if err != nil {
-		log.Fatalf("failed to dial libvirt: %v", err)
-	}
-
-	l := libvirt.New(c)
-	if err := l.Connect(); err != nil {
 		log.Fatalf("failed to connect: %v", err)
 	}
 
-	v, err := l.Version()
+	v, err := l.ConnectGetLibVersion()
 	if err != nil {
 		log.Fatalf("failed to retrieve libvirt version: %v", err)
 	}
 	fmt.Println("Version:", v)
 
-	domains, err := l.Domains()
+	flags := libvirt.ConnectListDomainsActive | libvirt.ConnectListDomainsInactive
+	domains, _, err := l.ConnectListAllDomains(1, flags)
 	if err != nil {
 		log.Fatalf("failed to retrieve domains: %v", err)
 	}
@@ -139,10 +159,11 @@ func main() {
 		fmt.Printf("%d\t%s\t%x\n", d.ID, d.Name, d.UUID)
 	}
 
-	if err := l.Disconnect(); err != nil {
+	if err = l.Disconnect(); err != nil {
 		log.Fatalf("failed to disconnect: %v", err)
 	}
 }
+
 
 ```
 
@@ -153,3 +174,75 @@ ID	Name		UUID
 1	Test-1		dc329f87d4de47198cfd2e21c6105b01
 2	Test-2		dc229f87d4de47198cfd2e21c6105b01
 ```
+
+Example (Connect to libvirt via TLS over TCP)
+-------
+
+```go
+package main
+
+import (
+        "crypto/tls"
+        "crypto/x509"
+
+        "fmt"
+        "io/ioutil"
+        "log"
+
+        "github.com/digitalocean/go-libvirt"
+        "github.com/digitalocean/go-libvirt/socket/dialers"
+)
+
+func main() {
+        // This dials libvirt on the local machine
+        // It connects to libvirt via TLS over TCP
+        // To connect to a remote machine, you need to have the ca/cert/key of it.
+        // The private key is at ~/.pki/libvirt/clientkey.pem
+        // or /etc/pki/libvirt/private/clientkey.pem
+        // The Client Cert is at ~/.pki/libvirt/clientcert.pem
+        // or /etc/pki/libvirt/clientcert.pem
+        // The CA Cert is at ~/.pki/libvirt/cacert.pem
+        // or /etc/pki/CA/cacert.pem
+
+        // Use host name or IP which is valid in certificate
+        addr := "10.10.10.10"
+
+        l := libvirt.NewWithDialer(dialers.NewTLS(addr))
+        if err := l.Connect(); err != nil {
+                log.Fatalf("failed to connect: %v", err)
+        }
+
+        v, err := l.Version()
+        if err != nil {
+                log.Fatalf("failed to retrieve libvirt version: %v", err)
+        }
+        fmt.Println("Version:", v)
+
+        // Return both running and stopped VMs
+        flags := libvirt.ConnectListDomainsActive | libvirt.ConnectListDomainsInactive
+        domains, _, err := l.ConnectListAllDomains(1, flags)
+        if err != nil {
+                log.Fatalf("failed to retrieve domains: %v", err)
+        }
+
+        fmt.Println("ID\tName\t\tUUID")
+        fmt.Println("--------------------------------------------------------")
+        for _, d := range domains {
+                fmt.Printf("%d\t%s\t%x\n", d.ID, d.Name, d.UUID)
+        }
+
+        if err := l.Disconnect(); err != nil {
+                log.Fatalf("failed to disconnect: %v", err)
+        }
+}
+```
+
+Running the Integration Tests
+-----------------------------
+
+GitHub actions workflows are defined in [.github/workflows](.github/workflows)
+and can be triggered manually in the GitHub UI after pushing a branch. There
+are not currently convenient scripts for setting up and running integration tests
+locally, but installing libvirt and defining only the artifacts described by the
+files in testdata should be sufficient to be able to run the integration test file
+against.

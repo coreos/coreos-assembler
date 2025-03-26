@@ -71,22 +71,32 @@ func (client *Client) DescribeInvocationsWithCallback(request *DescribeInvocatio
 // DescribeInvocationsRequest is the request struct for api DescribeInvocations
 type DescribeInvocationsRequest struct {
 	*requests.RpcRequest
-	ResourceOwnerId      requests.Integer `position:"Query" name:"ResourceOwnerId"`
-	InvokeStatus         string           `position:"Query" name:"InvokeStatus"`
-	IncludeOutput        requests.Boolean `position:"Query" name:"IncludeOutput"`
-	CommandId            string           `position:"Query" name:"CommandId"`
-	PageNumber           requests.Integer `position:"Query" name:"PageNumber"`
-	ContentEncoding      string           `position:"Query" name:"ContentEncoding"`
-	RepeatMode           string           `position:"Query" name:"RepeatMode"`
-	PageSize             requests.Integer `position:"Query" name:"PageSize"`
-	InvokeId             string           `position:"Query" name:"InvokeId"`
-	Timed                requests.Boolean `position:"Query" name:"Timed"`
-	CommandName          string           `position:"Query" name:"CommandName"`
-	ResourceOwnerAccount string           `position:"Query" name:"ResourceOwnerAccount"`
-	OwnerAccount         string           `position:"Query" name:"OwnerAccount"`
-	OwnerId              requests.Integer `position:"Query" name:"OwnerId"`
-	CommandType          string           `position:"Query" name:"CommandType"`
-	InstanceId           string           `position:"Query" name:"InstanceId"`
+	ResourceOwnerId      requests.Integer          `position:"Query" name:"ResourceOwnerId"`
+	InvokeStatus         string                    `position:"Query" name:"InvokeStatus"`
+	IncludeOutput        requests.Boolean          `position:"Query" name:"IncludeOutput"`
+	CommandId            string                    `position:"Query" name:"CommandId"`
+	PageNumber           requests.Integer          `position:"Query" name:"PageNumber"`
+	ResourceGroupId      string                    `position:"Query" name:"ResourceGroupId"`
+	NextToken            string                    `position:"Query" name:"NextToken"`
+	ContentEncoding      string                    `position:"Query" name:"ContentEncoding"`
+	RepeatMode           string                    `position:"Query" name:"RepeatMode"`
+	PageSize             requests.Integer          `position:"Query" name:"PageSize"`
+	Tag                  *[]DescribeInvocationsTag `position:"Query" name:"Tag"  type:"Repeated"`
+	InvokeId             string                    `position:"Query" name:"InvokeId"`
+	Timed                requests.Boolean          `position:"Query" name:"Timed"`
+	CommandName          string                    `position:"Query" name:"CommandName"`
+	ResourceOwnerAccount string                    `position:"Query" name:"ResourceOwnerAccount"`
+	OwnerAccount         string                    `position:"Query" name:"OwnerAccount"`
+	OwnerId              requests.Integer          `position:"Query" name:"OwnerId"`
+	CommandType          string                    `position:"Query" name:"CommandType"`
+	InstanceId           string                    `position:"Query" name:"InstanceId"`
+	MaxResults           requests.Integer          `position:"Query" name:"MaxResults"`
+}
+
+// DescribeInvocationsTag is a repeated param struct in DescribeInvocationsRequest
+type DescribeInvocationsTag struct {
+	Key   string `name:"Key"`
+	Value string `name:"Value"`
 }
 
 // DescribeInvocationsResponse is the response struct for api DescribeInvocations
@@ -96,6 +106,7 @@ type DescribeInvocationsResponse struct {
 	RequestId   string                           `json:"RequestId" xml:"RequestId"`
 	PageNumber  int64                            `json:"PageNumber" xml:"PageNumber"`
 	TotalCount  int64                            `json:"TotalCount" xml:"TotalCount"`
+	NextToken   string                           `json:"NextToken" xml:"NextToken"`
 	Invocations InvocationsInDescribeInvocations `json:"Invocations" xml:"Invocations"`
 }
 

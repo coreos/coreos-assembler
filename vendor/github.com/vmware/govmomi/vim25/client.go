@@ -1,11 +1,11 @@
 /*
-Copyright (c) 2015-2016 VMware, Inc. All Rights Reserved.
+Copyright (c) 2015-2023 VMware, Inc. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -19,10 +19,24 @@ package vim25
 import (
 	"context"
 	"encoding/json"
+	"strings"
 
 	"github.com/vmware/govmomi/vim25/methods"
 	"github.com/vmware/govmomi/vim25/soap"
 	"github.com/vmware/govmomi/vim25/types"
+)
+
+const (
+	Namespace = "vim25"
+	Version   = "9.0.0.0"
+	Path      = "/sdk"
+)
+
+var (
+	ServiceInstance = types.ManagedObjectReference{
+		Type:  "ServiceInstance",
+		Value: "ServiceInstance",
+	}
 )
 
 // Client is a tiny wrapper around the vim25/soap Client that stores session
@@ -40,22 +54,31 @@ type Client struct {
 	RoundTripper soap.RoundTripper
 }
 
-// NewClient creates and returns a new client wirh the ServiceContent field
+// NewClient creates and returns a new client with the ServiceContent field
 // filled in.
 func NewClient(ctx context.Context, rt soap.RoundTripper) (*Client, error) {
-	serviceContent, err := methods.GetServiceContent(ctx, rt)
-	if err != nil {
-		return nil, err
-	}
-
 	c := Client{
-		ServiceContent: serviceContent,
-		RoundTripper:   rt,
+		RoundTripper: rt,
 	}
 
 	// Set client if it happens to be a soap.Client
 	if sc, ok := rt.(*soap.Client); ok {
 		c.Client = sc
+
+		if c.Namespace == "" {
+			c.Namespace = "urn:" + Namespace
+		} else if !strings.Contains(c.Namespace, ":") {
+			c.Namespace = "urn:" + c.Namespace // ensure valid URI format
+		}
+		if c.Version == "" {
+			c.Version = Version
+		}
+	}
+
+	var err error
+	c.ServiceContent, err = methods.GetServiceContent(ctx, rt)
+	if err != nil {
+		return nil, err
 	}
 
 	return &c, nil
@@ -115,6 +138,11 @@ func (c *Client) Valid() bool {
 	}
 
 	return true
+}
+
+// Path returns vim25.Path (see cache.Client)
+func (c *Client) Path() string {
+	return Path
 }
 
 // IsVC returns true if we are connected to a vCenter

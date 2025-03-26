@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/aliyun/alibaba-cloud-sdk-go/sdk/errors"
+	opentracing "github.com/opentracing/opentracing-go"
 )
 
 const (
@@ -98,6 +99,9 @@ type AcsRequest interface {
 	addQueryParam(key, value string)
 	addFormParam(key, value string)
 	addPathParam(key, value string)
+
+	SetTracerSpan(span opentracing.Span)
+	GetTracerSpan() opentracing.Span
 }
 
 // base class
@@ -130,6 +134,8 @@ type baseRequest struct {
 	queries string
 
 	stringToSign string
+
+	span opentracing.Span
 }
 
 func (request *baseRequest) GetQueryParams() map[string]string {
@@ -194,7 +200,7 @@ func (request *baseRequest) AppendUserAgent(key, value string) {
 		request.userAgent = make(map[string]string)
 	}
 	if strings.ToLower(key) != "core" && strings.ToLower(key) != "go" {
-		for tag, _ := range request.userAgent {
+		for tag := range request.userAgent {
 			if tag == key {
 				request.userAgent[tag] = value
 				newkey = false
@@ -281,6 +287,13 @@ func (request *baseRequest) SetStringToSign(stringToSign string) {
 
 func (request *baseRequest) GetStringToSign() string {
 	return request.stringToSign
+}
+
+func (request *baseRequest) SetTracerSpan(span opentracing.Span) {
+	request.span = span
+}
+func (request *baseRequest) GetTracerSpan() opentracing.Span {
+	return request.span
 }
 
 func defaultBaseRequest() (request *baseRequest) {
@@ -390,7 +403,7 @@ func handleRepeatedParams(request AcsRequest, dataValue reflect.Value, prefix, n
 	return nil
 }
 
-func handleParam(request AcsRequest, dataValue reflect.Value, prefix, key, fieldPosition string) (err error) {
+func handleParam(request AcsRequest, dataValue reflect.Value, key, fieldPosition string) (err error) {
 	if dataValue.Type().String() == "[]string" {
 		if dataValue.IsNil() {
 			return
@@ -434,12 +447,12 @@ func handleMap(request AcsRequest, dataValue reflect.Value, prefix, name, fieldP
 			key := prefix + name + ".#" + strconv.Itoa(k.Len()) + "#" + k.String()
 			if v.Kind() == reflect.Ptr || v.Kind() == reflect.Interface {
 				elementValue := v.Elem()
-				err = handleParam(request, elementValue, prefix, key, fieldPosition)
+				err = handleParam(request, elementValue, key, fieldPosition)
 				if err != nil {
 					return err
 				}
 			} else if v.IsValid() && v.IsNil() {
-				err = handleParam(request, v, prefix, key, fieldPosition)
+				err = handleParam(request, v, key, fieldPosition)
 				if err != nil {
 					return err
 				}

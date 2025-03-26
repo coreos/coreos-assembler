@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/IBM/ibm-cos-sdk-go/aws"
@@ -25,11 +26,18 @@ const (
 	// ErrCodeSharedConfig represents an error that occurs in the shared
 	// configuration logic
 	ErrCodeSharedConfig = "SharedConfigErr"
+
+	// ErrCodeLoadCustomCABundle error code for unable to load custom CA bundle.
+	ErrCodeLoadCustomCABundle = "LoadCustomCABundleError"
+
+	// ErrCodeLoadClientTLSCert error code for unable to load client TLS
+	// certificate or key
+	ErrCodeLoadClientTLSCert = "LoadClientTLSCertError"
 )
 
 // ErrSharedConfigSourceCollision will be returned if a section contains both
 // source_profile and credential_source
-var ErrSharedConfigSourceCollision = awserr.New(ErrCodeSharedConfig, "only source profile or credential source can be specified, not both", nil)
+var ErrSharedConfigSourceCollision = awserr.New(ErrCodeSharedConfig, "only one credential type may be specified per profile: source profile, credential source, credential process, web identity token", nil)
 
 // ErrSharedConfigECSContainerEnvVarEmpty will be returned if the environment
 // variables are empty and Environment was set as the credential source
@@ -48,6 +56,8 @@ var ErrSharedConfigInvalidCredSource = awserr.New(ErrCodeSharedConfig, "credenti
 type Session struct {
 	Config   *aws.Config
 	Handlers request.Handlers
+
+	options Options
 }
 
 // New creates a new instance of the handlers merging in the provided configs
@@ -71,61 +81,7 @@ type Session struct {
 // Deprecated: Use NewSession functions to create sessions instead. NewSession
 // has the same functionality as New except an error can be returned when the
 // func is called instead of waiting to receive an error until a request is made.
-// func New(cfgs ...*aws.Config) *Session {
-// 	// load initial config from environment
-// 	envCfg := loadEnvConfig()
-
-// 	if envCfg.EnableSharedConfig {
-// 		var cfg aws.Config
-// 		cfg.MergeIn(cfgs...)
-// 		s, err := NewSessionWithOptions(Options{
-// 			Config:            cfg,
-// 			SharedConfigState: SharedConfigEnable,
-// 		})
-// 		if err != nil {
-// 			// Old session.New expected all errors to be discovered when
-// 			// a request is made, and would report the errors then. This
-// 			// needs to be replicated if an error occurs while creating
-// 			// the session.
-// 			msg := "failed to create session with AWS_SDK_LOAD_CONFIG enabled. " +
-// 				"Use session.NewSession to handle errors occurring during session creation."
-
-// 			// Session creation failed, need to report the error and prevent
-// 			// any requests from succeeding.
-// 			s = &Session{Config: defaults.Config()}
-// 			s.Config.MergeIn(cfgs...)
-// 			s.Config.Logger.Log("ERROR:", msg, "Error:", err)
-// 			s.Handlers.Validate.PushBack(func(r *request.Request) {
-// 				r.Error = err
-// 			})
-// 		}
-
-// 	return s
-// }
-
-// s := deprecatedNewSession(cfgs...)
-// if envErr != nil {
-// 	msg := "failed to load env config"
-// 	s.logDeprecatedNewSessionError(msg, envErr, cfgs)
-// }
-
-// 	if csmCfg, err := loadCSMConfig(envCfg, []string{}); err != nil {
-// 		if l := s.Config.Logger; l != nil {
-// 			l.Log(fmt.Sprintf("ERROR: failed to load CSM configuration, %v", err))
-// 		}
-// 	} else if csmCfg.Enabled {
-// 		err := enableCSM(&s.Handlers, csmCfg, s.Config.Logger)
-// 		if err != nil {
-// 			err = fmt.Errorf("failed to enable CSM, %v", err)
-// 			s.Config.Logger.Log("ERROR:", err.Error())
-// 			s.Handlers.Validate.PushBack(func(r *request.Request) {
-// 				r.Error = err
-// 			})
-// 		}
-// 	}
-
-// 	return s
-// }
+// IBM removed
 
 // NewSession returns a new Session created from SDK defaults, config files,
 // environment, and user provided config files. Once the Session is created
@@ -171,7 +127,6 @@ const (
 
 // Options provides the means to control how a Session is created and what
 // configuration values will be loaded.
-//
 type Options struct {
 	// Provides config values for the SDK to use when creating service clients
 	// and making API requests to services. Any value set in with this field
@@ -221,7 +176,7 @@ type Options struct {
 	// from stdin for the MFA token code.
 	//
 	// This field is only used if the shared configuration is enabled, and
-	// the config enables assume role wit MFA via the mfa_serial field.
+	// the config enables assume role with MFA via the mfa_serial field.
 	AssumeRoleTokenProvider func() (string, error)
 
 	// When the SDK's shared config is configured to assume a role this option
@@ -234,16 +189,45 @@ type Options struct {
 	// the SDK will use instead of the default system's root CA bundle. Use this
 	// only if you want to replace the CA bundle the SDK uses for TLS requests.
 	//
-	// Enabling this option will attempt to merge the Transport into the SDK's HTTP
-	// client. If the client's Transport is not a http.Transport an error will be
-	// returned. If the Transport's TLS config is set this option will cause the SDK
+	// HTTP Client's Transport concrete implementation must be a http.Transport
+	// or creating the session will fail.
+	//
+	// If the Transport's TLS config is set this option will cause the SDK
 	// to overwrite the Transport's TLS config's  RootCAs value. If the CA
 	// bundle reader contains multiple certificates all of them will be loaded.
 	//
-	// The Session option CustomCABundle is also available when creating sessions
-	// to also enable this feature. CustomCABundle session option field has priority
-	// over the AWS_CA_BUNDLE environment variable, and will be used if both are set.
+	// Can also be specified via the environment variable:
+	//
+	//  AWS_CA_BUNDLE=$HOME/ca_bundle
+	//
+	// Can also be specified via the shared config field:
+	//
+	//  ca_bundle = $HOME/ca_bundle
 	CustomCABundle io.Reader
+
+	// Reader for the TLC client certificate that should be used by the SDK's
+	// HTTP transport when making requests. The certificate must be paired with
+	// a TLS client key file. Will be ignored if both are not provided.
+	//
+	// HTTP Client's Transport concrete implementation must be a http.Transport
+	// or creating the session will fail.
+	//
+	// Can also be specified via the environment variable:
+	//
+	//  AWS_SDK_GO_CLIENT_TLS_CERT=$HOME/my_client_cert
+	ClientTLSCert io.Reader
+
+	// Reader for the TLC client key that should be used by the SDK's HTTP
+	// transport when making requests. The key must be paired with a TLS client
+	// certificate file. Will be ignored if both are not provided.
+	//
+	// HTTP Client's Transport concrete implementation must be a http.Transport
+	// or creating the session will fail.
+	//
+	// Can also be specified via the environment variable:
+	//
+	//  AWS_SDK_GO_CLIENT_TLS_KEY=$HOME/my_client_key
+	ClientTLSKey io.Reader
 
 	// The handlers that the session and all API clients will be created with.
 	// This must be a complete set of handlers. Use the defaults.Handlers()
@@ -263,24 +247,24 @@ type Options struct {
 // credentials file. Enabling the Shared Config will also allow the Session
 // to be built with retrieving credentials with AssumeRole set in the config.
 //
-//     // Equivalent to session.New
-//     sess := session.Must(session.NewSessionWithOptions(session.Options{}))
+//	// Equivalent to session.New
+//	sess := session.Must(session.NewSessionWithOptions(session.Options{}))
 //
-//     // Specify profile to load for the session's config
-//     sess := session.Must(session.NewSessionWithOptions(session.Options{
-//          Profile: "profile_name",
-//     }))
+//	// Specify profile to load for the session's config
+//	sess := session.Must(session.NewSessionWithOptions(session.Options{
+//	     Profile: "profile_name",
+//	}))
 //
-//     // Specify profile for config and region for requests
-//     sess := session.Must(session.NewSessionWithOptions(session.Options{
-//          Config: aws.Config{Region: aws.String("us-east-1")},
-//          Profile: "profile_name",
-//     }))
+//	// Specify profile for config and region for requests
+//	sess := session.Must(session.NewSessionWithOptions(session.Options{
+//	     Config: aws.Config{Region: aws.String("us-east-1")},
+//	     Profile: "profile_name",
+//	}))
 //
-//     // Force enable Shared Config support
-//     sess := session.Must(session.NewSessionWithOptions(session.Options{
-//         SharedConfigState: session.SharedConfigEnable,
-//     }))
+//	// Force enable Shared Config support
+//	sess := session.Must(session.NewSessionWithOptions(session.Options{
+//	    SharedConfigState: session.SharedConfigEnable,
+//	}))
 func NewSessionWithOptions(opts Options) (*Session, error) {
 	var envCfg envConfig
 	var err error
@@ -307,17 +291,6 @@ func NewSessionWithOptions(opts Options) (*Session, error) {
 		envCfg.EnableSharedConfig = true
 	}
 
-	// Only use AWS_CA_BUNDLE if session option is not provided.
-	if len(envCfg.CustomCABundle) != 0 && opts.CustomCABundle == nil {
-		f, err := os.Open(envCfg.CustomCABundle)
-		if err != nil {
-			return nil, awserr.New("LoadCustomCABundleError",
-				"failed to open custom CA bundle PEM file", err)
-		}
-		defer f.Close()
-		opts.CustomCABundle = f
-	}
-
 	return newSession(opts, envCfg, &opts.Config)
 }
 
@@ -327,7 +300,7 @@ func NewSessionWithOptions(opts Options) (*Session, error) {
 // This helper is intended to be used in variable initialization to load the
 // Session and configuration at startup. Such as:
 //
-//     var sess = session.Must(session.NewSession())
+//	var sess = session.Must(session.NewSession())
 func Must(sess *Session, err error) *Session {
 	if err != nil {
 		panic(err)
@@ -382,39 +355,98 @@ func newSession(opts Options, envCfg envConfig, cfgs ...*aws.Config) (*Session, 
 		return nil, err
 	}
 
+	if err := setTLSOptions(&opts, cfg, envCfg, sharedCfg); err != nil {
+		return nil, err
+	}
+
 	s := &Session{
 		Config:   cfg,
 		Handlers: handlers,
+		options:  opts,
 	}
 
 	initHandlers(s)
 
-	// Setup HTTP client with custom cert bundle if enabled
-	if opts.CustomCABundle != nil {
-		if err := loadCustomCABundle(s, opts.CustomCABundle); err != nil {
-			return nil, err
-		}
-	}
-
 	return s, nil
 }
 
-func loadCustomCABundle(s *Session, bundle io.Reader) error {
+func setTLSOptions(opts *Options, cfg *aws.Config, envCfg envConfig, sharedCfg sharedConfig) error {
+	// CA Bundle can be specified in both environment variable shared config file.
+	var caBundleFilename = envCfg.CustomCABundle
+	if len(caBundleFilename) == 0 {
+		caBundleFilename = sharedCfg.CustomCABundle
+	}
+
+	// Only use environment value if session option is not provided.
+	customTLSOptions := map[string]struct {
+		filename string
+		field    *io.Reader
+		errCode  string
+	}{
+		"custom CA bundle PEM":   {filename: caBundleFilename, field: &opts.CustomCABundle, errCode: ErrCodeLoadCustomCABundle},
+		"custom client TLS cert": {filename: envCfg.ClientTLSCert, field: &opts.ClientTLSCert, errCode: ErrCodeLoadClientTLSCert},
+		"custom client TLS key":  {filename: envCfg.ClientTLSKey, field: &opts.ClientTLSKey, errCode: ErrCodeLoadClientTLSCert},
+	}
+	for name, v := range customTLSOptions {
+		if len(v.filename) != 0 && *v.field == nil {
+			f, err := os.Open(v.filename)
+			if err != nil {
+				return awserr.New(v.errCode, fmt.Sprintf("failed to open %s file", name), err)
+			}
+			defer f.Close()
+			*v.field = f
+		}
+	}
+
+	// Setup HTTP client with custom cert bundle if enabled
+	if opts.CustomCABundle != nil {
+		if err := loadCustomCABundle(cfg.HTTPClient, opts.CustomCABundle); err != nil {
+			return err
+		}
+	}
+
+	// Setup HTTP client TLS certificate and key for client TLS authentication.
+	if opts.ClientTLSCert != nil && opts.ClientTLSKey != nil {
+		if err := loadClientTLSCert(cfg.HTTPClient, opts.ClientTLSCert, opts.ClientTLSKey); err != nil {
+			return err
+		}
+	} else if opts.ClientTLSCert == nil && opts.ClientTLSKey == nil {
+		// Do nothing if neither values are available.
+
+	} else {
+		return awserr.New(ErrCodeLoadClientTLSCert,
+			fmt.Sprintf("client TLS cert(%t) and key(%t) must both be provided",
+				opts.ClientTLSCert != nil, opts.ClientTLSKey != nil), nil)
+	}
+
+	return nil
+}
+
+func getHTTPTransport(client *http.Client) (*http.Transport, error) {
 	var t *http.Transport
-	switch v := s.Config.HTTPClient.Transport.(type) {
+	switch v := client.Transport.(type) {
 	case *http.Transport:
 		t = v
 	default:
-		if s.Config.HTTPClient.Transport != nil {
-			return awserr.New("LoadCustomCABundleError",
-				"unable to load custom CA bundle, HTTPClient's transport unsupported type", nil)
+		if client.Transport != nil {
+			return nil, fmt.Errorf("unsupported transport, %T", client.Transport)
 		}
 	}
 	if t == nil {
 		// Nil transport implies `http.DefaultTransport` should be used. Since
 		// the SDK cannot modify, nor copy the `DefaultTransport` specifying
 		// the values the next closest behavior.
-		t = getCABundleTransport()
+		t = getCustomTransport()
+	}
+
+	return t, nil
+}
+
+func loadCustomCABundle(client *http.Client, bundle io.Reader) error {
+	t, err := getHTTPTransport(client)
+	if err != nil {
+		return awserr.New(ErrCodeLoadCustomCABundle,
+			"unable to load custom CA bundle, HTTPClient's transport unsupported type", err)
 	}
 
 	p, err := loadCertPool(bundle)
@@ -426,7 +458,7 @@ func loadCustomCABundle(s *Session, bundle io.Reader) error {
 	}
 	t.TLSClientConfig.RootCAs = p
 
-	s.Config.HTTPClient.Transport = t
+	client.Transport = t
 
 	return nil
 }
@@ -434,17 +466,55 @@ func loadCustomCABundle(s *Session, bundle io.Reader) error {
 func loadCertPool(r io.Reader) (*x509.CertPool, error) {
 	b, err := ioutil.ReadAll(r)
 	if err != nil {
-		return nil, awserr.New("LoadCustomCABundleError",
+		return nil, awserr.New(ErrCodeLoadCustomCABundle,
 			"failed to read custom CA bundle PEM file", err)
 	}
 
 	p := x509.NewCertPool()
 	if !p.AppendCertsFromPEM(b) {
-		return nil, awserr.New("LoadCustomCABundleError",
+		return nil, awserr.New(ErrCodeLoadCustomCABundle,
 			"failed to load custom CA bundle PEM file", err)
 	}
 
 	return p, nil
+}
+
+func loadClientTLSCert(client *http.Client, certFile, keyFile io.Reader) error {
+	t, err := getHTTPTransport(client)
+	if err != nil {
+		return awserr.New(ErrCodeLoadClientTLSCert,
+			"unable to get usable HTTP transport from client", err)
+	}
+
+	cert, err := ioutil.ReadAll(certFile)
+	if err != nil {
+		return awserr.New(ErrCodeLoadClientTLSCert,
+			"unable to get read client TLS cert file", err)
+	}
+
+	key, err := ioutil.ReadAll(keyFile)
+	if err != nil {
+		return awserr.New(ErrCodeLoadClientTLSCert,
+			"unable to get read client TLS key file", err)
+	}
+
+	clientCert, err := tls.X509KeyPair(cert, key)
+	if err != nil {
+		return awserr.New(ErrCodeLoadClientTLSCert,
+			"unable to load x509 key pair from client cert", err)
+	}
+
+	tlsCfg := t.TLSClientConfig
+	if tlsCfg == nil {
+		tlsCfg = &tls.Config{}
+	}
+
+	tlsCfg.Certificates = append(tlsCfg.Certificates, clientCert)
+
+	t.TLSClientConfig = tlsCfg
+	client.Transport = t
+
+	return nil
 }
 
 func mergeConfigSrcs(cfg, userCfg *aws.Config,
@@ -483,7 +553,6 @@ func mergeConfigSrcs(cfg, userCfg *aws.Config,
 	// Configure credentials if not already set by the user when creating the
 	// Session.
 	if cfg.Credentials == credentials.AnonymousCredentials && userCfg.Credentials == nil {
-		// IBM COS SDK Code -- START
 		if iBmIamCreds := getIBMIAMCredentials(userCfg); iBmIamCreds != nil {
 			cfg.Credentials = iBmIamCreds
 		} else {
@@ -504,6 +573,13 @@ func mergeConfigSrcs(cfg, userCfg *aws.Config,
 		cfg.S3UseARNRegion = &sharedCfg.S3UseARNRegion
 	}
 
+	for _, v := range []endpoints.DualStackEndpointState{userCfg.UseDualStackEndpoint, envCfg.UseDualStackEndpoint, sharedCfg.UseDualStackEndpoint} {
+		if v != endpoints.DualStackEndpointStateUnset {
+			cfg.UseDualStackEndpoint = v
+			break
+		}
+	}
+
 	return nil
 }
 
@@ -521,6 +597,10 @@ func mergeS3UsEast1RegionalEndpointConfig(cfg *aws.Config, values []endpoints.S3
 func getIBMIAMCredentials(config *aws.Config) *credentials.Credentials {
 
 	if provider := ibmiam.NewEnvProvider(config); provider.IsValid() {
+		return credentials.NewCredentials(provider)
+	}
+
+	if provider := ibmiam.NewEnvProviderTrustedProfile(config); provider.IsValid() {
 		return credentials.NewCredentials(provider)
 	}
 
@@ -549,12 +629,13 @@ func initHandlers(s *Session) {
 // and handlers. If any additional configs are provided they will be merged
 // on top of the Session's copied config.
 //
-//     // Create a copy of the current Session, configured for the us-west-2 region.
-//     sess.Copy(&aws.Config{Region: aws.String("us-west-2")})
+//	// Create a copy of the current Session, configured for the us-west-2 region.
+//	sess.Copy(&aws.Config{Region: aws.String("us-west-2")})
 func (s *Session) Copy(cfgs ...*aws.Config) *Session {
 	newSession := &Session{
 		Config:   s.Config.Copy(cfgs...),
 		Handlers: s.Handlers.Copy(),
+		options:  s.options,
 	}
 
 	initHandlers(newSession)
@@ -568,8 +649,10 @@ func (s *Session) Copy(cfgs ...*aws.Config) *Session {
 func (s *Session) ClientConfig(service string, cfgs ...*aws.Config) client.Config {
 	s = s.Copy(cfgs...)
 
+	resolvedRegion := normalizeRegion(s.Config)
+
 	region := aws.StringValue(s.Config.Region)
-	resolved, err := s.resolveEndpoint(service, region, s.Config)
+	resolved, err := s.resolveEndpoint(service, region, resolvedRegion, s.Config)
 	if err != nil {
 		s.Handlers.Validate.PushBack(func(r *request.Request) {
 			if len(r.ClientInfo.Endpoint) != 0 {
@@ -590,10 +673,11 @@ func (s *Session) ClientConfig(service string, cfgs ...*aws.Config) client.Confi
 		SigningRegion:      resolved.SigningRegion,
 		SigningNameDerived: resolved.SigningNameDerived,
 		SigningName:        resolved.SigningName,
+		ResolvedRegion:     resolvedRegion,
 	}
 }
 
-func (s *Session) resolveEndpoint(service, region string, cfg *aws.Config) (endpoints.ResolvedEndpoint, error) {
+func (s *Session) resolveEndpoint(service, region, resolvedRegion string, cfg *aws.Config) (endpoints.ResolvedEndpoint, error) {
 
 	if ep := aws.StringValue(cfg.Endpoint); len(ep) != 0 {
 		return endpoints.ResolvedEndpoint{
@@ -606,6 +690,7 @@ func (s *Session) resolveEndpoint(service, region string, cfg *aws.Config) (endp
 		func(opt *endpoints.Options) {
 			opt.DisableSSL = aws.BoolValue(cfg.DisableSSL)
 			opt.UseDualStack = aws.BoolValue(cfg.UseDualStack)
+			opt.UseDualStackEndpoint = cfg.UseDualStackEndpoint
 
 			// Support for S3UsEast1RegionalEndpoint where the S3UsEast1RegionalEndpoint is
 			// provided in envConfig or sharedConfig with envConfig getting
@@ -615,6 +700,11 @@ func (s *Session) resolveEndpoint(service, region string, cfg *aws.Config) (endp
 			// Support the condition where the service is modeled but its
 			// endpoint metadata is not available.
 			opt.ResolveUnknownService = true
+
+			opt.ResolvedRegion = resolvedRegion
+
+			opt.Logger = cfg.Logger
+			opt.LogDeprecated = cfg.LogLevel.Matches(aws.LogDebugWithDeprecated)
 		},
 	)
 	if err != nil {
@@ -630,6 +720,8 @@ func (s *Session) resolveEndpoint(service, region string, cfg *aws.Config) (endp
 func (s *Session) ClientConfigNoResolveEndpoint(cfgs ...*aws.Config) client.Config {
 	s = s.Copy(cfgs...)
 
+	resolvedRegion := normalizeRegion(s.Config)
+
 	var resolved endpoints.ResolvedEndpoint
 	if ep := aws.StringValue(s.Config.Endpoint); len(ep) > 0 {
 		resolved.URL = endpoints.AddScheme(ep, aws.BoolValue(s.Config.DisableSSL))
@@ -643,5 +735,37 @@ func (s *Session) ClientConfigNoResolveEndpoint(cfgs ...*aws.Config) client.Conf
 		SigningRegion:      resolved.SigningRegion,
 		SigningNameDerived: resolved.SigningNameDerived,
 		SigningName:        resolved.SigningName,
+		ResolvedRegion:     resolvedRegion,
 	}
+}
+
+// logDeprecatedNewSessionError function enables error handling for session
+func (s *Session) logDeprecatedNewSessionError(msg string, err error, cfgs []*aws.Config) {
+	// Session creation failed, need to report the error and prevent
+	// any requests from succeeding.
+	s.Config.MergeIn(cfgs...)
+	s.Config.Logger.Log("ERROR:", msg, "Error:", err)
+	s.Handlers.Validate.PushBack(func(r *request.Request) {
+		r.Error = err
+	})
+}
+
+// normalizeRegion resolves / normalizes the configured region (converts pseudo fips regions), and modifies the provided
+// config to have the equivalent options for resolution and returns the resolved region name.
+func normalizeRegion(cfg *aws.Config) (resolved string) {
+	const fipsInfix = "-fips-"
+	const fipsPrefix = "-fips"
+	const fipsSuffix = "fips-"
+
+	region := aws.StringValue(cfg.Region)
+
+	if strings.Contains(region, fipsInfix) ||
+		strings.Contains(region, fipsPrefix) ||
+		strings.Contains(region, fipsSuffix) {
+		resolved = strings.Replace(strings.Replace(strings.Replace(
+			region, fipsInfix, "-", -1), fipsPrefix, "", -1), fipsSuffix, "", -1)
+		// cfg.UseFIPSEndpoint = endpoints.FIPSEndpointStateEnabled
+	}
+
+	return resolved
 }
