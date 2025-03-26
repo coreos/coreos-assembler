@@ -167,7 +167,9 @@ func preRun(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// Packet uses storage, and storage talks too much.
+	// Reduce storage log level by default. We probably don't want to
+	// reduce it in general, but in the "kola run" output the extra
+	// messages are a distraction.
 	if !plog.LevelAt(capnslog.INFO) {
 		mantleLogger := capnslog.MustRepoLogger("github.com/coreos/coreos-assembler/mantle")
 		mantleLogger.SetLogLevel(map[string]capnslog.LogLevel{
@@ -324,14 +326,6 @@ func writeProps() error {
 		Image  string `json:"image"`
 		Flavor string `json:"flavor"`
 	}
-	type Packet struct {
-		Facility              string `json:"facility"`
-		Plan                  string `json:"plan"`
-		InstallerImageBaseURL string `json:"installer"`
-		Architecture          string `json:"architecture"`
-		IPXEURL               string `json:"ipxe"`
-		ImageURL              string `json:"image"`
-	}
 	type QEMU struct {
 		Image     string `json:"image"`
 		ImageSize string `json:"imageSize"`
@@ -349,7 +343,6 @@ func writeProps() error {
 		ESX         ESX       `json:"esx"`
 		GCP         GCP       `json:"gcp"`
 		OpenStack   OpenStack `json:"openstack"`
-		Packet      Packet    `json:"packet"`
 		QEMU        QEMU      `json:"qemu"`
 	}{
 		Cmdline:     os.Args,
@@ -387,13 +380,6 @@ func writeProps() error {
 			Region: kola.OpenStackOptions.Region,
 			Image:  kola.OpenStackOptions.Image,
 			Flavor: kola.OpenStackOptions.Flavor,
-		},
-		Packet: Packet{
-			Facility:     kola.PacketOptions.Facility,
-			Plan:         kola.PacketOptions.Plan,
-			Architecture: kola.PacketOptions.Architecture,
-			IPXEURL:      kola.PacketOptions.IPXEURL,
-			ImageURL:     kola.PacketOptions.ImageURL,
 		},
 		QEMU: QEMU{
 			Image:     kola.QEMUOptions.DiskImage,

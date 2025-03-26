@@ -56,16 +56,6 @@ func init() {
 		UserData:    enableMetadataService,
 		Distros:     []string{"fcos"},
 	})
-
-	register.RegisterTest(&register.Test{
-		Name:        "fcos.metadata.packet",
-		Description: "Verify the metadata on Packet.",
-		Run:         verifyPacket,
-		ClusterSize: 1,
-		Platforms:   []string{"packet"},
-		UserData:    enableMetadataService,
-		Distros:     []string{"fcos"},
-	})
 }
 
 func verifyAWS(c cluster.TestCluster) {
@@ -76,10 +66,6 @@ func verifyAzure(c cluster.TestCluster) {
 	verify(c, "AFTERBURN_AZURE_IPV4_DYNAMIC")
 	// kola tests do not spawn machines behind a load balancer on Azure
 	// which is required for AFTERBURN_AZURE_IPV4_VIRTUAL to be present
-}
-
-func verifyPacket(c cluster.TestCluster) {
-	verify(c, "AFTERBURN_PACKET_HOSTNAME", "AFTERBURN_PACKET_PHONE_HOME_URL", "AFTERBURN_PACKET_IPV4_PUBLIC_0", "AFTERBURN_PACKET_IPV4_PRIVATE_0", "AFTERBURN_PACKET_IPV6_PUBLIC_0")
 }
 
 func verify(c cluster.TestCluster, keys ...string) {

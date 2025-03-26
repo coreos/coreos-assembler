@@ -119,14 +119,6 @@ Like Azure, but not.
  - UserData is passed to the instances via the OpenStack metadata service.
  - Instances are tagged with `CreatedBy: mantle` which is used when filtering instances for `GC`.
 
-## Packet
-
- - The Packet platform wraps [packngo](https://github.com/packethost/packngo).
- - SSH keys will be passed via userdata.
- - Custom images do not use the Packet Custom Images API but rather the machine creation actually writes a custom iPXE script (which is uploaded to Google Storage) that sets `coreos.config.url` on the kernel command-line to point at a userdata file (which is also uploaded to Google Storage). This userdata file contains multiple systemd units & file definitions -- the actual metadata is written to `/userdata`. The systemd units will run `coreos-install` to install the custom image on the machine (and pass the config file).
- - Packet provides a URL for accessing the serial console, an SSH client is created to this endpoint and the stdout is fed to the `Console` object.
- - Devices are tagged with `mantle` which is used by `GC`.
-
 ## IBMCloud
 
 - The IBMCloud platform wraps [bluemix-go](https://github.com/IBM-Cloud/bluemix-go) and [ibm-cos-sdk-go](https://github.com/IBM/ibm-cos-sdk-go)

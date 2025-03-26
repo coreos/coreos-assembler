@@ -24,7 +24,7 @@ Ideally, all software needed for a test should be included by building
 it into the image from the SDK.
 
 Kola supports running tests on multiple platforms, currently QEMU, GCP,
-AWS, VMware VSphere, Packet, and OpenStack. In the future systemd-nspawn and other
+AWS, VMware VSphere, and OpenStack. In the future systemd-nspawn and other
 platforms may be added.
 Local platforms do not rely on access to the Internet as a design
 principle of kola, minimizing external dependencies. Any network
@@ -154,7 +154,7 @@ is not invoked manually.
 ### ore
 Ore provides a low-level interface for each cloud provider. It has commands
 related to launching instances on a variety of platforms (gcloud, aliyun, aws,
-azure, esx, ibmcloud and packet) within the latest SDK image. Ore mimics the underlying
+azure, esx, and ibmcloud) within the latest SDK image. Ore mimics the underlying
 api for each cloud provider closely, so the interface for each cloud provider
 is different. See each providers `help` command for the available actions.
 
@@ -183,7 +183,7 @@ Plume release handles this as well, so it does not need to be run as part of
 the release process.
 
 ## Platform Credentials
-Each platform reads the credentials it uses from different files. The `aliyun`, `aws`, `azure`, `do`, `esx`, `ibmcloud` and `packet`
+Each platform reads the credentials it uses from different files. The `aliyun`, `aws`, `azure`, `do`, `esx`, and `ibmcloud`
 platforms support selecting from multiple configured credentials, call "profiles". The examples below
 are for the "default" profile, but other profiles can be specified in the credentials files and selected
 via the `--<platform-name>-profile` flag:
@@ -335,17 +335,6 @@ IAM > Service Accounts > [account] > Keys.
 ```
 
 `user_domain` is required on some newer versions of OpenStack using Keystone V3 but is optional on older versions. `floating_ip_pool` and `region_name` can be optionally specified here to be used as a default if not specified on the command line.
-
-### packet
-`packet` uses `~/.config/packet.json`. This can be configured manually:
-```
-{
-	"default": {
-		"api_key": "your api key here",
-		"project": "project id here"
-	}
-}
-```
 
 ### ibmcloud
 `ibmcloud` uses `~/.bluemix/apikey.json`. This can be populated by downloading the apikey from the IBMCloud UI (https://cloud.ibm.com/login) or by using the IBMCloud cli (https://cloud.ibm.com/docs/cli?topic=cli-install-ibmcloud-cli). This would require the user to login with the correct credentials:

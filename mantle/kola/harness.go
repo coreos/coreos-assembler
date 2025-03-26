@@ -45,7 +45,6 @@ import (
 	esxapi "github.com/coreos/coreos-assembler/mantle/platform/api/esx"
 	gcloudapi "github.com/coreos/coreos-assembler/mantle/platform/api/gcloud"
 	openstackapi "github.com/coreos/coreos-assembler/mantle/platform/api/openstack"
-	packetapi "github.com/coreos/coreos-assembler/mantle/platform/api/packet"
 	"github.com/coreos/coreos-assembler/mantle/platform/conf"
 	"github.com/coreos/coreos-assembler/mantle/platform/machine/aws"
 	"github.com/coreos/coreos-assembler/mantle/platform/machine/azure"
@@ -53,7 +52,6 @@ import (
 	"github.com/coreos/coreos-assembler/mantle/platform/machine/esx"
 	"github.com/coreos/coreos-assembler/mantle/platform/machine/gcloud"
 	"github.com/coreos/coreos-assembler/mantle/platform/machine/openstack"
-	"github.com/coreos/coreos-assembler/mantle/platform/machine/packet"
 	"github.com/coreos/coreos-assembler/mantle/platform/machine/qemu"
 	"github.com/coreos/coreos-assembler/mantle/platform/machine/qemuiso"
 	"github.com/coreos/coreos-assembler/mantle/system"
@@ -112,7 +110,6 @@ var (
 	ESXOptions       = esxapi.Options{Options: &Options}       // glue to set platform options from main
 	GCPOptions       = gcloudapi.Options{Options: &Options}    // glue to set platform options from main
 	OpenStackOptions = openstackapi.Options{Options: &Options} // glue to set platform options from main
-	PacketOptions    = packetapi.Options{Options: &Options}    // glue to set platform options from main
 	QEMUOptions      = qemu.Options{Options: &Options}         // glue to set platform options from main
 	QEMUIsoOptions   = qemuiso.Options{Options: &Options}      // glue to set platform options from main
 
@@ -299,8 +296,6 @@ func NewFlight(pltfrm string) (flight platform.Flight, err error) {
 		flight, err = gcloud.NewFlight(&GCPOptions)
 	case "openstack":
 		flight, err = openstack.NewFlight(&OpenStackOptions)
-	case "packet":
-		flight, err = packet.NewFlight(&PacketOptions)
 	case "qemu":
 		flight, err = qemu.NewFlight(&QEMUOptions)
 	case "qemu-iso":

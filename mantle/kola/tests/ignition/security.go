@@ -29,7 +29,6 @@ import (
 	"github.com/coreos/coreos-assembler/mantle/kola/cluster"
 	"github.com/coreos/coreos-assembler/mantle/kola/register"
 	"github.com/coreos/coreos-assembler/mantle/platform/conf"
-	"github.com/coreos/coreos-assembler/mantle/platform/machine/packet"
 )
 
 var (
@@ -72,10 +71,6 @@ func securityTLS(c cluster.TestCluster) {
 	server := c.Machines()[0]
 
 	ip := server.PrivateIP()
-	if c.Platform() == packet.Platform {
-		// private IP not configured in the initramfs
-		ip = server.IP()
-	}
 
 	c.RunCmdSync(server, "sudo mkdir /var/tls")
 	c.RunCmdSync(server, "sudo openssl ecparam -genkey -name secp384r1 -out /var/tls/server.key")
