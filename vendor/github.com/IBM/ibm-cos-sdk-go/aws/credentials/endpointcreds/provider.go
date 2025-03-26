@@ -7,26 +7,29 @@
 //
 // Static credentials will never expire once they have been retrieved. The format
 // of the static credentials response:
-//    {
-//        "AccessKeyId" : "MUA...",
-//        "SecretAccessKey" : "/7PC5om....",
-//    }
+//
+//	{
+//	    "AccessKeyId" : "MUA...",
+//	    "SecretAccessKey" : "/7PC5om....",
+//	}
 //
 // Refreshable credentials will expire within the "ExpiryWindow" of the Expiration
 // value in the response. The format of the refreshable credentials response:
-//    {
-//        "AccessKeyId" : "MUA...",
-//        "SecretAccessKey" : "/7PC5om....",
-//        "Token" : "AQoDY....=",
-//        "Expiration" : "2016-02-25T06:03:31Z"
-//    }
+//
+//	{
+//	    "AccessKeyId" : "MUA...",
+//	    "SecretAccessKey" : "/7PC5om....",
+//	    "Token" : "AQoDY....=",
+//	    "Expiration" : "2016-02-25T06:03:31Z"
+//	}
 //
 // Errors should be returned in the following format and only returned with 400
 // or 500 HTTP status codes.
-//    {
-//        "code": "ErrorCode",
-//        "message": "Helpful error message."
-//    }
+//
+//	{
+//	    "code": "ErrorCode",
+//	    "message": "Helpful error message."
+//	}
 package endpointcreds
 
 import (
@@ -116,7 +119,13 @@ func (p *Provider) IsExpired() bool {
 // Retrieve will attempt to request the credentials from the endpoint the Provider
 // was configured for. And error will be returned if the retrieval fails.
 func (p *Provider) Retrieve() (credentials.Value, error) {
-	resp, err := p.getCredentials()
+	return p.RetrieveWithContext(aws.BackgroundContext())
+}
+
+// RetrieveWithContext will attempt to request the credentials from the endpoint the Provider
+// was configured for. And error will be returned if the retrieval fails.
+func (p *Provider) RetrieveWithContext(ctx credentials.Context) (credentials.Value, error) {
+	resp, err := p.getCredentials(ctx)
 	if err != nil {
 		return credentials.Value{ProviderName: ProviderName},
 			awserr.New("CredentialsEndpointError", "failed to load credentials", err)
@@ -148,7 +157,7 @@ type errorOutput struct {
 	Message string `json:"message"`
 }
 
-func (p *Provider) getCredentials() (*getCredentialsOutput, error) {
+func (p *Provider) getCredentials(ctx aws.Context) (*getCredentialsOutput, error) {
 	op := &request.Operation{
 		Name:       "GetCredentials",
 		HTTPMethod: "GET",
@@ -156,6 +165,7 @@ func (p *Provider) getCredentials() (*getCredentialsOutput, error) {
 
 	out := &getCredentialsOutput{}
 	req := p.Client.NewRequest(op, nil, out)
+	req.SetContext(ctx)
 	req.HTTPRequest.Header.Set("Accept", "application/json")
 	if authToken := p.AuthorizationToken; len(authToken) != 0 {
 		req.HTTPRequest.Header.Set("Authorization", authToken)

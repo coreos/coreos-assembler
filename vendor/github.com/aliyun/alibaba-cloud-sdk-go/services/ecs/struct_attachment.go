@@ -17,9 +17,15 @@ package ecs
 
 // Attachment is a nested struct in ecs response
 type Attachment struct {
+	Nguid                     string                    `json:"Nguid" xml:"Nguid"`
+	NsId                      int64                     `json:"NsId" xml:"NsId"`
 	Device                    string                    `json:"Device" xml:"Device"`
+	TargetDevice              string                    `json:"TargetDevice" xml:"TargetDevice"`
 	InstanceId                string                    `json:"InstanceId" xml:"InstanceId"`
+	Identifier                string                    `json:"Identifier" xml:"Identifier"`
+	AccessToken               string                    `json:"AccessToken" xml:"AccessToken"`
 	DeviceIndex               int                       `json:"DeviceIndex" xml:"DeviceIndex"`
+	NetworkCardIndex          int                       `json:"NetworkCardIndex" xml:"NetworkCardIndex"`
 	TrunkNetworkInterfaceId   string                    `json:"TrunkNetworkInterfaceId" xml:"TrunkNetworkInterfaceId"`
 	AttachedTime              string                    `json:"AttachedTime" xml:"AttachedTime"`
 	MemberNetworkInterfaceIds MemberNetworkInterfaceIds `json:"MemberNetworkInterfaceIds" xml:"MemberNetworkInterfaceIds"`

@@ -19,9 +19,12 @@ package ecs
 type Snapshot struct {
 	Category                   string                  `json:"Category" xml:"Category"`
 	LastModifiedTime           string                  `json:"LastModifiedTime" xml:"LastModifiedTime"`
+	Available                  bool                    `json:"Available" xml:"Available"`
+	RegionId                   string                  `json:"RegionId" xml:"RegionId"`
 	ResourceGroupId            string                  `json:"ResourceGroupId" xml:"ResourceGroupId"`
 	SnapshotSN                 string                  `json:"SnapshotSN" xml:"SnapshotSN"`
 	InstantAccess              bool                    `json:"InstantAccess" xml:"InstantAccess"`
+	SnapshotLinkId             string                  `json:"SnapshotLinkId" xml:"SnapshotLinkId"`
 	SnapshotType               string                  `json:"SnapshotType" xml:"SnapshotType"`
 	Description                string                  `json:"Description" xml:"Description"`
 	SourceDiskType             string                  `json:"SourceDiskType" xml:"SourceDiskType"`

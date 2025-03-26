@@ -30,6 +30,7 @@ import (
 	"github.com/coreos/pkg/capnslog"
 	"github.com/vmware/govmomi"
 	"github.com/vmware/govmomi/find"
+	"github.com/vmware/govmomi/nfc"
 	"github.com/vmware/govmomi/object"
 	"github.com/vmware/govmomi/ovf"
 	"github.com/vmware/govmomi/vim25/mo"
@@ -450,7 +451,7 @@ func (a *API) buildCreateImportSpecRequest(name string, ovaPath string, finder *
 		return nil, nil, fmt.Errorf("reading envelope: %v", err)
 	}
 
-	ovfHandler := object.NewOvfManager(a.client.Client)
+	ovfHandler := ovf.NewManager(a.client.Client)
 	cisp := types.OvfCreateImportSpecParams{
 		EntityName: name,
 		OvfManagerCommonParams: types.OvfManagerCommonParams{
@@ -463,7 +464,7 @@ func (a *API) buildCreateImportSpecRequest(name string, ovaPath string, finder *
 	if err != nil {
 		return nil, nil, fmt.Errorf("reading ovf: %v", err)
 	}
-	cisr, err := ovfHandler.CreateImportSpec(a.ctx, string(descriptor), resourcePool, datastore, cisp)
+	cisr, err := ovfHandler.CreateImportSpec(a.ctx, string(descriptor), resourcePool, datastore, &cisp)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -509,7 +510,7 @@ func (a *API) uploadToResourcePool(arch *archive, resourcePool *object.ResourceP
 		return nil, fmt.Errorf("importing vApp: %v", err)
 	}
 
-	info, err := lease.Wait(a.ctx)
+	info, err := lease.Wait(a.ctx, cisr.FileItem)
 	if err != nil {
 		return nil, err
 	}
@@ -541,13 +542,13 @@ func (a *API) uploadToResourcePool(arch *archive, resourcePool *object.ResourceP
 	defer upd.Done()
 
 	for _, i := range items {
-		err = a.upload(arch, lease, i)
+		err = a.upload(arch, *lease, i)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	err = lease.HttpNfcLeaseComplete(a.ctx)
+	err = lease.Complete(a.ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -629,7 +630,7 @@ func (a *API) startVM(vm *object.VirtualMachine) error {
 	return task.Wait(a.ctx)
 }
 
-func (a *API) upload(arch *archive, lease *object.HttpNfcLease, ofi ovfFileItem) error {
+func (a *API) upload(arch *archive, lease nfc.Lease, ofi ovfFileItem) error {
 	item := ofi.item
 	file := item.Path
 
@@ -656,7 +657,7 @@ func (a *API) upload(arch *archive, lease *object.HttpNfcLease, ofi ovfFileItem)
 		opts.Type = "application/x-vnd.vmware-streamVmdk"
 	}
 
-	return a.client.Client.Upload(f, ofi.url, &opts)
+	return a.client.Client.Upload(a.ctx, f, ofi.url, &opts)
 }
 
 func (a *API) PreflightCheck() error {

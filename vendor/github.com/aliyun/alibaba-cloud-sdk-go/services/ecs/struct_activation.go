@@ -19,6 +19,7 @@ package ecs
 type Activation struct {
 	DeregisteredCount int    `json:"DeregisteredCount" xml:"DeregisteredCount"`
 	InstanceCount     int    `json:"InstanceCount" xml:"InstanceCount"`
+	ResourceGroupId   string `json:"ResourceGroupId" xml:"ResourceGroupId"`
 	RegisteredCount   int    `json:"RegisteredCount" xml:"RegisteredCount"`
 	TimeToLiveInHours int64  `json:"TimeToLiveInHours" xml:"TimeToLiveInHours"`
 	ActivationId      string `json:"ActivationId" xml:"ActivationId"`
@@ -27,4 +28,5 @@ type Activation struct {
 	CreationTime      string `json:"CreationTime" xml:"CreationTime"`
 	Description       string `json:"Description" xml:"Description"`
 	IpAddressRange    string `json:"IpAddressRange" xml:"IpAddressRange"`
+	Tags              []Tag  `json:"Tags" xml:"Tags"`
 }

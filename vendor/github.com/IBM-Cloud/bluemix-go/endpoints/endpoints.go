@@ -1,8 +1,11 @@
 package endpoints
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
+	"os"
 
 	"github.com/IBM-Cloud/bluemix-go/bmxerror"
 	"github.com/IBM-Cloud/bluemix-go/helpers"
@@ -31,6 +34,7 @@ type EndpointLocator interface {
 	UserManagementEndpoint() (string, error)
 	HpcsEndpoint() (string, error)
 	FunctionsEndpoint() (string, error)
+	SatelliteEndpoint() (string, error)
 }
 
 const (
@@ -73,6 +77,7 @@ var privateRegions = map[string][]string{
 	"container":             {"us-south", "us-east", "eu-gb", "eu-de", "jp-tok", "au-syd", "jp-osa", "ca-tor"},
 	"iam":                   {"us-south", "us-east"},
 	"resource":              {"us-south", "us-east"},
+	"satellite":             {"us-south", "us-east", "eu-gb", "eu-de"},
 }
 var cloudEndpoint = "cloud.ibm.com"
 
@@ -96,13 +101,30 @@ func init() {
 }
 
 type endpointLocator struct {
-	region     string
-	visibility string
+	region        string
+	visibility    string
+	endpointsFile map[string]interface{}
 }
 
 //NewEndpointLocator ...
-func NewEndpointLocator(region, visibility string) EndpointLocator {
-	return &endpointLocator{region: region, visibility: visibility}
+func NewEndpointLocator(region, visibility, file string) EndpointLocator {
+	var fileMap map[string]interface{}
+	if f := helpers.EnvFallBack([]string{"IBMCLOUD_ENDPOINTS_FILE_PATH", "IC_ENDPOINTS_FILE_PATH"}, file); f != "" {
+		jsonFile, err := os.Open(f)
+		if err != nil {
+			log.Fatalf("Unable to open endpoints file %s", err)
+		}
+		defer jsonFile.Close()
+		bytes, err := ioutil.ReadAll(jsonFile)
+		if err != nil {
+			log.Fatalf("Unable to read endpoints file %s", err)
+		}
+		err = json.Unmarshal([]byte(bytes), &fileMap)
+		if err != nil {
+			log.Fatalf("Unable to unmarshal endpoints file %s", err)
+		}
+	}
+	return &endpointLocator{region: region, visibility: visibility, endpointsFile: fileMap}
 }
 
 func (e *endpointLocator) AccountManagementEndpoint() (string, error) {
@@ -110,6 +132,12 @@ func (e *endpointLocator) AccountManagementEndpoint() (string, error) {
 	endpoint := helpers.EnvFallBack([]string{"IBMCLOUD_ACCOUNT_MANAGEMENT_API_ENDPOINT"}, "")
 	if endpoint != "" {
 		return endpoint, nil
+	}
+	if e.endpointsFile != nil && e.visibility != "public-and-private" {
+		url := fileFallBack(e.endpointsFile, e.visibility, "IBMCLOUD_ACCOUNT_MANAGEMENT_API_ENDPOINT", e.region, "")
+		if url != "" {
+			return url, nil
+		}
 	}
 	if e.visibility == "private" || e.visibility == "public-and-private" {
 		r, err := validateRegion(e.region, privateRegions["accounts"])
@@ -127,6 +155,12 @@ func (e *endpointLocator) CertificateManagerEndpoint() (string, error) {
 	endpoint := helpers.EnvFallBack([]string{"IBMCLOUD_CERTIFICATE_MANAGER_API_ENDPOINT"}, "")
 	if endpoint != "" {
 		return endpoint, nil
+	}
+	if e.endpointsFile != nil && e.visibility != "public-and-private" {
+		url := fileFallBack(e.endpointsFile, e.visibility, "IBMCLOUD_CERTIFICATE_MANAGER_API_ENDPOINT", e.region, "")
+		if url != "" {
+			return url, nil
+		}
 	}
 	if e.visibility == "private" {
 		return contructEndpoint(fmt.Sprintf("private.%s.certificate-manager", e.region), cloudEndpoint), nil
@@ -162,6 +196,12 @@ func (e *endpointLocator) ContainerEndpoint() (string, error) {
 	if endpoint != "" {
 		return endpoint, nil
 	}
+	if e.endpointsFile != nil && e.visibility != "public-and-private" {
+		url := fileFallBack(e.endpointsFile, e.visibility, "IBMCLOUD_CS_API_ENDPOINT", e.region, "")
+		if url != "" {
+			return url, nil
+		}
+	}
 	if e.visibility == "private" {
 		return contructEndpoint(fmt.Sprintf("private.%s.containers", e.region), fmt.Sprintf("%s/global", cloudEndpoint)), nil
 	}
@@ -180,6 +220,12 @@ func (e *endpointLocator) SchematicsEndpoint() (string, error) {
 	endpoint := helpers.EnvFallBack([]string{"IBMCLOUD_SCHEMATICS_API_ENDPOINT"}, "")
 	if endpoint != "" {
 		return endpoint, nil
+	}
+	if e.endpointsFile != nil && e.visibility != "public-and-private" {
+		url := fileFallBack(e.endpointsFile, e.visibility, "IBMCLOUD_SCHEMATICS_API_ENDPOINT", e.region, "")
+		if url != "" {
+			return url, nil
+		}
 	}
 	if e.visibility == "private" || e.visibility == "public-and-private" {
 		r, err := validateRegion(e.region, privateRegions["schematics"])
@@ -202,6 +248,12 @@ func (e *endpointLocator) ContainerRegistryEndpoint() (string, error) {
 	endpoint := helpers.EnvFallBack([]string{"IBMCLOUD_CR_API_ENDPOINT"}, "")
 	if endpoint != "" {
 		return endpoint, nil
+	}
+	if e.endpointsFile != nil && e.visibility != "public-and-private" {
+		url := fileFallBack(e.endpointsFile, e.visibility, "IBMCLOUD_CR_API_ENDPOINT", e.region, "")
+		if url != "" {
+			return url, nil
+		}
 	}
 	if ep, ok := regionToEndpoint["cr"][e.region]; ok {
 		return fmt.Sprintf("https://%s", ep), nil
@@ -228,6 +280,12 @@ func (e *endpointLocator) CisEndpoint() (string, error) {
 	if endpoint != "" {
 		return endpoint, nil
 	}
+	if e.endpointsFile != nil && e.visibility != "public-and-private" {
+		url := fileFallBack(e.endpointsFile, e.visibility, "IBMCLOUD_CIS_API_ENDPOINT", e.region, "")
+		if url != "" {
+			return url, nil
+		}
+	}
 	if e.visibility == "private" || e.visibility == "public-and-private" {
 		return contructEndpoint("api.private.cis", cloudEndpoint), nil
 	}
@@ -239,6 +297,12 @@ func (e *endpointLocator) GlobalSearchEndpoint() (string, error) {
 	endpoint := helpers.EnvFallBack([]string{"IBMCLOUD_GS_API_ENDPOINT"}, "")
 	if endpoint != "" {
 		return endpoint, nil
+	}
+	if e.endpointsFile != nil && e.visibility != "public-and-private" {
+		url := fileFallBack(e.endpointsFile, e.visibility, "IBMCLOUD_GS_API_ENDPOINT", e.region, "")
+		if url != "" {
+			return url, nil
+		}
 	}
 	if e.visibility == "private" || e.visibility == "public-and-private" {
 		r, err := validateRegion(e.region, privateRegions["global-search-tagging"])
@@ -257,6 +321,12 @@ func (e *endpointLocator) GlobalTaggingEndpoint() (string, error) {
 	if endpoint != "" {
 		return endpoint, nil
 	}
+	if e.endpointsFile != nil && e.visibility != "public-and-private" {
+		url := fileFallBack(e.endpointsFile, e.visibility, "IBMCLOUD_GT_API_ENDPOINT", e.region, "")
+		if url != "" {
+			return url, nil
+		}
+	}
 	if e.visibility == "private" || e.visibility == "public-and-private" {
 		r, err := validateRegion(e.region, privateRegions["global-search-tagging"])
 		if err != nil {
@@ -274,6 +344,12 @@ func (e *endpointLocator) IAMEndpoint() (string, error) {
 	if endpoint != "" {
 		return endpoint, nil
 	}
+	if e.endpointsFile != nil && e.visibility != "public-and-private" {
+		url := fileFallBack(e.endpointsFile, e.visibility, "IBMCLOUD_IAM_API_ENDPOINT", e.region, "")
+		if url != "" {
+			return url, nil
+		}
+	}
 	if e.visibility == "private" || e.visibility == "public-and-private" {
 		r, err := validateRegion(e.region, privateRegions["iam"])
 		if err != nil {
@@ -290,6 +366,12 @@ func (e *endpointLocator) IAMPAPEndpoint() (string, error) {
 	if endpoint != "" {
 		return endpoint, nil
 	}
+	if e.endpointsFile != nil && e.visibility != "public-and-private" {
+		url := fileFallBack(e.endpointsFile, e.visibility, "IBMCLOUD_IAMPAP_API_ENDPOINT", e.region, "")
+		if url != "" {
+			return url, nil
+		}
+	}
 	if e.visibility == "private" || e.visibility == "public-and-private" {
 		r, err := validateRegion(e.region, privateRegions["iam"])
 		if err != nil {
@@ -305,6 +387,12 @@ func (e *endpointLocator) ICDEndpoint() (string, error) {
 	endpoint := helpers.EnvFallBack([]string{"IBMCLOUD_ICD_API_ENDPOINT"}, "")
 	if endpoint != "" {
 		return endpoint, nil
+	}
+	if e.endpointsFile != nil && e.visibility != "public-and-private" {
+		url := fileFallBack(e.endpointsFile, e.visibility, "IBMCLOUD_ICD_API_ENDPOINT", e.region, "")
+		if url != "" {
+			return url, nil
+		}
 	}
 	if e.visibility == "private" {
 		return contructEndpoint(fmt.Sprintf("api.%s.private.databases", e.region), cloudEndpoint), nil
@@ -324,6 +412,12 @@ func (e *endpointLocator) MCCPAPIEndpoint() (string, error) {
 	if endpoint != "" {
 		return endpoint, nil
 	}
+	if e.endpointsFile != nil && e.visibility != "public-and-private" {
+		url := fileFallBack(e.endpointsFile, e.visibility, "IBMCLOUD_MCCP_API_ENDPOINT", e.region, "")
+		if url != "" {
+			return url, nil
+		}
+	}
 	if e.visibility == "private" {
 		return "", bmxerror.New(ErrCodeServiceEndpoint, fmt.Sprintf("Private Endpoints is not supported by this service for the region %s", e.region))
 	}
@@ -334,6 +428,12 @@ func (e *endpointLocator) ResourceManagementEndpoint() (string, error) {
 	endpoint := helpers.EnvFallBack([]string{"IBMCLOUD_RESOURCE_MANAGEMENT_API_ENDPOINT"}, "")
 	if endpoint != "" {
 		return endpoint, nil
+	}
+	if e.endpointsFile != nil && e.visibility != "public-and-private" {
+		url := fileFallBack(e.endpointsFile, e.visibility, "IBMCLOUD_RESOURCE_MANAGEMENT_API_ENDPOINT", e.region, "")
+		if url != "" {
+			return url, nil
+		}
 	}
 	if e.visibility == "private" {
 		r, err := validateRegion(e.region, privateRegions["resource"])
@@ -358,6 +458,12 @@ func (e *endpointLocator) ResourceControllerEndpoint() (string, error) {
 	if endpoint != "" {
 		return endpoint, nil
 	}
+	if e.endpointsFile != nil && e.visibility != "public-and-private" {
+		url := fileFallBack(e.endpointsFile, e.visibility, "IBMCLOUD_RESOURCE_CONTROLLER_API_ENDPOINT", e.region, "")
+		if url != "" {
+			return url, nil
+		}
+	}
 	if e.visibility == "private" {
 		r, err := validateRegion(e.region, privateRegions["resource"])
 		if err != nil {
@@ -381,6 +487,12 @@ func (e *endpointLocator) ResourceCatalogEndpoint() (string, error) {
 	if endpoint != "" {
 		return endpoint, nil
 	}
+	if e.endpointsFile != nil && e.visibility != "public-and-private" {
+		url := fileFallBack(e.endpointsFile, e.visibility, "IBMCLOUD_RESOURCE_CATALOG_API_ENDPOINT", e.region, "")
+		if url != "" {
+			return url, nil
+		}
+	}
 	if e.visibility == "private" || e.visibility == "public-and-private" {
 		r, err := validateRegion(e.region, privateRegions["resource"])
 		if err != nil {
@@ -395,6 +507,12 @@ func (e *endpointLocator) UAAEndpoint() (string, error) {
 	endpoint := helpers.EnvFallBack([]string{"IBMCLOUD_UAA_ENDPOINT"}, "")
 	if endpoint != "" {
 		return endpoint, nil
+	}
+	if e.endpointsFile != nil && e.visibility != "public-and-private" {
+		url := fileFallBack(e.endpointsFile, e.visibility, "IBMCLOUD_UAA_ENDPOINT", e.region, "")
+		if url != "" {
+			return url, nil
+		}
 	}
 	if e.visibility == "private" {
 		return "", bmxerror.New(ErrCodeServiceEndpoint, fmt.Sprintf("Private Endpoints is not supported by this service for the region %s", e.region))
@@ -411,6 +529,12 @@ func (e *endpointLocator) CseEndpoint() (string, error) {
 	if endpoint != "" {
 		return endpoint, nil
 	}
+	if e.endpointsFile != nil && e.visibility != "public-and-private" {
+		url := fileFallBack(e.endpointsFile, e.visibility, "IBMCLOUD_CSE_ENDPOINT", e.region, "")
+		if url != "" {
+			return url, nil
+		}
+	}
 	if e.visibility == "private" {
 		return "", bmxerror.New(ErrCodeServiceEndpoint, fmt.Sprintf("Private Endpoints is not supported by this service"))
 	}
@@ -421,6 +545,12 @@ func (e *endpointLocator) UserManagementEndpoint() (string, error) {
 	endpoint := helpers.EnvFallBack([]string{"IBMCLOUD_USER_MANAGEMENT_ENDPOINT"}, "")
 	if endpoint != "" {
 		return endpoint, nil
+	}
+	if e.endpointsFile != nil && e.visibility != "public-and-private" {
+		url := fileFallBack(e.endpointsFile, e.visibility, "IBMCLOUD_USER_MANAGEMENT_ENDPOINT", e.region, "")
+		if url != "" {
+			return url, nil
+		}
 	}
 	if e.visibility == "private" || e.visibility == "public-and-private" {
 		r, err := validateRegion(e.region, privateRegions["resource"])
@@ -437,6 +567,12 @@ func (e *endpointLocator) HpcsEndpoint() (string, error) {
 	if endpoint != "" {
 		return endpoint, nil
 	}
+	if e.endpointsFile != nil && e.visibility != "public-and-private" {
+		url := fileFallBack(e.endpointsFile, e.visibility, "IBMCLOUD_HPCS_API_ENDPOINT", e.region, "")
+		if url != "" {
+			return url, nil
+		}
+	}
 	if e.visibility == "private" {
 		return "", bmxerror.New(ErrCodeServiceEndpoint, fmt.Sprintf("Private Endpoints is not supported by this service for the region %s", e.region))
 	}
@@ -448,8 +584,50 @@ func (e *endpointLocator) FunctionsEndpoint() (string, error) {
 	if endpoint != "" {
 		return endpoint, nil
 	}
+	if e.endpointsFile != nil && e.visibility != "public-and-private" {
+		url := fileFallBack(e.endpointsFile, e.visibility, "IBMCLOUD_FUNCTIONS_API_ENDPOINT", e.region, "")
+		if url != "" {
+			return url, nil
+		}
+	}
 	if e.visibility == "private" {
 		return "", bmxerror.New(ErrCodeServiceEndpoint, fmt.Sprintf("Private Endpoints is not supported by this service for the region %s", e.region))
 	}
 	return contructEndpoint(fmt.Sprintf("%s.functions", e.region), cloudEndpoint), nil
+}
+
+func (e *endpointLocator) SatelliteEndpoint() (string, error) {
+	//As the current list of regionToEndpoint above is not exhaustive we allow to read endpoints from the env
+	endpoint := helpers.EnvFallBack([]string{"IBMCLOUD_SAT_API_ENDPOINT"}, "")
+	if endpoint != "" {
+		return endpoint, nil
+	}
+	if e.endpointsFile != nil && e.visibility != "public-and-private" {
+		url := fileFallBack(e.endpointsFile, e.visibility, "IBMCLOUD_SAT_API_ENDPOINT", e.region, "")
+		if url != "" {
+			return url, nil
+		}
+	}
+	if e.visibility == "private" {
+		return contructEndpoint(fmt.Sprintf("private.%s.api.link.satellite", e.region), fmt.Sprintf("%s", cloudEndpoint)), nil
+	}
+	if e.visibility == "public-and-private" {
+		r, err := validateRegion(e.region, privateRegions["satellite"])
+		if err != nil {
+			return contructEndpoint("api.link.satellite", fmt.Sprintf("%s", cloudEndpoint)), nil
+		}
+		return contructEndpoint(fmt.Sprintf("private.%s.api.link.satellite", r), fmt.Sprintf("%s", cloudEndpoint)), nil
+	}
+	return contructEndpoint("api.link.satellite", fmt.Sprintf("%s", cloudEndpoint)), nil
+}
+
+func fileFallBack(fileMap map[string]interface{}, visibility, key, region, defaultValue string) string {
+	if val, ok := fileMap[key]; ok {
+		if v, ok := val.(map[string]interface{})[visibility]; ok {
+			if r, ok := v.(map[string]interface{})[region]; ok && r.(string) != "" {
+				return r.(string)
+			}
+		}
+	}
+	return defaultValue
 }

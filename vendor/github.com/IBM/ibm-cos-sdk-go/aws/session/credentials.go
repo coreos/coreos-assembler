@@ -18,7 +18,7 @@ func resolveCredentials(cfg *aws.Config,
 
 	switch {
 	case len(sessOpts.Profile) != 0:
-		// User explicitly provided an Profile in the session's configuration
+		// User explicitly provided a Profile in the session's configuration
 		// so load that profile from shared config first.
 		// Github(aws/aws-sdk-go#2727)
 		return resolveCredsFromProfile(cfg, envCfg, sharedCfg, handlers, sessOpts)
@@ -76,7 +76,7 @@ func resolveCredsFromProfile(cfg *aws.Config,
 					Err: awserr.New("SharedCredsLoad",
 						fmt.Sprintf("failed to load profile, %s.", envCfg.Profile), nil),
 				},
-				//defaults.RemoteCredProvider(*cfg, handlers),
+				//defaults.RemoteCredProvider(*cfg, handlers), IBM
 			},
 		})
 	}

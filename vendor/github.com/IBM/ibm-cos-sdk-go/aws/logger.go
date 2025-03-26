@@ -77,6 +77,9 @@ const (
 	// wire unmarshaled message content of requests and responses made while
 	// using the SDK Will also enable LogDebug.
 	LogDebugWithEventStreamBody
+
+	// LogDebugWithDeprecated states the SDK should log details about deprecated functionality.
+	LogDebugWithDeprecated
 )
 
 // A Logger is a minimalistic interface for the SDK to log messages to. Should
@@ -89,9 +92,10 @@ type Logger interface {
 // list of arguments and wrap it so the Logger interface can be used.
 //
 // Example:
-//     s3.New(sess, &aws.Config{Logger: aws.LoggerFunc(func(args ...interface{}) {
-//         fmt.Fprintln(os.Stdout, args...)
-//     })})
+//
+//	s3.New(sess, &aws.Config{Logger: aws.LoggerFunc(func(args ...interface{}) {
+//	    fmt.Fprintln(os.Stdout, args...)
+//	})})
 type LoggerFunc func(...interface{})
 
 // Log calls the wrapped function with the arguments provided

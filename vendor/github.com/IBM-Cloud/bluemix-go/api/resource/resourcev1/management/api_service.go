@@ -37,7 +37,8 @@ func New(sess *session.Session) (ResourceManagementAPI, error) {
 	}
 	tokenRefreher, err := authentication.NewIAMAuthRepository(config, &rest.Client{
 		DefaultHeader: gohttp.Header{
-			"User-Agent": []string{http.UserAgent()},
+			"X-Original-User-Agent": []string{config.UserAgent},
+			"User-Agent":            []string{http.UserAgent()},
 		},
 		HTTPClient: config.HTTPClient,
 	})

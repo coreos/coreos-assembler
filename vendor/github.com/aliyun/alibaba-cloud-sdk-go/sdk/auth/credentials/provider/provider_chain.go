@@ -24,11 +24,13 @@ func (p *ProviderChain) Resolve() (auth.Credential, error) {
 		creds, err := provider.Resolve()
 		if err != nil {
 			return nil, err
-		} else if err == nil && creds == nil {
+		}
+
+		if creds == nil {
 			continue
 		}
+
 		return creds, err
 	}
-	return nil, errors.New("No credential found")
-
+	return nil, errors.New("no credential found")
 }

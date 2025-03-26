@@ -1,10 +1,12 @@
 package s3
 
 import (
+	"github.com/IBM/ibm-cos-sdk-go/aws"
 	"github.com/IBM/ibm-cos-sdk-go/aws/client"
+	"github.com/IBM/ibm-cos-sdk-go/aws/endpoints"
 	"github.com/IBM/ibm-cos-sdk-go/aws/request"
-	"github.com/IBM/ibm-cos-sdk-go/internal/s3err"
-	"github.com/IBM/ibm-cos-sdk-go/service/s3/internal/arn"
+	"github.com/IBM/ibm-cos-sdk-go/internal/s3shared/arn"
+	"github.com/IBM/ibm-cos-sdk-go/internal/s3shared/s3err"
 )
 
 func init() {
@@ -13,6 +15,14 @@ func init() {
 }
 
 func defaultInitClientFn(c *client.Client) {
+	if c.Config.UseDualStackEndpoint == endpoints.DualStackEndpointStateUnset {
+		if aws.BoolValue(c.Config.UseDualStack) {
+			c.Config.UseDualStackEndpoint = endpoints.DualStackEndpointStateEnabled
+		} else {
+			c.Config.UseDualStackEndpoint = endpoints.DualStackEndpointStateDisabled
+		}
+	}
+
 	// Support building custom endpoints based on config
 	c.Handlers.Build.PushFront(endpointHandler)
 
@@ -32,23 +42,15 @@ func defaultInitRequestFn(r *request.Request) {
 	// e.g. 100-continue support for PUT requests using Go 1.6
 	platformRequestHandlers(r)
 
-	// IBM COS SDK Code -- START
-	// md5 required
-	switch r.Operation.Name {
-	case opPutBucketCors, opDeleteObjects, opPutBucketProtectionConfiguration,
-		opPutBucketLifecycleConfiguration, opCompleteMultipartUpload:
-		r.Handlers.Build.PushBack(contentMD5)
-	}
-	// everything else
 	switch r.Operation.Name {
 	case opGetBucketLocation:
 		// GetBucketLocation has custom parsing logic
 		r.Handlers.Unmarshal.PushFront(buildGetBucketLocation)
-	// case opCreateBucket:
-	// Auto-populate LocationConstraint with current region
-	// r.Handlers.Validate.PushFront(populateLocationConstraint)
+	// IBM COS SDK Code -- START
+	// IBM do not popluate opCreateBucket LocationConstraint
+	// IBM COS SDK Code -- END
 	case opCopyObject, opUploadPartCopy, opCompleteMultipartUpload:
-		r.Handlers.Unmarshal.PushFront(copyMultipartStatusOKUnmarhsalError)
+		r.Handlers.Unmarshal.PushFront(copyMultipartStatusOKUnmarshalError)
 		r.Handlers.Unmarshal.PushBackNamed(s3err.RequestFailureWrapperHandler())
 	case opPutObject, opUploadPart:
 		r.Handlers.Build.PushBack(computeBodyHashes)
@@ -57,7 +59,6 @@ func defaultInitRequestFn(r *request.Request) {
 		//		r.Handlers.Build.PushBack(askForTxEncodingAppendMD5)
 		//		r.Handlers.Unmarshal.PushBack(useMD5ValidationReader)
 	}
-	// IBM COS SDK Code -- END
 }
 
 // bucketGetter is an accessor interface to grab the "Bucket" field from
@@ -78,6 +79,8 @@ type copySourceSSECustomerKeyGetter interface {
 	getCopySourceSSECustomerKey() string
 }
 
+// endpointARNGetter is an accessor interface to grab the
+// the field corresponding to an endpoint ARN input.
 type endpointARNGetter interface {
 	getEndpointARN() (arn.Resource, error)
 	hasEndpointARN() bool

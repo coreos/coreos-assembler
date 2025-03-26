@@ -18,6 +18,7 @@ package object
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/vmware/govmomi/vim25"
 	"github.com/vmware/govmomi/vim25/methods"
@@ -35,13 +36,29 @@ func NewDistributedVirtualPortgroup(c *vim25.Client, ref types.ManagedObjectRefe
 	}
 }
 
+func (p DistributedVirtualPortgroup) GetInventoryPath() string {
+	return p.InventoryPath
+}
+
 // EthernetCardBackingInfo returns the VirtualDeviceBackingInfo for this DistributedVirtualPortgroup
 func (p DistributedVirtualPortgroup) EthernetCardBackingInfo(ctx context.Context) (types.BaseVirtualDeviceBackingInfo, error) {
 	var dvp mo.DistributedVirtualPortgroup
-	var dvs mo.VmwareDistributedVirtualSwitch // TODO: should be mo.BaseDistributedVirtualSwitch
+	var dvs mo.DistributedVirtualSwitch
+	prop := "config.distributedVirtualSwitch"
 
-	if err := p.Properties(ctx, p.Reference(), []string{"key", "config.distributedVirtualSwitch"}, &dvp); err != nil {
+	if err := p.Properties(ctx, p.Reference(), []string{"key", prop}, &dvp); err != nil {
 		return nil, err
+	}
+
+	// From the docs at https://code.vmware.com/apis/196/vsphere/doc/vim.dvs.DistributedVirtualPortgroup.ConfigInfo.html:
+	// "This property should always be set unless the user's setting does not have System.Read privilege on the object referred to by this property."
+	// Note that "the object" refers to the Switch, not the PortGroup.
+	if dvp.Config.DistributedVirtualSwitch == nil {
+		name := p.InventoryPath
+		if name == "" {
+			name = p.Reference().String()
+		}
+		return nil, fmt.Errorf("failed to create EthernetCardBackingInfo for %s: System.Read privilege required for %s", name, prop)
 	}
 
 	if err := p.Properties(ctx, *dvp.Config.DistributedVirtualSwitch, []string{"uuid"}, &dvs); err != nil {

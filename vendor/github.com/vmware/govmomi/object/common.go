@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"path"
+	"strings"
 
 	"github.com/vmware/govmomi/property"
 	"github.com/vmware/govmomi/vim25"
@@ -75,24 +76,25 @@ func (c *Common) SetInventoryPath(p string) {
 	c.InventoryPath = p
 }
 
-// ObjectName returns the base name of the InventoryPath field if set,
-// otherwise fetches the mo.ManagedEntity.Name field via the property collector.
+// ObjectName fetches the mo.ManagedEntity.Name field via the property collector.
 func (c Common) ObjectName(ctx context.Context) (string, error) {
-	var o mo.ManagedEntity
+	var content []types.ObjectContent
 
-	name := c.Name()
-	if name != "" {
-		return name, nil
-	}
-
-	err := c.Properties(ctx, c.Reference(), []string{"name"}, &o)
+	err := c.Properties(ctx, c.Reference(), []string{"name"}, &content)
 	if err != nil {
 		return "", err
 	}
 
-	return o.Name, nil
+	for i := range content {
+		for _, prop := range content[i].PropSet {
+			return prop.Val.(string), nil
+		}
+	}
+
+	return "", nil
 }
 
+// Properties is a wrapper for property.DefaultCollector().RetrieveOne()
 func (c Common) Properties(ctx context.Context, r types.ManagedObjectReference, ps []string, dst interface{}) error {
 	return property.DefaultCollector(c.c).RetrieveOne(ctx, r, ps, dst)
 }
@@ -122,4 +124,71 @@ func (c Common) Rename(ctx context.Context, name string) (*Task, error) {
 	}
 
 	return NewTask(c.c, res.Returnval), nil
+}
+
+func (c Common) SetCustomValue(ctx context.Context, key string, value string) error {
+	req := types.SetCustomValue{
+		This:  c.Reference(),
+		Key:   key,
+		Value: value,
+	}
+
+	_, err := methods.SetCustomValue(ctx, c.c, &req)
+	return err
+}
+
+var refTypeMap = map[string]string{
+	"datacenter":  "Datacenter",
+	"datastore":   "Datastore",
+	"domain":      "ComputeResource",
+	"dvportgroup": "DistributedVirtualPortgroup",
+	"dvs":         "DistributedVirtualSwitch",
+	"group":       "Folder",
+	"host":        "HostSystem",
+	"network":     "Network",
+	"resgroup":    "ResourcePool",
+	"vm":          "VirtualMachine",
+}
+
+// sub types
+var prefixTypeMap = map[string]struct{ prefix, kind string }{
+	"domain":   {"c", "ClusterComputeResource"}, // extends ComputeResource
+	"group":    {"p", "StoragePod"},             // extends Folder
+	"resgroup": {"v", "VirtualApp"},             // extends ResourcePool
+}
+
+// ReferenceFromString converts a string to ManagedObjectReference.
+// First checks for ManagedObjectReference (MOR), in the format of:
+// "$Type:$ID", e.g. "Datacenter:datacenter-3"
+// Next checks for Managed Object ID (MOID), where type is derived from the ID.
+// For example, "datacenter-3" is converted to a MOR "Datacenter:datacenter-3"
+// Returns nil if string is not in either format.
+func ReferenceFromString(s string) *types.ManagedObjectReference {
+	var ref types.ManagedObjectReference
+	if ref.FromString(s) && mo.IsManagedObjectType(ref.Type) {
+		return &ref
+	}
+
+	id := strings.SplitN(s, "-", 2)
+	if len(id) != 2 {
+		return nil
+	}
+
+	if kind, ok := refTypeMap[id[0]]; ok {
+		if p, ok := prefixTypeMap[id[0]]; ok {
+			if strings.HasPrefix(id[1], p.prefix) {
+				return &types.ManagedObjectReference{
+					Type:  p.kind,
+					Value: s,
+				}
+			}
+		}
+
+		return &types.ManagedObjectReference{
+			Type:  kind,
+			Value: s,
+		}
+	}
+
+	return nil
 }

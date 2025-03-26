@@ -1,11 +1,11 @@
 /*
-Copyright (c) 2014-2016 VMware, Inc. All Rights Reserved.
+Copyright (c) 2014-2024 VMware, Inc. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -22,9 +22,9 @@ import (
 	"path"
 	"reflect"
 
+	"github.com/vmware/govmomi/fault"
 	"github.com/vmware/govmomi/property"
 	"github.com/vmware/govmomi/vim25/mo"
-	"github.com/vmware/govmomi/vim25/soap"
 	"github.com/vmware/govmomi/vim25/types"
 )
 
@@ -132,12 +132,8 @@ func (l Lister) retrieveProperties(ctx context.Context, req types.RetrieveProper
 	for _, p := range res.Returnval {
 		v, err := mo.ObjectContentToType(p)
 		if err != nil {
-			// Ignore fault if it is ManagedObjectNotFound
-			if soap.IsVimFault(err) {
-				switch soap.ToVimFault(err).(type) {
-				case *types.ManagedObjectNotFound:
-					continue
-				}
+			if fault.Is(err, &types.ManagedObjectNotFound{}) {
+				continue
 			}
 
 			return err
@@ -165,6 +161,8 @@ func (l Lister) List(ctx context.Context) ([]Element, error) {
 		return l.ListHostSystem(ctx)
 	case "VirtualApp":
 		return l.ListVirtualApp(ctx)
+	case "VmwareDistributedVirtualSwitch", "DistributedVirtualSwitch":
+		return l.ListDistributedVirtualSwitch(ctx)
 	default:
 		return nil, fmt.Errorf("cannot traverse type " + l.Reference.Type)
 	}
@@ -310,6 +308,7 @@ func (l Lister) ListComputeResource(ctx context.Context) ([]Element, error) {
 
 	fields := []string{
 		"host",
+		"network",
 		"resourcePool",
 	}
 
@@ -325,6 +324,7 @@ func (l Lister) ListComputeResource(ctx context.Context) ([]Element, error) {
 
 	childTypes := []string{
 		"HostSystem",
+		"Network",
 		"ResourcePool",
 	}
 
@@ -456,6 +456,69 @@ func (l Lister) ListHostSystem(ctx context.Context) ([]Element, error) {
 		"Datastore",
 		"Network",
 		"VirtualMachine",
+	}
+
+	var pspecs []types.PropertySpec
+	for _, t := range childTypes {
+		pspec := types.PropertySpec{
+			Type: t,
+		}
+
+		if l.All {
+			pspec.All = types.NewBool(true)
+		} else {
+			pspec.PathSet = []string{"name"}
+		}
+
+		pspecs = append(pspecs, pspec)
+	}
+
+	req := types.RetrieveProperties{
+		SpecSet: []types.PropertyFilterSpec{
+			{
+				ObjectSet: []types.ObjectSpec{ospec},
+				PropSet:   pspecs,
+			},
+		},
+	}
+
+	var dst []interface{}
+
+	err := l.retrieveProperties(ctx, req, &dst)
+	if err != nil {
+		return nil, err
+	}
+
+	es := []Element{}
+	for _, v := range dst {
+		es = append(es, ToElement(v.(mo.Reference), l.Prefix))
+	}
+
+	return es, nil
+}
+
+func (l Lister) ListDistributedVirtualSwitch(ctx context.Context) ([]Element, error) {
+	ospec := types.ObjectSpec{
+		Obj:  l.Reference,
+		Skip: types.NewBool(true),
+	}
+
+	fields := []string{
+		"portgroup",
+	}
+
+	for _, f := range fields {
+		tspec := types.TraversalSpec{
+			Path: f,
+			Skip: types.NewBool(false),
+			Type: "DistributedVirtualSwitch",
+		}
+
+		ospec.SelectSet = append(ospec.SelectSet, &tspec)
+	}
+
+	childTypes := []string{
+		"DistributedVirtualPortgroup",
 	}
 
 	var pspecs []types.PropertySpec

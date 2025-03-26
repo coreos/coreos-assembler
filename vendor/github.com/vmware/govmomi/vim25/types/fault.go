@@ -30,3 +30,26 @@ func IsFileNotFound(err error) bool {
 
 	return false
 }
+
+func IsAlreadyExists(err error) bool {
+	if f, ok := err.(HasFault); ok {
+		switch f.Fault().(type) {
+		case *AlreadyExists:
+			return true
+		}
+	}
+
+	return false
+}
+
+// HasLocalizedMethodFault is any type that has a LocalizedMethodFault.
+type HasLocalizedMethodFault interface {
+
+	// GetLocalizedMethodFault returns the LocalizedMethodFault instance.
+	GetLocalizedMethodFault() *LocalizedMethodFault
+}
+
+// GetLocalizedMethodFault returns this LocalizedMethodFault.
+func (f *LocalizedMethodFault) GetLocalizedMethodFault() *LocalizedMethodFault {
+	return f
+}

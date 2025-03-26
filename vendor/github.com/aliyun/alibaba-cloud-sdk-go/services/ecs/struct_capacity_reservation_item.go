@@ -21,16 +21,19 @@ type CapacityReservationItem struct {
 	EndTimeType                     string                                           `json:"EndTimeType" xml:"EndTimeType"`
 	PrivatePoolOptionsMatchCriteria string                                           `json:"PrivatePoolOptionsMatchCriteria" xml:"PrivatePoolOptionsMatchCriteria"`
 	TimeSlot                        string                                           `json:"TimeSlot" xml:"TimeSlot"`
+	ReservedInstanceId              string                                           `json:"ReservedInstanceId" xml:"ReservedInstanceId"`
 	Platform                        string                                           `json:"Platform" xml:"Platform"`
+	CapacityReservationOwnerId      string                                           `json:"CapacityReservationOwnerId" xml:"CapacityReservationOwnerId"`
 	RegionId                        string                                           `json:"RegionId" xml:"RegionId"`
 	StartTime                       string                                           `json:"StartTime" xml:"StartTime"`
 	EndTime                         string                                           `json:"EndTime" xml:"EndTime"`
 	ResourceGroupId                 string                                           `json:"ResourceGroupId" xml:"ResourceGroupId"`
+	SavingPlanId                    string                                           `json:"SavingPlanId" xml:"SavingPlanId"`
 	StartTimeType                   string                                           `json:"StartTimeType" xml:"StartTimeType"`
 	Status                          string                                           `json:"Status" xml:"Status"`
 	InstanceChargeType              string                                           `json:"InstanceChargeType" xml:"InstanceChargeType"`
 	Description                     string                                           `json:"Description" xml:"Description"`
 	PrivatePoolOptionsId            string                                           `json:"PrivatePoolOptionsId" xml:"PrivatePoolOptionsId"`
-	AllocatedResources              AllocatedResourcesInDescribeCapacityReservations `json:"AllocatedResources" xml:"AllocatedResources"`
 	Tags                            TagsInDescribeCapacityReservations               `json:"Tags" xml:"Tags"`
+	AllocatedResources              AllocatedResourcesInDescribeCapacityReservations `json:"AllocatedResources" xml:"AllocatedResources"`
 }
