@@ -40,7 +40,7 @@ var (
 	kolaPlatform      string
 	kolaParallelArg   string
 	kolaArchitectures = []string{"amd64"}
-	kolaPlatforms     = []string{"aws", "azure", "do", "esx", "gcp", "openstack", "packet", "qemu", "qemu-iso"}
+	kolaPlatforms     = []string{"aws", "azure", "do", "esx", "gcp", "openstack", "qemu", "qemu-iso"}
 	kolaDistros       = []string{"fcos", "rhcos", "scos"}
 )
 
@@ -136,17 +136,6 @@ func init() {
 	sv(&kola.OpenStackOptions.Network, "openstack-network", "", "OpenStack network")
 	sv(&kola.OpenStackOptions.Domain, "openstack-domain", "", "OpenStack domain ID")
 	sv(&kola.OpenStackOptions.FloatingIPNetwork, "openstack-floating-ip-network", "", "OpenStack network to use when creating a floating IP")
-
-	// packet-specific options
-	sv(&kola.PacketOptions.ConfigPath, "packet-config-file", "", "Packet config file (default \"~/"+auth.PacketConfigPath+"\")")
-	sv(&kola.PacketOptions.Profile, "packet-profile", "", "Packet profile (default \"default\")")
-	sv(&kola.PacketOptions.ApiKey, "packet-api-key", "", "Packet API key (overrides config file)")
-	sv(&kola.PacketOptions.Project, "packet-project", "", "Packet project UUID (overrides config file)")
-	sv(&kola.PacketOptions.Facility, "packet-facility", "sjc1", "Packet facility code")
-	sv(&kola.PacketOptions.Plan, "packet-plan", "", "Packet plan slug (default arch-dependent, e.g. \"t1.small.x86\")")
-	sv(&kola.PacketOptions.Architecture, "packet-architecture", "x86_64", "Packet CPU architecture")
-	sv(&kola.PacketOptions.IPXEURL, "packet-ipxe-url", "", "iPXE script URL (default arch-dependent, e.g. \"https://raw.githubusercontent.com/coreos/coreos-assembler/main/mantle/platform/api/packet/fcos-x86_64.ipxe\")")
-	sv(&kola.PacketOptions.ImageURL, "packet-image-url", "", "image URL (default arch-dependent, e.g. \"https://builds.coreos.fedoraproject.org/prod/streams/stable/builds/31.20200223.3.0/x86_64/fedora-coreos-31.20200223.3.0-metal.x86_64.raw.xz\")")
 
 	// QEMU-specific options
 	sv(&kola.QEMUOptions.Firmware, "qemu-firmware", "", "Boot firmware: bios,uefi,uefi-secure (default bios)")

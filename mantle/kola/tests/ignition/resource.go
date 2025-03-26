@@ -27,7 +27,6 @@ import (
 	"github.com/coreos/coreos-assembler/mantle/kola/register"
 	"github.com/coreos/coreos-assembler/mantle/platform"
 	"github.com/coreos/coreos-assembler/mantle/platform/conf"
-	"github.com/coreos/coreos-assembler/mantle/platform/machine/packet"
 )
 
 var (
@@ -84,10 +83,6 @@ func resourceLocal(c cluster.TestCluster) {
 	c.RunCmdSyncf(server, "sudo systemd-run --quiet /usr/local/bin/kolet run %s Serve", c.H.Name())
 
 	ip := server.PrivateIP()
-	if c.Platform() == packet.Platform {
-		// private IP not configured in the initramfs
-		ip = server.IP()
-	}
 
 	var conf *conf.UserData = localClient
 	client, err := c.NewMachine(conf.Subst("$IP", ip))
