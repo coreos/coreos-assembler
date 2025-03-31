@@ -1,0 +1,46 @@
+#!/bin/bash
+set -xeuo pipefail
+
+meta=builds/latest/$(arch)/meta.json
+name=$(jq -r .name "${meta}")
+version=$(jq -r '."ostree-version"' "${meta}")
+
+# can't use `rpm-ostree --print-json | jq .` here because the manifest may have
+# variables that need to be set
+ocp_version=$(python3  < src/config/packages-openshift.yaml -c '
+import yaml, sys
+y = yaml.safe_load(sys.stdin)
+print(y["metadata"]["ocp_version"])')
+
+node_tag=localhost/${name}-${ocp_version}-${version}-node
+extensions_tag=localhost/${name}-${ocp_version}-${version}-extensions
+
+target=${1:-}
+case "${target}" in
+  node)
+    from=oci-archive:builds/latest/$(arch)/$(jq .images.ostree.path "$meta")
+    containerfile="src/config/Containerfile"
+    tag=${node_tag}
+    ;;
+  extensions)
+    from=${node_tag}
+    containerfile="src/config/extensions/Dockerfile"
+    tag=${extensions_tag}
+    ;;
+  "") echo "Usage: $0 (node|extensions) [extra podman args...]" >&2; exit 1;;
+esac
+shift
+
+cat src/config/*.repo > tmp/all.repo
+if [ -d src/yumrepos ]; then
+  cat src/yumrepos/*.repo >> tmp/all.repo
+fi
+repos=$(realpath tmp/all.repo)
+
+set -x
+podman build --from "$from" \
+  -t "${tag}" \
+  -f "${containerfile}" \
+  --secret id=yumrepos,src="$repos" \
+  -v /etc/pki/ca-trust:/etc/pki/ca-trust:ro \
+  --security-opt label=disable src/config "$@"
