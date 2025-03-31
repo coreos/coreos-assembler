@@ -90,6 +90,17 @@ install_rpms() {
     fi
     # Similarly for kernel data and SELinux policy, which we want to inject into supermin
     chmod -R a+rX /usr/lib/modules /usr/share/selinux/targeted
+
+    # Symlink the CentOS Stream GPG keys to /etc to make it easier to build
+    # CentOS-based artifacts.
+    if [ ! -e "/etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial" ]; then
+        ln -s /usr/share/distribution-gpg-keys/centos/RPM-GPG-KEY-CentOS-Official /etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial
+        ln -s {/usr/share/distribution-gpg-keys/centos,/etc/pki/rpm-gpg}/RPM-GPG-KEY-CentOS-SIG-Cloud
+        ln -s {/usr/share/distribution-gpg-keys/centos,/etc/pki/rpm-gpg}/RPM-GPG-KEY-CentOS-SIG-Extras-SHA512
+        ln -s {/usr/share/distribution-gpg-keys/centos,/etc/pki/rpm-gpg}/RPM-GPG-KEY-CentOS-SIG-NFV
+        ln -s {/usr/share/distribution-gpg-keys/centos,/etc/pki/rpm-gpg}/RPM-GPG-KEY-CentOS-SIG-Virtualization
+    fi
+
     # Further cleanup
     yum clean all
 }
