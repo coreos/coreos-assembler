@@ -149,7 +149,7 @@ def append_build(out, input_):
     if 'base-oscontainer' in input_:
         arch_dict['oci-image'] = populate_oci_image(input_['buildid'], input_['base-oscontainer'])
 
-    platforms = ["aliyun", "applehv", "aws", "azure", "azurestack", "digitalocean", "exoscale", "gcp", "hyperv", "ibmcloud", "kubevirt", "metal", "nutanix", "openstack", "powervs", "qemu", "virtualbox", "vmware", "vultr", "qemu-secex"]
+    platforms = ["aliyun", "applehv", "aws", "azure", "azurestack", "digitalocean", "exoscale", "gcp", "hetzner", "hyperv", "ibmcloud", "kubevirt", "metal", "nutanix", "openstack", "powervs", "qemu", "virtualbox", "vmware", "vultr", "qemu-secex"]
     for platform in platforms:
         if input_.get("images", {}).get(platform, None) is not None:
             print(f"   - {platform}")
