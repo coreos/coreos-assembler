@@ -206,7 +206,7 @@ prepare_build() {
     fi
 
     export image_json="${tmp_builddir}/image.json"
-    write_image_json "${image}" "${image_json}"
+    write_image_json "${image}" "${image_json}" "${manifest}"
     # These need to be absolute paths right now for rpm-ostree
     composejson="$(readlink -f "${workdir}"/tmp/compose.json)"
     export composejson
@@ -1075,11 +1075,12 @@ print('Build ${buildid} was inserted ${arch:+for $arch}')")
 write_image_json() {
     local srcfile=$1; shift
     local outfile=$1; shift
+    local ostree_manifest=$1; shift
     (python3 -c "
 import sys
 sys.path.insert(0, '${DIR}')
 from cosalib import cmdlib
-cmdlib.write_image_json('${srcfile}', '${outfile}')")
+cmdlib.write_image_json('${srcfile}', '${outfile}', ostree_manifest='${ostree_manifest}')")
 }
 
 # API to prepare image builds.

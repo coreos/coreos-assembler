@@ -467,15 +467,16 @@ def cmdlib_sh(script):
     '''])
 
 
-def generate_image_json(srcfile):
+def generate_image_json(srcfile, ostree_manifest):
+    manifest_vars = yaml.safe_load(open(ostree_manifest))['variables']
     r = yaml.safe_load(open("/usr/lib/coreos-assembler/image-default.yaml"))
-    for k, v in flatten_image_yaml(srcfile).items():
+    for k, v in flatten_image_yaml(srcfile, format_args=manifest_vars).items():
         r[k] = v
     return r
 
 
-def write_image_json(srcfile, outfile):
-    r = generate_image_json(srcfile)
+def write_image_json(srcfile, outfile, ostree_manifest):
+    r = generate_image_json(srcfile, ostree_manifest)
     with open(outfile, 'w') as f:
         json.dump(r, f, sort_keys=True)
 
@@ -490,12 +491,13 @@ def merge_lists(x, y, k):
     x[k].extend([i for i in y[k] if i not in x[k]])
 
 
-def flatten_image_yaml(srcfile, base=None):
+def flatten_image_yaml(srcfile, base=None, format_args={}):
     if base is None:
         base = {}
 
     with open(srcfile) as f:
-        srcyaml = yaml.safe_load(f)
+        contents = f.read()
+        srcyaml = yaml.safe_load(contents.format(**format_args))
 
     # first, special-case list values
     merge_lists(base, srcyaml, 'extra-kargs')
@@ -508,7 +510,7 @@ def flatten_image_yaml(srcfile, base=None):
 
     fn = os.path.join(os.path.dirname(srcfile), srcyaml['include'])
     del base['include']
-    return flatten_image_yaml(fn, base)
+    return flatten_image_yaml(fn, base=base, format_args=format_args)
 
 
 def ensure_glob(pathname, **kwargs):
