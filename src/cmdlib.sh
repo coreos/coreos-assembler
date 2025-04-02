@@ -372,7 +372,7 @@ with open('$destination', 'w') as outfile:
 #
 # This function commits the contents of overlay.d/ as well
 # as overrides/{rootfs} to OSTree commits, and also handles
-# overrides/rpm.
+# overrides/rpm and fast-track repos.
 prepare_compose_overlays() {
     local with_cosa_overrides=1
     while [ $# -gt 0 ]; do
@@ -399,7 +399,7 @@ prepare_compose_overlays() {
         exit 1
     fi
 
-    if [ -d "${overridesdir}" ] || [ -d "${ovld}" ] || [ -d "${workdir}/src/yumrepos" ]; then
+    if [ -d "${overridesdir}" ] || [ -d "${ovld}" ] || [ -d "${workdir}/src/yumrepos" ] || [ -e "${configdir}/fast-tracks.yaml" ]; then
         rm -rf "${tmp_overridesdir}"
         mkdir  "${tmp_overridesdir}"
         cat > "${override_manifest}" <<EOF
@@ -500,6 +500,37 @@ EOF
     else
         rm -vf "${local_overrides_lockfile}"
     fi
+
+    if [ -f "${configdir}/fast-tracks.yaml" ]; then
+        cat "${tmp_overridesdir}"/*.repo > "${tmp_overridesdir}/all.repo"
+        # shellcheck disable=SC2002
+        cat "${configdir}/fast-tracks.yaml" | python3 -c "
+import sys, yaml, subprocess, glob
+fast_tracks = yaml.safe_load(sys.stdin)
+for (repo, spec) in fast_tracks.items():
+    with open(f'${tmp_overridesdir}/{repo}.repo', 'w') as f:
+        # yeah this is technically wasteful that we're reopening and scanning on each iteration. meh...
+        with open('${tmp_overridesdir}/all.repo') as g:
+            passthrough = False
+            for line in g:
+                line = line.strip()
+                if line == f'[{spec['from']}]':
+                    line = f'[{repo}]'
+                    # we're in the repo definition
+                    passthrough = True
+                elif passthrough and line.startswith('name='):
+                    line = f'name={repo}'
+                elif line.startswith('['):
+                    # we left the repo definition
+                    if passthrough:
+                        break
+                if passthrough:
+                    f.write(line + '\n')
+        f.write('includepkgs=' + ','.join(spec['packages']) + '\n')
+"
+        rm "${tmp_overridesdir}/all.repo"
+    fi
+
 
     contentset_path=""
     if [ -e "${configdir}/content_sets.yaml" ]; then
