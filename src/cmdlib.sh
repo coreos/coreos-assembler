@@ -739,7 +739,7 @@ runvm() {
 EOF
 
     # and include all GPG keys
-    find /etc/pki/rpm-gpg/ -type f >> "${vmpreparedir}/hostfiles"
+    echo '/etc/pki/rpm-gpg/*' >> "${vmpreparedir}/hostfiles"
 
     # the reason we do a heredoc here is so that the var substition takes
     # place immediately instead of having to proxy them through to the VM
