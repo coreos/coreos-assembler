@@ -42,6 +42,10 @@ install_rpms() {
     local builddeps
     local frozendeps=""
 
+    # Newer version creats 'rpc'with gid 978, causing tests to fail (32 is expected)
+    # https://github.com/coreos/coreos-assembler/issues/4061
+    frozendeps="rpm-ostree-2025.6-3.fc41.${arch}"
+
     # First, a general update; this is best practice.  We also hit an issue recently
     # where qemu implicitly depended on an updated libusbx but didn't have a versioned
     # requires https://bugzilla.redhat.com/show_bug.cgi?id=1625641
