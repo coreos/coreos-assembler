@@ -87,6 +87,7 @@ install_rpms() {
     # CentOS-based artifacts.
     if [ ! -e "/etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial" ]; then
         ln -s /usr/share/distribution-gpg-keys/centos/RPM-GPG-KEY-CentOS-Official /etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial
+        ln -s /usr/share/distribution-gpg-keys/centos/RPM-GPG-KEY-CentOS-Official-SHA256 /etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial-SHA256
         ln -s {/usr/share/distribution-gpg-keys/centos,/etc/pki/rpm-gpg}/RPM-GPG-KEY-CentOS-SIG-Cloud
         ln -s {/usr/share/distribution-gpg-keys/centos,/etc/pki/rpm-gpg}/RPM-GPG-KEY-CentOS-SIG-Extras-SHA512
         ln -s {/usr/share/distribution-gpg-keys/centos,/etc/pki/rpm-gpg}/RPM-GPG-KEY-CentOS-SIG-NFV
