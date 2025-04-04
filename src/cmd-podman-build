@@ -1,5 +1,5 @@
 #!/bin/bash
-set -xeuo pipefail
+set -euo pipefail
 
 meta=builds/latest/$(arch)/meta.json
 name=$(jq -r .name "${meta}")
@@ -14,6 +14,15 @@ print(y["metadata"]["ocp_version"])')
 
 node_tag=localhost/${name}-${ocp_version}-${version}-node
 extensions_tag=localhost/${name}-${ocp_version}-${version}-extensions
+
+# If a user provides args then they just want us to print
+# out what args to run `podman build` with and exit so they
+# can run podman build themselves (most likely outside the
+# COSA container).
+if [ "${1:-}" == "--args" ]; then
+    PRINT_ARGS_AND_EXIT=1
+    shift
+fi
 
 target=${1:-}
 case "${target}" in
@@ -37,8 +46,14 @@ if [ -d src/yumrepos ]; then
   cat src/yumrepos/*.repo >> "$repos_file"
 fi
 
-set -x
-podman build --from "$from" \
+if [ "${PRINT_ARGS_AND_EXIT:-}" == "1" ]; then
+    cmd='echo'
+else
+    cmd='podman build'
+    set -x
+fi
+
+$cmd --from "$from" \
   -t "${tag}" \
   -f "${containerfile}" \
   --secret id=yumrepos,src="$repos_file" \
