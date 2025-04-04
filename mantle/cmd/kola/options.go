@@ -41,7 +41,7 @@ var (
 	kolaParallelArg   string
 	kolaArchitectures = []string{"amd64"}
 	kolaPlatforms     = []string{"aws", "azure", "do", "esx", "gcp", "openstack", "qemu", "qemu-iso"}
-	kolaDistros       = []string{"fcos", "rhcos", "scos"}
+	kolaDistros       = []string{"fcos", "rhcos", "scos", "rhcos-base"}
 )
 
 func init() {
@@ -358,7 +358,7 @@ func syncOptionsImpl(useCosa bool) error {
 		kola.Options.Distribution = kolaDistros[0]
 	} else if kola.Options.Distribution == "scos" {
 		// Consider SCOS the same as RHCOS for now
-		kola.Options.Distribution = "rhcos"
+		kola.Options.Distribution = "rhcos-base"
 	} else if err := validateOption("distro", kola.Options.Distribution, kolaDistros); err != nil {
 		return err
 	}
@@ -442,6 +442,11 @@ func syncStreamOptions() error {
 			return errors.Wrapf(err, "failed to fetch stream")
 		}
 	case "rhcos":
+		artifacts, err = rhcos.FetchStreamArtifacts(kola.Options.Stream, kola.Options.CosaBuildArch)
+		if err != nil {
+			return errors.Wrapf(err, "failed to fetch stream")
+		}
+	case "rhcos-base":
 		artifacts, err = rhcos.FetchStreamArtifacts(kola.Options.Stream, kola.Options.CosaBuildArch)
 		if err != nil {
 			return errors.Wrapf(err, "failed to fetch stream")
