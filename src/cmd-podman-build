@@ -35,7 +35,7 @@ cat src/config/*.repo > tmp/all.repo
 if [ -d src/yumrepos ]; then
   cat src/yumrepos/*.repo >> tmp/all.repo
 fi
-repos=$(realpath tmp/all.repo)
+repos="tmp/all.repo"
 
 set -x
 podman build --from "$from" \
