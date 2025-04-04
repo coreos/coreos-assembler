@@ -40,10 +40,9 @@ case "${target}" in
 esac
 shift
 
-repos_file="tmp/all.repo"
-cat src/config/*.repo > "$repos_file"
+echo > tmp/all.repo
 if [ -d src/yumrepos ]; then
-  cat src/yumrepos/*.repo >> "$repos_file"
+  cat src/yumrepos/*.repo >> tmp/all.repo
 fi
 
 if [ "${PRINT_ARGS_AND_EXIT:-}" == "1" ]; then
@@ -56,6 +55,6 @@ fi
 $cmd --from "$from" \
   -t "${tag}" \
   -f "${containerfile}" \
-  --secret id=yumrepos,src="$repos_file" \
+  --secret id=yumrepos,src=tmp/all.repo \
   -v /etc/pki/ca-trust:/etc/pki/ca-trust:ro \
   --security-opt label=disable src/config "$@"
