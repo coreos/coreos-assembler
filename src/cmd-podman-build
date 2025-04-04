@@ -31,16 +31,16 @@ case "${target}" in
 esac
 shift
 
-cat src/config/*.repo > tmp/all.repo
+repos_file="tmp/all.repo"
+cat src/config/*.repo > "$repos_file"
 if [ -d src/yumrepos ]; then
-  cat src/yumrepos/*.repo >> tmp/all.repo
+  cat src/yumrepos/*.repo >> "$repos_file"
 fi
-repos="tmp/all.repo"
 
 set -x
 podman build --from "$from" \
   -t "${tag}" \
   -f "${containerfile}" \
-  --secret id=yumrepos,src="$repos" \
+  --secret id=yumrepos,src="$repos_file" \
   -v /etc/pki/ca-trust:/etc/pki/ca-trust:ro \
   --security-opt label=disable src/config "$@"
