@@ -3,10 +3,8 @@ import os
 import subprocess
 import sys
 
-from cosalib.cmdlib import (
-    flatten_image_yaml,
-    runcmd
-)
+from cosalib.builds import Builds
+from cosalib.cmdlib import runcmd
 from tenacity import (
     retry,
     stop_after_attempt
@@ -124,17 +122,15 @@ def aws_run_ore(build, args):
     region = "us-east-1"
     if args.region is not None and len(args.region) > 0:
         region = args.region[0]
-    # Capture any input from image.yaml
-    image_yaml = flatten_image_yaml(
-        '/usr/lib/coreos-assembler/image-default.yaml',
-        flatten_image_yaml('src/config/image.yaml')
-    )
-    if 'aws-imdsv2-only' in image_yaml and image_yaml['aws-imdsv2-only']:
+
+    # Capture any settings from image json.
+    image_json = Builds(workdir=os.getcwd()).get_build_image_json(build.build_id)
+    if 'aws-imdsv2-only' in image_json and image_json['aws-imdsv2-only']:
         ore_args.extend(['--imdsv2-only'])
-    if 'aws-volume-type' in image_yaml:
-        ore_args.extend(['--volume-type', image_yaml['aws-volume-type']])
-    if 'aws-x86-boot-mode' in image_yaml:
-        ore_args.extend(['--x86-boot-mode', image_yaml['aws-x86-boot-mode']])
+    if 'aws-volume-type' in image_json:
+        ore_args.extend(['--volume-type', image_json['aws-volume-type']])
+    if 'aws-x86-boot-mode' in image_json:
+        ore_args.extend(['--x86-boot-mode', image_json['aws-x86-boot-mode']])
 
     ore_args.extend([
         '--region', f"{region}",
