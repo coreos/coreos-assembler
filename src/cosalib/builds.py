@@ -12,9 +12,10 @@ from gi.repository import Gio, OSTree
 
 from cosalib.cmdlib import (
     get_basearch,
-    rfc3339_time,
     get_timestamp,
+    import_ostree_commit,
     load_json,
+    rfc3339_time,
     write_json)
 
 Build = collections.namedtuple('Build', ['id', 'timestamp', 'basearches'])
@@ -160,6 +161,22 @@ class Builds:  # pragma: nocover
 
     def flush(self):
         write_json(self._fn, self._data)
+
+    def get_build_image_json(self, build_id):
+        # All arches might not be local. Find one that has the info.
+        workdir = self._workdir
+        for arch in self.get_build_arches(build_id):
+            builddir = self.get_build_dir(build_id, arch)
+            if not os.path.exists(os.path.join(builddir, 'meta.json')):
+                continue
+            buildmeta = self.get_build_meta(build_id, basearch=arch)
+            if not os.path.exists(os.path.join(builddir, buildmeta['images']['ostree']['path'])):
+                continue
+            import_ostree_commit(workdir, builddir, buildmeta)  # runs extract_image_json()
+            with open(os.path.join(workdir, 'tmp/image.json')) as f:
+                return json.load(f)
+        # If we get here we were unsuccessful
+        raise Exception("Could not find/extract image.json")
 
 
 def get_local_builds(builds_dir):
