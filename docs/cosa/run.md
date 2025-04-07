@@ -26,8 +26,8 @@ the config path.
 ## Using the serial console
 
 By default, an SSH connection is established. It's sometimes useful to see the
-full Ignition run or interrupt the GRUB menu for testing. Use `-c` to use the
-serial console instead:
+full Ignition run or interrupt the GRUB menu for testing. Use `-c` /
+`--devshell-console` to use the serial console instead:
 
 ```
 $ cosa run -c
@@ -43,7 +43,7 @@ Booting from Hard Disk...
 ...
 ```
 
-To exit from the VM, use `Ctrl-A X`.
+To exit from the VM (i.e. the QEMU console), use `Ctrl-a x` (`a` and `x` are lowercase).
 
 ## Running the ISO
 
