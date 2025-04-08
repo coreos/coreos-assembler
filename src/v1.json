@@ -955,6 +955,41 @@
         }
       }
     },
+    "aws-winli": {
+      "$id": "#/properties/aws-winli",
+      "type": "array",
+      "title": "AWS WinLI",
+      "items": {
+        "$id": "#/properties/aws-winli/items",
+        "type": "object",
+        "title": "AWS WinLI AMIS",
+        "required": [
+          "name",
+          "hvm",
+          "snapshot"
+        ],
+        "properties": {
+          "name": {
+            "$id": "#/properties/aws-winli/items/properties/name",
+            "type": "string",
+            "title": "Region",
+            "default": ""
+          },
+          "hvm": {
+            "$id": "#/properties/aws-winli/items/properties/hvm",
+            "type": "string",
+            "title": "HVM",
+            "default": ""
+          },
+          "snapshot": {
+            "$id": "#/properties/aws-winli/items/properties/snapshot",
+            "type": "string",
+            "title": "Snapshot",
+            "default": ""
+          }
+        }
+      }
+    },
     "azure": {
       "$id": "#/properties/azure",
       "type": "object",

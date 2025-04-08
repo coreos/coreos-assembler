@@ -55,10 +55,10 @@ Build = collections.namedtuple("Build", ["id", "images", "arch", "meta_json"])
 # set metadata caching to 5m
 CACHE_MAX_AGE_METADATA = 60 * 5
 # These lists are up to date as of schema hash
-# 1711aa3ce997c644130139e1318d2683e2a5f11538e2b0528771a8658d62ee64. If changing
+# 5582c9aa3e71d01563a7db6ee85261b9329e096253ffbc98953925ab9f4bc9e6. If changing
 # this hash, ensure that the list of SUPPORTED and UNSUPPORTED artifacts below
 # is up to date.
-SUPPORTED = ["amis", "gcp"]
+SUPPORTED = ["amis", "aws-winli", "gcp"]
 UNSUPPORTED = ["aliyun", "azure", "ibmcloud", "powervs"]
 
 
@@ -341,6 +341,9 @@ def prune_cloud_uploads(build, cloud_config, dry_run):
     errors.extend(deregister_aws_amis(build, cloud_config, dry_run))
     errors.extend(delete_gcp_image(build, cloud_config, dry_run))
 
+    if "aws-winli" in build.images:
+        errors.extend(deregister_aws_winli_amis(build, cloud_config, dry_run))
+
     if errors:
         print(f"\t\t\tFound errors when removing cloud-uploads for {build.id}:")
         for e in errors:
@@ -356,6 +359,32 @@ def deregister_aws_amis(build, cloud_config, dry_run):
         print(f"\t\t\tNo AMI/Snapshot to prune for {build.id} for {build.arch}")
         return errors
     for ami in amis:
+        region_name = ami.get("name")
+        ami_id = ami.get("hvm")
+        # If we are dealing with an old manifest where the snapshot ID isn't stored
+        # then let's instruct ore to detect the snapshot ID from the AMI.
+        snapshot_id = ami.get("snapshot", "detectFromAMI")
+        if dry_run:
+            print(f"\t\t\tWould delete {ami_id} and {snapshot_id} for {build.id}")
+            continue
+        if (ami_id or snapshot_id) and region_name:
+            try:
+                deregister_aws_resource(ami_id, snapshot_id, region=region_name, credentials_file=aws_credentials)
+            except Exception as e:
+                errors.append(e)
+        else:
+            errors.append(f"Missing parameters to remove {ami_id} and {snapshot_id}")
+    return errors
+
+
+def deregister_aws_winli_amis(build, cloud_config, dry_run):
+    errors = []
+    aws_credentials = cloud_config.get("aws", {}).get("credentials")
+    aws_winli_amis = build.images.get("aws-winli")
+    if not aws_winli_amis:
+        print(f"\t\t\tNo aws-winli AMI/Snapshot to prune for {build.id} for {build.arch}")
+        return errors
+    for ami in aws_winli_amis:
         region_name = ami.get("name")
         ami_id = ami.get("hvm")
         # If we are dealing with an old manifest where the snapshot ID isn't stored
