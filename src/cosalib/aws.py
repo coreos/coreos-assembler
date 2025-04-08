@@ -32,77 +32,82 @@ def deregister_aws_resource(ami, snapshot, region, credentials_file):
 def aws_run_ore_replicate(build, args):
     build.refresh_meta()
     buildmeta = build.meta
-    if len(buildmeta.get('amis', [])) < 1:
+    buildmeta_keys = ["amis"]
+    if len(buildmeta.get(buildmeta_keys[0], [])) < 1:
         raise SystemExit(("buildmeta doesn't contain source AMIs."
                          " Run buildextend-aws --upload first"))
 
-    # Determine which region to copy from
-    if not args.source_region:
-        args.source_region = buildmeta['amis'][0]['name']
+    if len(buildmeta.get('aws-winli', [])) > 0:
+        buildmeta_keys.append("aws-winli")
 
-    ore_args = ['ore', 'aws', '--region', args.source_region]
-    if args.log_level:
-        ore_args.extend(['--log-level', args.log_level])
-    if args.credentials_file:
-        ore_args.extend(['--credentials-file', args.credentials_file])
+    for key in buildmeta_keys:
+        # Determine which region to copy from
+        if not args.source_region:
+            args.source_region = buildmeta[key][0]['name']
 
-    # If no region specified then autodetect the regions to replicate to.
-    # Specify --region=args.source_region here so ore knows to talk to
-    # a region that exists (i.e. it will talk to govcloud if copying
-    # from a govcloud region).
-    if not args.region:
-        args.region = subprocess.check_output(
-            ore_args + ['list-regions']).decode().strip().split()
+        ore_args = ['ore', 'aws', '--region', args.source_region]
+        if args.log_level:
+            ore_args.extend(['--log-level', args.log_level])
+        if args.credentials_file:
+            ore_args.extend(['--credentials-file', args.credentials_file])
 
-    # only replicate to regions that don't already exist
-    existing_regions = [item['name'] for item in buildmeta['amis']]
-    duplicates = list(set(args.region).intersection(existing_regions))
-    if len(duplicates) > 0:
-        print((f"AMIs already exist in {duplicates} region(s), "
-               "skipping listed region(s)..."))
+        # If no region specified then autodetect the regions to replicate to.
+        # Specify --region=args.source_region here so ore knows to talk to
+        # a region that exists (i.e. it will talk to govcloud if copying
+        # from a govcloud region).
+        if not args.region:
+            args.region = subprocess.check_output(
+                ore_args + ['list-regions']).decode().strip().split()
 
-    region_list = list(set(args.region) - set(duplicates))
-    if len(region_list) == 0:
-        print("no new regions detected")
-        sys.exit(0)
+        # only replicate to regions that don't already exist
+        existing_regions = [item['name'] for item in buildmeta[key]]
+        duplicates = list(set(args.region).intersection(existing_regions))
+        if len(duplicates) > 0:
+            print((f"AMIs already exist in {duplicates} region(s), "
+                   "skipping listed region(s)..."))
 
-    source_image = None
-    for a in buildmeta['amis']:
-        if a['name'] == args.source_region:
-            source_image = a['hvm']
-            break
+        region_list = list(set(args.region) - set(duplicates))
+        if len(region_list) == 0:
+            print("no new regions detected")
+            sys.exit(0)
 
-    if source_image is None:
-        raise Exception(("Unable to find AMI ID for "
-                        f"{args.source_region} region"))
+        source_image = None
+        for a in buildmeta[key]:
+            if a['name'] == args.source_region:
+                source_image = a['hvm']
+                break
 
-    ore_args.extend(['copy-image', '--image', source_image])
-    ore_args.extend(region_list)
-    print("+ {}".format(subprocess.list2cmdline(ore_args)))
+        if source_image is None:
+            raise Exception(("Unable to find AMI ID for "
+                            f"{args.source_region} region"))
 
-    ore_data = ""
-    try:
-        ore_data = subprocess.check_output(ore_args, encoding='utf-8')
-    except subprocess.CalledProcessError as e:
-        ore_data = e.output or ""
-        raise e
-    finally:
-        ore_data = ore_data.strip()
-        if len(ore_data) > 0:
-            for line in ore_data.split('\n'):
-                j = json.loads(line)
-                # This matches the Container Linux schema:
-                # https://stable.release.core-os.net/amd64-usr/current/coreos_production_ami_all.json
-                ami_data = [{'name': region,
-                             'hvm': vals['ami'],
-                             'snapshot': vals['snapshot']}
-                            for region, vals in j.items()]
-                buildmeta['amis'].extend(ami_data)
+        ore_args.extend(['copy-image', '--image', source_image])
+        ore_args.extend(region_list)
+        print("+ {}".format(subprocess.list2cmdline(ore_args)))
 
-            # Record the AMI's that have been replicated as they happen.
-            # When re-running the replication, we don't want to be lose
-            # what has been done.
-            build.meta_write()
+        ore_data = ""
+        try:
+            ore_data = subprocess.check_output(ore_args, encoding='utf-8')
+        except subprocess.CalledProcessError as e:
+            ore_data = e.output or ""
+            raise e
+        finally:
+            ore_data = ore_data.strip()
+            if len(ore_data) > 0:
+                for line in ore_data.split('\n'):
+                    j = json.loads(line)
+                    # This matches the Container Linux schema:
+                    # https://stable.release.core-os.net/amd64-usr/current/coreos_production_ami_all.json
+                    ami_data = [{'name': region,
+                                 'hvm': vals['ami'],
+                                 'snapshot': vals['snapshot']}
+                                for region, vals in j.items()]
+                    buildmeta[key].extend(ami_data)
+
+                # Record the AMI's that have been replicated as they happen.
+                # When re-running the replication, we don't want to be lose
+                # what has been done.
+                build.meta_write()
 
 
 @retry(reraise=True, stop=stop_after_attempt(3))
