@@ -28,7 +28,7 @@ def main():
     if args.images:
         # User provided images directly
         create_and_push_container_manifest(
-            args.repo, args.tags, args.images, args.v2s2)
+            args.repo, args.tags, args.images, args.write_digest_to_file, args.v2s2)
     else:
         # Picking up images from artifacts in meta.json
         builds = Builds()
@@ -104,7 +104,7 @@ def main():
 
         # Create/Upload the manifest list to the container registry
         manifest_info = create_and_push_container_manifest(
-            args.repo, args.tags, images, args.v2s2)
+            args.repo, args.tags, images, args.write_digest_to_file, args.v2s2)
         # if we pushed in v2s2 mode, we need to reload from the repo the actual
         # final digests: https://github.com/containers/podman/issues/16603
         if args.v2s2:
@@ -165,6 +165,8 @@ Examples:
     parser.add_argument('--v2s2', action='store_true',
                         help='Use old image manifest version 2 schema 2 format')
     parser.add_argument("--force", help="Force manifest overwriting", action='store_true')
+    parser.add_argument('--write-digest-to-file', required=False,
+                        help='Write digest of pushed manifest to named file')
 
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--image", dest='images', action='append', default=[],
