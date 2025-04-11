@@ -505,7 +505,7 @@ EOF
         cat "${tmp_overridesdir}"/*.repo > "${tmp_overridesdir}/all.repo"
         # shellcheck disable=SC2002
         cat "${configdir}/fast-tracks.yaml" | python3 -c "
-import sys, yaml, subprocess, glob
+import sys, yaml, subprocess, glob, re
 fast_tracks = yaml.safe_load(sys.stdin)
 for (repo, spec) in fast_tracks.items():
     with open(f'${tmp_overridesdir}/{repo}.repo', 'w') as f:
@@ -518,6 +518,9 @@ for (repo, spec) in fast_tracks.items():
                     line = f'[{repo}]'
                     # we're in the repo definition
                     passthrough = True
+                elif passthrough and re.match(r'^(\s*#.*)?$', line):
+                    # Skip blank lines and comment lines
+                    continue
                 elif passthrough and line.startswith('name='):
                     line = f'name={repo}'
                 elif line.startswith('['):
