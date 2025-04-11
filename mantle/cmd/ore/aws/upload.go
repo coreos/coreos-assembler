@@ -67,6 +67,10 @@ After a successful run, the final line of output will be a line of JSON describi
 	uploadIMDSv2Only         bool
 	uploadVolumeType         string
 	uploadX86BootMode        string
+	uploadCreateWinLIAMI     bool
+	winLIwindowsServerAMI    string
+	winLISourceAMI           string
+	winLIInstanceType        string
 )
 
 func init() {
@@ -91,6 +95,10 @@ func init() {
 	cmdUpload.Flags().BoolVar(&uploadIMDSv2Only, "imdsv2-only", false, "enable IMDSv2-only support")
 	cmdUpload.Flags().StringVar(&uploadVolumeType, "volume-type", "gp3", "EBS volume type (gp3, gp2, io1, st1, sc1, standard, etc.)")
 	cmdUpload.Flags().StringVar(&uploadX86BootMode, "x86-boot-mode", "uefi-preferred", "Set boot mode (uefi-preferred, uefi)")
+	cmdUpload.Flags().BoolVar(&uploadCreateWinLIAMI, "winli", false, "Create a Windows LI AMI")
+	cmdUpload.Flags().StringVar(&winLIwindowsServerAMI, "windows-ami", "", "Windows Server AMI used to create a Windows LI AMI")
+	cmdUpload.Flags().StringVar(&winLISourceAMI, "winli-source-ami", "", "RHCOS source AMI ID used to create AWS Windows LI image")
+	cmdUpload.Flags().StringVar(&winLIInstanceType, "winli-instance-type", "", "RHCOS source AMI ID used to create AWS Windows LI image")
 }
 
 func defaultBucketNameForRegion(region string) string {
@@ -98,7 +106,7 @@ func defaultBucketNameForRegion(region string) string {
 }
 
 // defaultBucketURL determines the location the tool should upload to.
-// The 'urlPrefix' parameter, if it contains a path, will override all other
+// The 'urlPrefix' parameter, if it contains a path#v1:0:18:4:::::::, will override all other
 // arguments
 func defaultBucketURL(urlPrefix, file, region string) (*url.URL, error) {
 	if urlPrefix == "" {
@@ -142,9 +150,12 @@ func runUpload(cmd *cobra.Command, args []string) error {
 		fmt.Fprintf(os.Stderr, "--disk-size-inspect cannot be used with --source-object or --source-snapshot.\n")
 		os.Exit(2)
 	}
-	if uploadFile == "" {
+	if uploadFile == "" &&  winLIwindowsServerAMI == "" {
 		fmt.Fprintf(os.Stderr, "specify --file\n")
 		os.Exit(2)
+	}
+	if uploadFile != "" && winLIwindowsServerAMI != "" {
+		fmt.Fprintf(os.Stderr, "--file cannot be used with --windows-ami")
 	}
 	if uploadImageName == "" {
 		fmt.Fprintf(os.Stderr, "unknown image name; specify --name\n")
@@ -154,24 +165,25 @@ func runUpload(cmd *cobra.Command, args []string) error {
 		fmt.Fprintf(os.Stderr, "unknown AMI name; specify --ami-name\n")
 		os.Exit(2)
 	}
-
-	if uploadDiskSizeInspect {
-		imageInfo, err := util.GetImageInfo(uploadFile)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Unable to query size of disk: %v\n", err)
-			os.Exit(1)
-		}
-		plog.Debugf("Image size: %v\n", imageInfo.VirtualSize)
-		const GiB = 1024 * 1024 * 1024
-		uploadDiskSizeGiB = uint(imageInfo.VirtualSize / GiB)
-		// Round up if there's leftover
-		if imageInfo.VirtualSize%GiB > 0 {
-			uploadDiskSizeGiB += 1
-		}
+	if uploadCreateWinLIAMI && winLIwindowsServerAMI == "" {
+		fmt.Fprintf(os.Stderr, "--windows-ami must be provided with --winli\n")
+		os.Exit(2)
+	}
+	if winLIwindowsServerAMI != "" && !uploadCreateWinLIAMI {
+		fmt.Fprintf(os.Stderr, "--windows-ami can only be used with --winli\n")
+		os.Exit(2)
+	}
+	if uploadCreateWinLIAMI && winLIwindowsServerAMI == "" {
+		fmt.Fprintf(os.Stderr, "--winli-instance-type must be provided with --winli\n")
+		os.Exit(2)
+	}
+	if winLIInstanceType != "" && !uploadCreateWinLIAMI {
+		fmt.Fprintf(os.Stderr, "--winli-instance-type can only be used with --winli\n")
+		os.Exit(2)
 	}
 
-	var s3URL *url.URL
 	var err error
+	var s3URL *url.URL
 	if uploadSourceObject != "" {
 		s3URL, err = url.Parse(uploadSourceObject)
 		if err != nil {
@@ -189,71 +201,114 @@ func runUpload(cmd *cobra.Command, args []string) error {
 	s3BucketName := s3URL.Host
 	s3ObjectPath := strings.TrimPrefix(s3URL.Path, "/")
 
-	if uploadForce {
-		err := API.RemoveImage(uploadAMIName, s3BucketName, s3ObjectPath)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "%v\n", err)
-			os.Exit(1)
-		}
-	}
-
-	// if no snapshot was specified, check for an existing one or a
-	// snapshot task in progress
 	sourceSnapshot := uploadSourceSnapshot
-	if sourceSnapshot == "" {
-		snapshot, err := API.FindSnapshot(uploadImageName)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "failed finding snapshot: %v\n", err)
-			os.Exit(1)
+
+	if !uploadCreateWinLIAMI {
+		if uploadDiskSizeInspect {
+			imageInfo, err := util.GetImageInfo(uploadFile)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Unable to query size of disk: %v\n", err)
+				os.Exit(1)
+			}
+			plog.Debugf("Image size: %v\n", imageInfo.VirtualSize)
+			const GiB = 1024 * 1024 * 1024
+			uploadDiskSizeGiB = uint(imageInfo.VirtualSize / GiB)
+			// Round up if there's leftover
+			if imageInfo.VirtualSize%GiB > 0 {
+				uploadDiskSizeGiB += 1
+			}
 		}
-		if snapshot != nil {
+
+		if uploadForce {
+			err := API.RemoveImage(uploadAMIName, s3BucketName, s3ObjectPath)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "%v\n", err)
+				os.Exit(1)
+			}
+		}
+
+		// if no snapshot was specified, check for an existing one or a
+		// snapshot task in progress
+		sourceSnapshot = uploadSourceSnapshot
+		if sourceSnapshot == "" {
+			snapshot, err := API.FindSnapshot(uploadImageName)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "failed finding snapshot: %v\n", err)
+				os.Exit(1)
+			}
+			if snapshot != nil {
+				sourceSnapshot = snapshot.SnapshotID
+			}
+		}
+
+		// if there's no existing snapshot and no provided S3 object to
+		// make one from, upload to S3
+		if uploadSourceObject == "" && sourceSnapshot == "" {
+			f, err := os.Open(uploadFile)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Could not open image file %v: %v\n", uploadFile, err)
+				os.Exit(1)
+			}
+			defer f.Close()
+
+			err = API.UploadObject(f, s3BucketName, s3ObjectPath, uploadForce)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error uploading: %v\n", err)
+				os.Exit(1)
+			}
+		}
+
+		// if we don't already have a snapshot, make one
+		if sourceSnapshot == "" {
+			snapshot, err := API.CreateSnapshot(uploadImageName, s3URL.String(), uploadObjectFormat)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "unable to create snapshot: %v\n", err)
+				os.Exit(1)
+			}
 			sourceSnapshot = snapshot.SnapshotID
 		}
-	}
 
-	// if there's no existing snapshot and no provided S3 object to
-	// make one from, upload to S3
-	if uploadSourceObject == "" && sourceSnapshot == "" {
-		f, err := os.Open(uploadFile)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Could not open image file %v: %v\n", uploadFile, err)
-			os.Exit(1)
+		// if delete is enabled and we created the snapshot from an S3
+		// object that we also created (perhaps in a previous run), delete
+		// the S3 object
+		if uploadSourceObject == "" && uploadSourceSnapshot == "" && uploadDeleteObject {
+			if err := API.DeleteObject(s3BucketName, s3ObjectPath); err != nil {
+				fmt.Fprintf(os.Stderr, "unable to delete object: %v\n", err)
+				os.Exit(1)
+			}
 		}
-		defer f.Close()
-
-		err = API.UploadObject(f, s3BucketName, s3ObjectPath, uploadForce)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error uploading: %v\n", err)
-			os.Exit(1)
-		}
-	}
-
-	// if we don't already have a snapshot, make one
-	if sourceSnapshot == "" {
-		snapshot, err := API.CreateSnapshot(uploadImageName, s3URL.String(), uploadObjectFormat)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "unable to create snapshot: %v\n", err)
-			os.Exit(1)
-		}
-		sourceSnapshot = snapshot.SnapshotID
-	}
-
-	// if delete is enabled and we created the snapshot from an S3
-	// object that we also created (perhaps in a previous run), delete
-	// the S3 object
-	if uploadSourceObject == "" && uploadSourceSnapshot == "" && uploadDeleteObject {
-		if err := API.DeleteObject(s3BucketName, s3ObjectPath); err != nil {
-			fmt.Fprintf(os.Stderr, "unable to delete object: %v\n", err)
-			os.Exit(1)
+	// we dont actually need to upload anything in the winli case
+	// we only need find the source snapshot to base the winli image on
+	} else {
+		// if no snapshot was specified, check for an existing one or a
+		// snapshot task in progress
+		sourceSnapshot = uploadSourceSnapshot
+		if sourceSnapshot == "" {
+			snapshotID, err := API.FindSourceSnapshot(winLISourceAMI)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "failed finding snapshot: %v\n", err)
+				os.Exit(1)
+			}
+			sourceSnapshot = snapshotID
 		}
 	}
 
 	// create AMIs and grant permissions
-	amiID, err := API.CreateHVMImage(sourceSnapshot, uploadDiskSizeGiB, uploadAMIName, uploadAMIDescription, uploadImageArchitecture, uploadVolumeType, uploadIMDSv2Only, uploadX86BootMode)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "unable to create HVM image: %v\n", err)
-		os.Exit(1)
+	var amiID string
+	if winLIwindowsServerAMI == "" {
+		amiID, err = API.CreateHVMImage(sourceSnapshot, uploadDiskSizeGiB, uploadAMIName, uploadAMIDescription, uploadImageArchitecture, uploadVolumeType, uploadIMDSv2Only, uploadX86BootMode)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "unable to create HVM image: %v\n", err)
+			os.Exit(1)
+		}
+	} else {
+		amiID, sourceSnapshot, err = API.CreateWinLiImage(sourceSnapshot, uploadAMIName, uploadAMIDescription, uploadImageArchitecture, winLIwindowsServerAMI, winLIInstanceType, uploadVolumeType)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "unable to create WinLI image: %v\n", err)
+			os.Exit(1)
+		}
 	}
+
 
 	if len(uploadGrantUsers) > 0 {
 		err = API.GrantLaunchPermission(amiID, uploadGrantUsers)

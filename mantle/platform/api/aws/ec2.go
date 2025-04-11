@@ -244,6 +244,277 @@ func (a *API) CreateInstances(name, keyname, userdata string, count uint64, minD
 	return insts, nil
 }
 
+// StopInstances will stop all instances provided in the ids slice and will
+// block until all instances are in the "stopped" state
+func (a *API) StopInstances(ids []string) error {
+	if len(ids) == 0 {
+		return nil
+	}
+	input := &ec2.StopInstancesInput{
+		InstanceIds: aws.StringSlice(ids),
+	}
+
+	if _, err := a.ec2.StopInstances(input); err != nil {
+		return err
+	}
+
+	// loop until all machines are stopped
+	var insts []*ec2.Instance
+	timeout := 10 * time.Minute
+	delay := 10 * time.Second
+	err := util.WaitUntilReady(timeout, delay, func() (bool, error) {
+		desc, err := a.ec2.DescribeInstances(&ec2.DescribeInstancesInput{
+			InstanceIds: aws.StringSlice(ids),
+		})
+		if err != nil {
+			// Keep retrying if the InstanceID disappears momentarily
+			if awsErr, ok := err.(awserr.Error); ok && awsErr.Code() == "InvalidInstanceID.NotFound" {
+				plog.Debugf("instance ID not found, retrying: %v", err)
+				return false, nil
+			}
+			return false, err
+		}
+		insts = desc.Reservations[0].Instances
+
+		for _, i := range insts {
+			if *i.State.Name != ec2.InstanceStateNameStopped {
+				return false, nil
+			}
+		}
+		return true, nil
+	})
+
+	if err != nil {
+		if errTerminate := a.TerminateInstances(ids); errTerminate != nil {
+			return fmt.Errorf("terminating instances failed: %v after instances failed to stop: %v", errTerminate, err)
+		}
+		return fmt.Errorf("waiting for instances to stop: %v", err)
+	}
+
+	return nil
+}
+
+// AttachVolume will attach the provided volume and will block until
+// the volume is in the "In-Use" state
+func (a *API) AttachVolume(instanceID string, volumeID string, device string) error {
+	_, err := a.ec2.AttachVolume(&ec2.AttachVolumeInput{
+		VolumeId: aws.String(volumeID),
+		InstanceId: aws.String(instanceID),
+		Device: aws.String(device),
+	})
+	if err != nil {
+		return fmt.Errorf("error attaching volume: %v", err)
+	}
+
+	// loop until the volume is attached
+	var vol *ec2.Volume
+	timeout := 10 * time.Minute
+	delay := 10 * time.Second
+	err = util.WaitUntilReady(timeout, delay, func() (bool, error) {
+		desc, err := a.ec2.DescribeVolumes(&ec2.DescribeVolumesInput{
+			VolumeIds: aws.StringSlice([]string{volumeID}),
+		})
+		if err != nil {
+			// Keep retrying if the VolumeID disappears momentarily
+			if awsErr, ok := err.(awserr.Error); ok && awsErr.Code() == "InvalidVolume.NotFound" {
+				plog.Debugf("volume ID not found, retrying: %v", err)
+				return false, nil
+			}
+			return false, err
+		}
+
+		vol = desc.Volumes[0]
+		if *vol.State != ec2.VolumeStateInUse {
+			return false, nil
+		}
+		return true, nil
+	})
+
+	if err != nil {
+		return fmt.Errorf("waiting for volume to attach: %v", err)
+	}
+
+	return nil
+}
+
+// DetachVolume will detach the provided volume and will block until
+// the volume is in the "Avalailable" state
+func (a *API) DetachVolume(volumeID string) error {
+	_, err := a.ec2.DetachVolume(&ec2.DetachVolumeInput{
+		VolumeId: aws.String(volumeID),
+	})
+	if err != nil {
+		return fmt.Errorf("error detaching volume: %v", err)
+	}
+
+	// loop until the volume is detached
+	var vol *ec2.Volume
+	timeout := 10 * time.Minute
+	delay := 10 * time.Second
+	err = util.WaitUntilReady(timeout, delay, func() (bool, error) {
+		desc, err := a.ec2.DescribeVolumes(&ec2.DescribeVolumesInput{
+			VolumeIds: aws.StringSlice([]string{volumeID}),
+		})
+		if err != nil {
+			// Keep retrying if the VolumeID disappears momentarily
+			if awsErr, ok := err.(awserr.Error); ok && awsErr.Code() == "InvalidVolume.NotFound" {
+				plog.Debugf("volume ID not found, retrying: %v", err)
+				return false, nil
+			}
+			return false, err
+		}
+
+		vol = desc.Volumes[0]
+		if *vol.State != ec2.VolumeStateAvailable {
+			return false, nil
+		}
+		return true, nil
+	})
+
+	if err != nil {
+		return fmt.Errorf("waiting for volume to detach: %v", err)
+	}
+
+	return nil
+}
+
+// DeleteVolumes schedules ec2 volumes for deletion
+func (a *API) DeleteVolume(volumeID string) error {
+	_, err := a.ec2.DeleteVolume(&ec2.DeleteVolumeInput{
+		VolumeId: aws.String(volumeID),
+	}) 
+	if err != nil {
+		return fmt.Errorf("error deleting volume: %v", err)
+	}
+
+	return nil
+}
+
+// GetInstanceVolumeIdByDevice returns the VolumeId of the volume 
+// attached to the instance at the specified device name (e.g., "/dev/xvda").
+func (a *API) GetInstanceVolumeIdByDevice(instanceID string, deviceName string) (string, error) {
+	desc, err := a.ec2.DescribeInstances(&ec2.DescribeInstancesInput{
+		InstanceIds: aws.StringSlice([]string{instanceID}),
+	})
+	if err != nil {
+		return "", fmt.Errorf("error describing instances: %v", err)
+	}
+
+	var volume string
+	for _, vol := range desc.Reservations[0].Instances[0].BlockDeviceMappings {
+		if *vol.DeviceName == deviceName {
+			volume = *vol.Ebs.VolumeId
+			break
+		}
+	}
+
+	if volume == "" {
+		return "", fmt.Errorf("cant find instance volume id by device: %v", deviceName)
+	}
+
+	return volume, nil
+}
+
+// returns the VolumeID after creating a volume from a provided snapshot
+func (a *API) CreateVolumeFromSnapshot(snapshotID string, volumetype string, availabilityZone string) (string, error) {
+	newVolume, err := a.ec2.CreateVolume(&ec2.CreateVolumeInput{
+		AvailabilityZone: aws.String(availabilityZone),
+		SnapshotId: aws.String(snapshotID),
+		VolumeType: aws.String(volumetype),
+		TagSpecifications: []*ec2.TagSpecification{
+			{
+				ResourceType: aws.String(ec2.ResourceTypeVolume),
+				Tags: []*ec2.Tag{
+					{
+						Key: aws.String("CreatedBy"), 
+						Value: aws.String("mantle"),
+					},
+				},
+			},
+		},
+	})
+	if err != nil {
+		return "", fmt.Errorf("failed to create volume: %v", err)
+	}
+
+	// loop until the volume is available
+	timeout := 10 * time.Minute
+	delay := 10 * time.Second
+	err = util.WaitUntilReady(timeout, delay, func() (bool, error) {
+		desc, err := a.ec2.DescribeVolumes(&ec2.DescribeVolumesInput{
+			VolumeIds: aws.StringSlice([]string{*newVolume.VolumeId}),
+		})
+		if err != nil {
+			// Keep retrying if the VolumeID disappears momentarily
+			if awsErr, ok := err.(awserr.Error); ok && awsErr.Code() == "InvalidVolume.NotFound" {
+				plog.Debugf("volume ID not found, retrying: %v", err)
+				return false, nil
+			}
+			return false, err
+		}
+
+		vol := desc.Volumes[0]
+		if *vol.State != ec2.VolumeStateAvailable {
+			return false, nil
+		}
+		return true, nil
+	})
+
+	if err != nil {
+		return "", fmt.Errorf("waiting for volume to detach: %v", err)
+	}
+
+	return *newVolume.VolumeId, nil
+}
+
+// ReplaceRootVolume will swap the root volume of `instanceID` at `deviceName` with `newRootVolumeID`
+// the replaced root volume is detached and deleted in the process
+func (a *API) ReplaceRootVolume(instanceID string, deviceName string, newRootVolumeID string) error {
+
+	replacedRootVolume, err := a.GetInstanceVolumeIdByDevice(instanceID, deviceName)
+	if err != nil {
+		return fmt.Errorf("failed to find root volume %q", err)
+	}
+
+	// before detaching the original root volume, add tags to it for garbage collection
+	// in case the following operations are not successful
+	tagMap := map[string]string{
+		"CreatedBy": "mantle",
+	}
+	if err = a.CreateTags([]string{replacedRootVolume}, tagMap); err != nil {
+		return fmt.Errorf("error adding tags to root volume: %q", err)
+	}
+	plog.Infof("added tags to root volume")
+
+	if err = a.DetachVolume(replacedRootVolume); err != nil {
+		return fmt.Errorf("error detaching root volume: %v", err)
+	}
+	plog.Infof("detached root volume")
+
+	if err = a.DeleteVolume(replacedRootVolume); err != nil {
+		return fmt.Errorf("error deleting root volume: %v", err)
+	}
+
+	plog.Infof("deleted root volume")
+
+	if err = a.AttachVolume(instanceID, newRootVolumeID, deviceName); err != nil {
+		return fmt.Errorf("error attaching new root volume: %v", err)
+	}
+
+	plog.Infof("attached new root volume: %v", newRootVolumeID)
+
+	// verify the root volume of the instance matches the target volume
+	vol, err := a.GetInstanceVolumeIdByDevice(instanceID, deviceName)
+	if err != nil {
+		return fmt.Errorf("failed to find replaced root volume %q", err)
+	}
+	if vol != newRootVolumeID {
+		return fmt.Errorf("failed to replace root volume")
+	}
+
+	return nil
+}
+
 // gcEC2 will terminate ec2 instances older than gracePeriod.
 // It will only operate on ec2 instances tagged with 'mantle' to avoid stomping
 // on other resources in the account.

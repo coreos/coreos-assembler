@@ -32,77 +32,82 @@ def deregister_aws_resource(ami, snapshot, region, credentials_file):
 def aws_run_ore_replicate(build, args):
     build.refresh_meta()
     buildmeta = build.meta
-    if len(buildmeta.get('amis', [])) < 1:
+    buildmeta_keys = ["amis"]
+    if len(buildmeta.get(buildmeta_keys[0], [])) < 1:
         raise SystemExit(("buildmeta doesn't contain source AMIs."
                          " Run buildextend-aws --upload first"))
 
-    # Determine which region to copy from
-    if not args.source_region:
-        args.source_region = buildmeta['amis'][0]['name']
+    if len(buildmeta.get('aws-winli', [])) > 0:
+        buildmeta_keys.append("aws-winli")
 
-    ore_args = ['ore', 'aws', '--region', args.source_region]
-    if args.log_level:
-        ore_args.extend(['--log-level', args.log_level])
-    if args.credentials_file:
-        ore_args.extend(['--credentials-file', args.credentials_file])
+    for key in buildmeta_keys:
+        # Determine which region to copy from
+        if not args.source_region:
+            args.source_region = buildmeta[key][0]['name']
 
-    # If no region specified then autodetect the regions to replicate to.
-    # Specify --region=args.source_region here so ore knows to talk to
-    # a region that exists (i.e. it will talk to govcloud if copying
-    # from a govcloud region).
-    if not args.region:
-        args.region = subprocess.check_output(
-            ore_args + ['list-regions']).decode().strip().split()
+        ore_args = ['ore', 'aws', '--region', args.source_region]
+        if args.log_level:
+            ore_args.extend(['--log-level', args.log_level])
+        if args.credentials_file:
+            ore_args.extend(['--credentials-file', args.credentials_file])
 
-    # only replicate to regions that don't already exist
-    existing_regions = [item['name'] for item in buildmeta['amis']]
-    duplicates = list(set(args.region).intersection(existing_regions))
-    if len(duplicates) > 0:
-        print((f"AMIs already exist in {duplicates} region(s), "
-               "skipping listed region(s)..."))
+        # If no region specified then autodetect the regions to replicate to.
+        # Specify --region=args.source_region here so ore knows to talk to
+        # a region that exists (i.e. it will talk to govcloud if copying
+        # from a govcloud region).
+        if not args.region:
+            args.region = subprocess.check_output(
+                ore_args + ['list-regions']).decode().strip().split()
 
-    region_list = list(set(args.region) - set(duplicates))
-    if len(region_list) == 0:
-        print("no new regions detected")
-        sys.exit(0)
+        # only replicate to regions that don't already exist
+        existing_regions = [item['name'] for item in buildmeta[key]]
+        duplicates = list(set(args.region).intersection(existing_regions))
+        if len(duplicates) > 0:
+            print((f"AMIs already exist in {duplicates} region(s), "
+                   "skipping listed region(s)..."))
 
-    source_image = None
-    for a in buildmeta['amis']:
-        if a['name'] == args.source_region:
-            source_image = a['hvm']
-            break
+        region_list = list(set(args.region) - set(duplicates))
+        if len(region_list) == 0:
+            print("no new regions detected")
+            sys.exit(0)
 
-    if source_image is None:
-        raise Exception(("Unable to find AMI ID for "
-                        f"{args.source_region} region"))
+        source_image = None
+        for a in buildmeta[key]:
+            if a['name'] == args.source_region:
+                source_image = a['hvm']
+                break
 
-    ore_args.extend(['copy-image', '--image', source_image])
-    ore_args.extend(region_list)
-    print("+ {}".format(subprocess.list2cmdline(ore_args)))
+        if source_image is None:
+            raise Exception(("Unable to find AMI ID for "
+                            f"{args.source_region} region"))
 
-    ore_data = ""
-    try:
-        ore_data = subprocess.check_output(ore_args, encoding='utf-8')
-    except subprocess.CalledProcessError as e:
-        ore_data = e.output or ""
-        raise e
-    finally:
-        ore_data = ore_data.strip()
-        if len(ore_data) > 0:
-            for line in ore_data.split('\n'):
-                j = json.loads(line)
-                # This matches the Container Linux schema:
-                # https://stable.release.core-os.net/amd64-usr/current/coreos_production_ami_all.json
-                ami_data = [{'name': region,
-                             'hvm': vals['ami'],
-                             'snapshot': vals['snapshot']}
-                            for region, vals in j.items()]
-                buildmeta['amis'].extend(ami_data)
+        ore_args.extend(['copy-image', '--image', source_image])
+        ore_args.extend(region_list)
+        print("+ {}".format(subprocess.list2cmdline(ore_args)))
 
-            # Record the AMI's that have been replicated as they happen.
-            # When re-running the replication, we don't want to be lose
-            # what has been done.
-            build.meta_write()
+        ore_data = ""
+        try:
+            ore_data = subprocess.check_output(ore_args, encoding='utf-8')
+        except subprocess.CalledProcessError as e:
+            ore_data = e.output or ""
+            raise e
+        finally:
+            ore_data = ore_data.strip()
+            if len(ore_data) > 0:
+                for line in ore_data.split('\n'):
+                    j = json.loads(line)
+                    # This matches the Container Linux schema:
+                    # https://stable.release.core-os.net/amd64-usr/current/coreos_production_ami_all.json
+                    ami_data = [{'name': region,
+                                 'hvm': vals['ami'],
+                                 'snapshot': vals['snapshot']}
+                                for region, vals in j.items()]
+                    buildmeta[key].extend(ami_data)
+
+                # Record the AMI's that have been replicated as they happen.
+                # When re-running the replication, we don't want to be lose
+                # what has been done.
+                build.meta_write()
 
 
 @retry(reraise=True, stop=stop_after_attempt(3))
@@ -132,13 +137,50 @@ def aws_run_ore(build, args):
     if 'aws-x86-boot-mode' in image_json:
         ore_args.extend(['--x86-boot-mode', image_json['aws-x86-boot-mode']])
 
+    if args.winli:
+        ore_args.extend(["--winli"])
+        winli_name="-winli"
+        winli_description=" Windows LI"
+        buildmeta_key = "aws-winli"
+        buildmeta = build.meta
+        winli_source_ami = None
+        source_snapshot = None
+        for a in buildmeta['amis']:
+            if a['name'] == region:
+                winli_source_ami = a['hvm']
+                source_snapshot = a['snapshot']
+                break
+
+        if winli_source_ami is None:
+            raise Exception(("Unable to find AMI ID for "
+                            f"{region} region"))
+        ore_args.extend(['--winli-source-ami', f"{winli_source_ami}"])
+
+        if source_snapshot is None:
+            raise Exception(("Unable to find AMI source snapshot for "
+                            f"{region} region"))
+        ore_args.extend(['--source-snapshot', f"{source_snapshot}"])
+    else:
+        ore_args.extend([
+            '--file', f"{build.image_path}",
+            '--disk-size-inspect'
+        ])
+        winli_name=""
+        winli_description=""
+        buildmeta_key = "amis"
+
+    if args.windows_ami:
+        ore_args.extend(['--windows-ami', f"{args.windows_ami}"])
+
+    if args.winli_instance_type:
+        ore_args.extend(['--winli-instance-type', f"{args.winli_instance_type}"])
+
     ore_args.extend([
         '--region', f"{region}",
         '--bucket', f"{args.bucket}",
-        '--ami-name', f"{build.build_name}-{build.build_id}-{build.basearch}",
-        '--name', f"{build.build_name}-{build.build_id}-{build.basearch}",
-        '--ami-description', f"{build.summary} {build.build_id} {build.basearch}",
-        '--file', f"{build.image_path}",
+        '--ami-name', f"{build.build_name}{winli_name}-{build.build_id}-{build.basearch}",
+        '--name', f"{build.build_name}{winli_name}-{build.build_id}-{build.basearch}",
+        '--ami-description', f"{build.summary} {build.build_id} {build.basearch}{winli_description}",
         '--arch', f"{build.basearch}",
         '--disk-size-inspect',
         '--delete-object'
@@ -157,7 +199,7 @@ def aws_run_ore(build, args):
 
     # This matches the Container Linux schema:
     # https://stable.release.core-os.net/amd64-usr/current/coreos_production_ami_all.json
-    ami_data = build.meta.get("amis", [])
+    ami_data = build.meta.get(buildmeta_key, [])
     # filter out (remove) existing entries (can happen if --force is used) from the
     # ami list that match this region.
     ami_data = [ami for ami in ami_data if ami.get('name') != region]
@@ -172,7 +214,7 @@ def aws_run_ore(build, args):
     if ore_data.get("SnapshotID") is None:
         raise Exception(f"Upload to {args.region} failed: no SnapshotID")
 
-    build.meta['amis'] = ami_data
+    build.meta[buildmeta_key] = ami_data
     build.meta_write()
 
 
@@ -188,4 +230,7 @@ def aws_cli(parser):
     parser.add_argument("--public", action="store_true", help="Mark images as publicly available")
     parser.add_argument("--tags", help="list of key=value tags to attach to the AMI",
                         action='append', default=[])
+    parser.add_argument("--winli", action="store_true", help="create an AWS Windows LI Ami")
+    parser.add_argument("--windows-ami", help="Windows Server AMI ID used to create AWS Windows LI image")
+    parser.add_argument("--winli-instance-type", help="ec2 instance type used to create AWS Windows LI image")
     return parser
