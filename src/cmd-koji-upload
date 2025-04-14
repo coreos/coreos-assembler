@@ -105,8 +105,7 @@ class Build(_Build):
         # new kind of image here, but _Build is geared towards that and has a
         # image_name_base() member that wants a platform string to name stuff
         self.platform = "koji"
-        # Use a tempdir in builds/ because we want to use large scratch space
-        self._tmpdir = tempfile.mkdtemp(prefix="koji-build", dir="builds/")
+        self._tmpdir = tempfile.mkdtemp(prefix="koji-build", dir=kwargs['buildroot'])
         self._state_file_tpl = self._tmpdir + "/cosa-cmd-koji-upload-{name}-{version}-{release}"
         kwargs.update({
             "require_commit": True,
