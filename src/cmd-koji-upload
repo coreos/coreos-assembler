@@ -112,7 +112,11 @@ class Build(_Build):
             "require_cosa": True,
         })
         _Build.__init__(self, **kwargs)
-
+        self.version, self.release = self.build_id.split('-')
+        self.name = f"{self.build_name}-{self.basearch}"
+        self.source = self.get_meta_key(
+            "meta", self.ckey("container-config-git"))
+        self.host_rpms = self.get_rpm_list('host')
     def __del__(self):
         try:
             shutil.rmtree(self._tmpdir)
@@ -502,11 +506,10 @@ class Reserve(_KojiBase):
         #   Version = 414.92.202307170903
         #   Release = 0
         #   NVR = rhcos-x86_64-414.92.202307170903-0
-        version, release = build.build_id.split('-')
         data = {
-            "name": f"{build.build_name}-{build.basearch}",
-            "release": release,
-            "version": version,
+            "name": build.name,
+            "release": build.release,
+            "version": build.version,
             "cg": "coreos-assembler",
         }
 
@@ -528,7 +531,7 @@ class Reserve(_KojiBase):
         build.meta['koji'] = {
             'build_id': koji_reservation['build_id'],
             'token': koji_reservation['token'],
-            'release': release
+            'release': build.release
         }
         build.meta_write()
 
@@ -707,8 +710,6 @@ class Upload(_KojiBase):
             }
             self.build.meta_write()
 
-        source = self.build.get_meta_key(
-            "meta", self.build.ckey("container-config-git"))
 
         log.debug(f"Preparing manifest for {(len(self.image_files))} files")
         # The koji/brew NVR is constructed like so:
@@ -721,7 +722,6 @@ class Upload(_KojiBase):
         #   Version = 414.92.202307170903
         #   Release = 0
         #   NVR = rhcos-x86_64-414.92.202307170903-0
-        version, release = self.build.build_id.split('-')
         self._manifest = {
             "metadata_version": 0,
             "build": {
@@ -734,12 +734,12 @@ class Upload(_KojiBase):
                         }
                     }
                 },
-                "name": f"{self.build.build_name}-{self.build.basearch}",
-                "release": release,
+                "name": self.build.name,
+                "release": self.build.release,
                 "owner": self._owner,
-                "source": source['origin'],
+                "source": self.build.source['origin'],
                 "start_time": stamp,
-                "version": version
+                "version": self.build.version
             },
             "buildroots": [{
                 "id": 1,
@@ -749,16 +749,14 @@ class Upload(_KojiBase):
                 },
                 "content_generator": {
                     "name": "coreos-assembler",
-                    "version": self.build.get_sub_obj(
-                        "meta",
-                        self.build.ckey("container-config-git"), "commit")
+                    "version": self.build.source['commit']
                 },
                 "container": {
                     "type": "docker",
                     "arch": self.build.basearch,
                     "name": "coreos-assembler"
                 },
-                "components": self.build.get_rpm_list('host'),
+                "components": self.build.host_rpms,
                 "extra": {
                     "coreos-assembler": {
                         "build_id": 1,
@@ -769,9 +767,7 @@ class Upload(_KojiBase):
                 "tools": [
                     {
                         "name": "coreos-assembler",
-                        "version": self.build.get_sub_obj(
-                            "meta",
-                            self.build.ckey("container-config-git"), "commit")
+                        "version": self.build.source['commit']
                     }
                 ]
             }],
