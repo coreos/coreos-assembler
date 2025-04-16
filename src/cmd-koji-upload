@@ -31,6 +31,7 @@ sys.path.insert(0, f"{cosa_dir}/cosalib")
 sys.path.insert(0, cosa_dir)
 
 from cosalib.cmdlib import get_basearch, load_json, write_json
+from enum import IntEnum
 
 try:
     from cosalib.build import _Build
@@ -105,7 +106,8 @@ class Build(_Build):
         # new kind of image here, but _Build is geared towards that and has a
         # image_name_base() member that wants a platform string to name stuff
         self.platform = "koji"
-        self._tmpdir = tempfile.mkdtemp(prefix="koji-build", dir=kwargs['buildroot'])
+        self.buildroot = kwargs['buildroot']
+        self._tmpdir = tempfile.mkdtemp(prefix="koji-build", dir=self.buildroot)
         self._state_file_tpl = self._tmpdir + "/cosa-cmd-koji-upload-{name}-{version}-{release}"
         kwargs.update({
             "require_commit": True,
@@ -116,7 +118,7 @@ class Build(_Build):
         self.name = f"{self.build_name}-{self.basearch}"
         self.source = self.get_meta_key(
             "meta", self.ckey("container-config-git"))
-        self.host_rpms = self.get_rpm_list('host')
+        self.host_rpms = self.get_rpm_list(RpmListType.HOST)
     def __del__(self):
         try:
             shutil.rmtree(self._tmpdir)
@@ -195,20 +197,41 @@ class Build(_Build):
 
         return fname, True
 
-    def get_rpm_list(self, host=None):
+    def get_rpm_list(self, kind: RpmListType):
         """
-        Translate commitmeta.json/HOST OS rpms into a json list
+        Translate metadata/HOST OS rpms into a json list
         Returns the json rpms list
         """
         components = []
-        if host is None:
+        if kind == RpmListType.META:
+            file_path = f"{self.buildroot}/meta.json"
+            with open(file_path) as f:
+                data = json.load(f)
+                rpms = data['rpmdb.pkglist']
+        elif kind == RpmListType.EXTENSIONS:
+            file_path = f"{self.buildroot}/extensions.json"
+            with open(file_path) as f:
+                data = json.load(f)
+                rpms = []
+                # Extensions in node image are stored different
+                for name, full_version in data.items():
+                    version_release, arch = full_version.rsplit('.', 1)
+                    version_str, release = version_release.rsplit('-', 1)
+                    if '.' in version_str:
+                        epoch, version = version_str.split('.', 1)
+                    else:
+                        epoch = '0'
+                        version = version_str
+                    rpm_list = [name, epoch, version, release, arch]
+                    rpms.append(rpm_list)
+        elif kind == RpmListType.COMMITMETA:
             rpms = self.commit["rpmostree.rpmdb.pkglist"]
-        else:
+        elif kind == RpmListType.HOST:
             host_rpms = subprocess.check_output('rpm -qa --qf="%{NAME}:%{EPOCH}:%{RELEASE}:%{VERSION}:%{ARCH}:%{SIGMD5}:%{SIGPGP} \n"', shell=True).strip()
             rpms = (host_rpms.decode('utf-8')).split("\n")
 
         for rpm in rpms:
-            if host is None:
+            if kind != RpmListType.HOST:
                 name, epoch, version, release, arch = rpm
                 sigmd5, sigpgp, epoch = None, None, None
             else:
@@ -365,6 +388,11 @@ def kinit(keytab, principle):
     except Exception as err:
         raise Exception("failed to auth: ", err)
 
+class RpmListType(IntEnum):
+    COMMITMETA = 1
+    EXTENSIONS = 2
+    HOST = 3
+    META = 4
 
 class _KojiBase():
     """
@@ -648,6 +676,10 @@ class Upload(_KojiBase):
 
     @property
     def image_files(self):
+        """ Backward-compatible property to maintain existing behavior. """
+        return self.get_image_files(meta=False)
+
+    def get_image_files(self, meta=False):
         """ Generate outputs prepares the output listing. """
         if self._image_files is not None:
             return self._image_files
@@ -657,7 +689,11 @@ class Upload(_KojiBase):
             file_output = self.get_file_meta(value)
             if file_output is not None:
                 if "commitmeta.json" in value['upload_path']:
-                    file_output["components"] = self.build.get_rpm_list()
+                    file_output["components"] = self.build.get_rpm_list(RpmListType.COMMITMETA)
+                elif "meta.json" in value['upload_path'] and meta is not False:
+                    file_output["components"] = self.build.get_rpm_list(RpmListType.META)
+                elif "extensions.json" in value['upload_path'] and meta is not False:
+                    file_output["components"] = self.build.get_rpm_list(RpmListType.EXTENSIONS)
                 outputs.append(file_output)
         self._image_files = outputs
         return self._image_files
