@@ -557,7 +557,45 @@ func (a *API) gcEC2(gracePeriod time.Duration) error {
 		}
 	}
 
-	return a.TerminateInstances(toTerminate)
+	err = a.TerminateInstances(toTerminate)
+	if err != nil {
+		return fmt.Errorf("error terminating instances: %v", err)
+	}
+
+	volumesRes, err := a.ec2.DescribeVolumes(&ec2.DescribeVolumesInput{
+		Filters: []*ec2.Filter{
+			{
+				Name:   aws.String("tag:CreatedBy"),
+				Values: aws.StringSlice([]string{"mantle"}),
+			},
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("error describing volumes: %v", err)
+	}
+
+	toDelete := []string{}
+
+	for _, volume := range volumesRes.Volumes {
+		if volume.CreateTime.After(durationAgo) {
+			plog.Debugf("ec2: skipping volume %s due to being too new", *volume.VolumeId)
+			// skip, still too new
+			continue
+		}
+
+		if *volume.State == ec2.VolumeStateAvailable {
+			toDelete = append(toDelete, *volume.VolumeId)
+		} else {
+			plog.Infof("ec2: skipping volume in state %s", *volume.State)
+		}
+	}
+
+	err = a.DeleteVolumes(toDelete)
+	if err != nil {
+		return fmt.Errorf("error deleteing volumes: %v", err)
+	}
+
+	return nil
 }
 
 // TerminateInstances schedules EC2 instances to be terminated.
