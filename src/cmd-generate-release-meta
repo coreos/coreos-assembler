@@ -209,6 +209,16 @@ def append_build(out, input_):
             "url": inputaz["url"]
         }
 
+    # AWS Windows License Included
+    input_winli = input_.get("aws-winli")
+    if input_winli is not None:
+        rhcosext = arch_dict.setdefault("rhel-coreos-extensions", {})
+        aws_winli_images = rhcosext.setdefault("aws-winli", {}).setdefault("images", {})
+        for cloud_dict in input_winli:
+            aws_winli_images[cloud_dict["name"]] = {
+                "image": cloud_dict["hvm"]
+            }
+
     # metal specific additions
     arch_dict["media"]["metal"] = arch_dict["media"].get("metal", {})
     arch_dict["media"]["metal"]["artifacts"] = arch_dict["media"]["metal"].get("artifacts", {})
