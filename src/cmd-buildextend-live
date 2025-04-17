@@ -483,7 +483,13 @@ def generate_iso():
         shutil.copy(os.path.join(lorax_templates, 'redhat.exec'), tmpisoimages)
         with open(os.path.join(lorax_templates, 'generic.ins'), 'r') as fp1:
             with open(os.path.join(tmpisoroot, 'generic.ins'), 'w') as fp2:
-                [fp2.write(line.replace('@INITRD_LOAD_ADDRESS@', INITRD_ADDRESS)) for line in fp1]
+                for line in fp1:
+                    line = line.replace('images/kernel.img', "images/pxeboot/kernel.img")
+                    line = line.replace(
+                        'images/initrd.img @INITRD_LOAD_ADDRESS@',
+                        f"images/pxeboot/initrd.img {INITRD_ADDRESS}")
+                    fp2.write(line)
+
         for prmfile in ['cdboot.prm', 'genericdvd.prm', 'generic.prm']:
             with open(os.path.join(tmpisoimages, prmfile), 'w') as fp1:
                 with open(os.path.join(tmpisoroot, 'zipl.prm'), 'r') as fp2:
