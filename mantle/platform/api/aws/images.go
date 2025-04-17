@@ -539,7 +539,7 @@ func (a *API) CreateImageFromInstance(params *ec2.CreateImageInput) (string, str
 	// wait for the AMI to be in the "available" state
 	timeout = 10 * time.Minute
 	err = util.WaitUntilReady(timeout, delay, func() (bool, error) {
-		image, err := a.describeImage(imageID)
+		image, err := a.DescribeImage(imageID)
 		if err != nil {
 			return false, err
 		}
@@ -554,7 +554,7 @@ func (a *API) CreateImageFromInstance(params *ec2.CreateImageInput) (string, str
 		return "", "", fmt.Errorf("waiting for image to be available: %v", err)
 	}
 
-	image, err := a.describeImage(imageID)
+	image, err := a.DescribeImage(imageID)
 	if err != nil {
 		return "", "", err
 	}
@@ -632,7 +632,7 @@ func (a *API) CopyImage(sourceImageID string, regions []string, cb func(string, 
 		err    error
 	}
 
-	image, err := a.describeImage(sourceImageID)
+	image, err := a.DescribeImage(sourceImageID)
 	if err != nil {
 		return err
 	}
@@ -744,7 +744,7 @@ func (a *API) copyImageIn(sourceRegion, sourceImageID, name, description string,
 		}
 	}
 
-	image, err := a.describeImage(imageID)
+	image, err := a.DescribeImage(imageID)
 	if err != nil {
 		return ImageData{}, err
 	}
@@ -875,7 +875,7 @@ func (a *API) RemoveBySnapshotTag(snapshotID string, allowMissing bool) error {
 	return nil
 }
 
-func (a *API) describeImage(imageID string) (*ec2.Image, error) {
+func (a *API) DescribeImage(imageID string) (*ec2.Image, error) {
 	describeRes, err := a.ec2.DescribeImages(&ec2.DescribeImagesInput{
 		ImageIds: aws.StringSlice([]string{imageID}),
 	})
@@ -889,7 +889,7 @@ func (a *API) describeImage(imageID string) (*ec2.Image, error) {
 // permission on its underlying snapshot.
 func (a *API) PublishImage(imageID string) error {
 	// snapshot create-volume permission
-	image, err := a.describeImage(imageID)
+	image, err := a.DescribeImage(imageID)
 	if err != nil {
 		return err
 	}
