@@ -29,19 +29,18 @@ pod(image: imageName + ":latest", kvm: true, cpu: "${cpuCount}", memory: "${memo
     // Run stage Kola QEMU (basic-qemu-scenarios, upgrade and self tests)
     kola(cosaDir: "/srv", addExtTests: ["${env.WORKSPACE}/ci/run-kola-self-tests"])
 
-    stage("Build Metal/Live Artifacts") {
-        utils.cosaCmd(cosaDir: "/srv", args: "osbuild metal metal4k live")
-    }
-
-    kolaTestIso(cosaDir: "/srv")
-
-    stage("Build Cloud Images") {
-        cosaParallelCmds(cosaDir: "/srv", commands: ["Aliyun", "AWS", "Azure", "DigitalOcean", "Exoscale", "GCP",
-                                                     "IBMCloud", "OpenStack", "VMware", "Vultr"])
-
+    stage("Build Artifacts") {
+        def artifacts = ["aliyun", "applehv", "aws", "azure", "azurestack",
+                         "digitalocean", "exoscale", "gcp", "hetzner", "hyperv",
+                         "ibmcloud", "kubevirt", "live", "metal", "metal4k",
+                         "nutanix", "openstack", "vultr"]
+        utils.cosaCmd(cosaDir: "/srv", args: "osbuild ${artifacts.join(' ')}")
+        cosaParallelCmds(cosaDir: "/srv", commands: ["vmware", "virtualbox"])
         // quick schema validation
         utils.cosaCmd(cosaDir: "/srv", args: "meta --get name")
     }
+
+    kolaTestIso(cosaDir: "/srv")
 
     stage("Compress") {
         utils.cosaCmd(cosaDir: "/srv", args: "compress --fast")
