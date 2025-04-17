@@ -35,6 +35,7 @@ Each target has its own sub options. To access them us:
     sys_target = None
     default_replicate = False
     default_build_artifact = False
+    default_upload_artifact = False
 
     self_basename = os.path.basename(sys.argv[0])
 
@@ -46,6 +47,10 @@ Each target has its own sub options. To access them us:
     if str(self_basename).startswith("cmd-buildextend-"):
         log.info("symlink is for a build and publish command")
         default_build_artifact = True
+
+    if str(self_basename).startswith("cmd-imageupload-"):
+        log.info("symlink is for a publish command")
+        default_upload_artifact = True
 
     # previous cmd-buildextend-<target> used symlinks
     for k in cloud_clis():
@@ -81,6 +86,7 @@ Each target has its own sub options. To access them us:
     parser.add_argument("--help", action='store_true',
                         help="Print this message")
     parser.add_argument("--upload", action='store_true',
+                        default=default_upload_artifact,
                         help="Upload the disk to the ore target")
     parser.add_argument("--replicate", action='store_true',
                         default=default_replicate,
