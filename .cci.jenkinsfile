@@ -43,7 +43,8 @@ pod(image: imageName + ":latest", kvm: true, cpu: "${cpuCount}", memory: "${memo
     kolaTestIso(cosaDir: "/srv")
 
     stage("Compress") {
-        utils.cosaCmd(cosaDir: "/srv", args: "compress --fast")
+        // Test compression but only a few of the artifacts. This should test xz, zip, gzip
+        utils.cosaCmd(cosaDir: "/srv", args: "compress --fast --artifact=qemu --artifact=applehv --artifact=hyperv")
     }
 
     stage("Upload Dry Run") {
