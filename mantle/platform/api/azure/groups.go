@@ -21,10 +21,12 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
+
+	"github.com/coreos/coreos-assembler/mantle/util"
 )
 
 func (a *API) CreateResourceGroup(prefix string) (string, error) {
-	name := randomName(prefix)
+	name := util.RandomName(prefix)
 	tags := map[string]*string{
 		"createdAt": to.Ptr(time.Now().Format(time.RFC3339)),
 		"createdBy": to.Ptr("mantle"),
