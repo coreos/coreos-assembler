@@ -21,6 +21,8 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork"
+
+	"github.com/coreos/coreos-assembler/mantle/util"
 )
 
 var (
@@ -79,7 +81,7 @@ func (a *API) getSubnet(resourceGroup string) (armnetwork.Subnet, error) {
 }
 
 func (a *API) createPublicIP(resourceGroup string) (armnetwork.PublicIPAddress, error) {
-	name := randomName("ip")
+	name := util.RandomName("ip")
 	ctx := context.Background()
 
 	poller, err := a.ipClient.BeginCreateOrUpdate(ctx, resourceGroup, name, armnetwork.PublicIPAddress{
@@ -144,8 +146,8 @@ func (a *API) GetPrivateIP(interfaceName, resourceGroup string) (string, error) 
 }
 
 func (a *API) createNIC(ip armnetwork.PublicIPAddress, subnet *armnetwork.Subnet, resourceGroup string) (armnetwork.Interface, error) {
-	name := randomName("nic")
-	ipconf := randomName("nic-ipconf")
+	name := util.RandomName("nic")
+	ipconf := util.RandomName("nic-ipconf")
 	ctx := context.Background()
 
 	poller, err := a.intClient.BeginCreateOrUpdate(ctx, resourceGroup, name, armnetwork.Interface{
