@@ -56,9 +56,16 @@ func (a *API) createSecurityGroup(name string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+
+	var desc string
+	if name == "winli-builder" {
+		desc = "mantle security group for winli"
+	} else {
+		desc = "mantle security group for testing"
+	}
 	sg, err := a.ec2.CreateSecurityGroup(&ec2.CreateSecurityGroupInput{
 		GroupName:         aws.String(name),
-		Description:       aws.String("mantle security group for testing"),
+		Description:       aws.String(desc),
 		VpcId:             aws.String(vpcId),
 		TagSpecifications: tagSpecCreatedByMantle(name, ec2.ResourceTypeSecurityGroup),
 	})

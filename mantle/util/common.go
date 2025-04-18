@@ -15,6 +15,7 @@
 package util
 
 import (
+	"crypto/rand"
 	"fmt"
 	"os"
 	"os/exec"
@@ -163,4 +164,12 @@ func ParseDiskSpec(spec string, allowNoSize bool) (int64, map[string]string, err
 		}
 	}
 	return size, diskmap, nil
+}
+
+func RandomName(prefix string) string {
+	b := make([]byte, 5)
+	if _, err := rand.Read(b); err != nil {
+		plog.Errorf("randomName: failed to generate a random name: %v", err)
+	}
+	return fmt.Sprintf("%s-%x", prefix, b)
 }

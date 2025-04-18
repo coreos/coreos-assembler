@@ -16,7 +16,6 @@
 package azure
 
 import (
-	"crypto/rand"
 	"fmt"
 	"os"
 	"strings"
@@ -27,12 +26,9 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/storage/armstorage"
-	"github.com/coreos/pkg/capnslog"
 
 	"github.com/coreos/coreos-assembler/mantle/auth"
 )
-
-var plog = capnslog.NewPackageLogger("github.com/coreos/coreos-assembler/mantle", "platform/api/azure")
 
 type API struct {
 	azIdCred   *azidentity.DefaultAzureCredential
@@ -115,14 +111,6 @@ func (a *API) SetupClients() error {
 
 	a.accClient, err = armstorage.NewAccountsClient(a.opts.SubscriptionID, a.azIdCred, nil)
 	return err
-}
-
-func randomName(prefix string) string {
-	b := make([]byte, 5)
-	if _, err := rand.Read(b); err != nil {
-		plog.Errorf("randomName: failed to generate a random name: %v", err)
-	}
-	return fmt.Sprintf("%s-%x", prefix, b)
 }
 
 func (a *API) GC(gracePeriod time.Duration) error {

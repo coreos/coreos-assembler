@@ -31,6 +31,8 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/pageblob"
 
 	"github.com/frostschutz/go-fibmap"
+
+	"github.com/coreos/coreos-assembler/mantle/util"
 )
 
 func (a *API) GetStorageServiceKeys(account, resourceGroup string) (armstorage.AccountListKeysResult, error) {
@@ -43,7 +45,7 @@ func (a *API) GetStorageServiceKeys(account, resourceGroup string) (armstorage.A
 
 func (a *API) CreateStorageAccount(resourceGroup string) (string, error) {
 	// Only lower-case letters & numbers allowed in storage account names
-	name := strings.Replace(randomName("kolasa"), "-", "", -1)
+	name := strings.Replace(util.RandomName("kolasa"), "-", "", -1)
 	parameters := armstorage.AccountCreateParameters{
 		SKU: &armstorage.SKU{
 			Name: to.Ptr(armstorage.SKUNameStandardLRS),

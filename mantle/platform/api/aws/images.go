@@ -338,6 +338,77 @@ func (a *API) CreateImportRole(bucket string) error {
 	return nil
 }
 
+func (a *API) CreateWinLiImage(snapshotID string, name string, description string, architecture string, windowsAMI string, instanceType string, volumetype string) (string, string, error) {
+	//var awsArch string
+	if architecture != "x86_64" {
+		return "", "", fmt.Errorf("unsupported WinLi architecture %q", architecture)
+	}
+
+	opts := *a.opts
+	opts.AMI = windowsAMI
+	opts.InstanceType = instanceType
+	opts.SecurityGroup = "winli-builder"
+	aa, err := New(&opts)
+	if err != nil {
+		return "", "", err
+	}
+
+	instanceName := util.RandomName("winli-builder")
+	keyname := ""
+	userdata := ""
+	count := 1
+	minDiskSize := 0
+	useInstanceProfile := false
+
+	insts, err := aa.CreateInstances(instanceName, keyname, userdata, uint64(count), int64(minDiskSize), useInstanceProfile)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to create windows server instance %q", err)
+	}
+
+	winliInstanceId := *insts[0].InstanceId
+
+	// stop the instance in order to replace the root volume
+	err = aa.StopInstances([]string{winliInstanceId})
+	if err != nil {
+		return "", "", fmt.Errorf("stop instances failed: %v", err)
+	}
+
+	// create a new root volume from the CoreOS snapshot
+	availabilityZone := *insts[0].Placement.AvailabilityZone
+	newRootVolumeName := name + "-winli-root-volume"
+	newRootVolumeID, err := aa.CreateVolumeFromSnapshot(newRootVolumeName, snapshotID, volumetype, availabilityZone)
+	if err != nil {
+		return "", "", fmt.Errorf("error creating volume from snapshot: %v", err)
+	}
+
+	rootVolumeDevName := "/dev/sda1"
+	err = aa.ReplaceRootVolume(winliInstanceId, rootVolumeDevName, newRootVolumeID)
+	if err != nil {
+		return "", "", fmt.Errorf("error replacing root volume: %v", err)
+	}
+
+	// if we made it here, we have a windows instance with an CoreOS root volume.
+	// create an image based on the modified instance and return the ImageId
+	params := &ec2.CreateImageInput{
+		Name:               aws.String(name),
+		Description:		aws.String(description),
+		InstanceId:			aws.String(winliInstanceId),
+	}
+
+	// create AMI from the modified windows instance
+	imageID, snapshotID, err := aa.CreateImageFromInstance(params)
+
+	// delete the windows instance
+	terminateErr := aa.TerminateInstances([]string{winliInstanceId})
+	if terminateErr != nil {
+		// log the failure and continue
+		plog.Infof("failed to terminate instance %v: %v", winliInstanceId, terminateErr)
+	}
+
+	return imageID, snapshotID, err
+
+}
+
 func (a *API) CreateHVMImage(snapshotID string, diskSizeGiB uint, name string, description string, architecture string, volumetype string, imdsv2Only bool, X86BootMode string) (string, error) {
 	var awsArch string
 	var bootmode string
@@ -408,22 +479,26 @@ func (a *API) deregisterImageIfExists(name string) error {
 
 // Remove all uploaded data associated with an AMI.
 func (a *API) RemoveImage(name, s3BucketName, s3ObjectPath string) error {
-	err := a.DeleteObject(s3BucketName, s3ObjectPath)
-	if err != nil {
-		if awsErr, ok := err.(awserr.Error); ok {
-			if awsErr.Code() != "NoSuchKey" {
+	// Delete S3 object if bucket and path are specified.
+	if s3BucketName != "" && s3ObjectPath != "" {
+		err := a.DeleteObject(s3BucketName, s3ObjectPath)
+		if err != nil {
+			if awsErr, ok := err.(awserr.Error); ok {
+				if awsErr.Code() != "NoSuchKey" {
+					return err
+				}
+			} else {
 				return err
 			}
 		} else {
-			return err
+			plog.Infof("Deleted existing S3 object bucket:%s path:%s", s3BucketName, s3ObjectPath)
 		}
-	} else {
-		plog.Infof("Deleted existing S3 object bucket:%s path:%s", s3BucketName, s3ObjectPath)
 	}
+	
 
 	// compatibility with old versions of this code, which created HVM
 	// AMIs with an "-hvm" suffix
-	err = a.deregisterImageIfExists(name + "-hvm")
+	err := a.deregisterImageIfExists(name + "-hvm")
 	if err != nil {
 		return err
 	}
@@ -460,17 +535,21 @@ func (a *API) createImage(params *ec2.RegisterImageInput) (string, error) {
 	} else if awserr, ok := err.(awserr.Error); ok && awserr.Code() == "InvalidAMIName.Duplicate" {
 		// The AMI already exists. Get its ID. Due to races, this
 		// may take several attempts.
-		for {
+		timeout := 5 * time.Minute
+		delay := 10 * time.Second
+		err = util.RetryUntilTimeout(timeout, delay, func() error {
 			imageID, err = a.FindImage(*params.Name)
 			if err != nil {
-				return "", err
+				return err
 			}
 			if imageID != "" {
 				plog.Infof("found existing image %v, reusing", imageID)
-				break
+				return nil
 			}
-			plog.Debugf("failed to locate image %q, retrying...", *params.Name)
-			time.Sleep(10 * time.Second)
+			return fmt.Errorf("failed to locate image %q", *params.Name)
+		})
+		if err != nil {
+			return "", fmt.Errorf("error finding duplicate image id: %v", err)
 		}
 	} else {
 		return "", fmt.Errorf("error creating AMI: %v", err)
@@ -495,6 +574,89 @@ func (a *API) createImage(params *ec2.RegisterImageInput) (string, error) {
 	}
 
 	return imageID, nil
+}
+
+// CreateImageFromInstance will return the ImageID of the image created from an ec2 instance
+// A new snapshot is created in the process, so the SnapshotID is also returned
+func (a *API) CreateImageFromInstance(params *ec2.CreateImageInput) (string, string, error) {
+	var imageID string
+	timeout := 5 * time.Minute
+	delay := 10 * time.Second
+
+	res, err := a.ec2.CreateImage(params)
+	if err == nil {
+		imageID = *res.ImageId
+		plog.Infof("created image %v", imageID)
+	} else if awserr, ok := err.(awserr.Error); ok && awserr.Code() == "InvalidAMIName.Duplicate" {
+		// The AMI already exists. Get its ID. Due to races, this
+		// may take several attempts.
+		err = util.RetryUntilTimeout(timeout, delay, func() error {
+			imageID, err = a.FindImage(*params.Name)
+			if err != nil {
+				return err
+			}
+			if imageID != "" {
+				plog.Infof("found existing image %v, reusing", imageID)
+				return nil
+			}
+			return fmt.Errorf("failed to locate image %q", *params.Name)
+		})
+		if err != nil {
+			return "", "", fmt.Errorf("error finding duplicate image id: %v", err)
+		}
+	} else {
+		return "", "", fmt.Errorf("error creating AMI: %v", err)
+	}
+
+	// wait for the AMI to be in the "available" state
+	timeout = 10 * time.Minute
+	err = util.WaitUntilReady(timeout, delay, func() (bool, error) {
+		image, err := a.DescribeImage(imageID)
+		if err != nil {
+			return false, err
+		}
+		
+		if *image.State != ec2.ImageStateAvailable {
+			return false, nil
+		}
+		return true, nil
+	})
+
+	if err != nil {
+		return "", "", fmt.Errorf("waiting for image to be available: %v", err)
+	}
+
+	image, err := a.DescribeImage(imageID)
+	if err != nil {
+		return "", "", err
+	}
+
+	snapshotID, err := getImageSnapshotID(image)
+	if err != nil {
+		return "", "", err
+	}
+
+	// Attempt to tag inside of a retry loop; AWS eventual consistency means that just because
+	// the FindImage call found the AMI it might not be found by the CreateTags call
+	err = util.RetryConditional(6, 5*time.Second, func(err error) bool {
+		if awserr, ok := err.(awserr.Error); ok && awserr.Code() == "InvalidAMIID.NotFound" {
+			return true
+		}
+		return false
+	}, func() error {
+		// tag the new image and the new snapshot
+		// We do this even in the already-exists path in case the previous
+		// run was interrupted.
+		return a.CreateTags([]string{imageID, snapshotID}, map[string]string{
+			"Name": *params.Name,
+		})
+	})
+	if err != nil {
+		return "", "", fmt.Errorf("couldn't tag image name: %v", err)
+	}
+
+	return imageID, snapshotID, nil
+
 }
 
 // GrantVolumePermission grants permission to access an EC2 snapshot volume (referenced by its snapshot ID)
@@ -542,7 +704,7 @@ func (a *API) CopyImage(sourceImageID string, regions []string, cb func(string, 
 		err    error
 	}
 
-	image, err := a.describeImage(sourceImageID)
+	image, err := a.DescribeImage(sourceImageID)
 	if err != nil {
 		return err
 	}
@@ -654,7 +816,7 @@ func (a *API) copyImageIn(sourceRegion, sourceImageID, name, description string,
 		}
 	}
 
-	image, err := a.describeImage(imageID)
+	image, err := a.DescribeImage(imageID)
 	if err != nil {
 		return ImageData{}, err
 	}
@@ -785,7 +947,7 @@ func (a *API) RemoveBySnapshotTag(snapshotID string, allowMissing bool) error {
 	return nil
 }
 
-func (a *API) describeImage(imageID string) (*ec2.Image, error) {
+func (a *API) DescribeImage(imageID string) (*ec2.Image, error) {
 	describeRes, err := a.ec2.DescribeImages(&ec2.DescribeImagesInput{
 		ImageIds: aws.StringSlice([]string{imageID}),
 	})
@@ -799,7 +961,7 @@ func (a *API) describeImage(imageID string) (*ec2.Image, error) {
 // permission on its underlying snapshot.
 func (a *API) PublishImage(imageID string) error {
 	// snapshot create-volume permission
-	image, err := a.describeImage(imageID)
+	image, err := a.DescribeImage(imageID)
 	if err != nil {
 		return err
 	}
