@@ -12,7 +12,8 @@ PYIGNORE ?= E128,E241,E402,E501,E722,W503,W504
 .PHONY: all check shellcheck flake8 pycheck unittest clean mantle mantle-check install
 
 MANTLE_BINARIES := ore kola plume
-KOLET_ARCHES := aarch64 ppc64le s390x x86_64
+# Typically just build kolet for the architecture we are on.
+export KOLET_ARCHES:=$(shell uname -m)
 
 all: bin/coreos-assembler mantle
 
@@ -26,9 +27,14 @@ cwd_checked:=$(patsubst ./%,.%.shellchecked,${cwd})
 GOARCH:=$(shell uname -m)
 export COSA_META_SCHEMA:=$(shell pwd)/src/v1.json
 ifeq ($(GOARCH),x86_64)
-        GOARCH="amd64"
+	GOARCH="amd64"
+	# On x86_64 only we'll build kolet for all the other architectures.
+	# This is mainly so we can initiate tests against a remote that is
+	# a different architecture. i.e. x86_64 kola testing against an
+	# aarch64 EC2 instance.
+	export KOLET_ARCHES := aarch64 ppc64le s390x x86_64
 else ifeq ($(GOARCH),aarch64)
-        GOARCH="arm64"
+	GOARCH="arm64"
 endif
 
 bin/coreos-assembler:
