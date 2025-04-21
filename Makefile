@@ -36,6 +36,10 @@ ifeq ($(GOARCH),x86_64)
 else ifeq ($(GOARCH),aarch64)
 	GOARCH="arm64"
 endif
+ifeq ($(GOARCH),riscv64)
+	# https://github.com/golang/go/issues/72840
+	export CGO_ENABLED := 0
+endif
 
 bin/coreos-assembler:
 	cd cmd && go build -mod vendor -o ../$@
