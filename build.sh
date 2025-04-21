@@ -30,6 +30,7 @@ set -x
 srcdir=$(pwd)
 
 configure_yum_repos() {
+    [ "${arch}" == "riscv64" ] && return # No continuous repo for riscv64 yet
     local version_id
     version_id=$(. /etc/os-release && echo ${VERSION_ID})
     # Add continuous tag for latest build tools and mark as required so we
@@ -102,6 +103,7 @@ install_rpms() {
 # and it is very useful to have in the same place/flow as where we do builds/tests related
 # to CoreOS.
 install_ocp_tools() {
+    [ "${arch}" == "riscv64" ] && return # No ocp tools for riscv64
     # If $OCP_VERSION is defined we'll grab that specific version.
     # Otherwise we'll get the latest.
     local url="https://mirror.openshift.com/pub/openshift-v4/${arch}/clients/ocp/latest${OCP_VERSION:+-$OCP_VERSION}/openshift-client-linux.tar.gz"

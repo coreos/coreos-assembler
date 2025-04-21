@@ -337,7 +337,7 @@ main() {
     fi
 
     case "$basearch" in
-        "x86_64"|"aarch64"|"s390x"|"ppc64le") ;;
+        "x86_64"|"aarch64"|"s390x"|"ppc64le"|"riscv64") ;;
         *) fatal "$basearch is not supported for this command" ;;
     esac
 
