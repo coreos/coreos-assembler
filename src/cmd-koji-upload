@@ -97,6 +97,13 @@ def md5sum_file(path):
     return h.hexdigest()
 
 
+class RpmListType(IntEnum):
+    COMMITMETA = 1
+    EXTENSIONS = 2
+    HOST = 3
+    META = 4
+
+
 class Build(_Build):
     """
     Koji implementation of Build.
@@ -113,12 +120,28 @@ class Build(_Build):
             "require_commit": True,
             "require_cosa": True,
         })
-        _Build.__init__(self, **kwargs)
-        self.version, self.release = self.build_id.split('-')
-        self.name = f"{self.build_name}-{self.basearch}"
-        self.source = self.get_meta_key(
-            "meta", self.ckey("container-config-git"))
-        self.host_rpms = self.get_rpm_list(RpmListType.HOST)
+        if kwargs.get('node_image') is True:
+            self.version = kwargs['build'].replace("-", ".")
+            self.release = "0"
+            self._build_dir = self.buildroot
+            self._basearch = kwargs['arch']
+            self.name = f"rhcos-{self.basearch}"
+            self.source = "https://github.com/openshift/os"
+            self.meta_file_path = f"{kwargs['buildroot']}/meta.json"
+            self._found_files = {}
+            self._build_json = {}
+            with open(self.meta_file_path) as f:
+                self._build_json['meta'] = json.load(f)
+            # We use podman build, there is no need for host rpms
+            self.host_rpms = ""
+        else:
+            _Build.__init__(self, **kwargs)
+            self.version, self.release = self.build_id.split('-')
+            self.name = f"{self.build_name}-{self.basearch}"
+            self.source = self.get_meta_key(
+                "meta", self.ckey("container-config-git"))
+            self.host_rpms = self.get_rpm_list(RpmListType.HOST)
+
     def __del__(self):
         try:
             shutil.rmtree(self._tmpdir)
@@ -388,11 +411,6 @@ def kinit(keytab, principle):
     except Exception as err:
         raise Exception("failed to auth: ", err)
 
-class RpmListType(IntEnum):
-    COMMITMETA = 1
-    EXTENSIONS = 2
-    HOST = 3
-    META = 4
 
 class _KojiBase():
     """
@@ -561,7 +579,11 @@ class Reserve(_KojiBase):
             'token': koji_reservation['token'],
             'release': build.release
         }
-        build.meta_write()
+        if hasattr(build, 'meta_file_path') and build.meta_file_path:
+            with open(build.meta_file_path, "w") as f:
+                json.dump(build.meta, f, indent=2)
+        else:
+            build.meta_write()
 
 
 class Upload(_KojiBase):
@@ -745,9 +767,16 @@ class Upload(_KojiBase):
                 'public-url': self._s3_url
             }
             self.build.meta_write()
+        if 'origin' in self.build.source:
+            source = self.build.source['origin']
+            commit = self.build.source['commit']
+            meta = False
+        else:
+            source = self.build.source
+            commit = ""
+            meta = True
 
-
-        log.debug(f"Preparing manifest for {(len(self.image_files))} files")
+        log.debug(f"Preparing manifest for {(len(self.get_image_files(meta=meta)))} files")
         # The koji/brew NVR is constructed like so:
         # Name = "rhcos-$arch", like `rhcos-x86_64`
         # Version = Everything before `-` in RHCOS version
@@ -773,7 +802,7 @@ class Upload(_KojiBase):
                 "name": self.build.name,
                 "release": self.build.release,
                 "owner": self._owner,
-                "source": self.build.source['origin'],
+                "source": source,
                 "start_time": stamp,
                 "version": self.build.version
             },
@@ -785,7 +814,7 @@ class Upload(_KojiBase):
                 },
                 "content_generator": {
                     "name": "coreos-assembler",
-                    "version": self.build.source['commit']
+                    "version": commit
                 },
                 "container": {
                     "type": "docker",
@@ -803,11 +832,11 @@ class Upload(_KojiBase):
                 "tools": [
                     {
                         "name": "coreos-assembler",
-                        "version": self.build.source['commit']
+                        "version": commit
                     }
                 ]
             }],
-            "output": self.image_files
+            "output": self.get_image_files(meta=meta)
         }
 
         return self._manifest
@@ -960,7 +989,9 @@ Environment variables are supported:
                         help="Do not upload, just parse the build")
     parent_parser.add_argument("--arch", default=get_basearch(),
                         help="Set the build architecture")
-
+    # Node image sytle update
+    parent_parser.add_argument("--node-image", action='store_true', required=False,
+                         help="Brew uploads for node image sytle")
     # Koji specific options
     parent_parser.add_argument("--no-auth", action='store_false', dest="auth",
                         help="Skip Kerberos auth, use if already auth'd")
@@ -1043,7 +1074,8 @@ Environment variables are supported:
 
     args = parser.parse_args(namespace=args)
 
-    build = Build(buildroot=args.buildroot, build=args.build, arch=args.arch)
+    build = Build(buildroot=args.buildroot, build=args.build, arch=args.arch,
+                  node_image=args.node_image)
 
     if args.auth:
         kinit(args.keytab, args.owner)
