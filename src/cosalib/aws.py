@@ -168,9 +168,11 @@ def aws_run_ore(build, args):
     if args.winli_instance_type:
         ore_args.extend(['--winli-instance-type', f"{args.winli_instance_type}"])
 
+    if args.bucket:
+        ore_args.extend(['--bucket', f"{args.bucket}"])
+
     ore_args.extend([
         '--region', f"{region}",
-        '--bucket', f"{args.bucket}",
         '--ami-name', f"{build.build_name}{winli_name}-{build.build_id}-{build.basearch}",
         '--name', f"{build.build_name}{winli_name}-{build.build_id}-{build.basearch}",
         '--ami-description', f"{build.summary} {build.build_id} {build.basearch}{winli_description}",
