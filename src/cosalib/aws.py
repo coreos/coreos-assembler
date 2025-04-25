@@ -1,7 +1,6 @@
 import json
 import os
 import subprocess
-import sys
 
 from cosalib.builds import Builds
 from cosalib.cmdlib import runcmd
@@ -69,8 +68,7 @@ def aws_run_ore_replicate(build, args):
         region_list = list(set(args.region) - set(duplicates))
         if len(region_list) == 0:
             print("no new regions detected")
-            sys.exit(0)
-
+            continue
         source_image = None
         for a in buildmeta[key]:
             if a['name'] == args.source_region:
