@@ -2,11 +2,12 @@ package main
 
 import (
 	"fmt"
-	"github.com/spf13/cobra"
 	"io"
 	"os"
 	"os/exec"
 	"strings"
+
+	"github.com/spf13/cobra"
 )
 
 type RemoteSessionOptions struct {
@@ -143,7 +144,7 @@ func runCreate(c *cobra.Command, args []string) error {
 		// non-s390x builders.
 		// See: https://github.com/coreos/coreos-assembler/blob/main/docs/cosa/buildextend-secex.md
 		"--volume=secex-data:/data.secex:ro",
-		"--uidmap=1000:0:1", "--uidmap=0:1:1000", "--uidmap=1001:1001:64536",
+		"--userns=keep-id:uid=1000,gid=1000",
 		"--device=/dev/kvm", "--device=/dev/fuse", "--tmpfs=/tmp",
 		"--init", "--entrypoint=/usr/bin/sleep"}
 	// Add in any env vars that were specified.
