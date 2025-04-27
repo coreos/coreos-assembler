@@ -101,3 +101,6 @@ python-anytree
 
 # For mkfs.erofs
 erofs-utils
+
+# Support for copr build in coreos-ci
+copr-cli
