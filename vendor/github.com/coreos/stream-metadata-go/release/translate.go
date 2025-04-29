@@ -81,6 +81,21 @@ func (releaseArch *Arch) toStreamArch(rel *Release) stream.Arch {
 			}
 			cloudImages.Aws = &awsAmis
 		}
+
+		if relRHCOSExt != nil {
+			if relRHCOSExt.AwsWinLi != nil {
+				if relRHCOSExt.AwsWinLi.Images != nil {
+					awsWinLIAmis := rhcos.ReplicatedImage{
+						Regions: make(map[string]rhcos.SingleImage),
+					}
+					for region, ami := range relRHCOSExt.AwsWinLi.Images {
+						si := rhcos.SingleImage{Release: rel.Release, Image: ami.Image}
+						awsWinLIAmis.Regions[region] = si
+					}
+					rhcosExt.AwsWinLi = &awsWinLIAmis
+				}
+			}
+		}
 	}
 
 	if releaseArch.Media.Azure != nil {
