@@ -41,6 +41,9 @@ def build_container_image(labels, buildDir, containerfile, fromimage, cacheTTL,
         cmd.extend(["-v", "/etc/pki/ca-trust:/etc/pki/ca-trust:ro"])
     if security_opt:
         cmd.extend(["--security-opt", security_opt])
+    # Always checking if there is a newer base image to build on make sense here.
+    # If it's already present in the local container storage it may be stale.
+    cmd.extend(['--pull=always'])
     # Long running command. Send output to stdout for logging
     runcmd(cmd)
 
