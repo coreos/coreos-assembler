@@ -459,6 +459,12 @@ func syncStreamOptions() error {
 		release = regionimg.Release
 		kola.AWSOptions.AMI = regionimg.Image
 		extra = fmt.Sprintf("(region %s, %s)", kola.AWSOptions.Region, kola.AWSOptions.AMI)
+	case "gcp":
+		release = artifacts.Images.Gcp.Release
+		imageproject := artifacts.Images.Gcp.Project
+		imagename := artifacts.Images.Gcp.Name
+		kola.GCPOptions.Image = fmt.Sprintf("projects/%s/global/images/%s", imageproject, imagename)
+		extra = fmt.Sprintf("(image project: %s, image name: %s)", imageproject, imagename)
 	default:
 		return fmt.Errorf("Unhandled platform %s for stream", kolaPlatform)
 	}
