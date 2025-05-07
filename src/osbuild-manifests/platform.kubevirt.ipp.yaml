@@ -81,6 +81,41 @@ pipelines:
     build:
       mpp-format-string: '{buildroot}'
     stages:
+      - mpp-if: arch == 's390x'
+        then:
+          type: org.osbuild.zipl.inst
+          options:
+            kernel: "1"
+            kernel_opts_append:
+              - ignition.firstboot
+            location:
+              mpp-format-int: '{image.layout[''boot''].start}'
+          devices:
+            disk:
+              type: org.osbuild.loopback
+              options:
+                filename: disk.img  # Refer to the input by its new name
+                partscan: true
+          mounts:
+            - name: root
+              type: org.osbuild.xfs
+              source: disk
+              partition:
+                mpp-format-int: '{image.layout[''root''].partnum}'
+              target: /
+            - name: boot
+              type: org.osbuild.ext4
+              source: disk
+              partition:
+                mpp-format-int: '{image.layout[''boot''].partnum}'
+              target: /boot
+        inputs:
+            disk_image:  # Use a more descriptive input name
+              type: org.osbuild.files
+              origin: org.osbuild.pipeline
+              references:
+                name:raw-kubevirt-image:
+                  file: disk.img
       - type: org.osbuild.oci-archive
         inputs:
           base:
