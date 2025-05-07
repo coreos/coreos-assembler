@@ -240,8 +240,8 @@ class Build(_Build):
                 for name, full_version in data.items():
                     version_release, arch = full_version.rsplit('.', 1)
                     version_str, release = version_release.rsplit('-', 1)
-                    if '.' in version_str:
-                        epoch, version = version_str.split('.', 1)
+                    if ':' in version_str:
+                        epoch, version = version_str.split(':', 1)
                     else:
                         epoch = '0'
                         version = version_str
