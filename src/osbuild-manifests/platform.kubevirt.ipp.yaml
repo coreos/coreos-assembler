@@ -52,6 +52,43 @@ pipelines:
              partition:
                mpp-format-int: '{image.layout[''boot''].partnum}'
              target: /boot
+      # If on s390x then run zipl, which must run after the kernel
+      # arguments get finalized in the coreos.platform stage above
+      - mpp-if: arch == 's390x'
+        then:
+          type: org.osbuild.zipl.inst
+          options:
+            kernel: "1"
+            kernel_opts_append:
+              - ignition.firstboot
+            location:
+              mpp-format-int: '{image.layout[''boot''].start}'
+          devices:
+            disk:
+              type: org.osbuild.loopback
+              options:
+                filename: disk.img
+                partscan: true
+          mounts:
+            - name: root
+              type: org.osbuild.xfs
+              source: disk
+              partition:
+                mpp-format-int: '{image.layout[''root''].partnum}'
+              target: /
+            - name: boot
+              type: org.osbuild.ext4
+              source: disk
+              partition:
+                mpp-format-int: '{image.layout[''boot''].partnum}'
+              target: /boot
+        inputs:
+            disk_image:
+              type: org.osbuild.files
+              origin: org.osbuild.pipeline
+              references:
+                name:raw-kubevirt-image:
+                  file: disk.img
   - name: qemu-kubevirt-image
     build:
       mpp-format-string: '{host_as_buildroot}'
