@@ -520,6 +520,12 @@ def skopeo_inspect(repo, tag, auth):
         if exit_code == 2:
             print(f"\t\t\tSkipping deletion for {repo}:{tag} since the tag does not exist.")
             return False
+        # Quay could return an "unknown" error code when a tag has expired or been GC’d.
+        # Check for this error message specifically and avoid raising an exception in that
+        # case, since the image is already gone.
+        elif "Tag" in error_message and "was deleted or has expired" in error_message:
+            print(f"\t\t\tSkipping deletion for {repo}:{tag} since the tag was deleted or has expired.")
+            return False
         else:
             # Handle other types of errors
             raise Exception(f"Inspection failed for {repo}:{tag} with exit code {exit_code}: {error_message}")
