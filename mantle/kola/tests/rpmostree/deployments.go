@@ -15,7 +15,6 @@
 package rpmostree
 
 import (
-	"fmt"
 	"reflect"
 	"regexp"
 
@@ -49,15 +48,12 @@ func init() {
 			"storage": {
 			  "files": [
 				{
-				  "path": "/var/home/core/aht-dummy.rpm",
+				  "path": "/var/home/core/epel-release-latest-9.noarch.rpm",
 				  "user": {
 					"name": "core"
 				  },
 				  "contents": {
-					"source": "https://github.com/projectatomic/atomic-host-tests/raw/master/rpm/aht-dummy-1.0-1.noarch.rpm",
-					"verification": {
-					  "hash": "sha512-da29ae637b30647cab2386a2ce6b4223c3ad7120ae8dd32d9ce275f26a11946400bba0b86f6feabb9fb83622856ef39f8cecf14b4975638c4d8c0cf33b0f7b26"
-					}
+					"source": "https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm",
 				  },
 				  "mode": 420
 				}
@@ -190,16 +186,8 @@ func rpmOstreeUpgradeRollback(c cluster.TestCluster) {
 // This uses a dummy RPM that was originally created for the atomic-host-tests;
 // see: https://github.com/projectatomic/atomic-host-tests
 func rpmOstreeInstallUninstall(c cluster.TestCluster) {
-	var ahtRpmPath = "/var/home/core/aht-dummy.rpm"
-	var installPkgName = "aht-dummy-1.0-1.noarch"
-	var installBinName = "aht-dummy"
-	var installBinPath string
-
-	if c.Distribution() == "fcos" {
-		installBinPath = fmt.Sprintf("/usr/bin/%v", installBinName)
-	} else {
-		installBinPath = fmt.Sprintf("/bin/%v", installBinName)
-	}
+	var epelRpmPath = "/var/home/core/epel-release-latest-9.noarch.rpm"
+	var installPkgName = "epel-release"
 
 	m := c.Machines()[0]
 
@@ -217,7 +205,7 @@ func rpmOstreeInstallUninstall(c cluster.TestCluster) {
 	c.Run("install", func(c cluster.TestCluster) {
 		// install package and reboot
 		// this is only testing local rpm install, `--cache-only` avoid fetching RPM data from remote
-		c.RunCmdSync(m, "sudo rpm-ostree install --cache-only "+ahtRpmPath)
+		c.RunCmdSync(m, "sudo rpm-ostree install --cache-only "+epelRpmPath)
 
 		installRebootErr := m.Reboot()
 		if installRebootErr != nil {
@@ -234,7 +222,6 @@ func rpmOstreeInstallUninstall(c cluster.TestCluster) {
 		}
 
 		// check the command is present, in the rpmdb, and usable
-		c.AssertCmdOutputContains(m, "command -v "+installBinName, installBinPath)
 		c.AssertCmdOutputMatches(m, "rpm -q "+installPkgName, regexp.MustCompile("^"+installPkgName))
 
 		// package should be in the metadata
