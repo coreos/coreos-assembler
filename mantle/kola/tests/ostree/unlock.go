@@ -44,8 +44,8 @@ func init() {
 }
 
 var (
-	rpmUrl  string = "https://raw.githubusercontent.com/projectatomic/atomic-host-tests/master/rpm/aht-dummy-1.0-1.noarch.rpm"
-	rpmName string = "aht-dummy"
+	rpmUrl  string = "https://github.com/coreos/coreos-dummy-rpm/raw/refs/heads/main/coreos-dummy-1.0-1.noarch.rpm"
+	rpmName string = "coreos-dummy"
 )
 
 // ostreeAdminUnlock will unlock the deployment and verify the success of the operation
