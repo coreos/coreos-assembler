@@ -9,9 +9,20 @@ properties([
 // an imageStream for it
 def cpuCount = 6
 def cpuCount_s = cpuCount.toString()
+def memory = (cpuCount * 1536) as Integer
 def imageName = buildImage(env: [ENABLE_GO_RACE_DETECTOR: "1", GOMAXPROCS: cpuCount_s], cpu: cpuCount_s)
 
-def memory = (cpuCount * 1536) as Integer
+// We are seeing an issue where the first time we try to create a pod
+// from a just created image it fails. Here we bake in an initial pod
+// that we allow to fail to work around the problem while we investigate.
+try {
+    pod(image: imageName + ":latest", kvm: true, cpu: "${cpuCount}", memory: "${memory}Mi") {
+        shwrap("Initial pod creation worked!")
+    }
+} catch(e) {
+    echo "Initial pod creation failed. Continuing."
+}
+
 pod(image: imageName + ":latest", kvm: true, cpu: "${cpuCount}", memory: "${memory}Mi") {
     checkout scm
 
