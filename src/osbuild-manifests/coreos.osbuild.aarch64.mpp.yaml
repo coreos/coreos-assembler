@@ -188,14 +188,15 @@ pipelines:
             - path: /boot/efi
               mode: 493
       - type: org.osbuild.ignition
-      # Deploy via OSTree repo if specified, otherwise ociarchive or container.
-      - mpp-if: ostree_repo != ''
+      # Deploy via ociarchive or container
+      - mpp-if: ociarchive != ''
         then:
-          type: org.osbuild.ostree.deploy
+          type: org.osbuild.ostree.deploy.container
           options:
             osname:
               mpp-format-string: '{osname}'
-            remote: fedora
+            target_imgref:
+              mpp-format-string: '{container_imgref}'
             mounts:
               - /boot
               - /boot/efi
@@ -204,59 +205,34 @@ pipelines:
               - '$ignition_firstboot'
               - mpp-format-string: '{extra_kargs}'
           inputs:
-            commits:
-              type: org.osbuild.ostree
-              origin: org.osbuild.source
-              mpp-resolve-ostree-commits:
-                commits:
-                  - ref: $ostree_ref
-                    remote:
-                      url: $ostree_repo
+            images:
+              type: org.osbuild.containers
+              origin: org.osbuild.pipeline
+              references:
+                name:oci-archive:
+                  name: coreos.ociarchive
         else:
-          mpp-if: ociarchive != ''
-          then:
-            type: org.osbuild.ostree.deploy.container
-            options:
-              osname:
-                mpp-format-string: '{osname}'
-              target_imgref:
-                mpp-format-string: '{container_imgref}'
-              mounts:
-                - /boot
-                - /boot/efi
-              kernel_opts:
-                - rw
-                - '$ignition_firstboot'
-                - mpp-format-string: '{extra_kargs}'
-            inputs:
-              images:
-                type: org.osbuild.containers
-                origin: org.osbuild.pipeline
-                references:
-                  name:oci-archive:
-                    name: coreos.ociarchive
-          else:
-            type: org.osbuild.ostree.deploy.container
-            options:
-              osname:
-                mpp-format-string: '{osname}'
-              target_imgref:
-                mpp-format-string: '{container_imgref}'
-              mounts:
-                - /boot
-                - /boot/efi
-              kernel_opts:
-                - rw
-                - '$ignition_firstboot'
-                - mpp-format-string: '{extra_kargs}'
-            inputs:
-              images:
-                type: org.osbuild.containers
-                origin: org.osbuild.source
-                mpp-resolve-images:
-                  images:
-                    - source: $container_repo
-                      tag: $container_tag
+          type: org.osbuild.ostree.deploy.container
+          options:
+            osname:
+              mpp-format-string: '{osname}'
+            target_imgref:
+              mpp-format-string: '{container_imgref}'
+            mounts:
+              - /boot
+              - /boot/efi
+            kernel_opts:
+              - rw
+              - '$ignition_firstboot'
+              - mpp-format-string: '{extra_kargs}'
+          inputs:
+            images:
+              type: org.osbuild.containers
+              origin: org.osbuild.source
+              mpp-resolve-images:
+                images:
+                  - source: $container_repo
+                    tag: $container_tag
       - type: org.osbuild.ostree.aleph
         options:
           coreos_compat: true
