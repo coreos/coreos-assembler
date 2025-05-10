@@ -44,8 +44,8 @@ func init() {
 }
 
 var (
-	rpmUrl  string = "https://raw.githubusercontent.com/projectatomic/atomic-host-tests/master/rpm/aht-dummy-1.0-1.noarch.rpm"
-	rpmName string = "aht-dummy"
+	rpmUrl  string = "https://dl.fedoraproject.org/pub/epel/"
+	rpmName string = " epel-release-latest-9"
 )
 
 // ostreeAdminUnlock will unlock the deployment and verify the success of the operation

@@ -49,14 +49,14 @@ func init() {
 			"storage": {
 			  "files": [
 				{
-				  "path": "/var/home/core/aht-dummy.rpm",
+				  "path": "/var/home/core/epel-release-latest-9.noarch.rpm",
 				  "user": {
 					"name": "core"
 				  },
 				  "contents": {
-					"source": "https://github.com/projectatomic/atomic-host-tests/raw/master/rpm/aht-dummy-1.0-1.noarch.rpm",
+					"source": "https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm",
 					"verification": {
-					  "hash": "sha512-da29ae637b30647cab2386a2ce6b4223c3ad7120ae8dd32d9ce275f26a11946400bba0b86f6feabb9fb83622856ef39f8cecf14b4975638c4d8c0cf33b0f7b26"
+					  "hash": "sha512-265ab9d1e4a5dd1b0277b9c014fa72ba4cced7bad2796d89a89b303bb233545dc9fe41917da6339c60776b1abb0281317ebea760c0f8e70916f73830d0eca10f"
 					}
 				  },
 				  "mode": 420
