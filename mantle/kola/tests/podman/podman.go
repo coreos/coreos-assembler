@@ -216,10 +216,9 @@ func podmanWorkflow(c cluster.TestCluster) {
 	// Test: Delete container
 	c.Run("delete", func(c cluster.TestCluster) {
 		cmd := fmt.Sprintf("sudo podman rmi %s", image)
-		out := c.MustSSH(m, cmd)
-		imageID := string(out)
+		c.MustSSH(m, cmd)
 
-		cmd = fmt.Sprintf("sudo podman images | grep %s", imageID)
+		cmd = fmt.Sprintf("sudo podman image exists %s", image)
 		out, err := c.SSH(m, cmd)
 		if err == nil {
 			c.Fatalf("Image should be deleted but found %s", string(out))
