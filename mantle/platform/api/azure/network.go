@@ -18,8 +18,10 @@ package azure
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork"
 
 	"github.com/coreos/coreos-assembler/mantle/util"
@@ -84,8 +86,36 @@ func (a *API) createPublicIP(resourceGroup string) (armnetwork.PublicIPAddress, 
 	name := util.RandomName("ip")
 	ctx := context.Background()
 
+	var ipSKU *armnetwork.PublicIPAddressSKU
+	var ipProperties *armnetwork.PublicIPAddressPropertiesFormat
+	var ipZones []*string
+
+	// set SKU=Standard, Allocation Method=Static and Availability Zone on public IPs when creating Gen2 images
+	if strings.EqualFold(a.opts.HyperVGeneration, string(armcompute.HyperVGenerationV2)) {
+		ipSKU = &armnetwork.PublicIPAddressSKU{
+			Name: to.Ptr(armnetwork.PublicIPAddressSKUNameStandard),
+		}
+		ipProperties = &armnetwork.PublicIPAddressPropertiesFormat{
+			PublicIPAllocationMethod: to.Ptr(armnetwork.IPAllocationMethodStatic),
+		}
+		ipZones = []*string{to.Ptr(a.opts.AvailabilityZone)}
+		// gen 1
+	} else {
+		ipSKU = &armnetwork.PublicIPAddressSKU{
+			Name: to.Ptr(armnetwork.PublicIPAddressSKUNameBasic),
+		}
+		ipProperties = &armnetwork.PublicIPAddressPropertiesFormat{
+			PublicIPAllocationMethod: to.Ptr(armnetwork.IPAllocationMethodDynamic),
+		}
+		// No Zones for Gen1
+		ipZones = nil
+	}
+
 	poller, err := a.ipClient.BeginCreateOrUpdate(ctx, resourceGroup, name, armnetwork.PublicIPAddress{
-		Location: to.Ptr(a.opts.Location),
+		Location:   to.Ptr(a.opts.Location),
+		Zones:      ipZones,
+		SKU:        ipSKU,
+		Properties: ipProperties,
 	}, nil)
 	if err != nil {
 		return armnetwork.PublicIPAddress{}, err
@@ -145,7 +175,7 @@ func (a *API) GetPrivateIP(interfaceName, resourceGroup string) (string, error) 
 	return "", fmt.Errorf("no private configurations found")
 }
 
-func (a *API) createNIC(ip armnetwork.PublicIPAddress, subnet *armnetwork.Subnet, resourceGroup string) (armnetwork.Interface, error) {
+func (a *API) createNIC(ip armnetwork.PublicIPAddress, subnet *armnetwork.Subnet, nsg *armnetwork.SecurityGroup, resourceGroup string) (armnetwork.Interface, error) {
 	name := util.RandomName("nic")
 	ipconf := util.RandomName("nic-ipconf")
 	ctx := context.Background()
@@ -153,6 +183,7 @@ func (a *API) createNIC(ip armnetwork.PublicIPAddress, subnet *armnetwork.Subnet
 	poller, err := a.intClient.BeginCreateOrUpdate(ctx, resourceGroup, name, armnetwork.Interface{
 		Location: to.Ptr(a.opts.Location),
 		Properties: &armnetwork.InterfacePropertiesFormat{
+			NetworkSecurityGroup: nsg,
 			IPConfigurations: []*armnetwork.InterfaceIPConfiguration{
 				{
 					Name: to.Ptr(ipconf),
@@ -177,4 +208,42 @@ func (a *API) createNIC(ip armnetwork.PublicIPAddress, subnet *armnetwork.Subnet
 	nic := resp.Interface
 
 	return nic, nil
+}
+
+func (a *API) CreateNSG(resourceGroup string) (armnetwork.SecurityGroup, error) {
+	name := util.RandomName("nsg")
+	ctx := context.Background()
+
+	sshRule := &armnetwork.SecurityRule{
+		Name: to.Ptr("allow_ssh"),
+		Properties: &armnetwork.SecurityRulePropertiesFormat{
+			Access:                   to.Ptr(armnetwork.SecurityRuleAccessAllow),
+			Direction:                to.Ptr(armnetwork.SecurityRuleDirectionInbound),
+			Protocol:                 to.Ptr(armnetwork.SecurityRuleProtocolTCP),
+			SourcePortRange:          to.Ptr("*"),
+			DestinationPortRange:     to.Ptr("22"),
+			SourceAddressPrefix:      to.Ptr("*"),
+			DestinationAddressPrefix: to.Ptr("*"),
+			Priority:                 to.Ptr(int32(1000)),
+		},
+	}
+
+	nsgParams := armnetwork.SecurityGroup{
+		Location: to.Ptr(a.opts.Location),
+		Properties: &armnetwork.SecurityGroupPropertiesFormat{
+			SecurityRules: []*armnetwork.SecurityRule{sshRule},
+		},
+	}
+
+	poller, err := a.nsgClient.BeginCreateOrUpdate(ctx, resourceGroup, name, nsgParams, nil)
+	if err != nil {
+		return armnetwork.SecurityGroup{}, err
+	}
+
+	resp, err := poller.PollUntilDone(ctx, nil)
+	if err != nil {
+		return armnetwork.SecurityGroup{}, err
+	}
+
+	return resp.SecurityGroup, nil
 }

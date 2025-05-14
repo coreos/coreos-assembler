@@ -31,16 +31,21 @@ import (
 )
 
 type API struct {
-	azIdCred   *azidentity.DefaultAzureCredential
-	rgClient   *armresources.ResourceGroupsClient
-	imgClient  *armcompute.ImagesClient
-	compClient *armcompute.VirtualMachinesClient
-	netClient  *armnetwork.VirtualNetworksClient
-	subClient  *armnetwork.SubnetsClient
-	ipClient   *armnetwork.PublicIPAddressesClient
-	intClient  *armnetwork.InterfacesClient
-	accClient  *armstorage.AccountsClient
-	opts       *Options
+	azIdCred        *azidentity.DefaultAzureCredential
+	rgClient        *armresources.ResourceGroupsClient
+	imgClient       *armcompute.ImagesClient
+	compClient      *armcompute.VirtualMachinesClient
+	galClient       *armcompute.GalleriesClient
+	galImgClient    *armcompute.GalleryImagesClient
+	galImgVerClient *armcompute.GalleryImageVersionsClient
+	diskClient      *armcompute.DisksClient
+	netClient       *armnetwork.VirtualNetworksClient
+	subClient       *armnetwork.SubnetsClient
+	ipClient        *armnetwork.PublicIPAddressesClient
+	intClient       *armnetwork.InterfacesClient
+	nsgClient       *armnetwork.SecurityGroupsClient
+	accClient       *armstorage.AccountsClient
+	opts            *Options
 }
 
 // New creates a new Azure client. If no publish settings file is provided or
@@ -89,6 +94,26 @@ func (a *API) SetupClients() error {
 		return err
 	}
 
+	a.galClient, err = armcompute.NewGalleriesClient(a.opts.SubscriptionID, a.azIdCred, nil)
+	if err != nil {
+		return err
+	}
+
+	a.galImgClient, err = armcompute.NewGalleryImagesClient(a.opts.SubscriptionID, a.azIdCred, nil)
+	if err != nil {
+		return err
+	}
+
+	a.galImgVerClient, err = armcompute.NewGalleryImageVersionsClient(a.opts.SubscriptionID, a.azIdCred, nil)
+	if err != nil {
+		return err
+	}
+
+	a.diskClient, err = armcompute.NewDisksClient(a.opts.SubscriptionID, a.azIdCred, nil)
+	if err != nil {
+		return err
+	}
+
 	a.netClient, err = armnetwork.NewVirtualNetworksClient(a.opts.SubscriptionID, a.azIdCred, nil)
 	if err != nil {
 		return err
@@ -105,6 +130,11 @@ func (a *API) SetupClients() error {
 	}
 
 	a.intClient, err = armnetwork.NewInterfacesClient(a.opts.SubscriptionID, a.azIdCred, nil)
+	if err != nil {
+		return err
+	}
+
+	a.nsgClient, err = armnetwork.NewSecurityGroupsClient(a.opts.SubscriptionID, a.azIdCred, nil)
 	if err != nil {
 		return err
 	}
