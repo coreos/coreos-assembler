@@ -34,6 +34,7 @@ var (
 
 	azureCredentials string
 	azureLocation    string
+	azureHyperVGen   string
 
 	api *azure.API
 )
@@ -44,6 +45,7 @@ func init() {
 	sv := Azure.PersistentFlags().StringVar
 	sv(&azureCredentials, "azure-credentials", "", "Azure credentials file location (default \"~/"+auth.AzureCredentialsPath+"\")")
 	sv(&azureLocation, "azure-location", "westus", "Azure location (default \"westus\")")
+	sv(&azureHyperVGen, "azure-hyper-v-generation", "V1", "Azure Hypervisor Generation")
 }
 
 func preauth(cmd *cobra.Command, args []string) error {
@@ -52,6 +54,7 @@ func preauth(cmd *cobra.Command, args []string) error {
 	a, err := azure.New(&azure.Options{
 		AzureCredentials: azureCredentials,
 		Location:         azureLocation,
+		HyperVGeneration: azureHyperVGen,
 	})
 	if err != nil {
 		plog.Fatalf("Failed to create Azure API: %v", err)
