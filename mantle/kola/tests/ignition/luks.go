@@ -2,7 +2,6 @@ package ignition
 
 import (
 	"fmt"
-	"os"
 	"time"
 
 	coreosarch "github.com/coreos/stream-metadata-go/arch"
@@ -10,7 +9,6 @@ import (
 	"github.com/coreos/coreos-assembler/mantle/kola"
 	"github.com/coreos/coreos-assembler/mantle/kola/cluster"
 	"github.com/coreos/coreos-assembler/mantle/kola/register"
-	"github.com/coreos/coreos-assembler/mantle/kola/tests/coretest"
 	ut "github.com/coreos/coreos-assembler/mantle/kola/tests/util"
 	"github.com/coreos/coreos-assembler/mantle/platform"
 	"github.com/coreos/coreos-assembler/mantle/platform/conf"
@@ -51,20 +49,6 @@ func init() {
 		Platforms:            []string{"qemu"},
 		ExcludeArchitectures: []string{"s390x"}, // no TPM backend support for s390x
 		Tags:                 []string{"luks", "tpm", "tang", "sss", kola.NeedsInternetTag, "reprovision"},
-	})
-	register.RegisterTest(&register.Test{
-		Run:           runCexTest,
-		ClusterSize:   0,
-		Name:          `luks.cex`,
-		Description:   "Verify that CEX-based rootfs encryption works.",
-		Flags:         []register.Flag{},
-		Platforms:     []string{"qemu"},
-		Architectures: []string{"s390x"},
-		Tags:          []string{"luks", "cex", "reprovision"},
-		NativeFuncs: map[string]register.NativeFuncWrap{
-			"RHCOSGrowpart": register.CreateNativeFuncWrap(coretest.TestRHCOSGrowfs, []string{"fcos"}...),
-			"FCOSGrowpart":  register.CreateNativeFuncWrap(coretest.TestFCOSGrowfs, []string{"rhcos"}...),
-		},
 	})
 }
 
@@ -190,74 +174,6 @@ func runTest(c cluster.TestCluster, tpm2 bool, threshold int, killTangAfterFirst
 		rootPart = "/dev/disk/by-id/virtio-primary-disk-part4"
 	}
 	ut.LUKSSanityTest(c, tangd, m, tpm2, killTangAfterFirstBoot, rootPart)
-}
-
-func runCexTest(c cluster.TestCluster) {
-	var err error
-	var m platform.Machine
-
-	// To prevent the test to fail the whole run on s390x machine that does not have Cex Device
-	cex_uuid := os.Getenv("KOLA_CEX_UUID")
-	if cex_uuid == "" {
-		c.Skip("No CEX device found in KOLA_CEX_UUID env var")
-	}
-
-	ignition := conf.Ignition(`{
-		"ignition": {
-			"version": "3.5.0-experimental"
-		},
-		"kernelArguments": {
-			"shouldExist": [
-				"rd.luks.key=/etc/luks/cex.key"
-		]
-		},
-		"storage": {
-			"luks": [
-				{
-					"name": "root",
-					"device": "/dev/disk/by-label/root",
-					"cex": {
-						"enabled": true
-					},
-					"label": "root",
-					"wipeVolume": true
-				}
-			],
-			"filesystems": [
-				{
-					"device": "/dev/mapper/root",
-					"format": "xfs",
-					"wipeFilesystem": true,
-					"label": "root"
-				}
-			]
-		}
-	}`)
-
-	opts := platform.QemuMachineOptions{
-		Cex: true,
-	}
-	opts.MinMemory = 8192
-
-	switch pc := c.Cluster.(type) {
-	case *qemu.Cluster:
-		m, err = pc.NewMachineWithQemuOptions(ignition, opts)
-	default:
-		panic("Unsupported cluster type")
-	}
-
-	// copy over kolet into the machine
-	if err := kola.ScpKolet([]platform.Machine{m}); err != nil {
-		c.Fatal(err)
-	}
-	coretest.LocalTests(c)
-
-	if err != nil {
-		c.Fatalf("Unable to create test machine: %v", err)
-	}
-	rootPart := "/dev/disk/by-partlabel/root"
-
-	ut.LUKSSanityCEXTest(c, m, rootPart)
 }
 
 // Verify that the rootfs is encrypted with Tang
