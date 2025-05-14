@@ -168,8 +168,6 @@ func init() {
 	bv(&kola.QEMUOptions.SecureExecution, "qemu-secex", false, "Run IBM Secure Execution Image")
 	sv(&kola.QEMUOptions.SecureExecutionIgnitionPubKey, "qemu-secex-ignition-pubkey", "", "Path to Ignition GPG Public Key")
 	sv(&kola.QEMUOptions.SecureExecutionHostKey, "qemu-secex-hostkey", "", "Path to Secure Execution HKD certificate")
-	// s390x CEX-specific options
-	bv(&kola.QEMUOptions.Cex, "qemu-cex", false, "Attach CEX device to guest")
 }
 
 // Sync up the command line options if there is dependency

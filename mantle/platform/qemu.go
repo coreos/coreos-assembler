@@ -74,7 +74,6 @@ type QemuMachineOptions struct {
 	OverrideBackingFile string
 	Firmware            string
 	Nvme                bool
-	Cex                 bool
 }
 
 // QEMUMachine represents a qemu instance.
@@ -2058,14 +2057,4 @@ func (builder *QemuBuilder) Close() {
 	if builder.tempdir != "" {
 		os.RemoveAll(builder.tempdir)
 	}
-}
-
-// supports IBM Cex based LUKS encryption if it is s390x host (zKVM/LPAR)
-func (builder *QemuBuilder) AddCexDevice() error {
-	cex_uuid := os.Getenv("KOLA_CEX_UUID")
-	if cex_uuid == "" {
-		return errors.New("cannot add CEX device: KOLA_CEX_UUID env var undefined")
-	}
-	builder.Append("-device", fmt.Sprintf("vfio-ap,sysfsdev=/sys/devices/vfio_ap/matrix/%s", cex_uuid))
-	return nil
 }
