@@ -44,7 +44,7 @@ func init() {
 }
 
 var (
-	rpmUrl  string = "https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm"
+	rpmUrl  string = "https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm"
 	rpmName string = "epel-release"
 )
 

@@ -48,12 +48,12 @@ func init() {
 			"storage": {
 			  "files": [
 				{
-				  "path": "/var/home/core/epel-release-latest-9.noarch.rpm",
+				  "path": "/var/home/core/epel-release-latest-8.noarch.rpm",
 				  "user": {
 					"name": "core"
 				  },
 				  "contents": {
-					"source": "https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm",
+					"source": "https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm",
 				  },
 				  "mode": 420
 				}
@@ -186,7 +186,7 @@ func rpmOstreeUpgradeRollback(c cluster.TestCluster) {
 // This uses a dummy RPM that was originally created for the atomic-host-tests;
 // see: https://github.com/projectatomic/atomic-host-tests
 func rpmOstreeInstallUninstall(c cluster.TestCluster) {
-	var epelRpmPath = "/var/home/core/epel-release-latest-9.noarch.rpm"
+	var epelRpmPath = "/var/home/core/epel-release-latest-8.noarch.rpm"
 	var installPkgName = "epel-release"
 
 	m := c.Machines()[0]
