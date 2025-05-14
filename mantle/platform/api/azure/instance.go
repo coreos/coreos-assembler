@@ -24,6 +24,7 @@ import (
 	"math"
 	"math/big"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
@@ -106,6 +107,15 @@ func (a *API) getVMParameters(name, userdata, sshkey, storageAccountURI string, 
 			Version:   &a.opts.Version,
 		}
 	}
+	// UltraSSDEnabled=true is required for NVMe support on Gen2 VMs
+	var additionalCapabilities *armcompute.AdditionalCapabilities
+	if strings.EqualFold(a.opts.HyperVGeneration, string(armcompute.HyperVGenerationV2)) {
+		additionalCapabilities = &armcompute.AdditionalCapabilities{
+			UltraSSDEnabled: to.Ptr(true),
+		}
+	} else {
+		additionalCapabilities = nil
+	}
 	return armcompute.VirtualMachine{
 		Name:     &name,
 		Location: &a.opts.Location,
@@ -140,6 +150,7 @@ func (a *API) getVMParameters(name, userdata, sshkey, storageAccountURI string, 
 					StorageURI: &storageAccountURI,
 				},
 			},
+			AdditionalCapabilities: additionalCapabilities,
 		},
 	}
 }
@@ -157,8 +168,12 @@ func (a *API) CreateInstance(name, userdata, sshkey, resourceGroup, storageAccou
 	if ip.Name == nil {
 		return nil, fmt.Errorf("couldn't get public IP name")
 	}
+	nsg, err := a.CreateNSG(resourceGroup)
+	if err != nil {
+		return nil, fmt.Errorf("creating network security group: %v", err)
+	}
 
-	nic, err := a.createNIC(ip, &subnet, resourceGroup)
+	nic, err := a.createNIC(ip, &subnet, &nsg, resourceGroup)
 	if err != nil {
 		return nil, fmt.Errorf("creating nic: %v", err)
 	}
