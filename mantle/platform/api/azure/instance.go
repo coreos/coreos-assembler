@@ -30,6 +30,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork"
 
+	"github.com/coreos/coreos-assembler/mantle/platform"
 	"github.com/coreos/coreos-assembler/mantle/util"
 )
 
@@ -108,6 +109,7 @@ func (a *API) getVMParameters(name, userdata, sshkey, storageAccountURI string, 
 	return armcompute.VirtualMachine{
 		Name:     &name,
 		Location: &a.opts.Location,
+		Zones:    []*string{&a.opts.AvailabilityZone},
 		Tags: map[string]*string{
 			"createdBy": to.Ptr("mantle"),
 		},
@@ -142,7 +144,7 @@ func (a *API) getVMParameters(name, userdata, sshkey, storageAccountURI string, 
 	}
 }
 
-func (a *API) CreateInstance(name, userdata, sshkey, resourceGroup, storageAccount string) (*Machine, error) {
+func (a *API) CreateInstance(name, userdata, sshkey, resourceGroup, storageAccount string, opts platform.MachineOptions) (*Machine, error) {
 	subnet, err := a.getSubnet(resourceGroup)
 	if err != nil {
 		return nil, fmt.Errorf("preparing network resources: %v", err)
@@ -204,6 +206,18 @@ func (a *API) CreateInstance(name, userdata, sshkey, resourceGroup, storageAccou
 
 	if vm.Name == nil {
 		return nil, fmt.Errorf("couldn't get VM ID")
+	}
+
+	for i, spec := range opts.AdditionalDisks {
+		size, sku, err := a.ParseDisk(spec)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing additional disk: %v", err)
+		}
+		diskName := util.RandomName(fmt.Sprintf("disk-%d", i))
+		err = a.CreateAndAttachDiskToInstance(*vm.Name, resourceGroup, diskName, sku, int32(size), int32(i))
+		if err != nil {
+			return nil, fmt.Errorf("failed to attach disk to vm: %v", err)
+		}
 	}
 
 	publicaddr, privaddr, err := a.GetIPAddresses(*nic.Name, *ip.Name, resourceGroup)
@@ -271,4 +285,46 @@ func (a *API) GetConsoleOutput(name, resourceGroup, storageAccount string) ([]by
 	}
 
 	return io.ReadAll(data)
+}
+
+func (a *API) CreateAndAttachDiskToInstance(instanceName, resourceGroup, diskName string, sku armcompute.DiskStorageAccountTypes, sizeGB int32, lun int32) error {
+	ctx := context.Background()
+
+	vm, err := a.getInstance(instanceName, resourceGroup)
+	if err != nil {
+		return err
+	}
+
+	diskID, err := a.CreateDisk(diskName, resourceGroup, sizeGB, sku)
+	if err != nil {
+		return err
+	}
+
+	newDisk := armcompute.DataDisk{
+		Lun:          to.Ptr(lun),
+		Name:         to.Ptr(diskName),
+		CreateOption: to.Ptr(armcompute.DiskCreateOptionTypesAttach),
+		ManagedDisk: &armcompute.ManagedDiskParameters{
+			ID: to.Ptr(diskID),
+		},
+	}
+
+	if vm.Properties.StorageProfile.DataDisks == nil {
+		vm.Properties.StorageProfile.DataDisks = []*armcompute.DataDisk{}
+	}
+	vm.Properties.StorageProfile.DataDisks = append(vm.Properties.StorageProfile.DataDisks, &newDisk)
+
+	poller, err := a.compClient.BeginUpdate(ctx, resourceGroup, instanceName, armcompute.VirtualMachineUpdate{
+		Properties: &armcompute.VirtualMachineProperties{
+			StorageProfile: &armcompute.StorageProfile{
+				DataDisks: vm.Properties.StorageProfile.DataDisks,
+			},
+		},
+	}, nil)
+	if err != nil {
+		return fmt.Errorf("failed to attach disk to VM %s: %v", instanceName, err)
+	}
+
+	_, err = poller.PollUntilDone(ctx, nil)
+	return err
 }
