@@ -33,6 +33,7 @@ type Options struct {
 	Size             string
 	Location         string
 	AvailabilityZone string
+	HyperVGeneration string
 
 	SubscriptionName string
 	SubscriptionID   string
