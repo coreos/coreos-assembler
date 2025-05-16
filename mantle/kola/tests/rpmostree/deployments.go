@@ -15,6 +15,7 @@
 package rpmostree
 
 import (
+	"fmt"
 	"reflect"
 	"regexp"
 	"github.com/coreos/coreos-assembler/mantle/kola"
