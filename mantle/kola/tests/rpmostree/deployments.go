@@ -186,7 +186,7 @@ func rpmOstreeUpgradeRollback(c cluster.TestCluster) {
 // see: https://github.com/projectatomic/atomic-host-tests
 func rpmOstreeInstallUninstall(c cluster.TestCluster) {
 	var rpmfusionRpmPath = "/var/home/core/rpmfusion-free-release-9.noarch.rpm"
-    var installPkgName = "rpmfusion-free-release"
+	var installPkgName = "rpmfusion-free-release"
 
 	m := c.Machines()[0]
 
