@@ -51,7 +51,7 @@ func (a *API) getInstance(name, resourceGroup string) (armcompute.VirtualMachine
 	return resp.VirtualMachine, nil
 }
 
-func (a *API) getVMParameters(name, userdata, sshkey, storageAccountURI string, ip armnetwork.PublicIPAddress, nic armnetwork.Interface) armcompute.VirtualMachine {
+func (a *API) getVMParameters(name, userdata, sshkey, storageAccountURI, size string, ip armnetwork.PublicIPAddress, nic armnetwork.Interface) armcompute.VirtualMachine {
 
 	// Azure requires that either a username/password be set or an SSH key.
 	//
@@ -125,7 +125,7 @@ func (a *API) getVMParameters(name, userdata, sshkey, storageAccountURI string, 
 		},
 		Properties: &armcompute.VirtualMachineProperties{
 			HardwareProfile: &armcompute.HardwareProfile{
-				VMSize: to.Ptr(armcompute.VirtualMachineSizeTypes(a.opts.Size)),
+				VMSize: to.Ptr(armcompute.VirtualMachineSizeTypes(size)),
 			},
 			StorageProfile: &armcompute.StorageProfile{
 				ImageReference: imgRef,
@@ -181,7 +181,17 @@ func (a *API) CreateInstance(name, userdata, sshkey, resourceGroup, storageAccou
 		return nil, fmt.Errorf("couldn't get NIC name")
 	}
 
-	vmParams := a.getVMParameters(name, userdata, sshkey, fmt.Sprintf("https://%s.blob.core.windows.net/", storageAccount), ip, nic)
+	// Override the vm size with the one specified in the external kola test config.
+	// This is useful for cases where a specific test needs to run on a different
+	// (potentially more expensive) instance type.
+	var size string
+	if opts.InstanceType != "" {
+		size = opts.InstanceType
+	} else {
+		size = a.opts.Size
+	}
+
+	vmParams := a.getVMParameters(name, userdata, sshkey, fmt.Sprintf("https://%s.blob.core.windows.net/", storageAccount), size, ip, nic)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()

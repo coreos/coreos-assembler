@@ -163,6 +163,7 @@ type MachineOptions struct {
 	AppendKernelArgs          string
 	AppendFirstbootKernelArgs string
 	SkipStartMachine          bool // Skip platform.StartMachine on machine bringup
+	InstanceType              string
 }
 
 // SystemdDropin is a userdata type agnostic struct representing a systemd dropin
