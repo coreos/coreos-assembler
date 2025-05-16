@@ -58,6 +58,9 @@ func (ec *cluster) NewMachineWithOptions(userdata *platformConf.UserData, option
 	if options.AppendFirstbootKernelArgs != "" {
 		return nil, errors.New("platform esx does not support appending firstboot kernel arguments")
 	}
+	if options.InstanceType != "" {
+		return nil, errors.New("platform esx does not support changing instance types")
+	}
 
 	conf, err := ec.RenderUserData(userdata, map[string]string{
 		"$public_ipv4":  "${COREOS_ESX_IPV4_PUBLIC_0}",

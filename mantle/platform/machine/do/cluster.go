@@ -52,6 +52,9 @@ func (dc *cluster) NewMachineWithOptions(userdata *conf.UserData, options platfo
 	if options.AppendFirstbootKernelArgs != "" {
 		return nil, errors.New("platform do does not support appending firstboot kernel arguments")
 	}
+	if options.InstanceType != "" {
+		return nil, errors.New("platform do does not support changing instance types")
+	}
 
 	conf, err := dc.RenderUserData(userdata, map[string]string{
 		"$public_ipv4":  "${COREOS_DIGITALOCEAN_IPV4_PUBLIC_0}",
