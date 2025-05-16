@@ -48,14 +48,24 @@ func init() {
 			"storage": {
 			  "files": [
 				{
-				  "path": "/var/home/core/epel-release-latest-8.noarch.rpm",
+				  "path": "/var/home/core/epel-release-latest-9.noarch.rpm",
 				  "user": {
 					"name": "core"
 				  },
 				  "contents": {
-					"source": "https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm",
+					"source": "https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm",
 				  },
 				  "mode": 420
+				},
+		                {
+				  "path": "/var/home/core/rpmfusion-free-release-9.noarch.rpm",
+				  "user": {
+					"name": "core"
+				},
+				"contents": {
+					"source": "https://mirrors.rpmfusion.org/free/el/rpmfusion-free-release-9.noarch.rpm"
+				},
+				"mode": 420
 				}
 			  ]
 			}
@@ -187,7 +197,8 @@ func rpmOstreeUpgradeRollback(c cluster.TestCluster) {
 // see: https://github.com/projectatomic/atomic-host-tests
 func rpmOstreeInstallUninstall(c cluster.TestCluster) {
 	var epelRpmPath = "/var/home/core/epel-release-latest-8.noarch.rpm"
-	var installPkgName = "epel-release"
+	var rpmfusionRpmPath = "/var/home/core/rpmfusion-free-release-41.noarch.rpm"
+        var installPkgNames = []string{"epel-release", "rpmfusion-free-release"}
 
 	m := c.Machines()[0]
 
@@ -205,7 +216,8 @@ func rpmOstreeInstallUninstall(c cluster.TestCluster) {
 	c.Run("install", func(c cluster.TestCluster) {
 		// install package and reboot
 		// this is only testing local rpm install, `--cache-only` avoid fetching RPM data from remote
-		c.RunCmdSync(m, "sudo rpm-ostree install --cache-only "+epelRpmPath)
+		installCmd := fmt.Sprintf("sudo rpm-ostree install --cache-only %s %s", epelRpmPath, rpmfusionRpmPath)
+		c.RunCmdSync(m, installCmd)
 
 		installRebootErr := m.Reboot()
 		if installRebootErr != nil {
