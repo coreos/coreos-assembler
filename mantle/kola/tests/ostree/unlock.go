@@ -44,8 +44,8 @@ func init() {
 }
 
 var (
-	rpmUrl  string = "https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm"
-	rpmName string = "epel-release"
+	rpmUrl  string = "https://mirrors.rpmfusion.org/free/el/rpmfusion-free-release-9.noarch.rpm"
+	rpmName string = "rpmfusion-free-release"
 )
 
 // ostreeAdminUnlock will unlock the deployment and verify the success of the operation

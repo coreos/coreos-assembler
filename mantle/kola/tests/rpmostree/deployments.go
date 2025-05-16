@@ -17,7 +17,6 @@ package rpmostree
 import (
 	"reflect"
 	"regexp"
-	"fmt"
 	"github.com/coreos/coreos-assembler/mantle/kola"
 	"github.com/coreos/coreos-assembler/mantle/kola/cluster"
 	"github.com/coreos/coreos-assembler/mantle/kola/register"
@@ -48,16 +47,6 @@ func init() {
 			"storage": {
 			  "files": [
 				{
-				  "path": "/var/home/core/epel-release-latest-9.noarch.rpm",
-				  "user": {
-					"name": "core"
-				  },
-				  "contents": {
-					"source": "https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm",
-				  },
-				  "mode": 420
-				},
-		                {
 				  "path": "/var/home/core/rpmfusion-free-release-9.noarch.rpm",
 				  "user": {
 					"name": "core"
@@ -196,9 +185,8 @@ func rpmOstreeUpgradeRollback(c cluster.TestCluster) {
 // This uses a dummy RPM that was originally created for the atomic-host-tests;
 // see: https://github.com/projectatomic/atomic-host-tests
 func rpmOstreeInstallUninstall(c cluster.TestCluster) {
-	var epelRpmPath = "/var/home/core/epel-release-latest-8.noarch.rpm"
-	var rpmfusionRpmPath = "/var/home/core/rpmfusion-free-release-41.noarch.rpm"
-        var installPkgName = []string{"epel-release", "rpmfusion-free-release"}
+	var rpmfusionRpmPath = "/var/home/core/rpmfusion-free-release-9.noarch.rpm"
+    var installPkgName = "rpmfusion-free-release"
 
 	m := c.Machines()[0]
 
@@ -216,8 +204,7 @@ func rpmOstreeInstallUninstall(c cluster.TestCluster) {
 	c.Run("install", func(c cluster.TestCluster) {
 		// install package and reboot
 		// this is only testing local rpm install, `--cache-only` avoid fetching RPM data from remote
-		installCmd := fmt.Sprintf("sudo rpm-ostree install --cache-only %s %s", epelRpmPath, rpmfusionRpmPath)
-		c.RunCmdSync(m, installCmd)
+		c.RunCmdSync(m, "sudo rpm-ostree install --cache-only "+rpmfusionRpmPath)
 
 		installRebootErr := m.Reboot()
 		if installRebootErr != nil {
