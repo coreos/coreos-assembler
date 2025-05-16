@@ -49,6 +49,9 @@ func (qc *Cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error)
 }
 
 func (qc *Cluster) NewMachineWithOptions(userdata *conf.UserData, options platform.MachineOptions) (platform.Machine, error) {
+	if options.InstanceType != "" {
+		return nil, errors.New("platform qemu does not support changing instance types")
+	}
 	return qc.NewMachineWithQemuOptions(userdata, platform.QemuMachineOptions{
 		MachineOptions: options,
 	})

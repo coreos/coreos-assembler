@@ -117,6 +117,10 @@ type Test struct {
 	// Conflicts is non-empty iff nonexclusive is true
 	// Contains the tests that conflict with this particular test
 	Conflicts []string
+
+	// If provided, this test will be run on the target instance type.
+	// This overrides the instance type set with `kola run`
+	InstanceType string
 }
 
 // Registered tests that run as part of `kola run` live here. Mapping of names

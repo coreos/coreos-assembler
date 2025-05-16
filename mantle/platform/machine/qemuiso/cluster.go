@@ -47,15 +47,18 @@ func (qc *Cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error)
 }
 
 func (qc *Cluster) NewMachineWithOptions(userdata *conf.UserData, options platform.MachineOptions) (platform.Machine, error) {
+	if options.InstanceType != "" {
+		return nil, errors.New("platform qemu-iso does not support changing instance types")
+	}
+	if options.MultiPathDisk {
+		return nil, errors.New("platform qemu-iso does not support multipathed primary disks")
+	}
 	return qc.NewMachineWithQemuOptions(userdata, platform.QemuMachineOptions{
 		MachineOptions: options,
 	})
 }
 
 func (qc *Cluster) NewMachineWithQemuOptions(userdata *conf.UserData, options platform.QemuMachineOptions) (platform.Machine, error) {
-	if options.MultiPathDisk {
-		return nil, errors.New("platform qemu-iso does not support multipathed primary disks")
-	}
 	id := uuid.New()
 
 	dir := filepath.Join(qc.RuntimeConf().OutputDir, id)
