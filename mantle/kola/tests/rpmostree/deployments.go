@@ -17,7 +17,7 @@ package rpmostree
 import (
 	"reflect"
 	"regexp"
-
+	"fmt"
 	"github.com/coreos/coreos-assembler/mantle/kola"
 	"github.com/coreos/coreos-assembler/mantle/kola/cluster"
 	"github.com/coreos/coreos-assembler/mantle/kola/register"
@@ -198,7 +198,7 @@ func rpmOstreeUpgradeRollback(c cluster.TestCluster) {
 func rpmOstreeInstallUninstall(c cluster.TestCluster) {
 	var epelRpmPath = "/var/home/core/epel-release-latest-8.noarch.rpm"
 	var rpmfusionRpmPath = "/var/home/core/rpmfusion-free-release-41.noarch.rpm"
-        var installPkgNames = []string{"epel-release", "rpmfusion-free-release"}
+        var installPkgName = []string{"epel-release", "rpmfusion-free-release"}
 
 	m := c.Machines()[0]
 
