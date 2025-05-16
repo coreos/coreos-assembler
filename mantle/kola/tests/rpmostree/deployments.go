@@ -15,7 +15,7 @@
 package rpmostree
 
 import (
-
+	"fmt"
 	"reflect"
 	"regexp"
 
@@ -189,6 +189,14 @@ func rpmOstreeUpgradeRollback(c cluster.TestCluster) {
 func rpmOstreeInstallUninstall(c cluster.TestCluster) {
 	var rpmfusionRpmPath = "/var/home/core/rpmfusion-free-release-9.noarch.rpm"
 	var installPkgName = "rpmfusion-free-release"
+	var installBinName = "rpmfusion"
+	var installBinPath string
+
+	if c.Distribution() == "fcos" {
+		installBinPath = fmt.Sprintf("/usr/bin/%v", installBinName)
+	} else {
+		installBinPath = fmt.Sprintf("/bin/%v", installBinName)
+	}
 
 	m := c.Machines()[0]
 
@@ -223,6 +231,7 @@ func rpmOstreeInstallUninstall(c cluster.TestCluster) {
 		}
 
 		// check the command is present, in the rpmdb, and usable
+		c.AssertCmdOutputContains(m, "command -v "+installBinName, installBinPath)
 		c.AssertCmdOutputMatches(m, "rpm -q "+installPkgName, regexp.MustCompile("^"+installPkgName))
 
 		// package should be in the metadata
