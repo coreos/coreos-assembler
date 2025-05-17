@@ -69,7 +69,7 @@ func init() {
 		Timeout:        40 * time.Minute,
 		Distros:        []string{"rhcos"},
 		Platforms:      []string{"qemu"},
-		Tags:           []string{"openshift"},
+		RequiredTag:    "openshift",
 		AdditionalNics: 2,
 		UserData:       userdata,
 	})
