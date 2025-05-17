@@ -1027,6 +1027,7 @@ type externalTestMeta struct {
 	Conflicts                 []string `json:"conflicts"                           yaml:"conflicts"`
 	AllowConfigWarnings       bool     `json:"allowConfigWarnings"                 yaml:"allowConfigWarnings"`
 	NoInstanceCreds           bool     `json:"noInstanceCreds"                     yaml:"noInstanceCreds"`
+	InstanceType              string   `json:"instanceType"                        yaml:"instanceType"`
 	Description               string   `json:"description"                         yaml:"description"`
 }
 
@@ -1236,6 +1237,7 @@ ExecStart=%s
 		AdditionalNics:            targetMeta.AdditionalNics,
 		AppendKernelArgs:          targetMeta.AppendKernelArgs,
 		AppendFirstbootKernelArgs: targetMeta.AppendFirstbootKernelArgs,
+		InstanceType:              targetMeta.InstanceType,
 		NonExclusive:              !targetMeta.Exclusive,
 		Conflicts:                 targetMeta.Conflicts,
 
@@ -1757,6 +1759,7 @@ func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flig
 			AppendKernelArgs:          t.AppendKernelArgs,
 			AppendFirstbootKernelArgs: t.AppendFirstbootKernelArgs,
 			SkipStartMachine:          true,
+			InstanceType:              t.InstanceType,
 		}
 
 		// Providers sometimes fail to bring up a machine within a

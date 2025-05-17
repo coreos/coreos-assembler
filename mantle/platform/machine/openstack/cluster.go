@@ -50,6 +50,9 @@ func (oc *cluster) NewMachineWithOptions(userdata *conf.UserData, options platfo
 	if options.AppendFirstbootKernelArgs != "" {
 		return nil, errors.New("platform openstack does not support appending firstboot kernel arguments")
 	}
+	if options.InstanceType != "" {
+		return nil, errors.New("platform openstack does not support changing instance types")
+	}
 
 	conf, err := oc.RenderUserData(userdata, map[string]string{
 		"$public_ipv4":  "${COREOS_OPENSTACK_IPV4_PUBLIC}",

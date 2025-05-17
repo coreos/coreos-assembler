@@ -25,13 +25,15 @@ type Options struct {
 	AzureCredentials  string
 	AzureSubscription string
 
-	DiskURI   string
-	Publisher string
-	Offer     string
-	Sku       string
-	Version   string
-	Size      string
-	Location  string
+	DiskURI   		 string
+	Publisher 		 string
+	Offer     		 string
+	Sku       		 string
+	Version   		 string
+	Size      		 string
+	Location  		 string
+	AvailabilityZone string
+	HyperVGeneration string
 
 	SubscriptionName string
 	SubscriptionID   string
