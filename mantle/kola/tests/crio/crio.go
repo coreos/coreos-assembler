@@ -195,7 +195,8 @@ func init() {
 		Distros:     []string{"rhcos"},
 		UserData:    enableCrioIgn,
 		// crio pods require fetching a kubernetes pause image
-		Tags: []string{"crio", kola.NeedsInternetTag, "openshift"},
+		Tags:        []string{"crio", kola.NeedsInternetTag},
+		RequiredTag: "openshift",
 	})
 	register.RegisterTest(&register.Test{
 		Run:         crioNetwork,
@@ -205,7 +206,8 @@ func init() {
 		Distros:     []string{"rhcos"},
 		UserData:    enableCrioIgn,
 		// this test requires net connections outside the host
-		Tags: []string{"crio", kola.NeedsInternetTag, "openshift"},
+		Tags:        []string{"crio", kola.NeedsInternetTag},
+		RequiredTag: "openshift",
 		// qemu machines cannot communicate between each other
 		ExcludePlatforms: []string{"qemu"},
 	})
