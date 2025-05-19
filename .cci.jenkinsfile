@@ -17,7 +17,7 @@ def imageName = buildImage(env: [ENABLE_GO_RACE_DETECTOR: "1", GOMAXPROCS: cpuCo
 // that we allow to fail to work around the problem while we investigate.
 try {
     pod(image: imageName + ":latest", kvm: true, cpu: "${cpuCount}", memory: "${memory}Mi") {
-        shwrap("Initial pod creation worked!")
+        shwrap("echo 'Initial pod creation worked!'")
     }
 } catch(e) {
     echo "Initial pod creation failed. Continuing."
