@@ -49,12 +49,12 @@ func init() {
 			"storage": {
 			  "files": [
 				{
-				  "path": "/var/home/core/rpmfusion-free-release-9.noarch.rpm",
+				  "path": "/var/home/core/rpmfusion-free-release-rawhide.noarch.rpm",
 				  "user": {
 					"name": "core"
 				},
 				"contents": {
-					"source": "https://mirrors.rpmfusion.org/free/el/rpmfusion-free-release-9.noarch.rpm"
+					"source": "https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-rawhide.noarch.rpm"
 				},
 				"mode": 420
 				}
@@ -187,7 +187,7 @@ func rpmOstreeUpgradeRollback(c cluster.TestCluster) {
 // This uses a dummy RPM that was originally created for the atomic-host-tests;
 // see: https://github.com/projectatomic/atomic-host-tests
 func rpmOstreeInstallUninstall(c cluster.TestCluster) {
-	var rpmfusionRpmPath = "/var/home/core/rpmfusion-free-release-9.noarch.rpm"
+	var rpmfusionRpmPath = "/var/home/core/rpmfusion-free-release-rawhide.noarch.rpm"
 	var installPkgName = "rpmfusion-free-release"
 	var installBinName = "rpmfusion"
 	var installBinPath string

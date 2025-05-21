@@ -44,7 +44,7 @@ func init() {
 }
 
 var (
-	rpmUrl  string = "https://mirrors.rpmfusion.org/free/el/rpmfusion-free-release-9.noarch.rpm"
+	rpmUrl  string = "https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-rawhide.noarch.rpm"
 	rpmName string = "rpmfusion-free-release"
 )
 
