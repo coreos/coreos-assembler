@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package misc
+package rhcos
 
 import (
 	"fmt"
@@ -56,7 +56,7 @@ func init() {
 	register.RegisterTest(&register.Test{
 		Run:            NFSv4,
 		ClusterSize:    0,
-		Name:           "linux.nfs.v4",
+		Name:           "rhcos.nfs.v4",
 		Description:    "Verify that NFSv4 works.",
 		ExcludeDistros: []string{"fcos"},
 
