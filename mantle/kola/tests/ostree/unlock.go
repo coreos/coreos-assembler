@@ -44,8 +44,8 @@ func init() {
 }
 
 var (
-	rpmUrl  string = "https://raw.githubusercontent.com/projectatomic/atomic-host-tests/master/rpm/aht-dummy-1.0-1.noarch.rpm"
-	rpmName string = "aht-dummy"
+	rpmUrl  string = "https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-rawhide.noarch.rpm"
+	rpmName string = "rpmfusion-free-release"
 )
 
 // ostreeAdminUnlock will unlock the deployment and verify the success of the operation
