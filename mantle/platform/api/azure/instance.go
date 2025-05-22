@@ -24,12 +24,14 @@ import (
 	"math"
 	"math/big"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork"
 
+	"github.com/coreos/coreos-assembler/mantle/platform"
 	"github.com/coreos/coreos-assembler/mantle/util"
 )
 
@@ -49,7 +51,7 @@ func (a *API) getInstance(name, resourceGroup string) (armcompute.VirtualMachine
 	return resp.VirtualMachine, nil
 }
 
-func (a *API) getVMParameters(name, userdata, sshkey, storageAccountURI string, ip armnetwork.PublicIPAddress, nic armnetwork.Interface) armcompute.VirtualMachine {
+func (a *API) getVMParameters(name, userdata, sshkey, storageAccountURI, size string, ip armnetwork.PublicIPAddress, nic armnetwork.Interface) armcompute.VirtualMachine {
 
 	// Azure requires that either a username/password be set or an SSH key.
 	//
@@ -105,15 +107,25 @@ func (a *API) getVMParameters(name, userdata, sshkey, storageAccountURI string, 
 			Version:   &a.opts.Version,
 		}
 	}
+	// UltraSSDEnabled=true is required for NVMe support on Gen2 VMs
+	var additionalCapabilities *armcompute.AdditionalCapabilities
+	if strings.EqualFold(a.opts.HyperVGeneration, string(armcompute.HyperVGenerationV2)) {
+		additionalCapabilities = &armcompute.AdditionalCapabilities{
+			UltraSSDEnabled: to.Ptr(true),
+		}
+	} else {
+		additionalCapabilities = nil
+	}
 	return armcompute.VirtualMachine{
 		Name:     &name,
 		Location: &a.opts.Location,
+		Zones:    []*string{&a.opts.AvailabilityZone},
 		Tags: map[string]*string{
 			"createdBy": to.Ptr("mantle"),
 		},
 		Properties: &armcompute.VirtualMachineProperties{
 			HardwareProfile: &armcompute.HardwareProfile{
-				VMSize: to.Ptr(armcompute.VirtualMachineSizeTypes(a.opts.Size)),
+				VMSize: to.Ptr(armcompute.VirtualMachineSizeTypes(size)),
 			},
 			StorageProfile: &armcompute.StorageProfile{
 				ImageReference: imgRef,
@@ -138,11 +150,12 @@ func (a *API) getVMParameters(name, userdata, sshkey, storageAccountURI string, 
 					StorageURI: &storageAccountURI,
 				},
 			},
+			AdditionalCapabilities: additionalCapabilities,
 		},
 	}
 }
 
-func (a *API) CreateInstance(name, userdata, sshkey, resourceGroup, storageAccount string) (*Machine, error) {
+func (a *API) CreateInstance(name, userdata, sshkey, resourceGroup, storageAccount string, opts platform.MachineOptions) (*Machine, error) {
 	subnet, err := a.getSubnet(resourceGroup)
 	if err != nil {
 		return nil, fmt.Errorf("preparing network resources: %v", err)
@@ -155,8 +168,12 @@ func (a *API) CreateInstance(name, userdata, sshkey, resourceGroup, storageAccou
 	if ip.Name == nil {
 		return nil, fmt.Errorf("couldn't get public IP name")
 	}
+	nsg, err := a.CreateNSG(resourceGroup)
+	if err != nil {
+		return nil, fmt.Errorf("creating network security group: %v", err)
+	}
 
-	nic, err := a.createNIC(ip, &subnet, resourceGroup)
+	nic, err := a.createNIC(ip, &subnet, &nsg, resourceGroup)
 	if err != nil {
 		return nil, fmt.Errorf("creating nic: %v", err)
 	}
@@ -164,7 +181,14 @@ func (a *API) CreateInstance(name, userdata, sshkey, resourceGroup, storageAccou
 		return nil, fmt.Errorf("couldn't get NIC name")
 	}
 
-	vmParams := a.getVMParameters(name, userdata, sshkey, fmt.Sprintf("https://%s.blob.core.windows.net/", storageAccount), ip, nic)
+	var size string
+	if opts.InstanceType != "" {
+		size = opts.InstanceType
+	} else {
+		size = a.opts.Size
+	}
+
+	vmParams := a.getVMParameters(name, userdata, sshkey, fmt.Sprintf("https://%s.blob.core.windows.net/", storageAccount), size, ip, nic)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
@@ -204,6 +228,18 @@ func (a *API) CreateInstance(name, userdata, sshkey, resourceGroup, storageAccou
 
 	if vm.Name == nil {
 		return nil, fmt.Errorf("couldn't get VM ID")
+	}
+
+	for i, spec := range opts.AdditionalDisks {
+		size, sku, err := a.ParseDisk(spec)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing additional disk: %v", err)
+		}
+		diskName := util.RandomName(fmt.Sprintf("disk-%d", i))
+		err = a.AttachDiskToInstance(*vm.Name, resourceGroup, diskName, sku, int32(size), int32(i))
+		if err != nil {
+			return nil, fmt.Errorf("failed to attach disk to vm: %v", err)
+		}
 	}
 
 	publicaddr, privaddr, err := a.GetIPAddresses(*nic.Name, *ip.Name, resourceGroup)
@@ -271,4 +307,46 @@ func (a *API) GetConsoleOutput(name, resourceGroup, storageAccount string) ([]by
 	}
 
 	return io.ReadAll(data)
+}
+
+func (a *API) AttachDiskToInstance(instanceName, resourceGroup, diskName string, sku armcompute.DiskStorageAccountTypes, sizeGB int32, lun int32) error {
+	ctx := context.Background()
+
+	vm, err := a.getInstance(instanceName, resourceGroup)
+	if err != nil {
+		return err
+	}
+
+	diskID, err := a.CreateDisk(diskName, resourceGroup, sizeGB, sku)
+	if err != nil {
+		return err
+	}
+
+	newDisk := armcompute.DataDisk{
+		Lun:          to.Ptr(lun),
+		Name:         to.Ptr(diskName),
+		CreateOption: to.Ptr(armcompute.DiskCreateOptionTypesAttach),
+		ManagedDisk: &armcompute.ManagedDiskParameters{
+			ID: to.Ptr(diskID),
+		},
+	}
+
+	if vm.Properties.StorageProfile.DataDisks == nil {
+		vm.Properties.StorageProfile.DataDisks = []*armcompute.DataDisk{}
+	}
+	vm.Properties.StorageProfile.DataDisks = append(vm.Properties.StorageProfile.DataDisks, &newDisk)
+
+	poller, err := a.compClient.BeginUpdate(ctx, resourceGroup, instanceName, armcompute.VirtualMachineUpdate{
+		Properties: &armcompute.VirtualMachineProperties{
+			StorageProfile: &armcompute.StorageProfile{
+				DataDisks: vm.Properties.StorageProfile.DataDisks,
+			},
+		},
+	}, nil)
+	if err != nil {
+		return fmt.Errorf("failed to attach disk to VM %s: %v", instanceName, err)
+	}
+
+	_, err = poller.PollUntilDone(ctx, nil)
+	return err
 }

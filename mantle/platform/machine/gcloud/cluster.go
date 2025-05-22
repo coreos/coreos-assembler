@@ -49,6 +49,9 @@ func (gc *cluster) NewMachineWithOptions(userdata *conf.UserData, options platfo
 	if options.AppendFirstbootKernelArgs != "" {
 		return nil, errors.New("platform gcp does not support appending firstboot kernel arguments")
 	}
+	if options.InstanceType != "" {
+		return nil, errors.New("platform gcp does not support changing instance types")
+	}
 
 	conf, err := gc.RenderUserData(userdata, map[string]string{
 		"$public_ipv4":  "${COREOS_GCE_IP_EXTERNAL_0}",

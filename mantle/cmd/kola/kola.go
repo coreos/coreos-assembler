@@ -300,13 +300,15 @@ func writeProps() error {
 		InstanceType string `json:"type"`
 	}
 	type Azure struct {
-		DiskURI   string `json:"diskUri"`
-		Publisher string `json:"publisher"`
-		Offer     string `json:"offer"`
-		Sku       string `json:"sku"`
-		Version   string `json:"version"`
-		Location  string `json:"location"`
-		Size      string `json:"size"`
+		DiskURI          string `json:"diskUri"`
+		Publisher        string `json:"publisher"`
+		Offer            string `json:"offer"`
+		Sku              string `json:"sku"`
+		Version          string `json:"version"`
+		Location         string `json:"location"`
+		Size             string `json:"size"`
+		AvailabilityZone string `json:"availability_zone"`
+		HyperVGeneration string `json:"hyper_v_generation"`
 	}
 	type DO struct {
 		Region string `json:"region"`
@@ -355,13 +357,15 @@ func writeProps() error {
 			InstanceType: kola.AWSOptions.InstanceType,
 		},
 		Azure: Azure{
-			DiskURI:   kola.AzureOptions.DiskURI,
-			Publisher: kola.AzureOptions.Publisher,
-			Offer:     kola.AzureOptions.Offer,
-			Sku:       kola.AzureOptions.Sku,
-			Version:   kola.AzureOptions.Version,
-			Location:  kola.AzureOptions.Location,
-			Size:      kola.AzureOptions.Size,
+			DiskURI:          kola.AzureOptions.DiskURI,
+			Publisher:        kola.AzureOptions.Publisher,
+			Offer:            kola.AzureOptions.Offer,
+			Sku:              kola.AzureOptions.Sku,
+			Version:          kola.AzureOptions.Version,
+			Location:         kola.AzureOptions.Location,
+			Size:             kola.AzureOptions.Size,
+			AvailabilityZone: kola.AzureOptions.AvailabilityZone,
+			HyperVGeneration: kola.AzureOptions.HyperVGeneration,
 		},
 		DO: DO{
 			Region: kola.DOOptions.Region,

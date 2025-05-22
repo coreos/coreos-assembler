@@ -46,9 +46,6 @@ func (ac *cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error)
 }
 
 func (ac *cluster) NewMachineWithOptions(userdata *conf.UserData, options platform.MachineOptions) (platform.Machine, error) {
-	if len(options.AdditionalDisks) > 0 {
-		return nil, errors.New("platform azure does not yet support additional disks")
-	}
 	if options.MultiPathDisk {
 		return nil, errors.New("platform azure does not support multipathed disks")
 	}
@@ -69,7 +66,7 @@ func (ac *cluster) NewMachineWithOptions(userdata *conf.UserData, options platfo
 		return nil, err
 	}
 
-	instance, err := ac.flight.api.CreateInstance(ac.vmname(), conf.String(), ac.sshKey, ac.ResourceGroup, ac.StorageAccount)
+	instance, err := ac.flight.api.CreateInstance(ac.vmname(), conf.String(), ac.sshKey, ac.ResourceGroup, ac.StorageAccount, options)
 	if err != nil {
 		return nil, err
 	}
