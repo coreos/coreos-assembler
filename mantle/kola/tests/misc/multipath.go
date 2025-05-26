@@ -151,7 +151,8 @@ func verifyBootDropins(c cluster.TestCluster, m platform.Machine, checkBootuuid 
 
 func verifyMultipath(c cluster.TestCluster, m platform.Machine, path string) {
 	srcdev := string(c.MustSSHf(m, "findmnt -nvr %s -o SOURCE", path))
-	if !strings.HasPrefix(srcdev, "/dev/mapper/mpath") {
+	udevinfo := string(c.MustSSHf(m, "udevadm info %s", srcdev))
+	if !strings.Contains(udevinfo, "/dev/disk/by-id/dm-uuid-mpath-") && !strings.Contains(udevinfo, "DM_MPATH") {
 		c.Fatalf("mount %s has non-multipath source %s", path, srcdev)
 	}
 }
