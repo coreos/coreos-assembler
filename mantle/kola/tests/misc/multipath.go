@@ -51,7 +51,7 @@ systemd:
 
         [Service]
         Type=oneshot
-        ExecStart=/usr/sbin/mpathconf --enable
+        ExecStart=/usr/sbin/mpathconf --enable --user_friendly_names n
 
         [Install]
         WantedBy=multi-user.target
@@ -61,8 +61,8 @@ systemd:
         [Unit]
         Description=Set Up Multipath On /var/lib/containers
         ConditionFirstBoot=true
-        Requires=dev-mapper-mpatha.device
-        After=dev-mapper-mpatha.device
+        Requires=dev-disk-by\x2did-dm\x2duuid\x2dmpath\x2d0x0000000000000001.device
+        After=dev-disk-by\x2did-dm\x2duuid\x2dmpath\x2d0x0000000000000001.device
         # See https://github.com/coreos/coreos-assembler/pull/2457
         # and https://github.com/openshift/os/issues/743
         After=ostree-remount.service
@@ -71,7 +71,7 @@ systemd:
 
         [Service]
         Type=oneshot
-        ExecStart=/usr/sbin/mkfs.xfs -L containers -m reflink=1 /dev/mapper/mpatha
+        ExecStart=/usr/sbin/mkfs.xfs -L containers -m reflink=1 /dev/disk/by-id/dm-uuid-mpath-0x0000000000000001
         # This is usually created by tmpfiles.d, but we run earlier than that.
         ExecStart=/usr/bin/mkdir -p /var/lib/containers
 
@@ -119,7 +119,7 @@ func init() {
 		ClusterSize:     1,
 		Platforms:       []string{"qemu"},
 		UserData:        mpath_on_var_lib_containers,
-		AdditionalDisks: []string{"1G:mpath"},
+		AdditionalDisks: []string{"1G:mpath,wwn=1"},
 	})
 }
 
