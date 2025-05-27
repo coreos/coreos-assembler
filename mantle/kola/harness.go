@@ -100,6 +100,9 @@ const snoozeFormat = "2006-01-02"
 // This overlaps with SkipBaseChecksTag above, but is really a special flag for kola-denylist.yaml.
 const SkipConsoleWarningsTag = "skip-console-warnings"
 
+// NeedsSecureBoot will setup the machines with uefi with secure boot enabled on supported platforms
+const secureBoot = "secure-boot"
+
 var (
 	plog = capnslog.NewPackageLogger("github.com/coreos/coreos-assembler/mantle", "kola")
 
@@ -336,6 +339,10 @@ func testSkipBaseChecks(test *register.Test) bool {
 
 func testRequiresInternet(test *register.Test) bool {
 	return HasString(NeedsInternetTag, test.Tags)
+}
+
+func testSecureBoot(test *register.Test) bool {
+	return HasString(secureBoot, test.Tags)
 }
 
 func markTestForRerunSuccess(test *register.Test, msg string) {
@@ -1760,6 +1767,10 @@ func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flig
 			AppendFirstbootKernelArgs: t.AppendFirstbootKernelArgs,
 			SkipStartMachine:          true,
 			InstanceType:              t.InstanceType,
+		}
+
+		if testSecureBoot(t) {
+			options.Firmware = "uefi-secure"
 		}
 
 		// Providers sometimes fail to bring up a machine within a

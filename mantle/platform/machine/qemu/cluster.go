@@ -54,6 +54,7 @@ func (qc *Cluster) NewMachineWithOptions(userdata *conf.UserData, options platfo
 	}
 	return qc.NewMachineWithQemuOptions(userdata, platform.QemuMachineOptions{
 		MachineOptions: options,
+		Firmware:       options.Firmware,
 	})
 }
 
