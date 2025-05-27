@@ -15,6 +15,8 @@
 package v0_5
 
 import (
+	"strings"
+
 	baseutil "github.com/coreos/butane/base/util"
 	"github.com/coreos/butane/config/common"
 
@@ -26,6 +28,7 @@ import (
 func (rs Resource) Validate(c path.ContextPath) (r report.Report) {
 	var field string
 	sources := 0
+	// Local files are validated in the translateResource function
 	if rs.Local != nil {
 		sources++
 		field = "local"
@@ -40,6 +43,17 @@ func (rs Resource) Validate(c path.ContextPath) (r report.Report) {
 	}
 	if sources > 1 {
 		r.AddOnError(c.Append(field), common.ErrTooManyResourceSources)
+		return
+	}
+	if strings.HasPrefix(c.String(), "$.ignition.config") {
+		if field == "inline" {
+			rp, err := ValidateIgnitionConfig(c, []byte(*rs.Inline))
+			r.Merge(rp)
+			if err != nil {
+				r.AddOnError(c.Append(field), err)
+				return
+			}
+		}
 	}
 	return
 }

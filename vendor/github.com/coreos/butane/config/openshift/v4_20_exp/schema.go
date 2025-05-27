@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.)
 
-package v4_19_exp
+package v4_20_exp
 
 import (
 	fcos "github.com/coreos/butane/config/fcos/v1_7_exp"
