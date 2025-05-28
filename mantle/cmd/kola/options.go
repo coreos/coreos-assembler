@@ -101,7 +101,6 @@ func init() {
 	sv(&kola.AzureOptions.Location, "azure-location", "westus", "Azure location (default \"westus\"")
 	sv(&kola.AzureOptions.Size, "azure-size", "Standard_D2_v2", "Azure machine size (default \"Standard_D2_v2\")")
 	sv(&kola.AzureOptions.AvailabilityZone, "azure-availability-zone", "1", "Azure Availability Zone (default \"1\")")
-	sv(&kola.AzureOptions.HyperVGeneration, "azure-hyper-v-generation", "V1", "Azure Hyper-V Generation (default \"V1\")")
 
 	// do-specific options
 	sv(&kola.DOOptions.ConfigPath, "do-config-file", "", "DigitalOcean config file (default \"~/"+auth.DOConfigPath+"\")")

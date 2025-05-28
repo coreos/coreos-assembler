@@ -28,7 +28,7 @@ func (a *API) CreateImage(name, resourceGroup, blobURI string) (armcompute.Image
 		Name:     &name,
 		Location: &a.opts.Location,
 		Properties: &armcompute.ImageProperties{
-			HyperVGeneration: to.Ptr(armcompute.HyperVGenerationTypes(a.opts.HyperVGeneration)),
+			HyperVGeneration: to.Ptr(armcompute.HyperVGenerationTypes(armcompute.HyperVGenerationTypesV2)),
 			StorageProfile: &armcompute.ImageStorageProfile{
 				OSDisk: &armcompute.ImageOSDisk{
 					OSType:  to.Ptr(armcompute.OperatingSystemTypesLinux),

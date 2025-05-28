@@ -308,7 +308,6 @@ func writeProps() error {
 		Location         string `json:"location"`
 		Size             string `json:"size"`
 		AvailabilityZone string `json:"availability_zone"`
-		HyperVGeneration string `json:"hyper_v_generation"`
 	}
 	type DO struct {
 		Region string `json:"region"`
@@ -365,7 +364,6 @@ func writeProps() error {
 			Location:         kola.AzureOptions.Location,
 			Size:             kola.AzureOptions.Size,
 			AvailabilityZone: kola.AzureOptions.AvailabilityZone,
-			HyperVGeneration: kola.AzureOptions.HyperVGeneration,
 		},
 		DO: DO{
 			Region: kola.DOOptions.Region,
