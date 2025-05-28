@@ -18,6 +18,7 @@ package azure
 import (
 	"context"
 	"fmt"
+	"runtime"
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
@@ -26,7 +27,7 @@ import (
 	"github.com/coreos/coreos-assembler/mantle/util"
 )
 
-func (a *API) CreateGalleryImage(name, galleryName, resourceGroup, sourceImageID string) (armcompute.GalleryImageVersion, error) {
+func (a *API) CreateGalleryImage(name, galleryName, resourceGroup, sourceImageID, architecture string) (armcompute.GalleryImageVersion, error) {
 	ctx := context.Background()
 
 	// Ensure the Azure Shared Image Gallery exists. BeginCreateOrUpdate will create the gallery
@@ -54,6 +55,19 @@ func (a *API) CreateGalleryImage(name, galleryName, resourceGroup, sourceImageID
 		},
 	}
 
+	var azureArch armcompute.Architecture
+	if architecture == "" {
+		architecture = runtime.GOARCH
+	}
+	switch architecture {
+	case "amd64", "x86_64":
+		azureArch = armcompute.ArchitectureX64
+	case "arm64", "aarch64":
+		azureArch = armcompute.ArchitectureArm64
+	default:
+		return armcompute.GalleryImageVersion{}, fmt.Errorf("unsupported azure architecture %q", architecture)
+	}
+
 	// Create a Gallery Image Definition with the specified Hyper-V generation (V1 or V2).
 	galleryImagePoller, err := a.galImgClient.BeginCreateOrUpdate(ctx, resourceGroup, galleryName, name, armcompute.GalleryImage{
 		Location: &a.opts.Location,
@@ -66,7 +80,8 @@ func (a *API) CreateGalleryImage(name, galleryName, resourceGroup, sourceImageID
 				Offer:     to.Ptr(name),
 				SKU:       to.Ptr(util.RandomName("sku")),
 			},
-			Features: galleryImageFeatures,
+			Features:     galleryImageFeatures,
+			Architecture: &azureArch,
 		},
 	}, nil)
 	if err != nil {

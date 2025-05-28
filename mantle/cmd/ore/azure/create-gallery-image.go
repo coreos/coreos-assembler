@@ -36,6 +36,7 @@ var (
 
 	galleryImageName string
 	galleryName      string
+	architecture     string
 )
 
 func init() {
@@ -45,6 +46,7 @@ func init() {
 	sv(&galleryName, "gallery-name", "kola", "gallery name")
 	sv(&blobUrl, "image-blob", "", "source blob url")
 	sv(&resourceGroup, "resource-group", "kola", "resource group name")
+	sv(&architecture, "arch", "", "The target architecture for the image")
 
 	Azure.AddCommand(cmdCreateGalleryImage)
 }
@@ -71,7 +73,7 @@ func runCreateGalleryImage(cmd *cobra.Command, args []string) error {
 	}
 	sourceImageId := *img.ID
 
-	galleryImage, err := api.CreateGalleryImage(galleryImageName, galleryName, resourceGroup, sourceImageId)
+	galleryImage, err := api.CreateGalleryImage(galleryImageName, galleryName, resourceGroup, sourceImageId, architecture)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Couldn't create Azure Shared Image Gallery image: %v\n", err)
 		os.Exit(1)
