@@ -18,10 +18,8 @@ package azure
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
-	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork"
 
 	"github.com/coreos/coreos-assembler/mantle/util"
@@ -91,25 +89,13 @@ func (a *API) createPublicIP(resourceGroup string) (armnetwork.PublicIPAddress, 
 	var ipZones []*string
 
 	// set SKU=Standard, Allocation Method=Static and Availability Zone on public IPs when creating Gen2 images
-	if strings.EqualFold(a.opts.HyperVGeneration, string(armcompute.HyperVGenerationV2)) {
-		ipSKU = &armnetwork.PublicIPAddressSKU{
-			Name: to.Ptr(armnetwork.PublicIPAddressSKUNameStandard),
-		}
-		ipProperties = &armnetwork.PublicIPAddressPropertiesFormat{
-			PublicIPAllocationMethod: to.Ptr(armnetwork.IPAllocationMethodStatic),
-		}
-		ipZones = []*string{to.Ptr(a.opts.AvailabilityZone)}
-		// gen 1
-	} else {
-		ipSKU = &armnetwork.PublicIPAddressSKU{
-			Name: to.Ptr(armnetwork.PublicIPAddressSKUNameBasic),
-		}
-		ipProperties = &armnetwork.PublicIPAddressPropertiesFormat{
-			PublicIPAllocationMethod: to.Ptr(armnetwork.IPAllocationMethodDynamic),
-		}
-		// No Zones for Gen1
-		ipZones = nil
+	ipSKU = &armnetwork.PublicIPAddressSKU{
+		Name: to.Ptr(armnetwork.PublicIPAddressSKUNameStandard),
 	}
+	ipProperties = &armnetwork.PublicIPAddressPropertiesFormat{
+		PublicIPAllocationMethod: to.Ptr(armnetwork.IPAllocationMethodStatic),
+	}
+	ipZones = []*string{to.Ptr(a.opts.AvailabilityZone)}
 
 	poller, err := a.ipClient.BeginCreateOrUpdate(ctx, resourceGroup, name, armnetwork.PublicIPAddress{
 		Location:   to.Ptr(a.opts.Location),

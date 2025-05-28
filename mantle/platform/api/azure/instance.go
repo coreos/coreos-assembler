@@ -24,7 +24,6 @@ import (
 	"math"
 	"math/big"
 	"regexp"
-	"strings"
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
@@ -108,13 +107,8 @@ func (a *API) getVMParameters(name, userdata, sshkey, storageAccountURI, size st
 		}
 	}
 	// UltraSSDEnabled=true is required for NVMe support on Gen2 VMs
-	var additionalCapabilities *armcompute.AdditionalCapabilities
-	if strings.EqualFold(a.opts.HyperVGeneration, string(armcompute.HyperVGenerationV2)) {
-		additionalCapabilities = &armcompute.AdditionalCapabilities{
-			UltraSSDEnabled: to.Ptr(true),
-		}
-	} else {
-		additionalCapabilities = nil
+	additionalCapabilities := &armcompute.AdditionalCapabilities{
+		UltraSSDEnabled: to.Ptr(true),
 	}
 	return armcompute.VirtualMachine{
 		Name:     &name,

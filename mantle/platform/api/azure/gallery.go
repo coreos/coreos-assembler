@@ -18,7 +18,6 @@ package azure
 import (
 	"context"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
@@ -48,16 +47,11 @@ func (a *API) CreateGalleryImage(name, galleryName, resourceGroup, sourceImageID
 
 	// enable NVMe support for Gen2 images only. NVMe support is not available on Gen1 images.
 	// DiskControllerTypes is set to SCSI by default for Gen1 images.
-	var galleryImageFeatures []*armcompute.GalleryImageFeature
-	if strings.EqualFold(a.opts.HyperVGeneration, string(armcompute.HyperVGenerationV2)) {
-		galleryImageFeatures = []*armcompute.GalleryImageFeature{
-			{
-				Name:  to.Ptr("DiskControllerTypes"),
-				Value: to.Ptr("SCSI,NVMe"),
-			},
-		}
-	} else {
-		galleryImageFeatures = nil
+	galleryImageFeatures := []*armcompute.GalleryImageFeature{
+		{
+			Name:  to.Ptr("DiskControllerTypes"),
+			Value: to.Ptr("SCSI,NVMe"),
+		},
 	}
 
 	// Create a Gallery Image Definition with the specified Hyper-V generation (V1 or V2).
@@ -66,7 +60,7 @@ func (a *API) CreateGalleryImage(name, galleryName, resourceGroup, sourceImageID
 		Properties: &armcompute.GalleryImageProperties{
 			OSState:          to.Ptr(armcompute.OperatingSystemStateTypesGeneralized),
 			OSType:           to.Ptr(armcompute.OperatingSystemTypesLinux),
-			HyperVGeneration: to.Ptr(armcompute.HyperVGeneration(a.opts.HyperVGeneration)),
+			HyperVGeneration: to.Ptr(armcompute.HyperVGeneration(armcompute.HyperVGenerationV2)),
 			Identifier: &armcompute.GalleryImageIdentifier{
 				Publisher: &a.opts.Publisher,
 				Offer:     to.Ptr(name),
