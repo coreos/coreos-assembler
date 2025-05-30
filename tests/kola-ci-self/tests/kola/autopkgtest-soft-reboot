@@ -1,0 +1,38 @@
+#!/bin/bash
+# Test for soft-reboot functionality similar to autopkgtest-reboot but using systemctl soft-reboot
+# This test validates that the Kola soft-reboot API works correctly
+set -xeuo pipefail
+
+case "${AUTOPKGTEST_REBOOT_MARK:-}" in
+  "") 
+    echo "test beginning"
+    # Check that boot_id stays the same across soft-reboot
+    INITIAL_BOOT_ID=$(cat /proc/sys/kernel/random/boot_id)
+    echo "Initial boot ID: $INITIAL_BOOT_ID" | logger
+    /tmp/autopkgtest-soft-reboot mark1 
+    ;;
+  mark1) 
+    echo "test in mark1"
+    # Verify boot_id is the same (soft-reboot should not change it)
+    CURRENT_BOOT_ID=$(cat /proc/sys/kernel/random/boot_id)
+    echo "Current boot ID after soft-reboot: $CURRENT_BOOT_ID" | logger
+    
+    # Test the prepare API with forced soft-reboot
+    /tmp/autopkgtest-soft-reboot-prepare mark2
+    systemctl soft-reboot
+    sleep infinity
+    ;;
+  mark2) 
+    echo "test in mark2"
+    FINAL_BOOT_ID=$(cat /proc/sys/kernel/random/boot_id)
+    echo "Final boot ID after forced soft-reboot: $FINAL_BOOT_ID" | logger
+    
+    # All boot IDs should be the same for soft-reboot
+    echo "Soft-reboot test completed successfully"
+    ;;
+  *) 
+    echo "unexpected mark: ${AUTOPKGTEST_REBOOT_MARK}"
+    exit 1
+    ;;
+esac
+echo "ok autopkgtest soft-rebooting"

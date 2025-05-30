@@ -87,6 +87,10 @@ func (m *machine) WaitForReboot(timeout time.Duration, oldBootId string) error {
 	return platform.WaitForMachineReboot(m, m.journal, timeout, oldBootId)
 }
 
+func (m *machine) WaitForSoftReboot(timeout time.Duration, oldBootTimestamp string) error {
+	return platform.WaitForMachineSoftReboot(m, m.journal, timeout, oldBootTimestamp)
+}
+
 func (m *machine) Destroy() {
 	m.inst.Destroy()
 
