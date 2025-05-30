@@ -107,8 +107,23 @@ set -euo pipefail
 exec /usr/local/bin/kolet reboot-request "$1"
 `
 
+	// Soft-reboot support
+	autopkgTestSoftRebootPath = "/tmp/autopkgtest-soft-reboot"
+	autopkgtestSoftRebootScript = `#!/bin/bash
+set -xeuo pipefail
+/usr/local/bin/kolet soft-reboot-request "$1"
+systemctl soft-reboot
+`
+	autopkgTestSoftRebootPreparePath = "/tmp/autopkgtest-soft-reboot-prepare"
+
+	autopkgtestSoftRebootPrepareScript = `#!/bin/bash
+set -euo pipefail
+exec /usr/local/bin/kolet soft-reboot-request "$1"
+`
+
 	// File used to communicate between the script and the kolet runner internally
 	rebootRequestFifo = "/run/kolet-reboot"
+	softRebootRequestFifo = "/run/kolet-soft-reboot"
 )
 
 var (
@@ -137,6 +152,13 @@ var (
 		Use:          "reboot-request MARK",
 		Short:        "Request a reboot",
 		RunE:         runReboot,
+		SilenceUsage: true,
+	}
+
+	cmdSoftReboot = &cobra.Command{
+		Use:          "soft-reboot-request MARK",
+		Short:        "Request a soft reboot",
+		RunE:         runSoftReboot,
 		SilenceUsage: true,
 	}
 
@@ -259,6 +281,20 @@ func initiateReboot(mark string) error {
 	return nil
 }
 
+func initiateSoftReboot(mark string) error {
+	systemdjournal.Print(systemdjournal.PriInfo, "Processing soft-reboot request")
+	res := kola.KoletResult{
+		SoftReboot: string(mark),
+	}
+	buf, err := json.Marshal(&res)
+	if err != nil {
+		return errors.Wrapf(err, "serializing KoletResult")
+	}
+	fmt.Println(string(buf))
+	systemdjournal.Print(systemdjournal.PriInfo, "Acknowledged soft-reboot request with mark: %s", buf)
+	return nil
+}
+
 func runExtUnit(cmd *cobra.Command, args []string) error {
 	rebootOff, _ := cmd.Flags().GetBool("deny-reboots")
 	// Write the autopkgtest wrappers
@@ -268,10 +304,18 @@ func runExtUnit(cmd *cobra.Command, args []string) error {
 	if err := os.WriteFile(autopkgTestRebootPreparePath, []byte(autopkgtestRebootPrepareScript), 0755); err != nil {
 		return err
 	}
+	// Write the soft-reboot autopkgtest wrappers
+	if err := os.WriteFile(autopkgTestSoftRebootPath, []byte(autopkgtestSoftRebootScript), 0755); err != nil {
+		return err
+	}
+	if err := os.WriteFile(autopkgTestSoftRebootPreparePath, []byte(autopkgtestSoftRebootPrepareScript), 0755); err != nil {
+		return err
+	}
 
 	// Create the reboot cmdline -> login FIFO for the reboot mark and
 	// proxy it into a channel
 	rebootChan := make(chan string)
+	softRebootChan := make(chan string)
 	errChan := make(chan error)
 
 	// We want to prevent certain tests (like non-exclusive tests) from rebooting
@@ -292,6 +336,25 @@ func runExtUnit(cmd *cobra.Command, args []string) error {
 				errChan <- err
 			}
 			rebootChan <- string(buf)
+		}()
+
+		// Create soft-reboot FIFO and channel
+		err = exec.Command("mkfifo", softRebootRequestFifo).Run()
+		if err != nil {
+			return err
+		}
+		go func() {
+			softRebootReader, err := os.Open(softRebootRequestFifo)
+			if err != nil {
+				errChan <- err
+				return
+			}
+			defer softRebootReader.Close()
+			buf, err := io.ReadAll(softRebootReader)
+			if err != nil {
+				errChan <- err
+			}
+			softRebootChan <- string(buf)
 		}()
 	}
 
@@ -334,6 +397,8 @@ func runExtUnit(cmd *cobra.Command, args []string) error {
 			return err
 		case reboot := <-rebootChan:
 			return initiateReboot(reboot)
+		case softReboot := <-softRebootChan:
+			return initiateSoftReboot(softReboot)
 		case m := <-unitevents:
 			for n := range m {
 				if n == unitname {
@@ -387,6 +452,35 @@ func runReboot(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+// runSoftReboot handles soft-reboot requests similar to runReboot but for systemctl soft-reboot
+func runSoftReboot(cmd *cobra.Command, args []string) error {
+	if _, err := os.Stat(softRebootRequestFifo); os.IsNotExist(err) {
+		return errors.New("Soft-reboots are not supported for this test, softRebootRequestFifo does not exist.")
+	}
+
+	mark := args[0]
+	systemdjournal.Print(systemdjournal.PriInfo, "Requesting soft-reboot with mark: %s", mark)
+	err := exec.Command("mkfifo", kola.KoletRebootAckFifo).Run()
+	if err != nil {
+		return err
+	}
+	err = os.WriteFile(softRebootRequestFifo, []byte(mark), 0644)
+	if err != nil {
+		return err
+	}
+	f, err := os.Open(kola.KoletRebootAckFifo)
+	if err != nil {
+		return err
+	}
+	buf := make([]byte, 1)
+	_, err = f.Read(buf)
+	if err != nil {
+		return err
+	}
+	systemdjournal.Print(systemdjournal.PriInfo, "Soft-reboot request acknowledged")
+	return nil
+}
+
 func runHttpd(cmd *cobra.Command, args []string) error {
 	port, _ := cmd.Flags().GetString("port")
 	path, _ := cmd.Flags().GetString("path")
@@ -403,6 +497,8 @@ func main() {
 	root.AddCommand(cmdRunExtUnit)
 	cmdReboot.Args = cobra.ExactArgs(1)
 	root.AddCommand(cmdReboot)
+	cmdSoftReboot.Args = cobra.ExactArgs(1)
+	root.AddCommand(cmdSoftReboot)
 	cmdHttpd.Flags().StringP("port", "", "80", "port")
 	cmdHttpd.Flags().StringP("path", "", "./", "path to filesystem contents to serve")
 	cmdHttpd.Args = cobra.ExactArgs(0)

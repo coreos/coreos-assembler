@@ -255,7 +255,8 @@ const (
 
 // KoletResult is serialized JSON passed from kolet to the harness
 type KoletResult struct {
-	Reboot string
+	Reboot     string
+	SoftReboot string
 }
 
 const KoletExtTestUnit = "kola-runext"
@@ -1138,27 +1139,51 @@ func runExternalTest(c cluster.TestCluster, mach platform.Machine, testNum int) 
 				return errors.Wrapf(err, "parsing kolet json %s", string(stdout))
 			}
 		}
-		// If no  reboot is requested, we're done
-		if koletRes.Reboot == "" {
+		// If no reboot or soft-reboot is requested, we're done
+		if koletRes.Reboot == "" && koletRes.SoftReboot == "" {
 			return nil
 		}
 
-		// A reboot is requested
-		previousRebootState = koletRes.Reboot
-		plog.Debugf("Reboot request with mark='%s'", previousRebootState)
-		// This signals to the subject that we have saved the mark, and the subject
-		// can proceed with rebooting.  We stop sshd to ensure that the wait below
-		// doesn't log in while ssh is shutting down.
-		_, _, err = mach.SSH(fmt.Sprintf("sudo /bin/sh -c 'systemctl stop sshd && echo > %s'", KoletRebootAckFifo))
-		if err != nil {
-			return errors.Wrapf(err, "failed to acknowledge reboot")
+		// Handle regular reboot
+		if koletRes.Reboot != "" {
+			previousRebootState = koletRes.Reboot
+			plog.Debugf("Reboot request with mark='%s'", previousRebootState)
+			// This signals to the subject that we have saved the mark, and the subject
+			// can proceed with rebooting.  We stop sshd to ensure that the wait below
+			// doesn't log in while ssh is shutting down.
+			_, _, err = mach.SSH(fmt.Sprintf("sudo /bin/sh -c 'systemctl stop sshd && echo > %s'", KoletRebootAckFifo))
+			if err != nil {
+				return errors.Wrapf(err, "failed to acknowledge reboot")
+			}
+			plog.Debug("Waiting for reboot")
+			err = mach.WaitForReboot(120*time.Second, bootID)
+			if err != nil {
+				return errors.Wrapf(err, "Waiting for reboot")
+			}
+			plog.Debug("Reboot complete")
 		}
-		plog.Debug("Waiting for reboot")
-		err = mach.WaitForReboot(120*time.Second, bootID)
-		if err != nil {
-			return errors.Wrapf(err, "Waiting for reboot")
+
+		// Handle soft-reboot
+		if koletRes.SoftReboot != "" {
+			previousRebootState = koletRes.SoftReboot
+			plog.Debugf("Soft-reboot request with mark='%s'", previousRebootState)
+			// Get current boot timestamp before acknowledging
+			oldBootTimestamp, err := platform.GetMachineBootCount(mach)
+			if err != nil {
+				return errors.Wrapf(err, "failed to get boot timestamp before soft-reboot")
+			}
+			// Acknowledge the soft-reboot request
+			_, _, err = mach.SSH(fmt.Sprintf("sudo /bin/sh -c 'echo > %s'", KoletRebootAckFifo))
+			if err != nil {
+				return errors.Wrapf(err, "failed to acknowledge soft-reboot")
+			}
+			plog.Debug("Waiting for soft-reboot")
+			err = mach.WaitForSoftReboot(120*time.Second, oldBootTimestamp)
+			if err != nil {
+				return errors.Wrapf(err, "Waiting for soft-reboot")
+			}
+			plog.Debug("Soft-reboot complete")
 		}
-		plog.Debug("Reboot complete")
 	}
 }
 
