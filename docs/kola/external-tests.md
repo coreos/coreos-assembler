@@ -110,6 +110,37 @@ it out.
 (Previously the API for this was to send `SIGTERM` to the current process; that
 method is deprecated and will be removed at some point)
 
+## Support for soft-rebooting
+
+Kola also supports soft-rebooting using systemd's `systemctl soft-reboot` command.
+Soft-reboot restarts the userspace while keeping the kernel and hardware state intact.
+This is useful for testing userspace updates without a full system reboot.
+
+The soft-reboot API is similar to the regular reboot API:
+
+```
+#!/bin/bash
+# Example of soft-reboot test
+set -xeuo pipefail
+case "${AUTOPKGTEST_REBOOT_MARK:-}" in
+  "") echo "test beginning"; /tmp/autopkgtest-soft-reboot mark1 ;;
+  mark1) echo "test in mark1"; /tmp/autopkgtest-soft-reboot mark2 ;;
+  mark2) echo "test in mark2" ;;
+  *) echo "unexpected mark: ${AUTOPKGTEST_REBOOT_MARK}"; exit 1;;
+esac
+echo "ok autopkgtest soft-rebooting"
+```
+
+Key differences with soft-reboot:
+- The kernel boot ID (`/proc/sys/kernel/random/boot_id`) remains the same
+- Hardware state and kernel memory are preserved
+- `/run` is not cycled.
+- Only userspace is restarted
+- Uses `systemctl soft-reboot` instead of `reboot`
+
+Both `/tmp/autopkgtest-soft-reboot` and `/tmp/autopkgtest-soft-reboot-prepare` scripts are available,
+analogous to their regular reboot counterparts.
+
 ## HTTP Server
 
 The `kolet` binary is copied into the `/usr/local/bin/` directory on the CoreOS

@@ -78,6 +78,10 @@ func (gm *machine) WaitForReboot(timeout time.Duration, oldBootId string) error 
 	return platform.WaitForMachineReboot(gm, gm.journal, timeout, oldBootId)
 }
 
+func (gm *machine) WaitForSoftReboot(timeout time.Duration, oldSoftRebootsCount string) error {
+	return platform.WaitForMachineSoftReboot(gm, gm.journal, timeout, oldSoftRebootsCount)
+}
+
 func (gm *machine) Destroy() {
 	if err := gm.saveConsole(); err != nil {
 		plog.Errorf("Error saving console for instance %v: %v", gm.ID(), err)
