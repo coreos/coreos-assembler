@@ -239,6 +239,8 @@ func runDevShellSSH(ctx context.Context, builder *platform.QemuBuilder, conf *co
 					_ = inst.Kill()
 				case guestStateInReboot:
 					statusMsg = "QEMU guest initiated reboot"
+				case guestStateInSoftReboot:
+					statusMsg = "QEMU guest initiated soft-reboot"
 				case guestStateOpenSshStopped:
 					statusMsg = "QEMU openssh is not listening"
 				case guestStateSshDisconnected:
@@ -285,6 +287,8 @@ const (
 	guestStateInShutdown
 	// guestStateInReboot indicates that the guest has started a reboot
 	guestStateInReboot
+	// guestStateInSoftReboot indicates that the guest has started a soft-reboot
+	guestStateInSoftReboot
 	// guestStateHalted indicates that the guest has halted or shutdown
 	guestStateHalted
 	// guestStateBooting indicates that the instance is in early boot
@@ -324,6 +328,9 @@ func checkWriteState(msg string, c chan<- guestState) {
 	}
 	if strings.Contains(msg, "Starting Reboot...") {
 		c <- guestStateInReboot
+	}
+	if strings.Contains(msg, "Reached target soft-reboot") {
+		c <- guestStateInSoftReboot
 	}
 }
 
@@ -427,6 +434,11 @@ func watchJournal(builder *platform.QemuBuilder, conf *conf.Conf, stateChan chan
 			unit:       "systemd-poweroff.service",
 			messageID:  "7d4958e842da4a758f6c1cdc7b36dcc5",
 			guestState: guestStateInShutdown,
+		},
+		{
+			unit:       "systemd-soft-reboot.service",
+			messageID:  "7d4958e842da4a758f6c1cdc7b36dcc5",
+			guestState: guestStateInSoftReboot,
 		},
 	}
 

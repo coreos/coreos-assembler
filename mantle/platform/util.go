@@ -216,6 +216,64 @@ func GetMachineBootId(m Machine) (string, error) {
 	return strings.TrimSpace(string(stdout)), nil
 }
 
+// GetMachineSoftRebootCount retrieves the systemd SoftRebootsCount (for soft-reboot detection)
+func GetMachineSoftRebootCount(m Machine) (string, error) {
+	stdout, stderr, err := m.SSH("systemctl show --value --property SoftRebootsCount")
+	if err != nil {
+		return "", fmt.Errorf("failed to retrieve SoftRebootsCount: %s: %s: %s", stdout, err, stderr)
+	}
+	return strings.TrimSpace(string(stdout)), nil
+}
+
+// WaitForMachineSoftReboot waits for the machine to soft-reboot using systemd SoftRebootsCount
+func WaitForMachineSoftReboot(m Machine, j *Journal, timeout time.Duration, oldSoftRebootsCount string) error {
+	// For soft-reboot, we don't change the boot ID, but the systemd SoftRebootsCount should increment
+	// We use systemd's SoftRebootsCount property to detect when the system has soft-rebooted
+	c := make(chan error)
+	go func() {
+		for {
+			time.Sleep(1 * time.Second)
+			currentSoftRebootsCount, err := GetMachineSoftRebootCount(m)
+			if err != nil {
+				// SSH might be temporarily unavailable during soft-reboot
+				if _, ok := err.(*ssh.ExitMissingError); ok {
+					continue
+				} else if strings.Contains(err.Error(), "connection reset by peer") {
+					continue
+				} else if strings.Contains(err.Error(), "handshake failed") {
+					continue
+				} else if strings.Contains(err.Error(), "dial tcp") {
+					continue
+				} else if strings.Contains(err.Error(), "connection") {
+					continue
+				}
+				c <- err
+				return
+			}
+			// If SoftRebootsCount has changed, soft-reboot completed
+			if currentSoftRebootsCount != oldSoftRebootsCount && currentSoftRebootsCount != "" {
+				c <- nil
+				return
+			}
+		}
+	}()
+
+	select {
+	case err := <-c:
+		if err != nil {
+			return err
+		}
+		// Give it a moment for systemd to stabilize after soft-reboot
+		time.Sleep(2 * time.Second)
+		if err := CheckMachine(context.TODO(), m); err != nil {
+			return fmt.Errorf("machine %q failed basic checks after soft-reboot: %v", m.ID(), err)
+		}
+		return nil
+	case <-time.After(timeout):
+		return fmt.Errorf("timed out after %v waiting for machine to soft-reboot", timeout)
+	}
+}
+
 // GenerateFakeKey generates a SSH key pair, returns the public key, and
 // discards the private key. This is useful for droplets that don't need a
 // public key, since DO & Azure insists on requiring one.

@@ -77,6 +77,10 @@ func (dm *machine) WaitForReboot(timeout time.Duration, oldBootId string) error 
 	return platform.WaitForMachineReboot(dm, dm.journal, timeout, oldBootId)
 }
 
+func (dm *machine) WaitForSoftReboot(timeout time.Duration, oldSoftRebootsCount string) error {
+	return platform.WaitForMachineSoftReboot(dm, dm.journal, timeout, oldSoftRebootsCount)
+}
+
 func (dm *machine) Destroy() {
 	if err := dm.cluster.flight.api.DeleteDroplet(context.TODO(), dm.droplet.ID); err != nil {
 		plog.Errorf("Error deleting droplet %v: %v", dm.droplet.ID, err)

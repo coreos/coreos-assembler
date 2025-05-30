@@ -99,6 +99,10 @@ func (om *machine) WaitForReboot(timeout time.Duration, oldBootId string) error 
 	return platform.WaitForMachineReboot(om, om.journal, timeout, oldBootId)
 }
 
+func (om *machine) WaitForSoftReboot(timeout time.Duration, oldSoftRebootsCount string) error {
+	return platform.WaitForMachineSoftReboot(om, om.journal, timeout, oldSoftRebootsCount)
+}
+
 func (om *machine) Destroy() {
 	if err := om.saveConsole(); err != nil {
 		plog.Errorf("Error saving console for instance %v: %v", om.ID(), err)

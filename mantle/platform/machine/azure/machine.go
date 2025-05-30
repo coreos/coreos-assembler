@@ -108,6 +108,15 @@ func (am *machine) WaitForReboot(timeout time.Duration, oldBootId string) error 
 	return am.refetchIPs()
 }
 
+func (am *machine) WaitForSoftReboot(timeout time.Duration, oldSoftRebootsCount string) error {
+	err := platform.WaitForMachineSoftReboot(am, am.journal, timeout, oldSoftRebootsCount)
+	if err != nil {
+		return err
+	}
+	// For soft-reboot, IP addresses should not change, but let's refetch to be safe
+	return am.refetchIPs()
+}
+
 func (am *machine) Destroy() {
 	if err := am.saveConsole(); err != nil {
 		// log error, but do not fail to terminate instance

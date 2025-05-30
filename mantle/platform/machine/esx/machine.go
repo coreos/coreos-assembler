@@ -78,6 +78,10 @@ func (em *machine) WaitForReboot(timeout time.Duration, oldBootId string) error 
 	return platform.WaitForMachineReboot(em, em.journal, timeout, oldBootId)
 }
 
+func (em *machine) WaitForSoftReboot(timeout time.Duration, oldSoftRebootsCount string) error {
+	return platform.WaitForMachineSoftReboot(em, em.journal, timeout, oldSoftRebootsCount)
+}
+
 func (em *machine) Destroy() {
 	if err := em.cluster.flight.api.TerminateDevice(em.ID()); err != nil {
 		plog.Errorf("Error terminating device %v: %v", em.ID(), err)

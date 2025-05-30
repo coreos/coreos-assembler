@@ -1,0 +1,73 @@
+#!/bin/bash
+# Test for soft-reboot functionality similar to autopkgtest-reboot but using systemctl soft-reboot
+# This test validates that the Kola soft-reboot API works correctly
+set -xeuo pipefail
+
+# Caches the initial kernel boot ID
+BOOT_ID_FILE="/var/cache/kola-boot-id"
+
+log() {
+  set +x
+  echo "$@"
+}
+
+case "${AUTOPKGTEST_REBOOT_MARK:-}" in
+  "")
+    log "test beginning"
+
+    if test -f "$BOOT_ID_FILE"; then
+      log "error: found $BOOT_ID_FILE" 1>&2
+      exit 1
+    fi
+    # Check that boot_id stays the same across soft-reboot
+    INITIAL_BOOT_ID=$(cat /proc/sys/kernel/random/boot_id)
+    log "Initial boot ID: $INITIAL_BOOT_ID"
+    
+    # Save boot ID to persistent file for comparison across reboots
+    echo "$INITIAL_BOOT_ID" > "$BOOT_ID_FILE"
+    
+    /tmp/autopkgtest-soft-reboot mark1
+    ;;
+  mark1)
+    log "test in mark1"
+    # Verify boot_id is the same (soft-reboot should not change it)
+    CURRENT_BOOT_ID=$(cat /proc/sys/kernel/random/boot_id)
+    INITIAL_BOOT_ID=$(cat "$BOOT_ID_FILE")
+    log "Initial boot ID: $INITIAL_BOOT_ID"
+    log "Current boot ID after soft-reboot: $CURRENT_BOOT_ID"
+    
+    if [ "$CURRENT_BOOT_ID" != "$INITIAL_BOOT_ID" ]; then
+        log "ERROR: Boot ID changed after soft-reboot! Expected: $INITIAL_BOOT_ID, Got: $CURRENT_BOOT_ID"
+        exit 1
+    fi
+    log "SUCCESS: Boot ID preserved across soft-reboot"
+
+    # Test the prepare API with forced soft-reboot
+    /tmp/autopkgtest-soft-reboot-prepare mark2
+    systemctl soft-reboot
+    sleep infinity
+    ;;
+  mark2)
+    log "test in mark2"
+    FINAL_BOOT_ID=$(cat /proc/sys/kernel/random/boot_id)
+    INITIAL_BOOT_ID=$(cat "$BOOT_ID_FILE")
+    log "Initial boot ID: $INITIAL_BOOT_ID"
+    log "Final boot ID after forced soft-reboot: $FINAL_BOOT_ID"
+
+    # Verify all boot IDs are the same for soft-reboot
+    if [ "$FINAL_BOOT_ID" != "$INITIAL_BOOT_ID" ]; then
+        log "ERROR: Boot ID changed after forced soft-reboot! Expected: $INITIAL_BOOT_ID, Got: $FINAL_BOOT_ID"
+        exit 1
+    fi
+    log "SUCCESS: Boot ID preserved across forced soft-reboot"
+    
+    # Clean up
+    rm -f "$BOOT_ID_FILE"
+    log "Soft-reboot test completed successfully"
+    ;;
+  *)
+    log "unexpected mark: ${AUTOPKGTEST_REBOOT_MARK}"
+    exit 1
+    ;;
+esac
+log "ok autopkgtest soft-rebooting"
