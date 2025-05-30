@@ -258,7 +258,7 @@ github.com/containers/image/v5/docker/reference
 # github.com/containers/storage v1.57.2
 ## explicit; go 1.22.0
 github.com/containers/storage/pkg/regexp
-# github.com/coreos/butane v0.23.0
+# github.com/coreos/butane v0.24.0
 ## explicit; go 1.20
 github.com/coreos/butane/base/util
 github.com/coreos/butane/base/v0_1
@@ -301,8 +301,10 @@ github.com/coreos/butane/config/openshift/v4_17
 github.com/coreos/butane/config/openshift/v4_17/result
 github.com/coreos/butane/config/openshift/v4_18
 github.com/coreos/butane/config/openshift/v4_18/result
-github.com/coreos/butane/config/openshift/v4_19_exp
-github.com/coreos/butane/config/openshift/v4_19_exp/result
+github.com/coreos/butane/config/openshift/v4_19
+github.com/coreos/butane/config/openshift/v4_19/result
+github.com/coreos/butane/config/openshift/v4_20_exp
+github.com/coreos/butane/config/openshift/v4_20_exp/result
 github.com/coreos/butane/config/openshift/v4_8
 github.com/coreos/butane/config/openshift/v4_8/result
 github.com/coreos/butane/config/openshift/v4_9
