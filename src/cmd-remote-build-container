@@ -166,6 +166,9 @@ def main():
         # Add some information about the commit to labels for the container
         args.labels.append(f"org.opencontainers.image.revision={commit}")
         args.labels.append(f"org.opencontainers.image.source={args.git_url}")
+        if args.add_openshift_build_labels:
+            args.labels.append(f"io.openshift.build.commit.id={commit}")
+            args.labels.append(f"io.openshift.build.source-location={args.git_url}")
         # If a tag wasn't passed then use the arch + shortcommit
         if not args.tag:
             args.tag = f"{args.arch}-{shortcommit}"
@@ -257,6 +260,9 @@ Examples:
     parser.add_argument(
         '--label', dest="labels", default=[], action='append',
         required=False, help='Add image label(s)')
+    parser.add_argument(
+        '--add-openshift-build-labels', required=False, action='store_true',
+        help='Add io.openshift.build.* labels with git information')
     parser.add_argument(
         '--mount-host-ca-certs', required=False, action='store_true',
         help='Mount the CA certificate from the remote host')
