@@ -1,0 +1,83 @@
+#!/usr/bin/python3
+
+import argparse
+import json
+import os
+import subprocess
+import tempfile
+
+
+def main():
+    args = parse_args()
+    with tempfile.TemporaryDirectory(prefix='cosa-import-', dir='tmp') as tmpd:
+        populate_build_dir(args, tmpd)
+        # XXX: for debugging until we're ready
+        print("Temporary directory is:", tmpd)
+        os.system("sleep infinity")
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(prog='cosa import')
+    parser.add_argument("--rechunk", action='store_true', help="rechunk image")
+    parser.add_argument("srcimg", metavar='IMAGE',
+                        help="image to import (containers-transports(5) format)")
+    return parser.parse_args()
+
+
+def populate_build_dir(args, dir):
+    target_ociarchive = os.path.join(dir, "out.ociarchive")
+    import_oci_archive(args, target_ociarchive)
+    generate_meta_json(dir, target_ociarchive)
+    # mv_build_dir()
+
+
+def import_oci_archive(args, target):
+    # the easy case first
+    if not args.rechunk:
+        subprocess.check_call(['skopeo', 'copy', args.srcimg,
+                               f"oci-archive:{target}"])
+        return
+
+    if not args.srcimg.startswith("containers-storage:"):
+        raise Exception("can only rechunk from containers storage")
+
+    srcimg = args.srcimg[len('containers-storage:'):]
+    subprocess.check_call(["podman", "unshare", "rpm-ostree", "experimental",
+                           "compose", "build-chunked-oci", "--bootc",
+                           "--format-version=1", f"--from={srcimg}",
+                           f"--output=oci-archive:{target}"])
+
+
+def inspect_oci_archive(image):
+    out = subprocess.check_output(['skopeo', 'inspect',
+                                   f'oci-archive:{image}'])
+    return json.loads(out)
+
+
+def generate_meta_json(dir, ociarchive):
+    metadata = inspect_oci_archive(ociarchive)
+
+    # let raise if missing
+    assert metadata['Labels']['containers.bootc'] == '1'
+    meta_json = {
+        # just put a dummy ref here; it won't actually be used on streams that
+        # already moved over to OCI only, but I want this code to be testable
+        # with e.g. `testing-devel`. we can nuke this once testing-devel has
+        # switched over.
+        'ref': 'foobar',
+        'ostree-version': 'TODO',  # proxy version label
+        'buildid': 'TODO',  # also version label
+        'coreos-assembler.build-timestamp': 'TODO',  # proxy OCI build timestamp
+        'images': {
+            'ostree': {
+            },
+            'oci-manifest': {
+            }
+        },
+        'coreos-assembler.config-gitrev': 'TODO',  # proxy config label
+        'coreos-assembler.basearch': 'TODO',  # proxy arch?
+    }
+
+
+if __name__ == '__main__':
+    main()
