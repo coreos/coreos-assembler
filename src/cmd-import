@@ -1,0 +1,169 @@
+#!/usr/bin/python3
+
+import argparse
+import json
+import os
+import subprocess
+import tempfile
+import shutil
+import sys
+from stat import (
+    S_IREAD,
+    S_IRGRP,
+    S_IROTH)
+from cosalib.builds import Builds
+from cosalib.cmdlib import (
+    import_ostree_commit,
+    get_basearch,
+    sha256sum_file)
+
+
+def main():
+    args = parse_args()
+    with tempfile.TemporaryDirectory(prefix='cosa-import-', dir='tmp') as tmpd:
+        populate_build_dir(args, tmpd)
+        # XXX: for debugging until we're ready
+        print("Temporary directory is:", tmpd)
+        sys.exit()
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(prog='cosa import')
+    parser.add_argument("--rechunk", action='store_true', help="rechunk image")
+    parser.add_argument("srcimg", metavar='IMAGE',
+                        help="image to import (containers-transports(5) format)")
+    return parser.parse_args()
+
+
+def populate_build_dir(args, tmpd):
+    target_ociarchive = os.path.join(tmpd, "out.ociarchive")
+    import_oci_archive(args, target_ociarchive)
+    metadata = inspect_oci_archive(target_ociarchive)
+    name = 'fedora-coreos'
+    buildid = metadata['Labels']['org.opencontainers.image.version']
+    arch = get_basearch()
+
+    os.makedirs(f'builds/{buildid}/{arch}/', exist_ok=True)
+
+    manifest_metadata = generate_manifest_json(target_ociarchive, name, buildid, arch)
+
+    meta_json = generate_meta_json(target_ociarchive, metadata, manifest_metadata, name)
+
+    archive_path = meta_json['images']['ostree']['path']
+
+    # Move ociarchive to build dir
+    shutil.move(target_ociarchive, f'builds/{buildid}/{arch}/{archive_path}')
+
+    # Symlink build to latest
+    if os.path.exists('builds/latest'):
+        os.remove('builds/latest')
+    os.symlink(f'{buildid}', 'builds/latest', target_is_directory=True)
+
+    builds = Builds()
+    update_builds_json(builds, buildid, arch)
+    builddir = builds.get_build_dir(buildid)
+    buildmeta = builds.get_build_meta(buildid)
+    import_ostree_commit(".", builddir, buildmeta, extract_json=0)
+
+    # prep_build
+    # populate image.json. Refer cmdlib ln #178-210
+
+
+def update_builds_json(builds, buildid, arch):
+    builds.insert_build(buildid, arch)
+    builds.bump_timestamp()
+    builds.flush()
+
+
+def import_oci_archive(args, target):
+    # the easy case first
+    if not args.rechunk:
+        subprocess.check_call(['skopeo', 'copy', args.srcimg,
+                               f"oci-archive:{target}"])
+        return
+
+    if not args.srcimg.startswith("containers-storage:"):
+        raise Exception("can only rechunk from containers storage")
+
+    srcimg = args.srcimg[len('containers-storage:'):]
+    subprocess.check_call(["podman", "unshare", "rpm-ostree", "experimental",
+                           "compose", "build-chunked-oci", "--bootc",
+                           "--format-version=1", f"--from={srcimg}",
+                           f"--output=oci-archive:{target}"])
+
+
+def inspect_oci_archive(image):
+    out = subprocess.check_output(['skopeo', 'inspect',
+                                   f'oci-archive:{image}'])
+    return json.loads(out)
+
+
+def generate_manifest_json(ociarchive, name, buildid, arch):
+    manifest = subprocess.check_output(["skopeo", "inspect", "--raw", f"oci-archive:{ociarchive}"])
+
+    ostree_oci_manifest_path = f"{name}-{buildid}-ostree.{arch}-manifest.json"
+    manifest_json_dest = f'builds/{buildid}/{arch}/{ostree_oci_manifest_path}'
+
+    manifest_json_sha256 = None
+    manifest_json_size = None
+    with open(manifest_json_dest, 'wb') as manifest_json:
+        manifest_json.write(manifest)
+        os.fchmod(manifest_json.fileno(), S_IREAD | S_IRGRP | S_IROTH)
+
+        manifest_json_sha256 = sha256sum_file(manifest_json_dest)
+        manifest_json_size = os.path.getsize(manifest_json_dest)
+
+    manifest_metadata = {
+        'path': ostree_oci_manifest_path,
+        'sha256': manifest_json_sha256,
+        'size': manifest_json_size,
+        "skip-compression": True,
+    }
+
+    return manifest_metadata
+
+
+def generate_meta_json(ociarchive, metadata, oci_manifest, name):
+    archive_sha256sum = sha256sum_file(ociarchive)
+
+    # let raise if missing
+    assert metadata['Labels']['containers.bootc'] == '1'
+
+    buildid = metadata['Labels']['org.opencontainers.image.version']
+    arch = get_basearch()
+    stream = metadata['Labels']['fedora-coreos.stream']
+
+    meta_json = {
+        # just put a dummy ref here; it won't actually be used on streams that
+        # already moved over to OCI only, but I want this code to be testable
+        # with e.g. `testing-devel`. we can nuke this once testing-devel has
+        # switched over.
+        'ref': f"fedora/{arch}/coreos/{stream}",
+        'ostree-version': buildid,  # proxy version label
+        'buildid': buildid,  # also version label
+        'coreos-assembler.build-timestamp': metadata['Created'],  # proxy OCI build timestamp
+        'name': name,
+        'ostree-commit': metadata['Labels']['ostree.commit'],
+        'ostree-timestamp': metadata['Created'],
+        'ostree-content-checksum': '0000000000000000000000000000000000000000000000000000000000000000',
+        'rpm-ostree-inputhash': metadata['Labels']['rpmostree.inputhash'],
+        'images': {
+            'ostree': {
+                "path": f"fedora-coreos-{buildid}-ostree.{arch}.ociarchive",
+                "sha256": archive_sha256sum,
+                "skip-compression": True
+            },
+            'oci-manifest': oci_manifest,
+        },
+        'coreos-assembler.config-gitrev': metadata['Labels']['org.opencontainers.image.revision'],  # proxy config label
+        'coreos-assembler.basearch': arch,
+    }
+
+    with open(f'builds/{buildid}/{arch}/meta.json', 'w') as meta_file:
+        json.dump(meta_json, meta_file, indent=4)
+
+    return meta_json
+
+
+if __name__ == '__main__':
+    main()
