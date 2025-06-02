@@ -1367,35 +1367,35 @@ func baseQemuArgs(arch string, memoryMiB int) ([]string, error) {
 	// The machine argument needs to reference our memory device; see below
 	machineArg := "memory-backend=" + memoryDevice
 	accel := "accel=kvm"
+	binary := "qemu-kvm"
 	if _, ok := os.LookupEnv("COSA_NO_KVM"); ok || hostArch != arch {
 		accel = "accel=tcg"
 		kvm = false
+		// ppc64le is the only special case
+		if arch == "ppc64le" {
+			binary = "qemu-system-ppc64"
+		} else {
+			binary = "qemu-system-" + arch
+		}
+	}
+	// This is hidden on RHEL as libvirt is the primary interface
+	if _, err := os.Stat(binary); err != nil && os.IsNotExist(err) {
+		binary = "/usr/libexec/qemu-kvm"
 	}
 	machineArg += "," + accel
-	var ret []string
+	ret := []string{binary}
 	switch arch {
 	case "x86_64":
-		ret = []string{
-			"qemu-system-x86_64",
-			"-machine", machineArg,
-		}
+		ret = append(ret, "-machine", machineArg)
 	case "aarch64":
-		ret = []string{
-			"qemu-system-aarch64",
-			"-machine", "virt,gic-version=max," + machineArg,
-		}
+		ret = append(ret, "-machine", "virt,gic-version=max,"+machineArg)
 	case "s390x":
-		ret = []string{
-			"qemu-system-s390x",
-			"-machine", "s390-ccw-virtio," + machineArg,
-		}
+		ret = append(ret, "-machine", "s390-ccw-virtio,"+machineArg)
 	case "ppc64le":
-		ret = []string{
-			"qemu-system-ppc64",
+		ret = append(ret,
 			// kvm-type=HV ensures we use bare metal KVM and not "user mode"
 			// https://www.qemu.org/docs/master/system/ppc/pseries.html
-			"-machine", "pseries,kvm-type=HV,ic-mode=xics," + machineArg,
-		}
+			"-machine", "pseries,kvm-type=HV,ic-mode=xics,"+machineArg)
 	default:
 		return nil, fmt.Errorf("architecture %s not supported for qemu", arch)
 	}
