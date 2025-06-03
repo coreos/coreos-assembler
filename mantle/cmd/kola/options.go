@@ -99,7 +99,7 @@ func init() {
 	sv(&kola.AzureOptions.Sku, "azure-sku", "alpha", "Azure image sku/channel (default \"alpha\"")
 	sv(&kola.AzureOptions.Version, "azure-version", "", "Azure image version")
 	sv(&kola.AzureOptions.Location, "azure-location", "westus", "Azure location (default \"westus\"")
-	sv(&kola.AzureOptions.Size, "azure-size", "Standard_D2s_v3", "Azure machine size (default \"Standard_D2s_v3\")")
+	sv(&kola.AzureOptions.Size, "azure-size", "", "Azure machine size")
 	sv(&kola.AzureOptions.AvailabilityZone, "azure-availability-zone", "1", "Azure Availability Zone (default \"1\")")
 
 	// do-specific options
@@ -231,6 +231,17 @@ func syncOptionsImpl(useCosa bool) error {
 			kola.AWSOptions.InstanceType = "c6g.xlarge"
 		}
 		fmt.Printf("Using %s instance type\n", kola.AWSOptions.InstanceType)
+	}
+
+	// Choose an appropriate Azure instance type (size) for the target architecture
+	if kolaPlatform == "azure" && kola.AzureOptions.Size == "" {
+		switch kola.Options.CosaBuildArch {
+		case "x86_64":
+			kola.AzureOptions.Size = "Standard_D2s_v3"
+		case "aarch64":
+			kola.AzureOptions.Size = "Standard_D2ps_v5"
+		}
+		fmt.Printf("Using %s size\n", kola.AzureOptions.Size)
 	}
 
 	// Choose an appropriate GCP instance type for the target architecture
