@@ -23,7 +23,7 @@ spec:
   - name: revision
     value: '{{revision}}'
   - name: output-image
-    value: quay.io/konflux-fedora/coreos-tenant/kola-targetcli:{{revision}}
+    value: quay.io/redhat-user-workloads/coreos-tenant/kola-targetcli:{{revision}}
   - name: dockerfile
     value: ./tests/containers/targetcli/Containerfile
   - name: path-context
