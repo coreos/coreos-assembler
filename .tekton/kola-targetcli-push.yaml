@@ -27,6 +27,9 @@ spec:
     value: quay.io/redhat-user-workloads/coreos-tenant/kola-targetcli:{{revision}}
   - name: build-platforms
     value:
+    - linux/arm64
+    - linux/ppc64le
+    - linux/s390x
     - linux/x86_64
   - name: dockerfile
     value: ./tests/containers/targetcli/Containerfile
