@@ -259,6 +259,16 @@ func initiateReboot(mark string) error {
 	return nil
 }
 
+func mkfifo(path string) error {
+	c := exec.Command("mkfifo", path)
+	c.Stderr = os.Stderr
+	err := c.Run()
+	if err != nil {
+		return fmt.Errorf("creating fifo %s: %w", path, err)
+	}
+	return nil
+}
+
 func runExtUnit(cmd *cobra.Command, args []string) error {
 	rebootOff, _ := cmd.Flags().GetBool("deny-reboots")
 	// Write the autopkgtest wrappers
@@ -276,7 +286,7 @@ func runExtUnit(cmd *cobra.Command, args []string) error {
 
 	// We want to prevent certain tests (like non-exclusive tests) from rebooting
 	if !rebootOff {
-		err := exec.Command("mkfifo", rebootRequestFifo).Run()
+		err := mkfifo(rebootRequestFifo)
 		if err != nil {
 			return err
 		}
@@ -366,7 +376,7 @@ func runReboot(cmd *cobra.Command, args []string) error {
 
 	mark := args[0]
 	systemdjournal.Print(systemdjournal.PriInfo, "Requesting reboot with mark: %s", mark)
-	err := exec.Command("mkfifo", kola.KoletRebootAckFifo).Run()
+	err := mkfifo(kola.KoletRebootAckFifo)
 	if err != nil {
 		return err
 	}
