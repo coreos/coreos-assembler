@@ -1,4 +1,4 @@
-FROM quay.io/centos/centos:stream9
+FROM quay.io/fedora/fedora-minimal:42
 
 RUN dnf install -y targetcli kmod && dnf clean all
 RUN systemctl enable target
