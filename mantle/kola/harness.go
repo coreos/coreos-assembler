@@ -1100,7 +1100,6 @@ func metadataFromTestBinary(executable string) (*externalTestMeta, error) {
 // handling.
 func runExternalTest(c cluster.TestCluster, mach platform.Machine, testNum int) error {
 	var previousRebootState string
-	var stdout []byte
 	for {
 		bootID, err := platform.GetMachineBootId(mach)
 		if err != nil {
@@ -1126,11 +1125,11 @@ func runExternalTest(c cluster.TestCluster, mach platform.Machine, testNum int) 
 			unit := fmt.Sprintf("%s.service", KoletExtTestUnit)
 			cmd = fmt.Sprintf("sudo /usr/local/bin/kolet run-test-unit %s", shellquote.Join(unit))
 		}
-		stdout, err = c.SSH(mach, cmd)
-
+		stdout, stderr, err := mach.SSH(cmd)
 		if err != nil {
-			return errors.Wrapf(err, "kolet run-test-unit failed")
+			return errors.Wrapf(err, "kolet run-test-unit failed: %s %s", string(stdout), string(stderr))
 		}
+
 		koletRes := KoletResult{}
 		if len(stdout) > 0 {
 			err = json.Unmarshal(stdout, &koletRes)
