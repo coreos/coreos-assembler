@@ -109,6 +109,7 @@ func (bc *BaseCluster) SSH(m Machine, cmd string) ([]byte, []byte, error) {
 	session.Stdout = &stdout
 	session.Stderr = &stderr
 	err = session.Run(cmd)
+	plog.Debugf("Running cmd=%v res=%v", cmd, err)
 	outBytes := bytes.TrimSpace(stdout.Bytes())
 	errBytes := bytes.TrimSpace(stderr.Bytes())
 	return outBytes, errBytes, err
