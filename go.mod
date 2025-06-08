@@ -19,7 +19,7 @@ require (
 	github.com/aws/aws-sdk-go v1.55.6
 	github.com/coreos/butane v0.23.0
 	github.com/coreos/go-semver v0.3.1
-	github.com/coreos/go-systemd v0.0.0-20190321100706-95778dfbb74e
+	github.com/coreos/go-systemd d3cd4ed1dbcf
 	github.com/coreos/go-systemd/v22 v22.5.0
 	github.com/coreos/ignition/v2 v2.21.0
 	github.com/coreos/pkg v0.0.0-20240122114842-bbd7aa9bf6fb
