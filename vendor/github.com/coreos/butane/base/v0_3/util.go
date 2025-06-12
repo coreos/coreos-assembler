@@ -15,7 +15,14 @@
 package v0_3
 
 import (
+	common "github.com/coreos/butane/config/common"
+	"github.com/coreos/ignition/v2/config/shared/errors"
+	"github.com/coreos/ignition/v2/config/util"
 	"github.com/coreos/ignition/v2/config/v3_2/types"
+	"github.com/coreos/ignition/v2/config/validate"
+	"github.com/coreos/vcontext/path"
+	"github.com/coreos/vcontext/report"
+	vvalidate "github.com/coreos/vcontext/validate"
 )
 
 type nodeTracker struct {
@@ -122,4 +129,30 @@ func (t *nodeTracker) AddLink(l types.Link) (int, *types.Link) {
 	*t.links = append(*t.links, l)
 	t.linkMap[l.Path] = i
 	return i, &(*t.links)[i]
+}
+
+func ValidateIgnitionConfig(c path.ContextPath, rawConfig []byte) (report.Report, error) {
+	r := report.Report{}
+	var config types.Config
+	rp, err := util.HandleParseErrors(rawConfig, &config)
+	if err != nil {
+		return rp, err
+	}
+	vrep := vvalidate.Validate(config.Ignition, "json")
+	skipValidate := false
+	if vrep.IsFatal() {
+		for _, e := range vrep.Entries {
+			// warn user with ErrUnknownVersion when version is unkown and skip the validation.
+			if e.Message == errors.ErrUnknownVersion.Error() {
+				skipValidate = true
+				r.AddOnWarn(c.Append("version"), common.ErrUnkownIgnitionVersion)
+				break
+			}
+		}
+	}
+	if !skipValidate {
+		report := validate.ValidateWithContext(config, rawConfig)
+		r.Merge(report)
+	}
+	return r, nil
 }

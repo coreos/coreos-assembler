@@ -12,10 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.)
 
-package v4_19_exp
+package v4_20_exp
 
 import (
+	"slices"
+
 	"github.com/coreos/butane/config/common"
+	"github.com/coreos/ignition/v2/config/util"
 
 	"github.com/coreos/vcontext/path"
 	"github.com/coreos/vcontext/report"
@@ -39,5 +42,27 @@ func (os OpenShift) Validate(c path.ContextPath) (r report.Report) {
 			r.AddOnError(c.Append("kernel_type"), common.ErrInvalidKernelType)
 		}
 	}
+	return
+}
+
+// Validate that we have the required kernel argument pointing to the key file
+// if we have CEX support enabled. We only do this in the openshift spec as
+// this is implemented differently in the fcos one.
+// See: https://github.com/coreos/butane/issues/611
+// See: https://github.com/coreos/butane/issues/613
+func (conf Config) Validate(c path.ContextPath) (r report.Report) {
+	if util.IsTrue(conf.BootDevice.Luks.Cex.Enabled) && !slices.Contains(conf.OpenShift.KernelArguments, "rd.luks.key=/etc/luks/cex.key") {
+		r.AddOnError(c.Append("openshift", "kernel_arguments"), common.ErrMissingKernelArgumentCex)
+	}
+	cex := false
+	for _, l := range conf.Storage.Luks {
+		if util.IsTrue(l.Cex.Enabled) && l.Name == "root" {
+			cex = true
+		}
+	}
+	if cex && !slices.Contains(conf.OpenShift.KernelArguments, "rd.luks.key=/etc/luks/cex.key") {
+		r.AddOnError(c.Append("openshift", "kernel_arguments"), common.ErrMissingKernelArgumentCex)
+	}
+
 	return
 }

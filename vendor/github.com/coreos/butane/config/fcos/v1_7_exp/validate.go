@@ -18,6 +18,7 @@ import (
 	"regexp"
 	"strings"
 
+	base "github.com/coreos/butane/base/v0_7_exp"
 	"github.com/coreos/butane/config/common"
 	"github.com/coreos/ignition/v2/config/shared/errors"
 	"github.com/coreos/ignition/v2/config/util"
@@ -93,6 +94,26 @@ func (d BootDevice) Validate(c path.ContextPath) (r report.Report) {
 	}
 
 	r.Merge(d.Mirror.Validate(c.Append("mirror")))
+	return
+}
+
+func (l BootDeviceLuks) Validate(c path.ContextPath) (r report.Report) {
+	if util.NotEmpty(l.Device) {
+		valid := false
+		for _, t := range l.Tang {
+			if t != (base.Tang{}) {
+				valid = true
+			}
+		}
+		if util.IsTrue(l.Tpm2) {
+			valid = true
+		} else if util.IsTrue(l.Cex.Enabled) {
+			valid = true
+		}
+		if !valid {
+			r.AddOnError(c.Append("luks"), common.ErrNoLuksMethodSpecified)
+		}
+	}
 	return
 }
 
