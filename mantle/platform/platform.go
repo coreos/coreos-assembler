@@ -78,6 +78,9 @@ type Machine interface {
 	// WaitForReboot waits for the machine to restart and waits for it to come back.
 	WaitForReboot(time.Duration, string) error
 
+	// WaitForSoftReboot waits for the machine to soft-reboot and waits for it to come back.
+	WaitForSoftReboot(time.Duration, string) error
+
 	// Destroy terminates the machine and frees associated resources. It should log
 	// any failures; since they are not actionable, it does not return an error.
 	Destroy()
