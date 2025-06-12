@@ -1,0 +1,13 @@
+contentOrigin:
+  repofiles:
+    - ./fedora.repo
+packages:
+  - kmod
+  - nfs-utils
+  - systemd
+  - tang
+  - targetcli
+  - /usr/bin/ps
+
+arches:
+  - x86_64

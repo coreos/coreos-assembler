@@ -1,0 +1,1289 @@
+---
+lockfileVersion: 1
+lockfileVendor: redhat
+arches:
+- arch: x86_64
+  packages:
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/a/audit-libs-4.0.3-2.fc42.x86_64.rpm
+    repoid: fedora
+    size: 128313
+    checksum: sha256:9450de2c76d956320298efd92a85f190ec68fcaf96b1952a351066d47904103f
+    name: audit-libs
+    evr: 4.0.3-2.fc42
+    sourcerpm: audit-4.0.3-2.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/a/authselect-1.5.1-1.fc42.x86_64.rpm
+    repoid: fedora
+    size: 149971
+    checksum: sha256:0b16d9f6fc0413d43cff14514bbf2648df149a34c27714cb9f1f9899c75f03c5
+    name: authselect
+    evr: 1.5.1-1.fc42
+    sourcerpm: authselect-1.5.1-1.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/a/authselect-libs-1.5.1-1.fc42.x86_64.rpm
+    repoid: fedora
+    size: 223102
+    checksum: sha256:bd6425c0dd3865c3c6cedb85b14b24cc17d97881afa022586e3986268629b2fc
+    name: authselect-libs
+    evr: 1.5.1-1.fc42
+    sourcerpm: authselect-1.5.1-1.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/b/basesystem-11-22.fc42.noarch.rpm
+    repoid: fedora
+    size: 7465
+    checksum: sha256:1aa08b02ea8c78b5914d09293b9452e8f484342abe83176c87279ba7b94304dc
+    name: basesystem
+    evr: 11-22.fc42
+    sourcerpm: basesystem-11-22.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/b/bash-5.2.37-1.fc42.x86_64.rpm
+    repoid: fedora
+    size: 1895534
+    checksum: sha256:7650a95af971701c0a3219c076cd87bd248a6294dc4633f775b518fc11f35eef
+    name: bash
+    evr: 5.2.37-1.fc42
+    sourcerpm: bash-5.2.37-1.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/b/bzip2-libs-1.0.8-20.fc42.x86_64.rpm
+    repoid: fedora
+    size: 44618
+    checksum: sha256:40ff55cde621f5a9c38231b125d9b54aaefa6320d7596cdbc5a334a4fbfd8890
+    name: bzip2-libs
+    evr: 1.0.8-20.fc42
+    sourcerpm: bzip2-1.0.8-20.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/c/cracklib-2.9.11-7.fc42.x86_64.rpm
+    repoid: fedora
+    size: 93794
+    checksum: sha256:02bbec2cc5604a4b9b7e6631fa1a2297b1d51143f785d27140a4ff58a4079120
+    name: cracklib
+    evr: 2.9.11-7.fc42
+    sourcerpm: cracklib-2.9.11-7.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/c/cracklib-dicts-2.9.11-7.fc42.x86_64.rpm
+    repoid: fedora
+    size: 3769599
+    checksum: sha256:e8f3c853539cdbd91b2122de8ce9c77616e8c800415bbe899d5247f838b7b349
+    name: cracklib-dicts
+    evr: 2.9.11-7.fc42
+    sourcerpm: cracklib-2.9.11-7.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/c/crypto-policies-20250214-1.gitff7551b.fc42.noarch.rpm
+    repoid: fedora
+    size: 101055
+    checksum: sha256:0f4da119d88afb1aff29ff937e9490951b140095144c313c43e0e7397d485db6
+    name: crypto-policies
+    evr: 20250214-1.gitff7551b.fc42
+    sourcerpm: crypto-policies-20250214-1.gitff7551b.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/c/crypto-policies-scripts-20250214-1.gitff7551b.fc42.noarch.rpm
+    repoid: fedora
+    size: 129727
+    checksum: sha256:aac5faf37a14598a10419f4539292b63ee9b0309794e210df48dcc7e1e0f37bc
+    name: crypto-policies-scripts
+    evr: 20250214-1.gitff7551b.fc42
+    sourcerpm: crypto-policies-20250214-1.gitff7551b.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/c/cryptsetup-libs-2.7.5-2.fc42.x86_64.rpm
+    repoid: fedora
+    size: 549083
+    checksum: sha256:c3a902a7eef3fe2037bc135b72dc1892eb72a7d8cf0351072aef3aad3c78e892
+    name: cryptsetup-libs
+    evr: 2.7.5-2.fc42
+    sourcerpm: cryptsetup-2.7.5-2.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/c/cyrus-sasl-lib-2.1.28-30.fc42.x86_64.rpm
+    repoid: fedora
+    size: 812524
+    checksum: sha256:346549554115abba7eada698208d0b1bc54bbc5e66637f2ac161c90e0a179eb9
+    name: cyrus-sasl-lib
+    evr: 2.1.28-30.fc42
+    sourcerpm: cyrus-sasl-2.1.28-30.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/d/dbus-1.16.0-3.fc42.x86_64.rpm
+    repoid: fedora
+    size: 7945
+    checksum: sha256:b15732d75a470eeb48789259a93e19eadd6c8a18e27e2e8d46f935a7673d9dfc
+    name: dbus
+    evr: 1:1.16.0-3.fc42
+    sourcerpm: dbus-1.16.0-3.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/d/dbus-broker-36-5.fc42.x86_64.rpm
+    repoid: fedora
+    size: 178304
+    checksum: sha256:8ab6f5750243d0840d59d1cacff4d18397eb722c9494a8d1ff59bf32689e3541
+    name: dbus-broker
+    evr: 36-5.fc42
+    sourcerpm: dbus-broker-36-5.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/d/dbus-common-1.16.0-3.fc42.noarch.rpm
+    repoid: fedora
+    size: 14800
+    checksum: sha256:69dc203b3cbc8ca33f87b37bca181b57ee4902161f2a1dc5976d3b858288fd65
+    name: dbus-common
+    evr: 1:1.16.0-3.fc42
+    sourcerpm: dbus-1.16.0-3.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/d/dbus-libs-1.16.0-3.fc42.x86_64.rpm
+    repoid: fedora
+    size: 153002
+    checksum: sha256:244b33283a532a1abac4599fb5a748c7e07e1ae09e5ed022d7560b5b75e26a2c
+    name: dbus-libs
+    evr: 1:1.16.0-3.fc42
+    sourcerpm: dbus-1.16.0-3.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/d/device-mapper-1.02.204-3.fc42.x86_64.rpm
+    repoid: fedora
+    size: 140422
+    checksum: sha256:c63668294464345d424a04f83ea9388738ea8c0d86a28878357600507a622b6a
+    name: device-mapper
+    evr: 1.02.204-3.fc42
+    sourcerpm: lvm2-2.03.30-3.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/d/device-mapper-libs-1.02.204-3.fc42.x86_64.rpm
+    repoid: fedora
+    size: 184364
+    checksum: sha256:654f7d92f438a49521de8d7fdc9bde3776f3d36d6154b54481c0e47553454a35
+    name: device-mapper-libs
+    evr: 1.02.204-3.fc42
+    sourcerpm: lvm2-2.03.30-3.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/e/e2fsprogs-libs-1.47.2-3.fc42.x86_64.rpm
+    repoid: fedora
+    size: 234030
+    checksum: sha256:93f8f08fa580675263608a3d634f7e48038ee52de3849dc4602886f5e40f2a2e
+    name: e2fsprogs-libs
+    evr: 1.47.2-3.fc42
+    sourcerpm: e2fsprogs-1.47.2-3.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/e/expat-2.7.1-1.fc42.x86_64.rpm
+    repoid: fedora
+    size: 117827
+    checksum: sha256:c9e745fe28ce7935f6d885d0a1150550190610378ba81b5210f70a3de52de4a9
+    name: expat
+    evr: 2.7.1-1.fc42
+    sourcerpm: expat-2.7.1-1.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/f/fedora-gpg-keys-42-1.noarch.rpm
+    repoid: fedora
+    size: 138840
+    checksum: sha256:cb0a96b8f752f0ed5dd966092756b0acf1d3aa1a58749879aa0ccf36e5f33477
+    name: fedora-gpg-keys
+    evr: 42-1
+    sourcerpm: fedora-repos-42-1.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/f/fedora-repos-42-1.noarch.rpm
+    repoid: fedora
+    size: 9447
+    checksum: sha256:7967042b322c35bfe20ee4192ffe5216606b0a45efd006c0a63f1f3f617b3830
+    name: fedora-repos
+    evr: 42-1
+    sourcerpm: fedora-repos-42-1.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/f/findutils-4.10.0-5.fc42.x86_64.rpm
+    repoid: fedora
+    size: 564754
+    checksum: sha256:481dfe9b5209956daa88feb8363e46292aaecf43467f4e0f09851952a4860ee3
+    name: findutils
+    evr: 1:4.10.0-5.fc42
+    sourcerpm: findutils-4.10.0-5.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/g/gawk-5.3.1-1.fc42.x86_64.rpm
+    repoid: fedora
+    size: 1131342
+    checksum: sha256:9faeba17c0a411fa632688ed0510c398f7c98988953059c2d708a3b26e628996
+    name: gawk
+    evr: 5.3.1-1.fc42
+    sourcerpm: gawk-5.3.1-1.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/g/gawk-all-langpacks-5.3.1-1.fc42.x86_64.rpm
+    repoid: fedora
+    size: 285671
+    checksum: sha256:ad82ae0d09903500853e9a86cfc99bda197063be6868c7e9f4d6451b6fb75904
+    name: gawk-all-langpacks
+    evr: 5.3.1-1.fc42
+    sourcerpm: gawk-5.3.1-1.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/g/gdbm-1.23-9.fc42.x86_64.rpm
+    repoid: fedora
+    size: 154406
+    checksum: sha256:36ad6844f7bfdf5d692a6396cae394c5c7129f60392239e2b103bda309da8276
+    name: gdbm
+    evr: 1:1.23-9.fc42
+    sourcerpm: gdbm-1.23-9.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/g/gdbm-libs-1.23-9.fc42.x86_64.rpm
+    repoid: fedora
+    size: 58395
+    checksum: sha256:0b8e9511dbc127716c4c0bee5fa69b37986355bdc776c5d0516cdd07186d3efe
+    name: gdbm-libs
+    evr: 1:1.23-9.fc42
+    sourcerpm: gdbm-1.23-9.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/g/gmp-6.3.0-4.fc42.x86_64.rpm
+    repoid: fedora
+    size: 325329
+    checksum: sha256:1193ba8d39771dc2ff3798c14515ffb9952c0007b529374b24caa8c22aed4493
+    name: gmp
+    evr: 1:6.3.0-4.fc42
+    sourcerpm: gmp-6.3.0-4.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/g/gnutls-3.8.9-3.fc42.x86_64.rpm
+    repoid: fedora
+    size: 1292872
+    checksum: sha256:03aac0fcc469ede6e53fe6ae6d0a5516c4f6c3275e2aebe545932767a07b8b56
+    name: gnutls
+    evr: 3.8.9-3.fc42
+    sourcerpm: gnutls-3.8.9-3.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/g/gobject-introspection-1.84.0-1.fc42.x86_64.rpm
+    repoid: fedora
+    size: 122816
+    checksum: sha256:18356aabe8938da167caa30a4c05e1cd3b5926d0c783dc5c45ada272e8eaa3e9
+    name: gobject-introspection
+    evr: 1.84.0-1.fc42
+    sourcerpm: gobject-introspection-1.84.0-1.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/g/grep-3.11-10.fc42.x86_64.rpm
+    repoid: fedora
+    size: 307305
+    checksum: sha256:5bdd131696d8c6370d74a0998b3fa521c8f653a99647a9d19f92679c2bf3c2fc
+    name: grep
+    evr: 3.11-10.fc42
+    sourcerpm: grep-3.11-10.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/g/gssproxy-0.9.2-8.fc42.x86_64.rpm
+    repoid: fedora
+    size: 118085
+    checksum: sha256:49c7fee682ddb5b9e3c09e5d68984cfe4ff0e025922f05523a6c14369f9241af
+    name: gssproxy
+    evr: 0.9.2-8.fc42
+    sourcerpm: gssproxy-0.9.2-8.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/g/gzip-1.13-3.fc42.x86_64.rpm
+    repoid: fedora
+    size: 174441
+    checksum: sha256:acddb912089a359b7b99fb13915eb9242fe2c8af1d8a43f0cc658dfb9d5bd1a0
+    name: gzip
+    evr: 1.13-3.fc42
+    sourcerpm: gzip-1.13-3.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/j/jansson-2.14-2.fc42.x86_64.rpm
+    repoid: fedora
+    size: 46818
+    checksum: sha256:f7394c728043f0f995164b6b8e49bd1673e8dacfe9aed5d1beec0e3ae6a42177
+    name: jansson
+    evr: 2.14-2.fc42
+    sourcerpm: jansson-2.14-2.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/j/jose-14-4.fc42.x86_64.rpm
+    repoid: fedora
+    size: 68052
+    checksum: sha256:2ee86bea4edd860bedb38009aa19b186b50b9ac2ee3a09d3495822625ec8bba1
+    name: jose
+    evr: 14-4.fc42
+    sourcerpm: jose-14-4.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/j/json-c-0.18-2.fc42.x86_64.rpm
+    repoid: fedora
+    size: 45986
+    checksum: sha256:7c2b9cee8cd534d68a2c3910c364855c0a0357361abde2ab14e9ae3d588f7b8a
+    name: json-c
+    evr: 0.18-2.fc42
+    sourcerpm: json-c-0.18-2.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/k/kbd-2.7.1-3.fc42.x86_64.rpm
+    repoid: fedora
+    size: 395008
+    checksum: sha256:970e2c079b19fcb1704570d4da0f9b1a328f0b8466c1539edf2a8f4f0a6e1b4b
+    name: kbd
+    evr: 2.7.1-3.fc42
+    sourcerpm: kbd-2.7.1-3.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/k/kbd-legacy-2.7.1-3.fc42.noarch.rpm
+    repoid: fedora
+    size: 622743
+    checksum: sha256:a2d1890ae44f6724624f2b48575d0703b5980e7c8c47eca25af43d55deb879c7
+    name: kbd-legacy
+    evr: 2.7.1-3.fc42
+    sourcerpm: kbd-2.7.1-3.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/k/kbd-misc-2.7.1-3.fc42.noarch.rpm
+    repoid: fedora
+    size: 1758888
+    checksum: sha256:9df0120d8de25c1e2c25607001f402d1200d0a995dd25894eb1a00694e77528d
+    name: kbd-misc
+    evr: 2.7.1-3.fc42
+    sourcerpm: kbd-2.7.1-3.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/k/keyutils-1.6.3-5.fc42.x86_64.rpm
+    repoid: fedora
+    size: 75224
+    checksum: sha256:4e12ef3f64dd5776e9109aaa71977df22f6b6dcbbfe8d40608ffdf895b2aefc9
+    name: keyutils
+    evr: 1.6.3-5.fc42
+    sourcerpm: keyutils-1.6.3-5.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/k/keyutils-libs-1.6.3-5.fc42.x86_64.rpm
+    repoid: fedora
+    size: 32291
+    checksum: sha256:2a21e50130e476bb1eb716120ceffa912e1fd9aca51e98ab4d7bdda4b24b71e2
+    name: keyutils-libs
+    evr: 1.6.3-5.fc42
+    sourcerpm: keyutils-1.6.3-5.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/k/kmod-33-3.fc42.x86_64.rpm
+    repoid: fedora
+    size: 126642
+    checksum: sha256:7ebbbc73df2584e9de25a40ac0aee30e4f13d00c185b8d46eefddfbee819d3d9
+    name: kmod
+    evr: 33-3.fc42
+    sourcerpm: kmod-33-3.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/k/kmod-libs-33-3.fc42.x86_64.rpm
+    repoid: fedora
+    size: 71943
+    checksum: sha256:3b0b2c78f393a6586754be242e328c2d76be206ce479cfe415a642886693c5d4
+    name: kmod-libs
+    evr: 33-3.fc42
+    sourcerpm: kmod-33-3.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/k/krb5-libs-1.21.3-5.fc42.x86_64.rpm
+    repoid: fedora
+    size: 783102
+    checksum: sha256:7952dafb6c3882dcb378f07b5ac7da2d122baf2f8648bec204a2f344426db400
+    name: krb5-libs
+    evr: 1.21.3-5.fc42
+    sourcerpm: krb5-1.21.3-5.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/l/libacl-2.3.2-3.fc42.x86_64.rpm
+    repoid: fedora
+    size: 23559
+    checksum: sha256:f5d3dd82686ddf3525cfa738cd7227cdcfff4f4c708a8e4df94a05913c2b9e47
+    name: libacl
+    evr: 2.3.2-3.fc42
+    sourcerpm: acl-2.3.2-3.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/l/libarchive-3.7.7-4.fc42.x86_64.rpm
+    repoid: fedora
+    size: 421649
+    checksum: sha256:33afe435df67b21dbb4284ef18a35aeef46d32ed4f4cdc9f323f48bbb00b1387
+    name: libarchive
+    evr: 3.7.7-4.fc42
+    sourcerpm: libarchive-3.7.7-4.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/l/libattr-2.5.2-5.fc42.x86_64.rpm
+    repoid: fedora
+    size: 17493
+    checksum: sha256:9b26e12f1f4cffbcff1922054eaba965312d6c2e25ffbd2ce58c24999bc786f3
+    name: libattr
+    evr: 2.5.2-5.fc42
+    sourcerpm: attr-2.5.2-5.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/l/libb2-0.98.1-13.fc42.x86_64.rpm
+    repoid: fedora
+    size: 25991
+    checksum: sha256:3f977d31f5ab2765ab06fcc44917806d85767ba37d0b2a05cd128b408aff5c95
+    name: libb2
+    evr: 0.98.1-13.fc42
+    sourcerpm: libb2-0.98.1-13.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/l/libbasicobjects-0.1.1-58.fc42.x86_64.rpm
+    repoid: fedora
+    size: 26290
+    checksum: sha256:8b9b21e3aacf9d8a17e9eb1c2747bd405c462b9f9d69df51d4b4a9b9504edda3
+    name: libbasicobjects
+    evr: 0.1.1-58.fc42
+    sourcerpm: ding-libs-0.6.2-58.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/l/libblkid-2.40.4-7.fc42.x86_64.rpm
+    repoid: fedora
+    size: 125481
+    checksum: sha256:7b2bc8b830be6593ba28b4ec27293e6a6ea40451cd97d06a252cbbbe93d2c53d
+    name: libblkid
+    evr: 2.40.4-7.fc42
+    sourcerpm: util-linux-2.40.4-7.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/l/libbpf-1.5.0-2.fc42.x86_64.rpm
+    repoid: fedora
+    size: 191634
+    checksum: sha256:5c213e03789f17db1dc0a664cb9a1ccd5fa34ad0e72fffa94d2a6fa0f01ef6c7
+    name: libbpf
+    evr: 2:1.5.0-2.fc42
+    sourcerpm: libbpf-1.5.0-2.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/l/libbrotli-1.1.0-6.fc42.x86_64.rpm
+    repoid: fedora
+    size: 347933
+    checksum: sha256:305592ebef59b23e12039c2b218051984fb90c202ac63a679d741b8d0227b9cb
+    name: libbrotli
+    evr: 1.1.0-6.fc42
+    sourcerpm: brotli-1.1.0-6.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/l/libcap-2.73-2.fc42.x86_64.rpm
+    repoid: fedora
+    size: 86324
+    checksum: sha256:7f2f4a9ae7bb3d643ffa00038353b2d01e3c3d18003958469daa3daba68e2002
+    name: libcap
+    evr: 2.73-2.fc42
+    sourcerpm: libcap-2.73-2.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/l/libcap-ng-0.8.5-4.fc42.x86_64.rpm
+    repoid: fedora
+    size: 32941
+    checksum: sha256:4fdb2914cc271d9772e86f555cc06ed479603c6151c5c51acb77fa25fc99bff5
+    name: libcap-ng
+    evr: 0.8.5-4.fc42
+    sourcerpm: libcap-ng-0.8.5-4.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/l/libcbor-0.11.0-3.fc42.x86_64.rpm
+    repoid: fedora
+    size: 34077
+    checksum: sha256:962e8a299ed4d057e95ac5e0330a46224fc3672b3319f3459d84613904532842
+    name: libcbor
+    evr: 0.11.0-3.fc42
+    sourcerpm: libcbor-0.11.0-3.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/l/libcollection-0.7.0-58.fc42.x86_64.rpm
+    repoid: fedora
+    size: 45014
+    checksum: sha256:7946eff222c69b17b5d1b4273c5e6611dab50ba8cf387312e28dc66e3445668d
+    name: libcollection
+    evr: 0.7.0-58.fc42
+    sourcerpm: ding-libs-0.6.2-58.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/l/libcom_err-1.47.2-3.fc42.x86_64.rpm
+    repoid: fedora
+    size: 27574
+    checksum: sha256:8babb066523de31b265d8146e6b1ce2e1b54b123de65e640f15c6f92ebfab339
+    name: libcom_err
+    evr: 1.47.2-3.fc42
+    sourcerpm: e2fsprogs-1.47.2-3.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/l/libcurl-8.11.1-4.fc42.x86_64.rpm
+    repoid: fedora
+    size: 385953
+    checksum: sha256:e84f663e81a9b94de03d0982fe073436026a3ac3e1ceeb122e11349d8f5047ea
+    name: libcurl
+    evr: 8.11.1-4.fc42
+    sourcerpm: curl-8.11.1-4.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/l/libeconf-0.7.6-1.fc42.x86_64.rpm
+    repoid: fedora
+    size: 36000
+    checksum: sha256:e8fc1b3bc5472925630fd91cab39d4f21fecc8063e7a70555c849f47c645d283
+    name: libeconf
+    evr: 0.7.6-1.fc42
+    sourcerpm: libeconf-0.7.6-1.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/l/libev-4.33-13.fc42.x86_64.rpm
+    repoid: fedora
+    size: 54631
+    checksum: sha256:87dc80b209b757deae51bf2f9b28d8a818df48e5daf1449c81acd2262633145c
+    name: libev
+    evr: 4.33-13.fc42
+    sourcerpm: libev-4.33-13.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/l/libevent-2.1.12-15.fc42.x86_64.rpm
+    repoid: fedora
+    size: 266429
+    checksum: sha256:57cd234511e78ce4b1d82e52e9ea6bf3830b75091148e3149e1d90218389c331
+    name: libevent
+    evr: 2.1.12-15.fc42
+    sourcerpm: libevent-2.1.12-15.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/l/libfdisk-2.40.4-7.fc42.x86_64.rpm
+    repoid: fedora
+    size: 162296
+    checksum: sha256:3463edb9be141bdff54ccedabb5e5822f754e3b260c7b59692bc6c1c06b11189
+    name: libfdisk
+    evr: 2.40.4-7.fc42
+    sourcerpm: util-linux-2.40.4-7.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/l/libffi-3.4.6-5.fc42.x86_64.rpm
+    repoid: fedora
+    size: 40892
+    checksum: sha256:6d2d660cf9d593e68b06130f9e18e23b0588e1217748f8718e674fff7c8642a4
+    name: libffi
+    evr: 3.4.6-5.fc42
+    sourcerpm: libffi-3.4.6-5.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/l/libfido2-1.15.0-3.fc42.x86_64.rpm
+    repoid: fedora
+    size: 100736
+    checksum: sha256:e695eac1c2adfbc96572359aeecb2cd06996799036b8540c1b0f61c07af64f85
+    name: libfido2
+    evr: 1.15.0-3.fc42
+    sourcerpm: libfido2-1.15.0-3.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/l/libidn2-2.3.8-1.fc42.x86_64.rpm
+    repoid: fedora
+    size: 179005
+    checksum: sha256:834b786c10b3d477bd05ada6688ed62fe367a5f64ab1d60d14e56d35f923c417
+    name: libidn2
+    evr: 2.3.8-1.fc42
+    sourcerpm: libidn2-2.3.8-1.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/l/libini_config-1.3.1-58.fc42.x86_64.rpm
+    repoid: fedora
+    size: 68591
+    checksum: sha256:afa4505d42540f3a7edfa00d74aa1bd7f5dcca172f323a9dd6af74396f0501e5
+    name: libini_config
+    evr: 1.3.1-58.fc42
+    sourcerpm: ding-libs-0.6.2-58.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/l/libjose-14-4.fc42.x86_64.rpm
+    repoid: fedora
+    size: 66716
+    checksum: sha256:b375365888c4d8899a40aeddaf793648a385b12383a147a708bc55d3881b0dc2
+    name: libjose
+    evr: 14-4.fc42
+    sourcerpm: jose-14-4.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/l/libmount-2.40.4-7.fc42.x86_64.rpm
+    repoid: fedora
+    size: 158785
+    checksum: sha256:a3187260b104382e733bd12338615067992793a5c55537652fe59b22791e65d2
+    name: libmount
+    evr: 2.40.4-7.fc42
+    sourcerpm: util-linux-2.40.4-7.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/l/libnghttp2-1.64.0-3.fc42.x86_64.rpm
+    repoid: fedora
+    size: 79554
+    checksum: sha256:eee8426b67e34a9127f38b3ba825ae97f866f8180684ce492d90a9373df13562
+    name: libnghttp2
+    evr: 1.64.0-3.fc42
+    sourcerpm: nghttp2-1.64.0-3.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/l/libnl3-3.11.0-3.fc42.x86_64.rpm
+    repoid: fedora
+    size: 365800
+    checksum: sha256:ce46d0bd3eb5b167c92cc633755e92510ae42f458f1b846503b17e1e82f4449f
+    name: libnl3
+    evr: 3.11.0-3.fc42
+    sourcerpm: libnl3-3.11.0-3.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/l/libnsl2-2.0.1-3.fc42.x86_64.rpm
+    repoid: fedora
+    size: 30248
+    checksum: sha256:5c6a063df404ec29acdf695825c1e4afc5951e2756b2e253e476a7e1bcc814bb
+    name: libnsl2
+    evr: 2.0.1-3.fc42
+    sourcerpm: libnsl2-2.0.1-3.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/l/libpath_utils-0.2.1-58.fc42.x86_64.rpm
+    repoid: fedora
+    size: 29379
+    checksum: sha256:c66f13b93bea3c25988f9591b4f710d9e9e42494843d7ca4856050878cc440d7
+    name: libpath_utils
+    evr: 0.2.1-58.fc42
+    sourcerpm: ding-libs-0.6.2-58.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/l/libpkgconf-2.3.0-2.fc42.x86_64.rpm
+    repoid: fedora
+    size: 39289
+    checksum: sha256:6d61109d807a6f2f12f85b3d7e2732e11676316bc769abe6e3d4aa96a166353e
+    name: libpkgconf
+    evr: 2.3.0-2.fc42
+    sourcerpm: pkgconf-2.3.0-2.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/l/libpsl-0.21.5-5.fc42.x86_64.rpm
+    repoid: fedora
+    size: 65576
+    checksum: sha256:9d8e25d2d388dde49eed754dab702ec9cb5867e777effb34ce5431b96d270c99
+    name: libpsl
+    evr: 0.21.5-5.fc42
+    sourcerpm: libpsl-0.21.5-5.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/l/libpwquality-1.4.5-12.fc42.x86_64.rpm
+    repoid: fedora
+    size: 121324
+    checksum: sha256:e58a6f83d4fa9695fe1d644082bd434f3f03e97e38bee30288bb0269030af6dd
+    name: libpwquality
+    evr: 1.4.5-12.fc42
+    sourcerpm: libpwquality-1.4.5-12.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/l/libref_array-0.1.5-58.fc42.x86_64.rpm
+    repoid: fedora
+    size: 27994
+    checksum: sha256:5e8aad2cd5be287ec41572b5fa5d286e55b2e195f37cbf0a3d983143a4b98b11
+    name: libref_array
+    evr: 0.1.5-58.fc42
+    sourcerpm: ding-libs-0.6.2-58.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/l/libseccomp-2.5.5-2.fc41.x86_64.rpm
+    repoid: fedora
+    size: 71862
+    checksum: sha256:4b402b1a86bb55c946296c47ee4fe88551faeec146115dfb0fc9a58f3c818056
+    name: libseccomp
+    evr: 2.5.5-2.fc41
+    sourcerpm: libseccomp-2.5.5-2.fc41.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/l/libselinux-3.8-1.fc42.x86_64.rpm
+    repoid: fedora
+    size: 99413
+    checksum: sha256:50671dc67a93f9c36c42b0d0a00bab431edce6b15c3b86cc9ba80efd355bb911
+    name: libselinux
+    evr: 3.8-1.fc42
+    sourcerpm: libselinux-3.8-1.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/l/libsemanage-3.8-1.fc42.x86_64.rpm
+    repoid: fedora
+    size: 126533
+    checksum: sha256:7f4ff223e5e82b554ed65b9f271ef2e700bc2b61fb0975236f3d98346c44c4f7
+    name: libsemanage
+    evr: 3.8-1.fc42
+    sourcerpm: libsemanage-3.8-1.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/l/libsepol-3.8-1.fc42.x86_64.rpm
+    repoid: fedora
+    size: 357283
+    checksum: sha256:468c46778437dd5f92db2d11a8483bf9b7960e3a573bb07e031b11032904a844
+    name: libsepol
+    evr: 3.8-1.fc42
+    sourcerpm: libsepol-3.8-1.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/l/libsmartcols-2.40.4-7.fc42.x86_64.rpm
+    repoid: fedora
+    size: 83185
+    checksum: sha256:cf59126ec59c82aecd47843e4896e1a9e4286bff44c6f2d8b98eea208f50023d
+    name: libsmartcols
+    evr: 2.40.4-7.fc42
+    sourcerpm: util-linux-2.40.4-7.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/l/libssh-0.11.1-4.fc42.x86_64.rpm
+    repoid: fedora
+    size: 238944
+    checksum: sha256:231f43dfb6d149ec56682d8a3a79dcdc815b8c3aba51099d1a7f12d01a87aa48
+    name: libssh
+    evr: 0.11.1-4.fc42
+    sourcerpm: libssh-0.11.1-4.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/l/libssh-config-0.11.1-4.fc42.noarch.rpm
+    repoid: fedora
+    size: 9219
+    checksum: sha256:a2ef804b814b7df92686d914d758758080e7f674172523b65431610f9fa026b4
+    name: libssh-config
+    evr: 0.11.1-4.fc42
+    sourcerpm: libssh-0.11.1-4.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/l/libtasn1-4.20.0-1.fc42.x86_64.rpm
+    repoid: fedora
+    size: 76804
+    checksum: sha256:fb71b016b821d3de4810fd523c9fcdf228d09742ebdc21784738306fc04c0c46
+    name: libtasn1
+    evr: 4.20.0-1.fc42
+    sourcerpm: libtasn1-4.20.0-1.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/l/libtirpc-1.3.6-1.rc3.fc42.2.x86_64.rpm
+    repoid: fedora
+    size: 97795
+    checksum: sha256:44222f4efc5e913283a003edf9f5a60819c27e354e1981539f0552f9c5d4a77f
+    name: libtirpc
+    evr: 1.3.6-1.rc3.fc42.2
+    sourcerpm: libtirpc-1.3.6-1.rc3.fc42.2.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/l/libtool-ltdl-2.5.4-4.fc42.x86_64.rpm
+    repoid: fedora
+    size: 37039
+    checksum: sha256:2861e318b8836616fba56beeec70f80c7a2df61c043a6c86a5fc817ff7427168
+    name: libtool-ltdl
+    evr: 2.5.4-4.fc42
+    sourcerpm: libtool-2.5.4-4.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/l/libunistring-1.1-9.fc42.x86_64.rpm
+    repoid: fedora
+    size: 555487
+    checksum: sha256:c431ce84ef7146a27c2a49d5c6d9333c9dbec96bc31921f5e5006256799438a1
+    name: libunistring
+    evr: 1.1-9.fc42
+    sourcerpm: libunistring-1.1-9.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/l/libusb1-1.0.28-2.fc42.x86_64.rpm
+    repoid: fedora
+    size: 80943
+    checksum: sha256:e01205fc3ae182f5e48caa81a5d6bebb41659bb9d48181cb4b1da78557865606
+    name: libusb1
+    evr: 1.0.28-2.fc42
+    sourcerpm: libusb1-1.0.28-2.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/l/libuuid-2.40.4-7.fc42.x86_64.rpm
+    repoid: fedora
+    size: 25947
+    checksum: sha256:37432ddf66dca9b0f22d16dd1e6eb20a3d5843042fd6db4e58840d3dc8ab83cc
+    name: libuuid
+    evr: 2.40.4-7.fc42
+    sourcerpm: util-linux-2.40.4-7.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/l/libverto-0.3.2-10.fc42.x86_64.rpm
+    repoid: fedora
+    size: 21300
+    checksum: sha256:16406e961da54a428779425dbfe58bb65dc475f271b69f567a1aa446ecc0a9f6
+    name: libverto
+    evr: 0.3.2-10.fc42
+    sourcerpm: libverto-0.3.2-10.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/l/libverto-libev-0.3.2-10.fc42.x86_64.rpm
+    repoid: fedora
+    size: 13172
+    checksum: sha256:992c6a51190650c024ad31639fc107169933a10715ca9e37c1e59e6eecfd7c50
+    name: libverto-libev
+    evr: 0.3.2-10.fc42
+    sourcerpm: libverto-0.3.2-10.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/l/libxkbcommon-1.8.1-1.fc42.x86_64.rpm
+    repoid: fedora
+    size: 158114
+    checksum: sha256:a7fe439477634aca51b9e9cbdb154911b18d4fbeff93786f1031f644ca0a7b28
+    name: libxkbcommon
+    evr: 1.8.1-1.fc42
+    sourcerpm: libxkbcommon-1.8.1-1.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/l/libxml2-2.12.10-1.fc42.x86_64.rpm
+    repoid: fedora
+    size: 700077
+    checksum: sha256:1ad0ef8f652c6c541195ccb2dbcffbdb8530b3f2676ed426cf7bb97635908dbd
+    name: libxml2
+    evr: 2.12.10-1.fc42
+    sourcerpm: libxml2-2.12.10-1.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/l/libzstd-1.5.7-1.fc42.x86_64.rpm
+    repoid: fedora
+    size: 322380
+    checksum: sha256:5bfc44b080a9824cbf34edab89fbf1fd06dc693f1bdd5c93d38d2c0988b7a8cc
+    name: libzstd
+    evr: 1.5.7-1.fc42
+    sourcerpm: zstd-1.5.7-1.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/l/llhttp-9.2.1-5.fc42.x86_64.rpm
+    repoid: fedora
+    size: 33513
+    checksum: sha256:b2139c3c00186ffa97b95b17fd42cd821a5a5d174273ccaedb58a7faf15d0387
+    name: llhttp
+    evr: 9.2.1-5.fc42
+    sourcerpm: llhttp-9.2.1-5.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/l/lz4-libs-1.10.0-2.fc42.x86_64.rpm
+    repoid: fedora
+    size: 79944
+    checksum: sha256:49f1212ff07a33fbf79455e603874915964c9a8e056376e967e623a3ac146dd9
+    name: lz4-libs
+    evr: 1.10.0-2.fc42
+    sourcerpm: lz4-1.10.0-2.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/m/mkpasswd-5.5.20-5.fc42.x86_64.rpm
+    repoid: fedora
+    size: 26060
+    checksum: sha256:0ccfb704e6581499ad65a4186e70fb7dbfc2412a23120a5717d13a4b6f78f35f
+    name: mkpasswd
+    evr: 5.5.20-5.fc42
+    sourcerpm: whois-5.5.20-5.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/m/mpfr-4.2.2-1.fc42.x86_64.rpm
+    repoid: fedora
+    size: 353591
+    checksum: sha256:d0559913dac8fe29ef627859c15e609de6de1122984b3f901400fc77ef7acd4e
+    name: mpfr
+    evr: 4.2.2-1.fc42
+    sourcerpm: mpfr-4.2.2-1.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/n/ncurses-base-6.5-5.20250125.fc42.noarch.rpm
+    repoid: fedora
+    size: 90167
+    checksum: sha256:005029d148ebe15192f6a50b64999d8712d74545a0e656cb54150d63b58780e9
+    name: ncurses-base
+    evr: 6.5-5.20250125.fc42
+    sourcerpm: ncurses-6.5-5.20250125.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/n/ncurses-libs-6.5-5.20250125.fc42.x86_64.rpm
+    repoid: fedora
+    size: 343012
+    checksum: sha256:a305d4f84625201df297fdfbe38d487d8fcfbc4d574b1ecfd6387c6f989bbe47
+    name: ncurses-libs
+    evr: 6.5-5.20250125.fc42
+    sourcerpm: ncurses-6.5-5.20250125.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/n/nettle-3.10.1-1.fc42.x86_64.rpm
+    repoid: fedora
+    size: 434630
+    checksum: sha256:2a465f45a93575a1848f2e66bb1a77ed740c7c2ef32c4e3cd83605394342f73c
+    name: nettle
+    evr: 3.10.1-1.fc42
+    sourcerpm: nettle-3.10.1-1.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/o/openldap-2.6.9-3.fc42.x86_64.rpm
+    repoid: fedora
+    size: 266412
+    checksum: sha256:80f452866b7b70d2b4d520e8aa88b6d16a275cd94e1bd4e2b8b7372d1ad946b9
+    name: openldap
+    evr: 2.6.9-3.fc42
+    sourcerpm: openldap-2.6.9-3.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/o/openssl-libs-3.2.4-3.fc42.x86_64.rpm
+    repoid: fedora
+    size: 2416373
+    checksum: sha256:c180e47517b48898ac784af3894c8e232520be4ed1e6f3ed408aed2f1001be54
+    name: openssl-libs
+    evr: 1:3.2.4-3.fc42
+    sourcerpm: openssl-3.2.4-3.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/p/p11-kit-0.25.5-5.fc42.x86_64.rpm
+    repoid: fedora
+    size: 503482
+    checksum: sha256:1193b5ff5c72bea1f260703d855f15bfe83390d3a57defde5fda72741dc3be9a
+    name: p11-kit
+    evr: 0.25.5-5.fc42
+    sourcerpm: p11-kit-0.25.5-5.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/p/p11-kit-trust-0.25.5-5.fc42.x86_64.rpm
+    repoid: fedora
+    size: 135743
+    checksum: sha256:40e6c3396a8f3578ca71f954fac1b221b4cd17b0e3f272d8f4e053ec68ee0668
+    name: p11-kit-trust
+    evr: 0.25.5-5.fc42
+    sourcerpm: p11-kit-0.25.5-5.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/p/pcre2-10.45-1.fc42.x86_64.rpm
+    repoid: fedora
+    size: 269147
+    checksum: sha256:fdf5de4e858f6b4f7d9b8b3cac88fc870b15b18491635b4dd05bad6bdff91a4a
+    name: pcre2
+    evr: 10.45-1.fc42
+    sourcerpm: pcre2-10.45-1.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/p/pcre2-syntax-10.45-1.fc42.noarch.rpm
+    repoid: fedora
+    size: 165600
+    checksum: sha256:5297c9646078ea4a438d09d034f96dd48b0e21ba92c6d2a1d6fcaa442c09fcc9
+    name: pcre2-syntax
+    evr: 10.45-1.fc42
+    sourcerpm: pcre2-10.45-1.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/p/pkcs11-provider-1.0-1.fc42.x86_64.rpm
+    repoid: fedora
+    size: 147779
+    checksum: sha256:d3286c12f484983363bae7c6a6ffb45858b624be46f31bc6483eb04a989234e1
+    name: pkcs11-provider
+    evr: 1.0-1.fc42
+    sourcerpm: pkcs11-provider-1.0-1.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/p/pkgconf-2.3.0-2.fc42.x86_64.rpm
+    repoid: fedora
+    size: 45964
+    checksum: sha256:65169e8bfad20649ebd103c24255ad39e3e329e907cabf16ca1602411ffcb2a8
+    name: pkgconf
+    evr: 2.3.0-2.fc42
+    sourcerpm: pkgconf-2.3.0-2.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/p/pkgconf-m4-2.3.0-2.fc42.noarch.rpm
+    repoid: fedora
+    size: 14577
+    checksum: sha256:90496b0e2a7291473e34bd6e3044eb7b664944ffdccd1041896445196f3d32c4
+    name: pkgconf-m4
+    evr: 2.3.0-2.fc42
+    sourcerpm: pkgconf-2.3.0-2.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/p/pkgconf-pkg-config-2.3.0-2.fc42.x86_64.rpm
+    repoid: fedora
+    size: 10163
+    checksum: sha256:9476e0b0fff3b34c4fca8579c116bcb2542443edb838cb2b434bde9c4b0d0fb3
+    name: pkgconf-pkg-config
+    evr: 2.3.0-2.fc42
+    sourcerpm: pkgconf-2.3.0-2.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/p/popt-1.19-8.fc42.x86_64.rpm
+    repoid: fedora
+    size: 67526
+    checksum: sha256:3b0af670a0b078192737d45056750f9d8eba2aee282c3e324e4487cfb2770b36
+    name: popt
+    evr: 1.19-8.fc42
+    sourcerpm: popt-1.19-8.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/p/procps-ng-4.0.4-6.fc42.x86_64.rpm
+    repoid: fedora
+    size: 374107
+    checksum: sha256:f3ac8efa11cee6a972915b9ad519202b2b2d748014a3517aa5c6f930f7dd9a3b
+    name: procps-ng
+    evr: 4.0.4-6.fc42
+    sourcerpm: procps-ng-4.0.4-6.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/p/publicsuffix-list-dafsa-20250116-1.fc42.noarch.rpm
+    repoid: fedora
+    size: 60245
+    checksum: sha256:81d70e387d249dd2fa0f6514fdb78658c8de61c9ba5ea78a662100cff32c7467
+    name: publicsuffix-list-dafsa
+    evr: 20250116-1.fc42
+    sourcerpm: publicsuffix-list-20250116-1.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/p/python-pip-wheel-24.3.1-2.fc42.noarch.rpm
+    repoid: fedora
+    size: 1262714
+    checksum: sha256:6270a48e0b5b0fd8e5d434cba01fad2a454053d2d229b86acbff85a8a4abf093
+    name: python-pip-wheel
+    evr: 24.3.1-2.fc42
+    sourcerpm: python-pip-24.3.1-2.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/p/python3-configshell-1.1.30-9.fc42.noarch.rpm
+    repoid: fedora
+    size: 92287
+    checksum: sha256:8fc10a776341a2fe352121f89daa36e61ac71a1ceb383916c91f142f6de45317
+    name: python3-configshell
+    evr: 1:1.1.30-9.fc42
+    sourcerpm: python-configshell-1.1.30-9.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/p/python3-dbus-1.3.2-9.fc42.x86_64.rpm
+    repoid: fedora
+    size: 162675
+    checksum: sha256:2059003e1df3153bae8c8e888f6003f3eb65ba372092be45cf53b39bffd7738e
+    name: python3-dbus
+    evr: 1.3.2-9.fc42
+    sourcerpm: dbus-python-1.3.2-9.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/p/python3-gobject-base-3.50.0-3.fc42.x86_64.rpm
+    repoid: fedora
+    size: 409670
+    checksum: sha256:a5ddd2ddfb7fa2c12f6089a979520454d338748fd76800c386e1b913b95e782f
+    name: python3-gobject-base
+    evr: 3.50.0-3.fc42
+    sourcerpm: pygobject3-3.50.0-3.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/p/python3-kmod-0.9.2-7.fc42.x86_64.rpm
+    repoid: fedora
+    size: 107841
+    checksum: sha256:ba914fe6c871c19c24e95bc31d7ad33ee18e523f469537ac2e15410639b5b67c
+    name: python3-kmod
+    evr: 0.9.2-7.fc42
+    sourcerpm: python-kmod-0.9.2-7.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/p/python3-pyparsing-3.1.2-8.fc42.noarch.rpm
+    repoid: fedora
+    size: 284683
+    checksum: sha256:778c01f47038d9e997ccad7999724dbd52a8d795dbd8b8b20416ed8652fe9bbe
+    name: python3-pyparsing
+    evr: 3.1.2-8.fc42
+    sourcerpm: pyparsing-3.1.2-8.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/p/python3-pyudev-0.24.3-4.fc42.noarch.rpm
+    repoid: fedora
+    size: 99088
+    checksum: sha256:3e74f7806e041863365cf592d5bd265ae8674be145ad4ba8bc0f3fb93b898e8e
+    name: python3-pyudev
+    evr: 0.24.3-4.fc42
+    sourcerpm: python-pyudev-0.24.3-4.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/p/python3-rtslib-2.1.76-10.fc42.noarch.rpm
+    repoid: fedora
+    size: 127962
+    checksum: sha256:efbc84572fb9ef60fb2313677f3a4aad9c603b82fec426f9df9c94456440762e
+    name: python3-rtslib
+    evr: 2.1.76-10.fc42
+    sourcerpm: python-rtslib-2.1.76-10.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/p/python3-six-1.17.0-2.fc42.noarch.rpm
+    repoid: fedora
+    size: 42288
+    checksum: sha256:5ba70c41940c06f1d5533eb7a348ac855a58f0885f05d7126f61595b5b111d2d
+    name: python3-six
+    evr: 1.17.0-2.fc42
+    sourcerpm: python-six-1.17.0-2.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/p/python3-typing-extensions-4.12.2-4.fc42.noarch.rpm
+    repoid: fedora
+    size: 95606
+    checksum: sha256:d6729c628b55ff231089c1503c97a8ce218f83ac836db5d3c7772feb18353d3e
+    name: python3-typing-extensions
+    evr: 4.12.2-4.fc42
+    sourcerpm: python-typing-extensions-4.12.2-4.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/p/python3-urwid-2.6.16-2.fc42.noarch.rpm
+    repoid: fedora
+    size: 1093555
+    checksum: sha256:f2da49cf18fe6c21846095102533b8ed657cd3f91c19d7fae229185c87169e63
+    name: python3-urwid
+    evr: 2.6.16-2.fc42
+    sourcerpm: python-urwid-2.6.16-2.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/p/python3-wcwidth-0.2.13-6.fc42.noarch.rpm
+    repoid: fedora
+    size: 53688
+    checksum: sha256:da3f62c4c60f7ecf93afac5db7d979d50bfbac47fd4340a0c837d0b5413c3ec3
+    name: python3-wcwidth
+    evr: 0.2.13-6.fc42
+    sourcerpm: python-wcwidth-0.2.13-6.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/q/qrencode-libs-4.1.1-10.fc42.x86_64.rpm
+    repoid: fedora
+    size: 63962
+    checksum: sha256:fe2bf6f6efb35874a17b7c234dc075b0075db674dab3618592d8770f439dd8c7
+    name: qrencode-libs
+    evr: 4.1.1-10.fc42
+    sourcerpm: qrencode-4.1.1-10.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/q/quota-4.09-8.fc42.x86_64.rpm
+    repoid: fedora
+    size: 191816
+    checksum: sha256:b7e3c35876e23806cd24e75c5a68b9640f7544ac60709edd589c7914ce3201d2
+    name: quota
+    evr: 1:4.09-8.fc42
+    sourcerpm: quota-4.09-8.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/q/quota-nls-4.09-8.fc42.noarch.rpm
+    repoid: fedora
+    size: 78376
+    checksum: sha256:1ef30fa6518d35a9fe1059e718dfb7718986d65abe9ac2eb17ce4947ef438cc8
+    name: quota-nls
+    evr: 1:4.09-8.fc42
+    sourcerpm: quota-4.09-8.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/r/readline-8.2-13.fc42.x86_64.rpm
+    repoid: fedora
+    size: 220408
+    checksum: sha256:3522eb02b0106536d5f4438f0cf36139efe3f97c8cfa48613545b7e01f0a480c
+    name: readline
+    evr: 8.2-13.fc42
+    sourcerpm: readline-8.2-13.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/s/sed-4.9-4.fc42.x86_64.rpm
+    repoid: fedora
+    size: 324889
+    checksum: sha256:6787c16fffa300675f92d28191a94490580c2248ec00b4dbf288338a1bf6dcfb
+    name: sed
+    evr: 4.9-4.fc42
+    sourcerpm: sed-4.9-4.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/s/setup-2.15.0-13.fc42.noarch.rpm
+    repoid: fedora
+    size: 159528
+    checksum: sha256:e58556afdeef2d3ae4df8ba7f9b5400f3935a260bf7289b3c7e125f17bcf3c38
+    name: setup
+    evr: 2.15.0-13.fc42
+    sourcerpm: setup-2.15.0-13.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/s/shadow-utils-4.17.4-1.fc42.x86_64.rpm
+    repoid: fedora
+    size: 1386719
+    checksum: sha256:1d080bb54ac8e5921406e467771ef64029948a0c028f2f6929aa507c3fc9de0d
+    name: shadow-utils
+    evr: 2:4.17.4-1.fc42
+    sourcerpm: shadow-utils-4.17.4-1.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/s/sqlite-libs-3.47.2-2.fc42.x86_64.rpm
+    repoid: fedora
+    size: 752396
+    checksum: sha256:287d6eb69b0b58c74a1c23f5faaf3f51641f150a90980b29c8c81f0dd97d41b0
+    name: sqlite-libs
+    evr: 3.47.2-2.fc42
+    sourcerpm: sqlite-3.47.2-2.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/t/tang-15-7.fc42.x86_64.rpm
+    repoid: fedora
+    size: 47731
+    checksum: sha256:6747fb6bb229fe73a31cb50a7592e92bb24cd130e19bc15c2801baaa6123f255
+    name: tang
+    evr: 15-7.fc42
+    sourcerpm: tang-15-7.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/t/target-restore-2.1.76-10.fc42.noarch.rpm
+    repoid: fedora
+    size: 14836
+    checksum: sha256:1eb4e467079d3f1512d79ee720a52082edf842ff14c9c4f628f0c7edf1ad13c2
+    name: target-restore
+    evr: 2.1.76-10.fc42
+    sourcerpm: python-rtslib-2.1.76-10.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/t/targetcli-2.1.58-4.fc42.noarch.rpm
+    repoid: fedora
+    size: 94239
+    checksum: sha256:bb818d6961e8a9d9081dd2632621e1385ec0b96449a8b50f7243cb7cc7bb768a
+    name: targetcli
+    evr: 2.1.58-4.fc42
+    sourcerpm: targetcli-2.1.58-4.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/t/tpm2-tss-4.1.3-6.fc42.x86_64.rpm
+    repoid: fedora
+    size: 435613
+    checksum: sha256:b3bd5a19bb63228a9e2305270d3d56fed10b8ae30d85e1d0ed1f0a31c5c4922e
+    name: tpm2-tss
+    evr: 4.1.3-6.fc42
+    sourcerpm: tpm2-tss-4.1.3-6.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/t/tzdata-2025b-1.fc42.noarch.rpm
+    repoid: fedora
+    size: 731129
+    checksum: sha256:fc64566f49dca3072670148849eb4f5695b3252c8c542af09a16e68ddb2ab5af
+    name: tzdata
+    evr: 2025b-1.fc42
+    sourcerpm: tzdata-2025b-1.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/u/util-linux-2.40.4-7.fc42.x86_64.rpm
+    repoid: fedora
+    size: 1210657
+    checksum: sha256:f10a4e00e6c142fd3d4159f286f7f5e0919fa3c09d459300420e2534c5da9fcf
+    name: util-linux
+    evr: 2.40.4-7.fc42
+    sourcerpm: util-linux-2.40.4-7.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/u/util-linux-core-2.40.4-7.fc42.x86_64.rpm
+    repoid: fedora
+    size: 541932
+    checksum: sha256:c9b429fada544ad84e7aef9d675be7f2a30e28ba4a4855e805b837d58b3a8794
+    name: util-linux-core
+    evr: 2.40.4-7.fc42
+    sourcerpm: util-linux-2.40.4-7.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/w/whois-nls-5.5.20-5.fc42.noarch.rpm
+    repoid: fedora
+    size: 38589
+    checksum: sha256:2920bf605f6c120c58dda11ffe5573015894461e3be22d0445e7a8110fe8e225
+    name: whois-nls
+    evr: 5.5.20-5.fc42
+    sourcerpm: whois-5.5.20-5.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/x/xkeyboard-config-2.44-1.fc42.noarch.rpm
+    repoid: fedora
+    size: 1001955
+    checksum: sha256:cefc65793ce0009ae7c99d9eeda8624b805e88b03c133d74fafffebeeb5e9cf5
+    name: xkeyboard-config
+    evr: 2.44-1.fc42
+    sourcerpm: xkeyboard-config-2.44-1.fc42.src.rpm
+  - url: http://mirror.in2p3.fr/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/z/zlib-ng-compat-2.2.4-3.fc42.x86_64.rpm
+    repoid: fedora
+    size: 80309
+    checksum: sha256:38c423b7a709dea8417a9f771b6f1cae188737ab14e8bd9f3d50791ce13593a8
+    name: zlib-ng-compat
+    evr: 2.2.4-3.fc42
+    sourcerpm: zlib-ng-2.2.4-3.fc42.src.rpm
+  - url: https://fr2.rpmfind.net/linux/fedora/linux/updates/42/Everything/x86_64/Packages/a/alternatives-1.33-1.fc42.x86_64.rpm
+    repoid: updates
+    size: 41518
+    checksum: sha256:c39c9569e701a7d047498c258a6a123cc32de89a560d5473a8fc7e4593198b2e
+    name: alternatives
+    evr: 1.33-1.fc42
+    sourcerpm: chkconfig-1.33-1.fc42.src.rpm
+  - url: https://fr2.rpmfind.net/linux/fedora/linux/updates/42/Everything/x86_64/Packages/c/ca-certificates-2024.2.69_v8.0.401-6.fc42.noarch.rpm
+    repoid: updates
+    size: 967405
+    checksum: sha256:597aeb447b859614c1b5581a2c063051045fafb5f782af604681fc371b61fc94
+    name: ca-certificates
+    evr: 2024.2.69_v8.0.401-6.fc42
+    sourcerpm: ca-certificates-2024.2.69_v8.0.401-6.fc42.src.rpm
+  - url: https://fr2.rpmfind.net/linux/fedora/linux/updates/42/Everything/x86_64/Packages/c/coreutils-9.6-4.fc42.x86_64.rpm
+    repoid: updates
+    size: 1194391
+    checksum: sha256:96dcebf370eb455f0b86b42c8db083567f0f34431a1b1b5f12abfdb5a99eccef
+    name: coreutils
+    evr: 9.6-4.fc42
+    sourcerpm: coreutils-9.6-4.fc42.src.rpm
+  - url: https://fr2.rpmfind.net/linux/fedora/linux/updates/42/Everything/x86_64/Packages/c/coreutils-common-9.6-4.fc42.x86_64.rpm
+    repoid: updates
+    size: 2183332
+    checksum: sha256:c9daea5a151a03978e1fcbfc2705db98e35cea796a7e33103b5f69f5bd678004
+    name: coreutils-common
+    evr: 9.6-4.fc42
+    sourcerpm: coreutils-9.6-4.fc42.src.rpm
+  - url: https://fr2.rpmfind.net/linux/fedora/linux/updates/42/Everything/x86_64/Packages/d/diffutils-3.12-1.fc42.x86_64.rpm
+    repoid: updates
+    size: 401994
+    checksum: sha256:ebba0f71b6a5ae209e855042bba934d86b3bc6566f2e0e855ad3e536a3c27c7e
+    name: diffutils
+    evr: 3.12-1.fc42
+    sourcerpm: diffutils-3.12-1.fc42.src.rpm
+  - url: https://fr2.rpmfind.net/linux/fedora/linux/updates/42/Everything/x86_64/Packages/e/elfutils-debuginfod-client-0.193-2.fc42.x86_64.rpm
+    repoid: updates
+    size: 48063
+    checksum: sha256:af8f25edf88e55b5b328c04031b65927801b62f383f0bd35c95a182dfd182874
+    name: elfutils-debuginfod-client
+    evr: 0.193-2.fc42
+    sourcerpm: elfutils-0.193-2.fc42.src.rpm
+  - url: https://fr2.rpmfind.net/linux/fedora/linux/updates/42/Everything/x86_64/Packages/e/elfutils-default-yama-scope-0.193-2.fc42.noarch.rpm
+    repoid: updates
+    size: 12884
+    checksum: sha256:aeb640a01ba4135ab62f965a899e8262fea22eb9d870c74030b102021c7b0acf
+    name: elfutils-default-yama-scope
+    evr: 0.193-2.fc42
+    sourcerpm: elfutils-0.193-2.fc42.src.rpm
+  - url: https://fr2.rpmfind.net/linux/fedora/linux/updates/42/Everything/x86_64/Packages/e/elfutils-libelf-0.193-2.fc42.x86_64.rpm
+    repoid: updates
+    size: 212795
+    checksum: sha256:3b08c05c3fbc3687823c92a16a831baab187d4164ebdbf6845ec709f31f7e374
+    name: elfutils-libelf
+    evr: 0.193-2.fc42
+    sourcerpm: elfutils-0.193-2.fc42.src.rpm
+  - url: https://fr2.rpmfind.net/linux/fedora/linux/updates/42/Everything/x86_64/Packages/e/elfutils-libs-0.193-2.fc42.x86_64.rpm
+    repoid: updates
+    size: 276671
+    checksum: sha256:716282bcf300398586fa81cbd50e477ec6816c69cdd5ce66c9a842a906bc5058
+    name: elfutils-libs
+    evr: 0.193-2.fc42
+    sourcerpm: elfutils-0.193-2.fc42.src.rpm
+  - url: https://fr2.rpmfind.net/linux/fedora/linux/updates/42/Everything/x86_64/Packages/f/fedora-release-42-26.noarch.rpm
+    repoid: updates
+    size: 14965
+    checksum: sha256:ab4afabba233a4f849f43115888febd796d2f37225abfcaf6b87b9bb4c0581bb
+    name: fedora-release
+    evr: 42-26
+    sourcerpm: fedora-release-42-26.src.rpm
+  - url: https://fr2.rpmfind.net/linux/fedora/linux/updates/42/Everything/x86_64/Packages/f/fedora-release-common-42-26.noarch.rpm
+    repoid: updates
+    size: 26152
+    checksum: sha256:766639ed59a7a8940862910f85429d7e62d4c39fba5bb92b507f9609606061fb
+    name: fedora-release-common
+    evr: 42-26
+    sourcerpm: fedora-release-42-26.src.rpm
+  - url: https://fr2.rpmfind.net/linux/fedora/linux/updates/42/Everything/x86_64/Packages/f/fedora-release-identity-basic-42-26.noarch.rpm
+    repoid: updates
+    size: 15783
+    checksum: sha256:168a946a103aae9ce056e010d4bf5fb82ab09cb7d1c4dde7aa921b4c839db65f
+    name: fedora-release-identity-basic
+    evr: 42-26
+    sourcerpm: fedora-release-42-26.src.rpm
+  - url: https://fr2.rpmfind.net/linux/fedora/linux/updates/42/Everything/x86_64/Packages/f/filesystem-3.18-42.fc42.x86_64.rpm
+    repoid: updates
+    size: 1397208
+    checksum: sha256:98db9a32157cbcf3ba31f266544fdea91f01f5ce3dfd91f8795c6aae30de1cf8
+    name: filesystem
+    evr: 3.18-42.fc42
+    sourcerpm: filesystem-3.18-42.fc42.src.rpm
+  - url: https://fr2.rpmfind.net/linux/fedora/linux/updates/42/Everything/x86_64/Packages/g/glib2-2.84.2-1.fc42.x86_64.rpm
+    repoid: updates
+    size: 3202807
+    checksum: sha256:d9aac3ed5ade5a79a561f44b87b3860110bbf710bd1248ff3a955f7db07dd879
+    name: glib2
+    evr: 2.84.2-1.fc42
+    sourcerpm: glib2-2.84.2-1.fc42.src.rpm
+  - url: https://fr2.rpmfind.net/linux/fedora/linux/updates/42/Everything/x86_64/Packages/g/glibc-2.41-5.fc42.x86_64.rpm
+    repoid: updates
+    size: 2366396
+    checksum: sha256:0bedd5bbbe7900683e45f7b9c08245954cd748528ff756439f2a06fcc6754740
+    name: glibc
+    evr: 2.41-5.fc42
+    sourcerpm: glibc-2.41-5.fc42.src.rpm
+  - url: https://fr2.rpmfind.net/linux/fedora/linux/updates/42/Everything/x86_64/Packages/g/glibc-common-2.41-5.fc42.x86_64.rpm
+    repoid: updates
+    size: 411884
+    checksum: sha256:55ac6f178715ae415b6233b0fabe4cfc76281e5d1f5e908b1804e1ba86e8ec4d
+    name: glibc-common
+    evr: 2.41-5.fc42
+    sourcerpm: glibc-2.41-5.fc42.src.rpm
+  - url: https://fr2.rpmfind.net/linux/fedora/linux/updates/42/Everything/x86_64/Packages/g/glibc-gconv-extra-2.41-5.fc42.x86_64.rpm
+    repoid: updates
+    size: 1739687
+    checksum: sha256:80976c3113b9f28edd97f452f12f47df6e793ab0fe7dacda906e478ca6212ba2
+    name: glibc-gconv-extra
+    evr: 2.41-5.fc42
+    sourcerpm: glibc-2.41-5.fc42.src.rpm
+  - url: https://fr2.rpmfind.net/linux/fedora/linux/updates/42/Everything/x86_64/Packages/g/glibc-minimal-langpack-2.41-5.fc42.x86_64.rpm
+    repoid: updates
+    size: 118517
+    checksum: sha256:f7441a6d5b4cfcd24bfe5ab6545c01db10fda1262af8cd2dcd2852f9b5ee3189
+    name: glibc-minimal-langpack
+    evr: 2.41-5.fc42
+    sourcerpm: glibc-2.41-5.fc42.src.rpm
+  - url: https://fr2.rpmfind.net/linux/fedora/linux/updates/42/Everything/x86_64/Packages/l/libgcc-15.1.1-2.fc42.x86_64.rpm
+    repoid: updates
+    size: 130583
+    checksum: sha256:854e25be05b39788cb0bb32ff6eefe14bb5e0a16241959e7236f1227d0f6d7e4
+    name: libgcc
+    evr: 15.1.1-2.fc42
+    sourcerpm: gcc-15.1.1-2.fc42.src.rpm
+  - url: https://fr2.rpmfind.net/linux/fedora/linux/updates/42/Everything/x86_64/Packages/l/libgomp-15.1.1-2.fc42.x86_64.rpm
+    repoid: updates
+    size: 373909
+    checksum: sha256:28052872a0b609c20c8886505085a861075cbb8a85bd760fcbe94a03b2d38069
+    name: libgomp
+    evr: 15.1.1-2.fc42
+    sourcerpm: gcc-15.1.1-2.fc42.src.rpm
+  - url: https://fr2.rpmfind.net/linux/fedora/linux/updates/42/Everything/x86_64/Packages/l/libnfsidmap-2.8.3-1.rc1.fc42.x86_64.rpm
+    repoid: updates
+    size: 64079
+    checksum: sha256:a08c8664e12e20aaa7880b8e7d456b7ac2dd00ae326529f2aa31bde543fb5033
+    name: libnfsidmap
+    evr: 1:2.8.3-1.rc1.fc42
+    sourcerpm: nfs-utils-2.8.3-1.rc1.fc42.src.rpm
+  - url: https://fr2.rpmfind.net/linux/fedora/linux/updates/42/Everything/x86_64/Packages/l/libxcrypt-4.4.38-7.fc42.x86_64.rpm
+    repoid: updates
+    size: 130267
+    checksum: sha256:59c12e7b8385c81998a3bb862fa9bc0a783a4d6eb045f14f433618d63a94f481
+    name: libxcrypt
+    evr: 4.4.38-7.fc42
+    sourcerpm: libxcrypt-4.4.38-7.fc42.src.rpm
+  - url: https://fr2.rpmfind.net/linux/fedora/linux/updates/42/Everything/x86_64/Packages/m/mpdecimal-4.0.1-1.fc42.x86_64.rpm
+    repoid: updates
+    size: 99388
+    checksum: sha256:815190835c7c3fc63a749a4b032cf48c9b3e2ce3f93062d57d7e6ff3cb7467fd
+    name: mpdecimal
+    evr: 4.0.1-1.fc42
+    sourcerpm: mpdecimal-4.0.1-1.fc42.src.rpm
+  - url: https://fr2.rpmfind.net/linux/fedora/linux/updates/42/Everything/x86_64/Packages/n/nfs-utils-2.8.3-1.rc1.fc42.x86_64.rpm
+    repoid: updates
+    size: 481915
+    checksum: sha256:4202707d2019e1265d1d258ed76575adaf18c6c9848096f9f16df9e049619e7b
+    name: nfs-utils
+    evr: 1:2.8.3-1.rc1.fc42
+    sourcerpm: nfs-utils-2.8.3-1.rc1.fc42.src.rpm
+  - url: https://fr2.rpmfind.net/linux/fedora/linux/updates/42/Everything/x86_64/Packages/p/pam-1.7.0-5.fc42.x86_64.rpm
+    repoid: updates
+    size: 567652
+    checksum: sha256:13783a533990d3758d9890fce44e78d86d5ff65543e264fd9924b71421701ae4
+    name: pam
+    evr: 1.7.0-5.fc42
+    sourcerpm: pam-1.7.0-5.fc42.src.rpm
+  - url: https://fr2.rpmfind.net/linux/fedora/linux/updates/42/Everything/x86_64/Packages/p/pam-libs-1.7.0-5.fc42.x86_64.rpm
+    repoid: updates
+    size: 59119
+    checksum: sha256:9ba67c0488a038e8f9aeb3aa3d114effe855f3a8b1de729d47c65fddfbf73c9f
+    name: pam-libs
+    evr: 1.7.0-5.fc42
+    sourcerpm: pam-1.7.0-5.fc42.src.rpm
+  - url: https://fr2.rpmfind.net/linux/fedora/linux/updates/42/Everything/x86_64/Packages/p/python-unversioned-command-3.13.3-2.fc42.noarch.rpm
+    repoid: updates
+    size: 12156
+    checksum: sha256:547aad674b3c0ef9ca2e713f2fad613df97df0456dac0e3057c2086812d35dd4
+    name: python-unversioned-command
+    evr: 3.13.3-2.fc42
+    sourcerpm: python3.13-3.13.3-2.fc42.src.rpm
+  - url: https://fr2.rpmfind.net/linux/fedora/linux/updates/42/Everything/x86_64/Packages/p/python3-3.13.3-2.fc42.x86_64.rpm
+    repoid: updates
+    size: 30402
+    checksum: sha256:1d3c13458102b23a71fc0983a36d7b5b12a576b5ebc58401617aa248df85f823
+    name: python3
+    evr: 3.13.3-2.fc42
+    sourcerpm: python3.13-3.13.3-2.fc42.src.rpm
+  - url: https://fr2.rpmfind.net/linux/fedora/linux/updates/42/Everything/x86_64/Packages/p/python3-libs-3.13.3-2.fc42.x86_64.rpm
+    repoid: updates
+    size: 9611559
+    checksum: sha256:1a559ff8d904ccc76b0669abb26ac26dd1b0455ff4d17855abc8702de0ee7a2b
+    name: python3-libs
+    evr: 3.13.3-2.fc42
+    sourcerpm: python3.13-3.13.3-2.fc42.src.rpm
+  - url: https://fr2.rpmfind.net/linux/fedora/linux/updates/42/Everything/x86_64/Packages/r/rpcbind-1.2.7-2.rc1.fc42.x86_64.rpm
+    repoid: updates
+    size: 60206
+    checksum: sha256:96ef56f80638cdb32506cddb43f0358a69389f528c2e1058d2a06407dadde3b5
+    name: rpcbind
+    evr: 1.2.7-2.rc1.fc42
+    sourcerpm: rpcbind-1.2.7-2.rc1.fc42.src.rpm
+  - url: https://fr2.rpmfind.net/linux/fedora/linux/updates/42/Everything/x86_64/Packages/s/systemd-257.6-1.fc42.x86_64.rpm
+    repoid: updates
+    size: 4220545
+    checksum: sha256:4ce8982911fe8853edddbd16f0e91c21c4eb8dcf21bf2ef75ede3f97f627882b
+    name: systemd
+    evr: 257.6-1.fc42
+    sourcerpm: systemd-257.6-1.fc42.src.rpm
+  - url: https://fr2.rpmfind.net/linux/fedora/linux/updates/42/Everything/x86_64/Packages/s/systemd-libs-257.6-1.fc42.x86_64.rpm
+    repoid: updates
+    size: 831908
+    checksum: sha256:d4f8098380a3c128011e012a246975ef5a9963d80b0b4ef228a303592351e033
+    name: systemd-libs
+    evr: 257.6-1.fc42
+    sourcerpm: systemd-257.6-1.fc42.src.rpm
+  - url: https://fr2.rpmfind.net/linux/fedora/linux/updates/42/Everything/x86_64/Packages/s/systemd-networkd-257.6-1.fc42.x86_64.rpm
+    repoid: updates
+    size: 791422
+    checksum: sha256:ecf7b998e458ff357cc1758bb372251a2f817e378a5363a9a8c139710bc4610e
+    name: systemd-networkd
+    evr: 257.6-1.fc42
+    sourcerpm: systemd-257.6-1.fc42.src.rpm
+  - url: https://fr2.rpmfind.net/linux/fedora/linux/updates/42/Everything/x86_64/Packages/s/systemd-pam-257.6-1.fc42.x86_64.rpm
+    repoid: updates
+    size: 423539
+    checksum: sha256:b83877f73d2ea1f01e8fb4c2b0f9e123ada04954616acccd7745a0ed044cb275
+    name: systemd-pam
+    evr: 257.6-1.fc42
+    sourcerpm: systemd-257.6-1.fc42.src.rpm
+  - url: https://fr2.rpmfind.net/linux/fedora/linux/updates/42/Everything/x86_64/Packages/s/systemd-resolved-257.6-1.fc42.x86_64.rpm
+    repoid: updates
+    size: 321782
+    checksum: sha256:1795f296bf46240b597803272435e802941234a14734a4548704a94aef346087
+    name: systemd-resolved
+    evr: 257.6-1.fc42
+    sourcerpm: systemd-257.6-1.fc42.src.rpm
+  - url: https://fr2.rpmfind.net/linux/fedora/linux/updates/42/Everything/x86_64/Packages/s/systemd-shared-257.6-1.fc42.x86_64.rpm
+    repoid: updates
+    size: 1853757
+    checksum: sha256:39913562bc66ab69a1e64b9dec06d0726e7a82c75659cda3d21ed3c46d24319f
+    name: systemd-shared
+    evr: 257.6-1.fc42
+    sourcerpm: systemd-257.6-1.fc42.src.rpm
+  - url: https://fr2.rpmfind.net/linux/fedora/linux/updates/42/Everything/x86_64/Packages/s/systemd-sysusers-257.6-1.fc42.x86_64.rpm
+    repoid: updates
+    size: 71504
+    checksum: sha256:8bb75ec90727b55871b48ba91f6f453ddecf19af9194e43436412bd4d3390fe4
+    name: systemd-sysusers
+    evr: 257.6-1.fc42
+    sourcerpm: systemd-257.6-1.fc42.src.rpm
+  - url: https://fr2.rpmfind.net/linux/fedora/linux/updates/42/Everything/x86_64/Packages/s/systemd-udev-257.6-1.fc42.x86_64.rpm
+    repoid: updates
+    size: 2517009
+    checksum: sha256:5a472893da898bb40615ef595f5738281be53f3fde8d0181a19f8eea8523d7db
+    name: systemd-udev
+    evr: 257.6-1.fc42
+    sourcerpm: systemd-257.6-1.fc42.src.rpm
+  - url: https://fr2.rpmfind.net/linux/fedora/linux/updates/42/Everything/x86_64/Packages/x/xz-libs-5.8.1-2.fc42.x86_64.rpm
+    repoid: updates
+    size: 115701
+    checksum: sha256:c91827ed27d87e9110325843b2fc531663ba08609dfea0683f157ecb086c3471
+    name: xz-libs
+    evr: 1:5.8.1-2.fc42
+    sourcerpm: xz-5.8.1-2.fc42.src.rpm
+  source: []
+  module_metadata: []
