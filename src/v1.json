@@ -511,6 +511,7 @@
         "metal4k",
         "nutanix",
         "openstack",
+        "proxmoxve",
         "qemu",
         "virtualbox",
         "vmware",
@@ -728,6 +729,12 @@
           "$id": "#/properties/images/properties/hetzner",
           "type": "object",
           "title": "Hetzner",
+          "$ref": "#/definitions/artifact"
+        },
+        "proxmoxve": {
+          "$id": "#/properties/images/properties/proxmoxve",
+          "type": "object",
+          "title": "ProxmoxVE",
           "$ref": "#/definitions/artifact"
         }
       }
