@@ -777,6 +777,8 @@ pipelines:
   - mpp-import-pipelines:
       path: platform.openstack.ipp.yaml
   - mpp-import-pipelines:
+      path: platform.proxmoxve.ipp.yaml
+  - mpp-import-pipelines:
       path: platform.metal.ipp.yaml
   - mpp-import-pipelines:
       path: platform.nutanix.ipp.yaml
