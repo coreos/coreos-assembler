@@ -395,8 +395,8 @@ github.com/digitalocean/go-libvirt/socket/dialers
 # github.com/digitalocean/go-qemu v0.0.0-20250212194115-ee9b0668d242
 ## explicit; go 1.18
 github.com/digitalocean/go-qemu/qmp
-# github.com/digitalocean/godo v1.141.0
-## explicit; go 1.22
+# github.com/digitalocean/godo v1.151.0
+## explicit; go 1.23
 github.com/digitalocean/godo
 github.com/digitalocean/godo/metrics
 # github.com/felixge/httpsnoop v1.0.4
