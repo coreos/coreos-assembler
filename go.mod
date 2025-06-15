@@ -14,7 +14,7 @@ require (
 	github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.6.0
 	github.com/IBM-Cloud/bluemix-go v0.0.0-20250324085928-caa6511f0c13
 	github.com/IBM/ibm-cos-sdk-go v1.12.2
-	github.com/aliyun/alibaba-cloud-sdk-go v1.63.101
+	github.com/aliyun/alibaba-cloud-sdk-go v1.63.107
 	github.com/aliyun/aliyun-oss-go-sdk v3.0.2+incompatible
 	github.com/aws/aws-sdk-go v1.55.6
 	github.com/coreos/butane v0.23.0
