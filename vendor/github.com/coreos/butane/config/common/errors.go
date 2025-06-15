@@ -61,27 +61,29 @@ var (
 	ErrLuksBootDeviceBadName   = errors.New("device name must start with /dev/dasd on s390x-eckd layout or /dev/sd on s390x-zfcp layout")
 	ErrCexArchitectureMismatch = errors.New("when using cex the targeted architecture must match s390x")
 	ErrCexNotSupported         = errors.New("cex is not currently supported on the target platform")
+	ErrNoLuksMethodSpecified   = errors.New("no method specified for luks")
 
 	// partition
 	ErrReuseByLabel         = errors.New("partitions cannot be reused by label; number must be specified except on boot disk (/dev/disk/by-id/coreos-boot-disk) or when wipe_table is true")
 	ErrWrongPartitionNumber = errors.New("incorrect partition number; a new partition will be created using reserved label")
 
 	// MachineConfigs
-	ErrFieldElided            = errors.New("field ignored in raw mode")
-	ErrNameRequired           = errors.New("metadata.name is required")
-	ErrRoleRequired           = errors.New("machineconfiguration.openshift.io/role label is required")
-	ErrInvalidKernelType      = errors.New("must be empty, \"default\", or \"realtime\"")
-	ErrBtrfsSupport           = errors.New("btrfs is not supported in this spec version")
-	ErrFilesystemNoneSupport  = errors.New("format \"none\" is not supported in this spec version")
-	ErrFileSchemeSupport      = errors.New("file contents source must be data URL in this spec version")
-	ErrFileAppendSupport      = errors.New("appending to files is not supported in this spec version")
-	ErrFileCompressionSupport = errors.New("file compression is not supported in this spec version")
-	ErrFileHeaderSupport      = errors.New("file HTTP headers are not supported in this spec version")
-	ErrFileSpecialModeSupport = errors.New("special mode bits are not supported in this spec version")
-	ErrGroupSupport           = errors.New("groups are not supported in this spec version")
-	ErrUserFieldSupport       = errors.New("fields other than \"name\", \"ssh_authorized_keys\", and \"password_hash\" (4.13.0+) are not supported in this spec version")
-	ErrUserNameSupport        = errors.New("users other than \"core\" are not supported in this spec version")
-	ErrKernelArgumentSupport  = errors.New("this section cannot be used for kernel arguments in this spec version; use openshift.kernel_arguments instead")
+	ErrFieldElided              = errors.New("field ignored in raw mode")
+	ErrNameRequired             = errors.New("metadata.name is required")
+	ErrRoleRequired             = errors.New("machineconfiguration.openshift.io/role label is required")
+	ErrInvalidKernelType        = errors.New("must be empty, \"default\", or \"realtime\"")
+	ErrBtrfsSupport             = errors.New("btrfs is not supported in this spec version")
+	ErrFilesystemNoneSupport    = errors.New("format \"none\" is not supported in this spec version")
+	ErrFileSchemeSupport        = errors.New("file contents source must be data URL in this spec version")
+	ErrFileAppendSupport        = errors.New("appending to files is not supported in this spec version")
+	ErrFileCompressionSupport   = errors.New("file compression is not supported in this spec version")
+	ErrFileHeaderSupport        = errors.New("file HTTP headers are not supported in this spec version")
+	ErrFileSpecialModeSupport   = errors.New("special mode bits are not supported in this spec version")
+	ErrGroupSupport             = errors.New("groups are not supported in this spec version")
+	ErrUserFieldSupport         = errors.New("fields other than \"name\", \"ssh_authorized_keys\", and \"password_hash\" (4.13.0+) are not supported in this spec version")
+	ErrUserNameSupport          = errors.New("users other than \"core\" are not supported in this spec version")
+	ErrKernelArgumentSupport    = errors.New("this section cannot be used for kernel arguments in this spec version; use openshift.kernel_arguments instead")
+	ErrMissingKernelArgumentCex = errors.New("'rd.luks.key=/etc/luks/cex.key' must be set as kernel argument when CEX is enabled for the boot device")
 
 	// Storage
 	ErrClevisSupport     = errors.New("clevis is not supported in this spec version")
@@ -98,6 +100,9 @@ var (
 
 	// Kernel arguments
 	ErrGeneralKernelArgumentSupport = errors.New("kernel argument customization is not supported in this spec version")
+
+	// Unkown ignition version
+	ErrUnkownIgnitionVersion = errors.New("skipping validation for the merge/replace ignition config due to an unkown version")
 )
 
 type ErrUnmarshal struct {
