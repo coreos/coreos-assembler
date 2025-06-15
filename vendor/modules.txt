@@ -19,7 +19,7 @@ cloud.google.com/go/auth/oauth2adapt
 # cloud.google.com/go/compute/metadata v0.6.0
 ## explicit; go 1.21
 cloud.google.com/go/compute/metadata
-# github.com/Azure/azure-sdk-for-go/sdk/azcore v1.17.1
+# github.com/Azure/azure-sdk-for-go/sdk/azcore v1.18.0
 ## explicit; go 1.23.0
 github.com/Azure/azure-sdk-for-go/sdk/azcore
 github.com/Azure/azure-sdk-for-go/sdk/azcore/arm
@@ -42,12 +42,12 @@ github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime
 github.com/Azure/azure-sdk-for-go/sdk/azcore/streaming
 github.com/Azure/azure-sdk-for-go/sdk/azcore/to
 github.com/Azure/azure-sdk-for-go/sdk/azcore/tracing
-# github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.8.2
-## explicit; go 1.18
+# github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.10.1
+## explicit; go 1.23.0
 github.com/Azure/azure-sdk-for-go/sdk/azidentity
 github.com/Azure/azure-sdk-for-go/sdk/azidentity/internal
-# github.com/Azure/azure-sdk-for-go/sdk/internal v1.10.0
-## explicit; go 1.18
+# github.com/Azure/azure-sdk-for-go/sdk/internal v1.11.1
+## explicit; go 1.23.0
 github.com/Azure/azure-sdk-for-go/sdk/internal/diag
 github.com/Azure/azure-sdk-for-go/sdk/internal/errorinfo
 github.com/Azure/azure-sdk-for-go/sdk/internal/exported
@@ -64,11 +64,11 @@ github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork
 # github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources v1.2.0
 ## explicit; go 1.18
 github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources
-# github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/storage/armstorage v1.7.0
-## explicit; go 1.18
+# github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/storage/armstorage v1.8.0
+## explicit; go 1.23.0
 github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/storage/armstorage
-# github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.6.0
-## explicit; go 1.18
+# github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.6.1
+## explicit; go 1.23.0
 github.com/Azure/azure-sdk-for-go/sdk/storage/azblob
 github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/appendblob
 github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/blob
@@ -104,6 +104,7 @@ github.com/AzureAD/microsoft-authentication-library-for-go/apps/internal/oauth/o
 github.com/AzureAD/microsoft-authentication-library-for-go/apps/internal/options
 github.com/AzureAD/microsoft-authentication-library-for-go/apps/internal/shared
 github.com/AzureAD/microsoft-authentication-library-for-go/apps/internal/version
+github.com/AzureAD/microsoft-authentication-library-for-go/apps/managedidentity
 github.com/AzureAD/microsoft-authentication-library-for-go/apps/public
 # github.com/IBM-Cloud/bluemix-go v0.0.0-20250324085928-caa6511f0c13
 ## explicit; go 1.13
@@ -683,7 +684,7 @@ go.opentelemetry.io/otel/trace
 go.opentelemetry.io/otel/trace/embedded
 go.opentelemetry.io/otel/trace/internal/telemetry
 go.opentelemetry.io/otel/trace/noop
-# golang.org/x/crypto v0.36.0
+# golang.org/x/crypto v0.38.0
 ## explicit; go 1.23.0
 golang.org/x/crypto/blowfish
 golang.org/x/crypto/chacha20
@@ -701,7 +702,7 @@ golang.org/x/crypto/ssh
 golang.org/x/crypto/ssh/agent
 golang.org/x/crypto/ssh/internal/bcrypt_pbkdf
 golang.org/x/crypto/ssh/knownhosts
-# golang.org/x/net v0.37.0
+# golang.org/x/net v0.40.0
 ## explicit; go 1.23.0
 golang.org/x/net/context
 golang.org/x/net/html
@@ -726,17 +727,17 @@ golang.org/x/oauth2/google/internal/stsexchange
 golang.org/x/oauth2/internal
 golang.org/x/oauth2/jws
 golang.org/x/oauth2/jwt
-# golang.org/x/sys v0.31.0
+# golang.org/x/sys v0.33.0
 ## explicit; go 1.23.0
 golang.org/x/sys/cpu
 golang.org/x/sys/plan9
 golang.org/x/sys/unix
 golang.org/x/sys/windows
 golang.org/x/sys/windows/registry
-# golang.org/x/term v0.30.0
+# golang.org/x/term v0.32.0
 ## explicit; go 1.23.0
 golang.org/x/term
-# golang.org/x/text v0.23.0
+# golang.org/x/text v0.25.0
 ## explicit; go 1.23.0
 golang.org/x/text/encoding
 golang.org/x/text/encoding/charmap
