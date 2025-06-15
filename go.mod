@@ -16,7 +16,7 @@ require (
 	github.com/IBM/ibm-cos-sdk-go v1.12.2
 	github.com/aliyun/alibaba-cloud-sdk-go v1.63.101
 	github.com/aliyun/aliyun-oss-go-sdk v3.0.2+incompatible
-	github.com/aws/aws-sdk-go v1.55.6
+	github.com/aws/aws-sdk-go v1.55.7
 	github.com/coreos/butane v0.23.0
 	github.com/coreos/go-semver v0.3.1
 	github.com/coreos/go-systemd v0.0.0-20190321100706-95778dfbb74e
