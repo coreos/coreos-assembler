@@ -1,6 +1,6 @@
 module github.com/coreos/coreos-assembler
 
-go 1.23.0
+go 1.23.3
 
 toolchain go1.24.0
 
@@ -44,10 +44,10 @@ require (
 	github.com/vishvananda/netns v0.0.5
 	github.com/vmware/govmomi v0.49.0
 	github.com/xeipuuv/gojsonschema v1.2.0
-	golang.org/x/crypto v0.36.0
+	golang.org/x/crypto v0.37.0
 	golang.org/x/net v0.37.0
-	golang.org/x/oauth2 v0.28.0
-	golang.org/x/term v0.30.0
+	golang.org/x/oauth2 v0.29.0
+	golang.org/x/term v0.31.0
 	google.golang.org/api v0.228.0
 	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.1
@@ -62,8 +62,8 @@ require (
 	github.com/IBM/go-sdk-core/v5 v5.19.0 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
 	github.com/clarketm/json v1.17.1 // indirect
-	github.com/containers/image/v5 v5.34.2 // indirect
-	github.com/containers/storage v1.57.2 // indirect
+	github.com/containers/image/v5 v5.35.0 // indirect
+	github.com/containers/storage v1.58.0 // indirect
 	github.com/coreos/go-json v0.0.0-20231102161613-e49c8866685a // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/digitalocean/go-libvirt v0.0.0-20250317183548-13bf9b43b50b // indirect
@@ -108,8 +108,8 @@ require (
 	go.opentelemetry.io/otel v1.35.0 // indirect
 	go.opentelemetry.io/otel/metric v1.35.0 // indirect
 	go.opentelemetry.io/otel/trace v1.35.0 // indirect
-	golang.org/x/sys v0.31.0 // indirect
-	golang.org/x/text v0.23.0 // indirect
+	golang.org/x/sys v0.32.0 // indirect
+	golang.org/x/text v0.24.0 // indirect
 	golang.org/x/time v0.11.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250324211829-b45e905df463 // indirect
 	google.golang.org/grpc v1.71.0 // indirect
