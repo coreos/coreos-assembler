@@ -266,6 +266,13 @@ func (releaseArch *Arch) toStreamArch(rel *Release) stream.Arch {
 		}
 	}
 
+	if releaseArch.Media.ProxmoxVE != nil {
+		artifacts["proxmoxve"] = stream.PlatformArtifacts{
+			Release: rel.Release,
+			Formats: mapFormats(releaseArch.Media.ProxmoxVE.Artifacts),
+		}
+	}
+
 	if releaseArch.Media.Qemu != nil {
 		artifacts["qemu"] = stream.PlatformArtifacts{
 			Release: rel.Release,
