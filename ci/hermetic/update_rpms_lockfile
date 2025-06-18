@@ -1,0 +1,53 @@
+#!/bin/bash
+set -euo pipefail
+
+# We update the 'packages' list in the rpms.in.yaml based on the content
+# of the *deps*.txt file located in src/.
+dep_files=$(find ../../src/ -name "*deps*.txt" | tr '\n' ' ')
+# shellcheck disable=SC2086
+./update_package_list --package_file $dep_files --yaml_file rpms.in.yaml
+
+# Then we update the rpms.lock.yaml file based on rpms.in.yaml with
+# rpm-lockfile-prototype.
+
+# VENV_DIR will be named after the script itself, with a '_venv' suffix.
+SCRIPT_NAME=$(basename "$0")
+VENV_DIR="/tmp/${SCRIPT_NAME%.*}_venv" # Removes the file extension and adds '_venv'
+RPM_LOCKFILE_PROTOTYPE_VERSION="0.16.0"
+
+echo "Creating virtual environment '$VENV_DIR'..."
+if python3 -m venv "$VENV_DIR" --system-site-packages; then
+    echo "Virtual environment '$VENV_DIR' created successfully."
+else
+    echo "Error: Failed to create virtual environment. Please ensure python3-venv is installed."
+    exit 1
+fi
+
+# Activate the virtual environment
+echo "Activating virtual environment..."
+# shellcheck disable=SC1091
+if source "$VENV_DIR/bin/activate"; then
+    echo "Virtual environment activated."
+else
+    echo "Error: Failed to activate virtual environment."
+    exit 1
+fi
+
+# Install rpm-lockfile-prototype using pip
+echo "Installing 'rpm-lockfile-prototype'..."
+python3 -m pip install --upgrade pip --quiet
+if python3 -m pip install https://github.com/konflux-ci/rpm-lockfile-prototype/archive/refs/tags/v${RPM_LOCKFILE_PROTOTYPE_VERSION}.tar.gz --quiet; then
+    echo "'rpm-lockfile-prototype' installed successfully."
+else
+    echo "Error: Failed to install 'rpm-lockfile-prototype'."
+    # Deactivate the virtual environment before exiting on error
+    deactivate
+    exit 1
+fi
+
+rpm-lockfile-prototype rpms.in.yaml --outfile rpms.lock.yaml
+
+echo "Deactivating virtual environment..."
+deactivate
+
+echo "Script completed."
