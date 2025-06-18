@@ -1,0 +1,8 @@
+# for kola-nfs container image
+/usr/bin/ps nfs-utils
+
+# for kola-tang container image
+systemd tang
+
+# for kola-targetcli container image
+targetcli kmod

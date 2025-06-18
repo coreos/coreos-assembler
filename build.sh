@@ -31,6 +31,7 @@ srcdir=$(pwd)
 
 configure_yum_repos() {
     [ "${arch}" == "riscv64" ] && return # No continuous repo for riscv64 yet
+    [ "${NO_NETWORK}" == "1" ] && return
     local version_id
     version_id=$(. /etc/os-release && echo ${VERSION_ID})
     # Add continuous tag for latest build tools and mark as required so we
@@ -46,7 +47,7 @@ install_rpms() {
     # First, a general update; this is best practice.  We also hit an issue recently
     # where qemu implicitly depended on an updated libusbx but didn't have a versioned
     # requires https://bugzilla.redhat.com/show_bug.cgi?id=1625641
-    yum -y distro-sync
+    [ "${NO_NETWORK}" == "0" ] && yum -y distro-sync
 
     # xargs is part of findutils, which may not be installed
     yum -y install /usr/bin/xargs
@@ -104,10 +105,16 @@ install_rpms() {
 # to CoreOS.
 install_ocp_tools() {
     [ "${arch}" == "riscv64" ] && return # No ocp tools for riscv64
-    # If $OCP_VERSION is defined we'll grab that specific version.
-    # Otherwise we'll get the latest.
-    local url="https://mirror.openshift.com/pub/openshift-v4/${arch}/clients/ocp/latest${OCP_VERSION:+-$OCP_VERSION}/openshift-client-linux.tar.gz"
-    curl -L "$url" | tar zxf - oc
+    if [ "${NO_NETWORK}" == "0" ]; then
+        # If $OCP_VERSION is defined we'll grab that specific version.
+        # Otherwise we'll get the latest.
+        local url="https://mirror.openshift.com/pub/openshift-v4/${arch}/clients/ocp/latest${OCP_VERSION:+-$OCP_VERSION}/openshift-client-linux.tar.gz"
+        curl -L "$url" | tar zxf - oc
+    else
+        local oc_archive=""
+        oc_archive=$(find /*/output/deps/generic/ -name "openshift-client-linux-${arch}.tar.gz")
+        tar zxf "$oc_archive" oc
+    fi
     mv oc /usr/bin
 }
 

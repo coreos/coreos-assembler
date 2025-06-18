@@ -1,0 +1,5 @@
+download_url,checksum,filename
+https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/latest/openshift-client-linux.tar.gz,sha256,openshift-client-linux-x86_64.tar.gz
+https://mirror.openshift.com/pub/openshift-v4/s390x/clients/ocp/latest/openshift-client-linux.tar.gz,sha256,openshift-client-linux-s390x.tar.gz
+https://mirror.openshift.com/pub/openshift-v4/ppc64le/clients/ocp/latest/openshift-client-linux.tar.gz,sha256,openshift-client-linux-ppc64le.tar.gz
+https://mirror.openshift.com/pub/openshift-v4/aarch64/clients/ocp/latest/openshift-client-linux.tar.gz,sha256,openshift-client-linux-aarch64.tar.gz

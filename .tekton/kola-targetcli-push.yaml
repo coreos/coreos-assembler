@@ -8,7 +8,10 @@ metadata:
     pipelinesascode.tekton.dev/cancel-in-progress: "false"
     pipelinesascode.tekton.dev/max-keep-runs: "3"
     pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch
-      == "main" && "./tests/containers/targetcli/***".pathChanged()
+      == "main" &&
+      ("tests/containers/targetcli/***".pathChanged() ||
+       "ci/hermetic/rpms.lock.yaml".pathChanged()
+      )
   creationTimestamp: null
   labels:
     appstudio.openshift.io/application: coreos-assembler
@@ -31,6 +34,14 @@ spec:
     value: ./tests/containers/targetcli/Containerfile
   - name: path-context
     value: .
+  - name: hermetic
+    value: true
+  - name: prefetch-input
+    value: '[{"type": "rpm", "path": "ci/hermetic"}]'
+  # Note: to be removed once rpm fully supported
+  # https://github.com/hermetoproject/hermeto?tab=readme-ov-file#package-managers
+  - name: dev-package-managers
+    value: true
   pipelineRef:
     params:
     - name: bundle
