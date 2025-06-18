@@ -1,0 +1,153 @@
+#!/usr/bin/env python3
+
+"""
+This script reads a YAML file containing a list of artifacts.
+For each artifact, it downloads the file from the specified 'download_url',
+calculates its checksum using the algorithm defined in the 'checksum' field
+(e.g., 'sha256', 'md5'), and then updates the 'checksum' value in the YAML
+file if it has changed.
+
+The YAML file is expected to have a top-level key 'artifacts' which is a list
+of dictionaries. Each dictionary should have at least 'download_url',
+'checksum', and 'filename' keys. The 'checksum' value must be in the format
+'<hash_algorithm>:<hash_value>'.
+
+Dependencies:
+- ruamel.yaml: For reading and writing YAML files while preserving style.
+- requests: For downloading files from URLs.
+"""
+
+from ruamel.yaml import YAML
+import requests
+import hashlib
+import os
+from typing import List, Dict, Any, Optional
+
+
+def calculate_checksum(file_content: bytes,
+                       algorithm_name: str) -> Optional[str]:
+    """
+    Calculates the checksum of given file content using the specified
+    algorithm.
+
+    Args:
+        file_content (bytes): The content of the file as bytes.
+        algorithm_name (str): The name of the hash algorithm (e.g., 'md5',
+                              'sha256').
+
+    Returns:
+        Optional[str]: The calculated hash value in hexadecimal format, or None
+                       if the algorithm is unsupported.
+    """
+    try:
+        hasher = hashlib.new(algorithm_name)
+        hasher.update(file_content)
+        return hasher.hexdigest()
+    except ValueError:
+        print(f"Error: Unsupported hash algorithm '{algorithm_name}'. "
+              f"Supported algorithms include: {hashlib.algorithms_available}")
+        return None
+
+
+def update_artifact_checksums(yaml_file_path: str) -> None:
+    """
+    Reads a YAML file, downloads artifacts, calculates/updates their checksums,
+    and writes the updated data back to the YAML file.
+
+    Args:
+        yaml_file_path (str): The path to the input YAML file.
+    """
+    yaml_parser = YAML()
+    yaml_parser.default_flow_style = False
+    yaml_parser.preserve_quotes = True  # Keep existing quotes (single/double)
+    yaml_parser.indent(mapping=2, sequence=4, offset=2)
+    data: Dict[str, Any] = {}
+    try:
+        with open(yaml_file_path, 'r', encoding='utf-8') as f:
+            data = yaml_parser.load(f)
+    except FileNotFoundError:
+        print(f"Error: YAML file not found at '{yaml_file_path}'")
+        return
+    except Exception as e:  # ruamel.yaml can raise different exceptions
+        print(f"Error parsing YAML file: {e}")
+        return
+
+    if 'artifacts' not in data or not isinstance(data['artifacts'], list):
+        print("Error: YAML file must contain an 'artifacts' list.")
+        return
+
+    # Ensure mypy can infer the type of data['artifacts'] as
+    # List[Dict[str, Any]]
+    artifacts: List[Dict[str, Any]] = data['artifacts']
+
+    for i, artifact in enumerate(artifacts):
+        download_url: Optional[str] = artifact.get('download_url')
+        current_checksum: Optional[str] = artifact.get('checksum')
+        filename: Optional[str] = artifact.get('filename')
+
+        if not download_url:
+            print(f"Warning: Artifact {i+1} is missing 'download_url'. "
+                  f"Skipping.")
+            continue
+
+        if not current_checksum or ':' not in current_checksum:
+            print(f"Warning: Artifact {i+1} ('{filename}') has an invalid "
+                  f"or missing 'checksum' format. Skipping update for "
+                  f"this artifact.")
+            continue
+
+        algorithm_name, _ = current_checksum.split(':', 1)
+        # Ensure algorithm name is lowercase for hashlib.new()
+        algorithm_name = algorithm_name.lower()
+
+        print(f"Processing artifact: {filename} from {download_url}")
+
+        try:
+            response = requests.get(download_url, stream=True, timeout=10)
+            response.raise_for_status()  # Raise an HTTPError for bad responses
+
+            # Read content in chunks to handle large files efficiently
+            file_content_chunks: List[bytes] = []
+            for chunk in response.iter_content(chunk_size=8192):
+                file_content_chunks.append(chunk)
+            file_content: bytes = b"".join(file_content_chunks)
+
+            new_hash_value: Optional[str] = calculate_checksum(
+                file_content, algorithm_name
+            )
+
+            if new_hash_value:
+                new_checksum: str = f"{algorithm_name}:{new_hash_value}"
+                if new_checksum != current_checksum:
+                    print(f"  Checksum updated for '{filename}': "
+                          f"{current_checksum} -> {new_checksum}")
+                    # Modify the artifact in place
+                    artifact['checksum'] = new_checksum
+                else:
+                    print(f"  Checksum for '{filename}' is already "
+                          f"up-to-date: {current_checksum}")
+            else:
+                print(f"  Failed to calculate checksum for '{filename}'. "
+                      f"Keeping old checksum.")
+
+        except requests.exceptions.RequestException as e:
+            print(f"  Error downloading '{filename}' from {download_url}: {e}")
+        except Exception as e:
+            print(f"  An unexpected error occurred while processing "
+                  f"'{filename}': {e}")
+
+    try:
+        with open(yaml_file_path, 'w', encoding='utf-8') as f:
+            # ruamel.yaml's dump method handles preserving formatting
+            yaml_parser.dump(data, f)
+        print(f"\nSuccessfully updated checksums in '{yaml_file_path}'.")
+    except Exception as e:
+        print(f"Error writing updated YAML file: {e}")
+
+
+if __name__ == "__main__":
+    # This script will attempt to load and update 'artifacts.lock.yaml'
+    # in the current directory. Make sure this file exists and is
+    # correctly formatted before running.
+    artifacts_lock_filename: str = "artifacts.lock.yaml"
+    update_artifact_checksums(artifacts_lock_filename)

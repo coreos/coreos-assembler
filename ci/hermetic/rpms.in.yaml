@@ -1,0 +1,200 @@
+contentOrigin:
+  # We use 'baseurl' directive instead of 'metalink' in order to always pull from the same repo. This would avoid 
+  # rpms.lock.yaml file to be edited with another repo URL but with the same ENVRAs. As this rpms.lock.yaml file
+  # is generated locally by an operator (or bot), the URL in the resulting file would depend on its connection if 
+  # we use the 'metalink' directive.
+  # The repo URL defined below is hosted by Red Hat.
+  # We define our Dockerfile as source of truth for the $releasever value. Also, we take advantage of the layered
+  # image mechanism by asking rpm-lockfile-prototype to extract the base image from our Dockerfile and discover
+  # only the remaining packages not yet installed.
+  repos:
+    - repoid: "fedora"
+      baseurl: "https://download-ib01.fedoraproject.org/pub/fedora/linux/releases/$releasever/Everything/$basearch/os/"
+      varsFromContainerfile: "Dockerfile"
+    - repoid: "updates"
+      baseurl: "https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/$releasever/Everything/$basearch/"
+      varsFromContainerfile: "Dockerfile"
+    - repoid: "coreos-continuous"
+      baseurl: "https://kojipkgs.fedoraproject.org/repos-dist/f$releasever-coreos-continuous/latest/$basearch/"
+      varsFromContainerfile: "Dockerfile"
+
+context:
+  bare: false
+
+# TODO: for now we only enable x86_64 to speed up development and we'll add the remaining arches once the 
+# whole pipeline (i.e build, testing and release) ready.
+arches:
+  - x86_64
+
+# The list of packages below is meant to be updated automatically with
+# 'update_rpms_lock_yaml.sh' script. Do not edit this list manually.
+#            ANY CHANGES MADE BELOW WILL BE LOST!
+# Please refer to the README file located at the root directory of this file.
+packages:
+  - /usr/bin/clear
+  - /usr/bin/ignition-validate
+  - /usr/bin/ps
+  - /usr/bin/qemu-img
+  - /usr/bin/reset
+  - name: awscli2
+    arches:
+      only:
+        - x86_64
+  - bash
+  - name: bootupd
+    arches:
+      only:
+        - aarch64
+        - x86_64
+  - bsdtar
+  - btrfs-progs
+  - buildah
+  - butane
+  - ca-certificates
+  - composefs
+  - copr-cli
+  - coreos-installer
+  - coreutils
+  - createrepo_c
+  - cryptsetup
+  - dhcp-client
+  - distribution-gpg-keys
+  - dnf-utils
+  - dosfstools
+  - dumb-init
+  - e2fsprogs
+  - erofs-utils
+  - fedora-messaging
+  - fedora-repos-ostree
+  - gdisk
+  - genisoimage
+  - git
+  - golang
+  - golang-github-aliyun-cli
+  - name: grub2
+    arches:
+      only:
+        - aarch64
+        - ppc64le
+        - x86_64
+  - name: grub2-efi-aa64
+    arches:
+      only:
+        - aarch64
+  - name: grub2-efi-x64
+    arches:
+      only:
+        - x86_64
+  - name: grub2-tools-extra
+    arches:
+      only:
+        - aarch64
+        - ppc64le
+        - x86_64
+  - iproute
+  - iptables
+  - iptables-libs
+  - jq
+  - kernel-modules
+  - kmod
+  - koji-utils
+  - krb5-libs
+  - krb5-workstation
+  - libguestfs-tools
+  - libguestfs-tools-c
+  - name: lorax
+    arches:
+      only:
+        - s390x
+  - make
+  - nfs-utils
+  - openssh-clients
+  - openssl
+  - osbuild
+  - osbuild-ostree
+  - osbuild-selinux
+  - osbuild-tools
+  - podman
+  - policycoreutils
+  - name: powerpc-utils
+    arches:
+      only:
+        - ppc64le
+  - procps-ng
+  - pylint
+  - python-anytree
+  - python3
+  - python3-boto3
+  - python3-botocore
+  - python3-createrepo_c
+  - python3-fedfind
+  - python3-flake8
+  - python3-flufl-lock
+  - python3-gobject-base
+  - python3-jsonschema
+  - python3-junit_xml
+  - python3-koji
+  - python3-koji-cli-plugins
+  - python3-libvirt
+  - python3-pyrsistent
+  - python3-pytest
+  - python3-pytest-cov
+  - python3-pyyaml
+  - python3-requests
+  - python3-resultsdb_api
+  - python3-resultsdb_conventions
+  - python3-resultsdb_conventions-fedora
+  - python3-tenacity
+  - qemu-kvm
+  - qemu-system-aarch64-core
+  - qemu-system-ppc-core
+  - qemu-system-s390x-core
+  - qemu-system-x86-core
+  - rpm-build
+  - rpm-ostree
+  - rsync
+  - name: s390utils-base
+    arches:
+      only:
+        - s390x
+  - selinux-policy
+  - selinux-policy-targeted
+  - shellcheck
+  - name: shim-aa64
+    arches:
+      only:
+        - aarch64
+  - name: shim-x64
+    arches:
+      only:
+        - x86_64
+  - skopeo
+  - squashfs-tools
+  - strace
+  - sudo
+  - supermin
+  - swtpm
+  - name: syslinux-nonlinux
+    arches:
+      only:
+        - x86_64
+  - systemd
+  - tang
+  - tar
+  - targetcli
+  - time
+  - tmux
+  - util-linux
+  - name: veritysetup
+    arches:
+      only:
+        - s390x
+  - vim-minimal
+  - virtiofsd
+  - xfsprogs
+  - name: xorriso
+    arches:
+      only:
+        - ppc64le
+        - s390x
+  - zip

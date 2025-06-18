@@ -1,0 +1,15 @@
+metadata:
+  version: '1.0'
+artifacts:
+  - download_url: 'https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/latest/openshift-client-linux.tar.gz'
+    checksum: 'sha256:ee95462864b988040da09613d5aa691c1d3576813b532d2fcec1e67ccbb4164a'
+    filename: 'openshift-client-linux-x86_64.tar.gz'
+  - download_url: 'https://mirror.openshift.com/pub/openshift-v4/s390x/clients/ocp/latest/openshift-client-linux.tar.gz'
+    checksum: 'sha256:516e7dd49806a0664177c04473ac2991d1ada53d28501c552135e7abe86043e5'
+    filename: 'openshift-client-linux-s390x.tar.gz'
+  - download_url: 'https://mirror.openshift.com/pub/openshift-v4/ppc64le/clients/ocp/latest/openshift-client-linux.tar.gz'
+    checksum: 'sha256:49bd2d47add43270f936246bd8eb57123cde8e16e823180f2ad7589e9f480657'
+    filename: 'openshift-client-linux-ppc64le.tar.gz'
+  - download_url: 'https://mirror.openshift.com/pub/openshift-v4/aarch64/clients/ocp/latest/openshift-client-linux.tar.gz'
+    checksum: 'sha256:546ea80a6670b0338b05d9babaf2791ddc9c219411f67e76ec5c41de98e9fefb'
+    filename: 'openshift-client-linux-aarch64.tar.gz'

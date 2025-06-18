@@ -1,0 +1,252 @@
+#!/usr/bin/env python3
+
+"""
+This script processes multiple package list files, potentially differentiating
+packages by their intended CPU architecture (e.g., x86_64, aarch64) based on
+the input filenames. It consolidates these package lists and generates a
+structured YAML file.
+
+The script performs the following key actions:
+1.  **Reads Package Files**: It takes one or more input files, each containing
+    a list of package names. Empty lines and lines starting with '#' (comments)
+    are ignored. Multiple package names can be on a single line, separated by
+    whitespace.
+2.  **Extracts Architecture (Optional)**: If an input filename follows the
+    convention '<name>-<architecture>.<extension>' (e.g., 'file-x86_64.txt'),
+    the script attempts to extract a recognized architecture string (e.g.,
+    'x86_64', 'aarch64', 'ppc64le', 's390x').
+3.  **Structures Packages**:
+    * Packages found in architecture-specific files are stored with their
+        associated architectures (e.g., {'name': 'package_name', 'arches':
+        {'only': ['x86_64', 'aarch64']}}).
+    * Packages found in generic files (without an architecture in their name)
+        are listed as simple strings, unless they have already been associated
+        with an architecture from another file.
+4.  **Updates YAML File**: It writes the consolidated, structured package data
+    under a 'packages' key in a specified YAML output file. If the YAML file
+    already exists, it preserves other existing keys while overwriting the
+    'packages' key. It uses `ruamel.yaml` for robust YAML parsing and dumping.
+
+Usage:
+    ./update_package_list.py --package_file <path_to_package_file1>
+                             [--package_file <path_to_package_file2> ...]
+                             --yaml_file <path_to_output_yaml>
+
+Example:
+    ./update_package_list.py -p packages_common.txt -p packages-x86_64.txt
+                             -p packages-aarch64.txt -y output_packages.yaml
+"""
+
+import argparse
+import os
+from collections import defaultdict
+# ruamel.yaml was preferred over PyYAML as it supports roundtrip preservation
+# of comments, and map key order.
+from ruamel.yaml import YAML
+
+
+def read_packages_from_file(file_path: str) -> set:
+    """
+    Reads package names from a given file path, ignoring comments.
+    Each line in the file can contain multiple package names separated
+    by whitespace. Empty lines and empty strings after splitting are ignored.
+
+    Args:
+        file_path (str): The path to the package file.
+
+    Returns:
+        set: A set of unique package names read from the file.
+    """
+    packages = set()
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            for line in f:
+                stripped_line = line.strip()
+                # Ignore empty lines and lines that start with '#' (comments)
+                if not stripped_line or stripped_line.startswith('#'):
+                    continue
+
+                # Split the line by whitespace to get individual package names
+                # and filter out any empty strings that might result from
+                # multiple spaces
+                package_names_on_line = [
+                    pkg.strip() for pkg in stripped_line.split()
+                    if pkg.strip()
+                ]
+                packages.update(package_names_on_line)
+    except FileNotFoundError:
+        print(f"Error: Package file not found at '{file_path}'")
+    except Exception as e:
+        print(f"Error reading package file '{file_path}': {e}")
+    return packages
+
+
+def update_yaml_file(yaml_file_path: str, structured_package_list: list):
+    """
+    Updates a YAML file with a structured list of packages under the
+    'packages' key. Each item in the list can be either an object
+    containing 'name' and optionally 'arches', or a simple string
+    package name. If the file does not exist, it will be created. If the
+    'packages' key already exists, its value will be overwritten. Other
+    keys in the YAML file will be preserved.
+
+    Args:
+        yaml_file_path (str): The path to the YAML file to be updated.
+        structured_package_list (list): The list of structured package
+                                        dictionaries and/or string package
+                                        names to write to the YAML file.
+    """
+    yaml_handler = YAML()
+    yaml_handler.default_flow_style = False
+    yaml_handler.preserve_quotes = True
+    yaml_handler.indent(mapping=2, sequence=4, offset=2)
+    yaml_data = {}
+
+    # Load existing YAML content if the file exists
+    if os.path.exists(yaml_file_path):
+        try:
+            with open(yaml_file_path, 'r', encoding='utf-8') as f:
+                yaml_data = yaml_handler.load(f)
+                if yaml_data is None:  # Handle empty YAML file
+                    yaml_data = {}
+        except Exception as e:
+            print(f"Error parsing or reading YAML file '{yaml_file_path}': "
+                  "{e}")
+            print("Proceeding by creating a new YAML file instead or "
+                  "overwriting 'packages' key.")
+            yaml_data = {}  # Start with empty data if parsing fails
+
+    # Update the 'packages' key with the structured package list
+    yaml_data['packages'] = structured_package_list
+
+    # Write the updated content back to the YAML file
+    try:
+        with open(yaml_file_path, 'w', encoding='utf-8') as f:
+            yaml_handler.dump(yaml_data, f)
+        print(f"Successfully updated '{yaml_file_path}' with the "
+              "structured package list.")
+    except Exception as e:
+        print(f"Error writing to YAML file '{yaml_file_path}': {e}")
+
+
+def extract_architecture_from_filename(filename: str) -> str | None:
+    """
+    Extracts the architecture from a filename following the
+    '<name>-<architecture>' convention. The architecture is assumed to be the
+    last part of the filename (before the extension) separated by a hyphen.
+    It also validates if the extracted part looks like a typical architecture
+    string.
+
+    Args:
+        filename (str): The base name of the file
+                        (e.g., 'my_packages-x86_64.txt').
+
+    Returns:
+        str | None: The architecture string (e.g., 'x86_64') or None if not
+                    found or if the extracted part does not resemble an
+                    architecture.
+    """
+    # Remove file extension first
+    base_name = os.path.splitext(filename)[0]
+    parts = base_name.split('-')
+    if len(parts) > 1:
+        potential_arch = parts[-1]
+        if potential_arch in ['x86_64', 'ppc64le', 'aarch64', 's390x']:
+            return potential_arch
+    return None
+
+
+def main():
+    """
+    Main function to parse arguments and orchestrate the package updating
+    process. It handles architecture extraction from filenames and generates
+    a YAML output where packages are structured as dictionaries with
+    architecture information if available, or as simple strings otherwise.
+    """
+    parser = argparse.ArgumentParser(
+        description="""Reads package lists from files and updates a YAML file
+                    with structured package and architecture information.
+                    Packages from files with architecture in their name
+                    will include architecture specifics. Other packages
+                    will be listed as simple strings."""
+    )
+    parser.add_argument(
+        '--package_file',
+        '-p',
+        nargs='+',
+        required=True,
+        help="""Path(s) to file(s) containing lists of packages. Filenames
+             can optionally follow '<name>-<architecture>' convention.
+             Can be specified multiple times."""
+    )
+    parser.add_argument(
+        '--yaml_file',
+        '-y',
+        required=True,
+        help="Path to the YAML file to be updated."
+    )
+
+    args = parser.parse_args()
+
+    # Stores packages with their associated architectures:
+    # {package_name: {arch1, arch2}}
+    # A package will be in this defaultdict if it appeared in at least one
+    # arch-specific file.
+    all_packages_with_arches = defaultdict(set)
+    # Stores packages found in files without architecture in their name AND
+    # that haven't been found in any architecture-specific file yet.
+    generic_only_packages = set()
+
+    # Read packages from all specified package files
+    for p_file_path in args.package_file:
+        if not os.path.isfile(p_file_path):
+            print(f"Warning: Package file '{p_file_path}' does not exist "
+                  "and will be skipped.")
+            continue
+
+        file_basename = os.path.basename(p_file_path)
+        architecture = extract_architecture_from_filename(file_basename)
+
+        packages_from_current_file = read_packages_from_file(p_file_path)
+
+        if architecture:
+            # If an architecture is found, associate packages with it
+            for package_name in packages_from_current_file:
+                all_packages_with_arches[package_name].add(architecture)
+        else:
+            # If no architecture is found in the filename, these are generic
+            # packages. Add them to generic_only_packages ONLY if they
+            # haven't been associated with an architecture from another file
+            # already.
+            for package_name in packages_from_current_file:
+                if package_name not in all_packages_with_arches:
+                    generic_only_packages.add(package_name)
+
+    # Prepare the structured list for YAML output
+    structured_package_list = []
+
+    # Get all unique package names across both categories to ensure proper
+    # sorting. Convert to list to sort
+    all_unique_package_names = sorted(
+        list(set(all_packages_with_arches.keys()).union(generic_only_packages))
+    )
+
+    for pkg_name in all_unique_package_names:  # Already sorted
+        if pkg_name in all_packages_with_arches:
+            # If the package has associated architectures, include them in
+            # the dictionary format
+            arches_list = sorted(list(all_packages_with_arches[pkg_name]))
+            structured_package_list.append({
+                'name': pkg_name,
+                'arches': {'only': arches_list}
+            })
+        else:
+            # Otherwise, list it as a simple string
+            structured_package_list.append(pkg_name)
+
+    # Update the YAML file
+    update_yaml_file(args.yaml_file, structured_package_list)
+
+
+if __name__ == "__main__":
+    main()
