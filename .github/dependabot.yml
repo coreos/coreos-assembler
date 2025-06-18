@@ -9,3 +9,15 @@ updates:
     - dependency-name: "github.com/coreos/butane"
     - dependency-name: "github.com/coreos/ignition/v2"
     - dependency-name: "github.com/coreos/stream-metadata-go"
+
+- package-ecosystem: gomod
+  directory: "/"
+  schedule:
+    interval: monthly
+  # Group all updates together in a single PR. We can remove some
+  # updates from a combined update PR via comments to dependabot:
+  # https://docs.github.com/en/code-security/dependabot/working-with-dependabot/managing-pull-requests-for-dependency-updates#managing-dependabot-pull-requests-for-grouped-updates-with-comment-commands
+  groups:
+    build:
+      patterns:
+        - "*"
