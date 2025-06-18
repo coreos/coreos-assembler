@@ -1,4 +1,4 @@
-FROM registry.fedoraproject.org/fedora-minimal:42
+FROM registry.fedoraproject.org/fedora:42
 
 RUN dnf -y install systemd tang && dnf clean all && rm -rf /var/cache/yum
 EXPOSE 80
