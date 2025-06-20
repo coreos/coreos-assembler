@@ -2,6 +2,8 @@
 # https://github.com/openshift/release/tree/master/ci-operator/config/coreos/coreos-assembler/coreos-coreos-assembler-main.yaml
 FROM quay.io/fedora/fedora:42
 WORKDIR /root/containerbuild
+# This variable is enabled by Konflux to build the container image hermatically.
+ARG NO_NETWORK=0
 
 # Keep this Dockerfile idempotent for local development rebuild use cases.
 USER root

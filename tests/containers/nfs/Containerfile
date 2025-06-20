@@ -1,4 +1,4 @@
-FROM registry.fedoraproject.org/fedora-minimal:42
+FROM registry.fedoraproject.org/fedora:42
 
 RUN dnf -y install /usr/bin/ps nfs-utils && dnf clean all && rm -rf /var/cache/yum
 

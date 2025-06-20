@@ -8,7 +8,10 @@ metadata:
     pipelinesascode.tekton.dev/cancel-in-progress: "false"
     pipelinesascode.tekton.dev/max-keep-runs: "3"
     pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch
-      == "main" && "./tests/containers/tang/***".pathChanged()
+      == "main" &&
+      ("tests/containers/tang/***".pathChanged() ||
+       "ci/hermetic/rpms.lock.yaml".pathChanged()
+      )
   creationTimestamp: null
   labels:
     appstudio.openshift.io/application: coreos-assembler
@@ -31,10 +34,18 @@ spec:
     value: ./tests/containers/tang/Containerfile
   - name: path-context
     value: .
+  - name: hermetic
+    value: true
+  - name: prefetch-input
+    value: '[{"type": "rpm", "path": "ci/hermetic"}]'
+  # Note: to be removed once rpm fully supported
+  # https://github.com/hermetoproject/hermeto?tab=readme-ov-file#package-managers
+  - name: dev-package-managers
+    value: true
   pipelineRef:
     params:
     - name: bundle
-      value: quay.io/konflux-ci/tekton-catalog/pipeline-docker-build-multi-platform-oci-ta@sha256:5bc58ee8213aaa3da4c1d67e380007097fbbbfb4dca3d0711777bd2b0d115da1
+      value: quay.io/jcapitao/tekton-catalog/pipeline-docker-build-multi-platform-oci-ta@sha256:a3993688715cba973af5e7fba95bc91f92673e8491f2524853736161974334fb
     - name: name
       value: docker-build-multi-platform-oci-ta
     - name: kind
