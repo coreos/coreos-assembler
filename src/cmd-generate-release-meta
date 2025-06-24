@@ -152,7 +152,7 @@ def append_build(out, input_):
     platforms = ["aliyun", "applehv", "aws", "azure", "azurestack",
                  "digitalocean", "exoscale", "gcp", "hetzner", "hyperv",
                  "ibmcloud", "kubevirt", "metal", "nutanix", "openstack",
-                 "proxmoxve" "powervs", "qemu", "virtualbox", "vmware",
+                 "proxmoxve", "powervs", "qemu", "virtualbox", "vmware",
                  "vultr", "qemu-secex"]
     for platform in platforms:
         if input_.get("images", {}).get(platform, None) is not None:
