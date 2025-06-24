@@ -694,6 +694,8 @@ pipelines:
             target: /boot/efi
       - type: org.osbuild.bootupd
         options:
+          bios:
+            device: disk
           static-configs: true
           deployment:
             default: true
