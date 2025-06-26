@@ -511,6 +511,7 @@
         "metal4k",
         "nutanix",
         "openstack",
+        "oraclecloud",
         "proxmoxve",
         "qemu",
         "virtualbox",
@@ -639,6 +640,12 @@
           "$id": "#/properties/images/properties/openstack",
           "type": "object",
           "title": "OpenStack",
+          "$ref": "#/definitions/artifact"
+        },
+        "oraclecloud": {
+          "$id": "#/properties/images/properties/oraclecloud",
+          "type": "object",
+          "title": "Oracle Cloud Infrastructure",
           "$ref": "#/definitions/artifact"
         },
         "virtualbox": {
