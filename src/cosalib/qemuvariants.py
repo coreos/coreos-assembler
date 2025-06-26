@@ -109,6 +109,10 @@ VARIANTS = {
         "image_format": "qcow2",
         "platform": "openstack",
     },
+    "oraclecloud": {
+        "image_format": "qcow2",
+        "platform": "oraclecloud",
+    },
     "nutanix": {
         "image_format": "qcow2",
         "platform": "nutanix",

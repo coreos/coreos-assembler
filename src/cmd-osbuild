@@ -24,6 +24,7 @@ declare -A SUPPORTED_PLATFORMS=(
     ['metal']='raw'
     ['nutanix']='qcow2'
     ['openstack']='qcow2'
+    ['oraclecloud']='qcow2'
     ['proxmoxve']='qcow2'
     ['qemu']='qcow2'
     ['qemu-secex']='qcow2'
@@ -272,6 +273,7 @@ main() {
         "cmd-buildextend-kubevirt") platforms=(kubevirt);;
         "cmd-buildextend-nutanix") platforms=(nutanix);;
         "cmd-buildextend-openstack") platforms=(openstack);;
+        "cmd-buildextend-oraclecloud") platforms=(oraclecloud);;
         "cmd-buildextend-proxmoxve") platforms=(proxmoxve);;
         "cmd-buildextend-vultr") platforms=(vultr);;
         *) fatal "called as unexpected name $0";;

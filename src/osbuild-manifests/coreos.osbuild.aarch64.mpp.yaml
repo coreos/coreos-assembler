@@ -763,6 +763,8 @@ pipelines:
   - mpp-import-pipelines:
       path: platform.openstack.ipp.yaml
   - mpp-import-pipelines:
+      path: platform.oraclecloud.ipp.yaml
+  - mpp-import-pipelines:
       path: platform.qemu.ipp.yaml
   - mpp-import-pipelines:
       path: platform.live.ipp.yaml
