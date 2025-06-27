@@ -8,9 +8,7 @@ metadata:
     pipelinesascode.tekton.dev/cancel-in-progress: "false"
     pipelinesascode.tekton.dev/max-keep-runs: "3"
     pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch
-      == "main" &&
-      ("tests/containers/targetcli/***".pathChanged() ||
-       "ci/hermetic/rpms.lock.yaml".pathChanged()
+      == "main" && ("tests/containers/targetcli/***".pathChanged() || "ci/hermetic/rpms.lock.yaml".pathChanged()
       )
   creationTimestamp: null
   labels:
@@ -35,13 +33,11 @@ spec:
   - name: path-context
     value: .
   - name: hermetic
-    value: false
+    value: "false"
   - name: prefetch-input
     value: '[{"type": "rpm", "path": "ci/hermetic"}]'
-  # Note: to be removed once rpm fully supported
-  # https://github.com/hermetoproject/hermeto?tab=readme-ov-file#package-managers
   - name: dev-package-managers
-    value: true
+    value: "true"
   pipelineRef:
     params:
     - name: bundle
@@ -51,6 +47,8 @@ spec:
     - name: kind
       value: pipeline
     resolver: bundles
+  taskRunTemplate:
+    serviceAccountName: build-pipeline-kola-targetcli
   workspaces:
   - name: git-auth
     secret:
