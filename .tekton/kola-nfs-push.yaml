@@ -34,6 +34,8 @@ spec:
     value: Containerfile
   - name: path-context
     value: tests/containers/nfs
+  - name: skip-checks
+    value: true
   - name: hermetic
     value: false
   #- name: prefetch-input

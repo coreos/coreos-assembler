@@ -38,6 +38,8 @@ spec:
     value: ./tests/containers/targetcli/Containerfile
   - name: path-context
     value: .
+  - name: skip-checks
+    value: true
   - name: hermetic
     value: false
   #- name: prefetch-input

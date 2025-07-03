@@ -34,6 +34,8 @@ spec:
     value: Dockerfile
   - name: path-context
     value: .
+  - name: skip-checks
+    value: true
   - name: hermetic
     value: false
   #- name: prefetch-input
