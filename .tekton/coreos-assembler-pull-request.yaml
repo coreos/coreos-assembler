@@ -53,6 +53,8 @@ spec:
     - name: kind
       value: pipeline
     resolver: bundles
+  taskRunTemplate:
+    serviceAccountName: build-pipeline-coreos-assembler
   workspaces:
   - name: git-auth
     secret:
