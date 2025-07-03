@@ -51,6 +51,8 @@ spec:
     - name: kind
       value: pipeline
     resolver: bundles
+  taskRunTemplate:
+    serviceAccountName: build-pipeline-kola-tang
   workspaces:
   - name: git-auth
     secret:

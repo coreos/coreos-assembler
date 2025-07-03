@@ -55,6 +55,8 @@ spec:
     - name: kind
       value: pipeline
     resolver: bundles
+  taskRunTemplate:
+    serviceAccountName: build-pipeline-kola-nfs
   workspaces:
   - name: git-auth
     secret:
