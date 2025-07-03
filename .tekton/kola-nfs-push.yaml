@@ -36,8 +36,8 @@ spec:
     value: tests/containers/nfs
   - name: hermetic
     value: false
-  - name: prefetch-input
-    value: '[{"type": "rpm", "path": "ci/hermetic"}]'
+  #- name: prefetch-input
+  #  value: '[{"type": "rpm", "path": "ci/hermetic"}]'
   # Note: to be removed once rpm fully supported
   # https://github.com/hermetoproject/hermeto?tab=readme-ov-file#package-managers
   - name: dev-package-managers
