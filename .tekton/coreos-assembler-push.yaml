@@ -33,14 +33,14 @@ spec:
     value: .
   - name: hermetic
     value: false
-  - name: prefetch-input
-    value: '[{"type": "rpm", "path": "ci/hermetic"}, {"path": "ci/hermetic", "type": "generic"}]'
+  #- name: prefetch-input
+  #  value: '[{"type": "rpm", "path": "ci/hermetic"}, {"path": "ci/hermetic", "type": "generic"}]'
   # Note: to be removed once rpm fully supported
   # https://github.com/hermetoproject/hermeto?tab=readme-ov-file#package-managers
-  - name: dev-package-managers
-    value: true
-  - name: build-args
-    value: ["NO_NETWORK=1"]
+  #- name: dev-package-managers
+  #  value: true
+  #- name: build-args
+  #  value: ["NO_NETWORK=1"]
   pipelineRef:
     params:
     - name: bundle
