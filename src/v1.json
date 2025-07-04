@@ -249,7 +249,6 @@
     "buildid",
     "name",
     "ostree-commit",
-    "ostree-content-checksum",
     "ostree-timestamp",
     "ostree-version",
     "rpm-ostree-inputhash"
