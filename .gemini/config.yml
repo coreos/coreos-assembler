@@ -1,0 +1,27 @@
+vars:
+  branches: [main]
+
+files:
+  - repo: butane
+    path: .gemini/config.yml
+  
+  - repo: ignition
+    path: .gemini/config.yml
+
+  - repo: coreos-installer
+    path: .gemini/config.yml
+
+  - repo: afterburn
+    path: .gemini/config.yml
+  
+  - repo: zincati
+    path: .gemini/config.yml
+  
+  - repo: bootupd
+    path: .gemini/config.yml
+  
+  - repo: coreos-assembler
+    path: .gemini/config.yml
+
+  - repo: rpm-ostree
+    path: .gemini/config.yml
