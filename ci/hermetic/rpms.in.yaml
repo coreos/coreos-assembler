@@ -19,7 +19,7 @@ contentOrigin:
       varsFromContainerfile: "Dockerfile"
 
 context:
-  bare: false
+  containerfile: ./Dockerfile
 
 # TODO: for now we only enable x86_64 to speed up development and we'll add the remaining arches once the 
 # whole pipeline (i.e build, testing and release) ready.
