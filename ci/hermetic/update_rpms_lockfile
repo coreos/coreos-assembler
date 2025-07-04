@@ -1,11 +1,14 @@
 #!/bin/bash
 set -euo pipefail
 
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && pwd)"
+REPO_ROOT="$(realpath "${SCRIPT_DIR}/../..")"
+
 # We update the 'packages' list in the rpms.in.yaml based on the content
 # of the *deps*.txt file located in src/.
-dep_files=$(find ../../src/ -name "*deps*.txt" | tr '\n' ' ')
+dep_files=$(find "${REPO_ROOT}/src/" -name "*deps*.txt" | tr '\n' ' ')
 # shellcheck disable=SC2086
-./update_package_list --package_file $dep_files --yaml_file rpms.in.yaml
+${SCRIPT_DIR}/update_package_list --package_file $dep_files --yaml_file ${REPO_ROOT}/rpms.in.yaml
 
 # Then we update the rpms.lock.yaml file based on rpms.in.yaml with
 # rpm-lockfile-prototype.
@@ -45,7 +48,7 @@ else
     exit 1
 fi
 
-rpm-lockfile-prototype rpms.in.yaml --outfile rpms.lock.yaml
+rpm-lockfile-prototype ${REPO_ROOT}/rpms.in.yaml --outfile ${REPO_ROOT}/rpms.lock.yaml
 
 echo "Deactivating virtual environment..."
 deactivate
