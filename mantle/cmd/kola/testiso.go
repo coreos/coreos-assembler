@@ -810,6 +810,14 @@ func testPXE(ctx context.Context, inst platform.Install, outdir string) (time.Du
 	if err != nil {
 		return 0, errors.Wrapf(err, "creating QemuBuilder")
 	}
+
+	// increase the memory for pxe tests with appended rootfs in the initrd
+	// we were bumping up into the 4GiB limit in RHCOS/c9s
+	// pxe-offline-install.rootfs-appended.bios tests
+	if inst.PxeAppendRootfs && builder.MemoryMiB < 5120 {
+		builder.MemoryMiB = 5120
+	}
+
 	inst.Builder = builder
 	completionChannel, err := inst.Builder.VirtioChannelRead("testisocompletion")
 	if err != nil {
