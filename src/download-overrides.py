@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 
+import argparse
 import dnf.subject
 import hawkey
 import os
@@ -41,13 +42,23 @@ def assert_epochs_match(overrides_epoch: int, rpmfile_epoch: str):
                         f" and overrides file entry ({overrides_epoch})")
 
 
-assert os.path.isdir("builds"), "Missing builds/ dir; is this a cosa workdir?"
+parser = argparse.ArgumentParser(description='Download override RPMs from koji.')
+parser.add_argument('--downloaddir', default='overrides/rpm',
+                    help='Directory to download override RPMs to (default: overrides/rpm).')
+parser.add_argument('--lockfiledir', default='src/config',
+                    help='Directory to check lock file (default: src/config).')
+
+args = parser.parse_args()
+
+for path in [args.downloaddir, args.lockfiledir]:
+    assert os.path.isdir(path), f"Not found: {path}"
+
+print(f"Download override rpms to {args.downloaddir}/")
 
 rpms = set()
-os.makedirs('overrides/rpm', exist_ok=True)
-for filename in os.listdir(os.path.join("src/config")):
+for filename in os.listdir(args.lockfiledir):
     if is_override_lockfile(filename):
-        with open(f'src/config/{filename}') as f:
+        with open(os.path.join(args.lockfiledir, filename)) as f:
             lockfile = yaml.safe_load(f)
         if lockfile is None or 'packages' not in lockfile:
             continue
@@ -58,13 +69,13 @@ for filename in os.listdir(os.path.join("src/config")):
                 rpminfo = get_rpminfo(f"{pkg}-{pkgobj['evra']}")
             rpmnvra = f"{rpminfo.name}-{rpminfo.version}-{rpminfo.release}.{rpminfo.arch}"
             rpms.add(rpmnvra)
-            subprocess.check_call(['koji', 'download-build', '--rpm', rpmnvra], cwd='overrides/rpm')
+            subprocess.check_call(['koji', 'download-build', '--rpm', rpmnvra], cwd=args.downloaddir)
             # Make sure the epoch matches what was in the overrides file
             # otherwise we can get errors: https://github.com/coreos/fedora-coreos-config/pull/293
             cp = subprocess.run(['rpm', '-qp', '--queryformat', '%{E}', f'{rpmnvra}.rpm'],
                 check=True,
                 capture_output=True,
-                cwd='overrides/rpm')
+                cwd=args.downloaddir)
             rpmfile_epoch = cp.stdout.decode('utf-8')
             assert_epochs_match(rpminfo.epoch, rpmfile_epoch)
 
