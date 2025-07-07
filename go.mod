@@ -10,7 +10,7 @@ require (
 	github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute v1.0.0
 	github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork v1.1.0
 	github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources v1.2.0
-	github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/storage/armstorage v1.8.0
+	github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/storage/armstorage v1.8.1
 	github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.6.1
 	github.com/IBM-Cloud/bluemix-go v0.0.0-20250324085928-caa6511f0c13
 	github.com/IBM/ibm-cos-sdk-go v1.12.2
@@ -27,7 +27,7 @@ require (
 	github.com/coreos/stream-metadata-go v0.4.8
 	github.com/coreos/vcontext v0.0.0-20231102161604-685dc7299dc5
 	github.com/digitalocean/go-qemu v0.0.0-20250212194115-ee9b0668d242
-	github.com/digitalocean/godo v1.154.0
+	github.com/digitalocean/godo v1.156.0
 	github.com/frostschutz/go-fibmap v0.0.0-20160825162329-b32c231bfe6a
 	github.com/google/uuid v1.6.0
 	github.com/gophercloud/gophercloud v1.14.1
@@ -48,7 +48,7 @@ require (
 	golang.org/x/net v0.41.0
 	golang.org/x/oauth2 v0.30.0
 	golang.org/x/term v0.32.0
-	google.golang.org/api v0.238.0
+	google.golang.org/api v0.240.0
 	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.1
 )
