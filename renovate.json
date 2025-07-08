@@ -19,6 +19,11 @@
       "description": "Disable updates for Go modules"
     },
     {
+      "matchDatasources": ["docker"],
+      "matchDepNames": ["quay.io/fedora/fedora"],
+      "enabled": false
+    },
+    {
       "matchManagers": ["rpm"],
       "matchBaseBranches": ["main"],
       "groupName": "RPM Updates",
@@ -38,6 +43,19 @@
     }
   ],
   "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Update Fedora base image based on endoflife-date",
+      "fileMatch": [
+        "Dockerfile|Containerfile"
+      ],
+      "matchStrings": [
+        "quay.io/fedora/fedora:(?<currentValue>.*)"
+      ],
+      "versioningTemplate": "loose",
+      "datasourceTemplate": "endoflife-date",
+      "depNameTemplate": "fedora"
+    },
     {
       "customType": "regex",
       "datasourceTemplate": "custom.oc",
