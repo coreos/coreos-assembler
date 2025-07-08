@@ -1,0 +1,66 @@
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  annotations:
+    build.appstudio.openshift.io/repo: https://github.com/coreos/coreos-assembler?rev={{revision}}
+    build.appstudio.redhat.com/commit_sha: '{{revision}}'
+    build.appstudio.redhat.com/target_branch: '{{target_branch}}'
+    pipelinesascode.tekton.dev/cancel-in-progress: "false"
+    pipelinesascode.tekton.dev/max-keep-runs: "3"
+    pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch
+      == "main" &&
+      ("tests/containers/tang/***".pathChanged() ||
+       "rpms.lock.yaml".pathChanged() ||
+       "ci/hermetic/artifacts.lock.yaml".pathChanged()
+      ) && target_branch.startsWith("renovate/")
+  creationTimestamp: null
+  labels:
+    appstudio.openshift.io/application: coreos-assembler
+    appstudio.openshift.io/component: kola-tang
+    pipelines.appstudio.openshift.io/type: build
+    release.appstudio.openshift.io/auto-release: "false"
+  name: kola-tang-renovate-on-push
+  namespace: coreos-tenant
+spec:
+  params:
+  - name: git-url
+    value: '{{source_url}}'
+  - name: revision
+    value: '{{revision}}'
+  - name: output-image
+    value: quay.io/redhat-user-workloads/coreos-tenant/kola-tang:{{revision}}
+  - name: image-expires-after
+    value: 5d
+  - name: build-platforms
+    value:
+    - linux/x86_64
+  - name: dockerfile
+    value: ./tests/containers/tang/Containerfile
+  - name: path-context
+    value: .
+  - name: skip-checks
+    value: true
+  - name: hermetic
+    value: false
+  #- name: prefetch-input
+  #  value: '[{"type": "rpm", "path": "ci/hermetic"}]'
+  # Note: to be removed once rpm fully supported
+  # https://github.com/hermetoproject/hermeto?tab=readme-ov-file#package-managers
+  - name: dev-package-managers
+    value: true
+  pipelineRef:
+    params:
+    - name: bundle
+      value: quay.io/jcapitao/tekton-catalog/pipeline-docker-build-multi-platform-oci-ta@sha256:a3993688715cba973af5e7fba95bc91f92673e8491f2524853736161974334fb
+    - name: name
+      value: docker-build-multi-platform-oci-ta
+    - name: kind
+      value: pipeline
+    resolver: bundles
+  taskRunTemplate:
+    serviceAccountName: build-pipeline-kola-tang
+  workspaces:
+  - name: git-auth
+    secret:
+      secretName: '{{ git_auth_secret }}'
+status: {}
