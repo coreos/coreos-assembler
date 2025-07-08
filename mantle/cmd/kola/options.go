@@ -60,7 +60,7 @@ func init() {
 	sv(&kola.Options.BaseName, "basename", "kola", "Cluster name prefix")
 	ss("debug-systemd-unit", []string{}, "full-unit-name.service to enable SYSTEMD_LOG_LEVEL=debug on. Can be specified multiple times.")
 	ssv(&kola.DenylistedTests, "denylist-test", []string{}, "Test pattern to add to denylist. Can be specified multiple times.")
-	sv(&kola.DenylistStream, "denylist-stream", "", "Stream name used to match entries in the kola denylist")
+sv(&kola.DenylistStream, "denylist-stream", "", "Stream name for denylist filtering. If set, manifest.yaml is not read and 'osversion' will be empty for denylist evaluation.")
 	bv(&kola.NoNet, "no-net", false, "Don't run tests that require an Internet connection")
 	bv(&kola.ForceRunPlatformIndependent, "run-platform-independent", false, "Run tests that claim platform independence")
 	ssv(&kola.Tags, "tag", []string{}, "Test tag to run. Can be specified multiple times.")
