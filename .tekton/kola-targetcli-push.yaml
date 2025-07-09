@@ -14,10 +14,10 @@ metadata:
       )
   creationTimestamp: null
   labels:
-    appstudio.openshift.io/application: coreos-assembler
-    appstudio.openshift.io/component: kola-targetcli
+    appstudio.openshift.io/application: coreos-assembler-main
+    appstudio.openshift.io/component: kola-targetcli-main
     pipelines.appstudio.openshift.io/type: build
-  name: kola-targetcli-on-push
+  name: kola-targetcli-main-on-push
   namespace: coreos-tenant
 spec:
   params:
@@ -26,7 +26,7 @@ spec:
   - name: revision
     value: '{{revision}}'
   - name: output-image
-    value: quay.io/redhat-user-workloads/coreos-tenant/kola-targetcli:{{revision}}
+    value: quay.io/redhat-user-workloads/coreos-tenant/kola-targetcli-main:{{revision}}
   - name: build-platforms
     value:
     - linux/x86_64
@@ -54,7 +54,7 @@ spec:
       value: pipeline
     resolver: bundles
   taskRunTemplate:
-    serviceAccountName: build-pipeline-kola-targetcli
+    serviceAccountName: build-pipeline-kola-targetcli-main
   workspaces:
   - name: git-auth
     secret:

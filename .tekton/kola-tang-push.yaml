@@ -14,10 +14,10 @@ metadata:
       )
   creationTimestamp: null
   labels:
-    appstudio.openshift.io/application: coreos-assembler
-    appstudio.openshift.io/component: kola-tang
+    appstudio.openshift.io/application: coreos-assembler-main
+    appstudio.openshift.io/component: kola-tang-main
     pipelines.appstudio.openshift.io/type: build
-  name: kola-tang-on-push
+  name: kola-tang-main-on-push
   namespace: coreos-tenant
 spec:
   params:
@@ -26,7 +26,7 @@ spec:
   - name: revision
     value: '{{revision}}'
   - name: output-image
-    value: quay.io/redhat-user-workloads/coreos-tenant/kola-tang:{{revision}}
+    value: quay.io/redhat-user-workloads/coreos-tenant/kola-tang-main:{{revision}}
   - name: build-platforms
     value:
     - linux/x86_64
@@ -54,7 +54,7 @@ spec:
       value: pipeline
     resolver: bundles
   taskRunTemplate:
-    serviceAccountName: build-pipeline-kola-tang
+    serviceAccountName: build-pipeline-kola-tang-main
   workspaces:
   - name: git-auth
     secret:
