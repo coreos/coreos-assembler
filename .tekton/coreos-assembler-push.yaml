@@ -11,10 +11,10 @@ metadata:
       == "main" && ! "./tests/containers/***".pathChanged()
   creationTimestamp: null
   labels:
-    appstudio.openshift.io/application: coreos-assembler
-    appstudio.openshift.io/component: coreos-assembler
+    appstudio.openshift.io/application: coreos-assembler-main
+    appstudio.openshift.io/component: coreos-assembler-main
     pipelines.appstudio.openshift.io/type: build
-  name: coreos-assembler-on-push
+  name: coreos-assembler-main-on-push
   namespace: coreos-tenant
 spec:
   params:
@@ -23,7 +23,7 @@ spec:
   - name: revision
     value: '{{revision}}'
   - name: output-image
-    value: quay.io/redhat-user-workloads/coreos-tenant/coreos-assembler:{{revision}}
+    value: quay.io/redhat-user-workloads/coreos-tenant/coreos-assembler-main:{{revision}}
   - name: build-platforms
     value:
     - linux/x86_64
@@ -53,7 +53,7 @@ spec:
       value: pipeline
     resolver: bundles
   taskRunTemplate:
-    serviceAccountName: build-pipeline-coreos-assembler
+    serviceAccountName: build-pipeline-coreos-assembler-main
   workspaces:
   - name: git-auth
     secret:
