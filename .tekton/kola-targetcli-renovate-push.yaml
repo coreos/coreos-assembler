@@ -7,12 +7,12 @@ metadata:
     build.appstudio.redhat.com/target_branch: '{{target_branch}}'
     pipelinesascode.tekton.dev/cancel-in-progress: "false"
     pipelinesascode.tekton.dev/max-keep-runs: "3"
-    pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch
-      == "main" &&
+    pipelinesascode.tekton.dev/on-cel-expression: |
+      event == "push" && target_branch.startsWith("renovate/") &&
       ("tests/containers/targetcli/***".pathChanged() ||
        "rpms.lock.yaml".pathChanged() ||
        "ci/hermetic/artifacts.lock.yaml".pathChanged()
-      ) && target_branch.startsWith("renovate/")
+      )
   creationTimestamp: null
   labels:
     appstudio.openshift.io/application: coreos-assembler-main
