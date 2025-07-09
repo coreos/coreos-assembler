@@ -376,6 +376,41 @@ type InitConfigData struct {
 	ConfigVariant string `json:"coreos-assembler.config-variant"`
 }
 
+func getStreamAndOsVersionFromManifest() (string, string, error) {
+	// Look for the right manifest, taking into account the variant
+	var manifest ManifestData
+	var pathToManifest string
+	pathToInitConfig := filepath.Join(Options.CosaWorkdir, "src/config.json")
+	initConfigFile, err := os.ReadFile(pathToInitConfig)
+	if os.IsNotExist(err) {
+		// No variant config found. Let's read the default manifest
+		pathToManifest = filepath.Join(Options.CosaWorkdir, "src/config/manifest.yaml")
+	} else if err != nil {
+		// Unexpected error
+		return "", "", err
+	} else {
+		// Figure out the variant and read the corresponding manifests
+		var initConfig InitConfigData
+		err = json.Unmarshal(initConfigFile, &initConfig)
+		if err != nil {
+			return "", "", err
+		}
+		pathToManifest = filepath.Join(Options.CosaWorkdir, fmt.Sprintf("src/config/manifest-%s.yaml", initConfig.ConfigVariant))
+	}
+	manifestFile, err := os.ReadFile(pathToManifest)
+	if err != nil {
+		return "", "", err
+	}
+	err = yaml.Unmarshal(manifestFile, &manifest)
+	if err != nil {
+		return "", "", err
+	}
+
+	stream := manifest.Variables.Stream
+	osversion := manifest.Variables.OsVersion
+	return stream, osversion, nil
+}
+
 func ParseDenyListYaml(pltfrm string) error {
 	var objs []DenyListObj
 
@@ -401,37 +436,10 @@ func ParseDenyListYaml(pltfrm string) error {
 
 	// Get the stream and osversion variables from the manifest since DenylistStream is not specified
 	if len(DenylistStream) == 0 {
-		// Look for the right manifest, taking into account the variant
-		var manifest ManifestData
-		var pathToManifest string
-		pathToInitConfig := filepath.Join(Options.CosaWorkdir, "src/config.json")
-		initConfigFile, err := os.ReadFile(pathToInitConfig)
-		if os.IsNotExist(err) {
-			// No variant config found. Let's read the default manifest
-			pathToManifest = filepath.Join(Options.CosaWorkdir, "src/config/manifest.yaml")
-		} else if err != nil {
-			// Unexpected error
-			return err
-		} else {
-			// Figure out the variant and read the corresponding manifests
-			var initConfig InitConfigData
-			err = json.Unmarshal(initConfigFile, &initConfig)
-			if err != nil {
-				return err
-			}
-			pathToManifest = filepath.Join(Options.CosaWorkdir, fmt.Sprintf("src/config/manifest-%s.yaml", initConfig.ConfigVariant))
-		}
-		manifestFile, err := os.ReadFile(pathToManifest)
+		stream, osversion, err = getStreamAndOsVersionFromManifest()
 		if err != nil {
 			return err
 		}
-		err = yaml.Unmarshal(manifestFile, &manifest)
-		if err != nil {
-			return err
-		}
-
-		stream = manifest.Variables.Stream
-		osversion = manifest.Variables.OsVersion
 	} else {
 		stream = DenylistStream
 	}
