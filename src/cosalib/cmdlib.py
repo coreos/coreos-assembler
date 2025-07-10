@@ -338,19 +338,15 @@ def import_ostree_commit(workdir, buildpath, buildmeta, extract_json=True, parti
         # to `repo-build`, though it might be good to change this by default.
         if not is_oci_imported and os.environ.get('COSA_PRIVILEGED', '') == '1':
             build_repo = os.path.join(repo, '../../cache/repo-build')
+            # note: this actually is the same as `container unencapsulate` and
+            # so only works with "pure OSTree OCI" encapsulated commits (legacy path)
             subprocess.check_call(['sudo', 'ostree', 'container', 'import', '--repo', build_repo,
                                    '--write-ref', buildmeta['buildid'],
-                                   'ostree-unverified-image:oci-archive:' + tarfile],
-                                  stdout=subprocess.DEVNULL,
-                                  stderr=subprocess.DEVNULL)
-            subprocess.check_call(['sudo', 'ostree', f'--repo={repo}', 'pull-local', build_repo, buildmeta['buildid']],
-                                  stdout=subprocess.DEVNULL,
-                                  stderr=subprocess.DEVNULL)
+                                   'ostree-unverified-image:oci-archive:' + tarfile])
+            subprocess.check_call(['sudo', 'ostree', f'--repo={repo}', 'pull-local', build_repo, buildmeta['buildid']])
             uid = os.getuid()
             gid = os.getgid()
-            subprocess.check_call(['sudo', 'chown', '-hR', f"{uid}:{gid}", repo],
-                                  stdout=subprocess.DEVNULL,
-                                  stderr=subprocess.DEVNULL)
+            subprocess.check_call(['sudo', 'chown', '-hR', f"{uid}:{gid}", repo])
         else:
             with tempfile.TemporaryDirectory(dir=tmpdir) as tmpd:
                 subprocess.check_call(['ostree', 'init', '--repo', tmpd, '--mode=bare-user'])
@@ -359,32 +355,19 @@ def import_ostree_commit(workdir, buildpath, buildmeta, extract_json=True, parti
                                            '--write-ref', buildmeta['buildid'],
                                            'ostree-unverified-image:oci-archive:' + tarfile])
                 else:
-                    pull_cmd = ['ostree', 'container', 'image', 'pull', tmpd,
-                                f'ostree-unverified-image:oci-archive:{tarfile}']
-                    if os.environ.get('COSA_PRIVILEGED', '') == '1':
-                        pull_cmd.insert(0, 'sudo')
-                    subprocess.check_call(pull_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                    if os.environ.get('COSA_PRIVILEGED', '') == '1':
-                        uid = os.getuid()
-                        gid = os.getgid()
-                        subprocess.check_call(['sudo', 'chown', '-hR', f"{uid}:{gid}", tmpd],
-                                              stdout=subprocess.DEVNULL,
-                                              stderr=subprocess.DEVNULL)
-
+                    subprocess.check_call(['ostree', 'container', 'image', 'pull', tmpd,
+                                           f'ostree-unverified-image:oci-archive:{tarfile}'])
                     ref_prefix = 'ostree/container/image'
+                    # awkwardly work around the fact that there is no --write-ref equivalent
                     refs = subprocess.check_output(['ostree', 'refs', '--repo', tmpd, ref_prefix],
-                                                   encoding='utf-8')
-                    refs = refs.splitlines()
+                                                   encoding='utf-8').splitlines()
                     assert len(refs) == 1
                     ref = f'{ref_prefix}/{refs[0]}'
-                    subprocess.check_call(['ostree', 'refs', '--repo', tmpd, ref, '--create', buildmeta['buildid']],
-                                          stdout=subprocess.DEVNULL,
-                                          stderr=subprocess.DEVNULL)
-                subprocess.check_call(['ostree', f'--repo={repo}', 'pull-local', tmpd, buildmeta['buildid']],
-                                      stdout=subprocess.DEVNULL,
-                                      stderr=subprocess.DEVNULL)
-                commit = subprocess.check_output(['ostree', 'rev-parse', '--repo', repo, buildmeta['buildid']],
-                                                 encoding='utf-8').strip()
+                    subprocess.check_call(['ostree', 'refs', '--repo', tmpd, ref, '--create', buildmeta['buildid']])
+                subprocess.check_call(['ostree', f'--repo={repo}', 'pull-local', tmpd, buildmeta['buildid']])
+
+        commit = subprocess.check_output(['ostree', 'rev-parse', '--repo', repo, buildmeta['buildid']],
+                                         encoding='utf-8').strip()
 
         # Also extract image.json since it's commonly needed by image builds
         if extract_json:

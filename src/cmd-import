@@ -72,7 +72,7 @@ def finalize_build(source_ociarchive, meta_json, manifest, buildid, arch):
     builds = Builds()
     update_builds_json(builds, buildid, arch)
 
-    print(f'Successfully import oci image to {archive_path}')
+    print(f'Imported OCI image as build {buildid}')
 
 
 def update_builds_json(builds, buildid, arch):
