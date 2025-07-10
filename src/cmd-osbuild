@@ -163,9 +163,8 @@ postprocess_qemu_secex() {
 
 # Here we generate the input JSON we pass to runvm_osbuild for all of our image builds
 generate_runvm_osbuild_config() {
-    runvm_osbuild_config_json="${workdir}/tmp/runvm-osbuild-config-${build}.json"
-    echo "${runvm_osbuild_config_json}" # Let the caller know where the config will be
-    if [ -f "${runvm_osbuild_config_json}" ]; then
+    local outfile=$1; shift
+    if [ -f "${outfile}" ]; then
        return # only need to generate this once per build
     fi
     rm -f "${workdir}"/tmp/runvm-osbuild-config-*.json # clean up any previous configs
@@ -401,7 +400,8 @@ main() {
     platforms=("${tobuild[@]}")
 
     # Run OSBuild now to build the platforms that were requested.
-    runvm_osbuild_config_json="$(generate_runvm_osbuild_config)"
+    runvm_osbuild_config_json="${workdir}/tmp/runvm-osbuild-config-${build}.json"
+    generate_runvm_osbuild_config "$runvm_osbuild_config_json"
     outdir=$(mktemp -p "${tmp_builddir}" -d)
     runvm_with_cache -- /usr/lib/coreos-assembler/runvm-osbuild                                         \
                 --config "${runvm_osbuild_config_json}"                                                 \
