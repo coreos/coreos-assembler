@@ -34,7 +34,7 @@
       ],
       "branchPrefix": "renovate/rpm/",
       "semanticCommits": "enabled",
-      "automerge": "true",
+      "automerge": true,
       "automergeType": "branch"
     },
     {
