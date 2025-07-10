@@ -163,12 +163,7 @@ postprocess_qemu_secex() {
 
 # Here we generate the input JSON we pass to runvm_osbuild for all of our image builds
 generate_runvm_osbuild_config() {
-    runvm_osbuild_config_json="${workdir}/tmp/runvm-osbuild-config-${build}.json"
-    echo "${runvm_osbuild_config_json}" # Let the caller know where the config will be
-    if [ -f "${runvm_osbuild_config_json}" ]; then
-       return # only need to generate this once per build
-    fi
-    rm -f "${workdir}"/tmp/runvm-osbuild-config-*.json # clean up any previous configs
+    local outfile=$1; shift
 
     # reread these values from the build itself rather than rely on the ones loaded
     # by prepare_build since the config might've changed since then
@@ -223,7 +218,7 @@ generate_runvm_osbuild_config() {
     echo "Disk sizes: metal: ${metal_image_size_mb}M (estimated), cloud: ${cloud_image_size_mb}M" >&2
 
     # Generate the JSON describing the disk we want to build
-    yaml2json /dev/stdin "${runvm_osbuild_config_json}" <<EOF
+    yaml2json /dev/stdin "${outfile}" <<EOF
 artifact-name-prefix: "${name}-${build}"
 build-version: "${build}"
 container-imgref: "${container_imgref}"
@@ -399,7 +394,12 @@ main() {
     platforms=("${tobuild[@]}")
 
     # Run OSBuild now to build the platforms that were requested.
-    runvm_osbuild_config_json="$(generate_runvm_osbuild_config)"
+    runvm_osbuild_config_json="${workdir}/tmp/runvm-osbuild-config-${build}.json"
+    if [ ! -f "${runvm_osbuild_config_json}" ]; then
+        rm -f "${workdir}"/tmp/runvm-osbuild-config-*.json # clean up any previous configs
+        generate_runvm_osbuild_config "$runvm_osbuild_config_json"
+    fi
+
     outdir=$(mktemp -p "${tmp_builddir}" -d)
     runvm_with_cache -- /usr/lib/coreos-assembler/runvm-osbuild                                         \
                 --config "${runvm_osbuild_config_json}"                                                 \
