@@ -1,0 +1,152 @@
+#!/usr/bin/python3
+
+'''
+This command takes a containers-transports(5) ref to an OCI image and converts
+it into a `cosa build`, as if one did `cosa build ostree`. One can then e.g.
+`cosa buildextend-qemu` right away.
+'''
+
+import argparse
+import datetime
+import json
+import os
+import subprocess
+import tempfile
+import shutil
+import sys
+from stat import (
+    S_IREAD,
+    S_IRGRP,
+    S_IROTH)
+from cosalib.builds import Builds
+from cosalib.cmdlib import (
+    rfc3339_time,
+    get_basearch,
+    sha256sum_file,
+    import_oci_archive)
+
+
+def main():
+    args = parse_args()
+
+    # immediate inspect to error out early if it doesn't exists/we don't have ACLs and to do some upfront checks
+    metadata = skopeo_inspect(args.srcimg)
+
+    # let raise if missing
+    assert metadata['Labels']['containers.bootc'] == '1'
+    buildid = metadata['Labels']['org.opencontainers.image.version']
+
+    builds = Builds()
+    if builds.has(buildid):
+        print(f"ERROR: Build ID {buildid} already exists!")
+        sys.exit(1)
+
+    with tempfile.TemporaryDirectory(prefix='cosa-import-', dir='tmp') as tmpd:
+        # create the OCI archive and manifest
+        tmp_oci_archive = generate_oci_archive(args, tmpd)
+        tmp_oci_manifest = generate_oci_manifest(args, tmpd)
+
+        # import into the tmp/repo to get the ostree-commit but also so it's cached
+        ostree_commit = import_oci_archive(tmpd, tmp_oci_archive, buildid)
+
+        # create meta.json
+        build_meta = generate_build_meta(tmp_oci_archive, tmp_oci_manifest, metadata, ostree_commit)
+
+        # move into official location
+        finalize_build(builds, build_meta, tmp_oci_archive, tmp_oci_manifest)
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(prog='cosa import')
+    parser.add_argument("srcimg", metavar='IMAGE',
+                        help="image to import (containers-transports(5) format)")
+    return parser.parse_args()
+
+
+def generate_oci_archive(args, tmpd):
+    tmpf = os.path.join(tmpd, 'out.ociarchive')
+    subprocess.check_call(['skopeo', 'copy', '--preserve-digests', args.srcimg,
+                           f"oci-archive:{tmpf}"])
+    return tmpf
+
+
+def generate_oci_manifest(args, tmpd):
+    tmpf = os.path.join(tmpd, 'oci-manifest.json')
+    with open(tmpf, 'wb') as f:
+        f.write(subprocess.check_output(["skopeo", "inspect", "--raw", args.srcimg]))
+        os.fchmod(f.fileno(), S_IREAD | S_IRGRP | S_IROTH)
+    return tmpf
+
+
+def generate_build_meta(tmp_oci_archive, tmp_oci_manifest, metadata, ostree_commit):
+    name = metadata['Labels']['com.coreos.osname']
+    buildid = metadata['Labels']['org.opencontainers.image.version']
+    created_timestamp = parse_timestamp(metadata['Created'])
+    arch = get_basearch()
+
+    return {
+        'ostree-commit': ostree_commit,
+        'ostree-version': buildid,
+        'buildid': buildid,
+        'name': name,
+        'coreos-assembler.basearch': arch,
+        'coreos-assembler.build-timestamp': created_timestamp,
+        'coreos-assembler.oci-imported': True,
+        'ostree-timestamp': created_timestamp,
+        'images': {
+            'ostree': {
+                "path": f"{name}-{buildid}-ostree.{arch}.ociarchive",
+                "sha256": sha256sum_file(tmp_oci_archive),
+                'size': os.path.getsize(tmp_oci_archive),
+                "skip-compression": True
+            },
+            'oci-manifest': {
+                'path': f'{name}-{buildid}-ostree.{arch}-manifest.json',
+                'sha256': sha256sum_file(tmp_oci_manifest),
+                'size': os.path.getsize(tmp_oci_manifest),
+                "skip-compression": True,
+            },
+        },
+    }
+
+
+def finalize_build(builds, build_meta, tmp_oci_archive, tmp_oci_manifest):
+    buildid = build_meta['buildid']
+    arch = build_meta['coreos-assembler.basearch']
+
+    destdir = f'builds/{buildid}/{arch}'
+    os.makedirs(destdir)
+
+    shutil.move(tmp_oci_archive, f'{destdir}/{build_meta['images']['ostree']['path']}')
+    shutil.move(tmp_oci_manifest, f'{destdir}/{build_meta['images']['oci-manifest']['path']}')
+
+    with open(f'{destdir}/meta.json', 'w') as f:
+        json.dump(build_meta, f, indent=4)
+
+    # and finally the real deal: insert the build and bump latest symlink
+    builds.insert_build(buildid, arch)
+    builds.bump_timestamp()
+
+    if os.path.exists('builds/latest'):
+        os.remove('builds/latest')
+    os.symlink(f'{buildid}', 'builds/latest', target_is_directory=True)
+
+    print(f'Imported OCI image as build {buildid}')
+
+
+def skopeo_inspect(image):
+    return json.loads(subprocess.check_output(['skopeo', 'inspect', '-n', image]))
+
+
+def parse_timestamp(timestamp):
+    # datetime's doesn't support nanoseconds.
+    # So trim it.
+    if len(timestamp) > 26 and timestamp[19] == '.':
+        timestamp = timestamp[:26] + "Z"
+
+    timestamp = datetime.datetime.strptime(timestamp, '%Y-%m-%dT%H:%M:%S.%fZ')
+    return rfc3339_time(timestamp.replace(tzinfo=datetime.timezone.utc))
+
+
+if __name__ == '__main__':
+    main()

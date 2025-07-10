@@ -249,10 +249,8 @@
     "buildid",
     "name",
     "ostree-commit",
-    "ostree-content-checksum",
     "ostree-timestamp",
-    "ostree-version",
-    "rpm-ostree-inputhash"
+    "ostree-version"
   ],
   "optional": [
     "aliyun",
@@ -267,6 +265,7 @@
     "images",
     "koji",
     "oscontainer",
+    "ostree-content-checksum",
     "extensions",
     "extensions-container",
     "parent-pkgdiff",
@@ -274,6 +273,7 @@
     "parent-advisories-diff",
     "advisories-diff",
     "release-payload",
+    "rpm-ostree-inputhash",
     "summary",
     "s3",
     "coreos-assembler.basearch",
@@ -291,6 +291,7 @@
     "coreos-assembler.meta-stamp",
     "coreos-assembler.overrides-active",
     "coreos-assembler.yumrepos-git",
+    "coreos-assembeler.oci-imported",
     "fedora-coreos.parent-commit",
     "fedora-coreos.parent-version",
     "ref"
@@ -371,6 +372,12 @@
       "title": "Build Time Stamp",
       "default": "",
       "minLength": 1
+    },
+    "coreos-assembler.oci-imported": {
+      "$id": "#/properties/coreos-assembler.oci-imported",
+      "type": "boolean",
+      "title": "COSA imported OCI image",
+      "default": "False"
     },
     "coreos-assembler.code-source": {
       "$id": "#/properties/coreos-assembler.code-source",
