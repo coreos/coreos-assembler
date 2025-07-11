@@ -63,7 +63,7 @@
       "depNameTemplate": "openshift-client",
       "versioningTemplate": "semver",
       "matchStrings": [
-        "- download_url:.*openshift-client-linux-(?<currentValue>.*)\.tar\.gz",
+        "- download_url:.*openshift-client-linux-(?<currentValue>.*)\\.tar\\.gz",
         "- download_url:.*ocp/(?<currentValue>.*)/openshift-client-linux.*"
       ]
     }
