@@ -294,46 +294,52 @@ def import_ostree_commit(workdir, buildpath, buildmeta, extract_json=True, parti
     with Lock(os.path.join(workdir, 'tmp/repo.import.lock'),
               lifetime=LOCK_DEFAULT_LIFETIME):
         repo = os.path.join(tmpdir, 'repo')
-        commit = buildmeta['ostree-commit']
+        is_oci_imported = buildmeta.get('coreos-assembler.oci-imported', False)
         tarfile = os.path.join(buildpath, buildmeta['images']['ostree']['path'])
         # create repo in case e.g. tmp/ was cleared out; idempotent
         subprocess.check_call(['ostree', 'init', '--repo', repo, '--mode=archive'])
 
-        # in the common case where we're operating on a recent build, the OSTree
-        # commit should already be in the tmprepo
-        commitpartial = os.path.join(repo, f'state/{commit}.commitpartial')
-        if (subprocess.call(['ostree', 'show', '--repo', repo, commit],
-                            stdout=subprocess.DEVNULL,
-                            stderr=subprocess.DEVNULL) == 0):
-            if os.path.isfile(commitpartial):
-                if partial_import:
-                    # We have a partial commit (just the object), but the user only
-                    # requested a partial import so that's OK. We can return.
-                    return
-            else:
-                # We have the full commit. We can extract the json if requested and return.
-                if extract_json:
-                    extract_image_json(workdir, commit)
+        # in the legacy path, we can do some optimizations given that we did a
+        # bona fide rpm-ostree base compose
+        if not is_oci_imported:
+            commit = buildmeta['ostree-commit']
+
+            # in the common case where we're operating on a recent build, the OSTree
+            # commit should already be in the tmprepo
+            commitpartial = os.path.join(repo, f'state/{commit}.commitpartial')
+            if (subprocess.call(['ostree', 'show', '--repo', repo, commit],
+                                stdout=subprocess.DEVNULL,
+                                stderr=subprocess.DEVNULL) == 0):
+                if os.path.isfile(commitpartial):
+                    if partial_import:
+                        # We have a partial commit (just the object), but the user only
+                        # requested a partial import so that's OK. We can return.
+                        return
+                    else:
+                        # We have the full commit. We can extract the json if requested and return.
+                        if extract_json:
+                            extract_image_json(workdir, commit)
+                        return
+
+            # If the user only requested a partial import then we'll just "import" the
+            # commit object itself into the repo.
+            if partial_import:
+                print(f"Importing {commit} object (partial import)")
+                commitobject = os.path.join(buildpath, 'ostree-commit-object')
+                commitpath = os.path.join(repo, f'objects/{commit[:2]}/{commit[2:]}.commit')
+                os.makedirs(os.path.dirname(commitpath), exist_ok=True)
+                shutil.copy(commitobject, commitpath)
+                open(commitpartial, 'w').close()
                 return
 
-        # If the user only requested a partial import then we'll just "import" the
-        # commit object itself into the repo.
-        if partial_import:
-            print(f"Importing {commit} object (partial import)")
-            commitobject = os.path.join(buildpath, 'ostree-commit-object')
-            commitpath = os.path.join(repo, f'objects/{commit[:2]}/{commit[2:]}.commit')
-            os.makedirs(os.path.dirname(commitpath), exist_ok=True)
-            shutil.copy(commitobject, commitpath)
-            open(commitpartial, 'w').close()
-            return
-
-        print(f"Extracting {commit}")
         assert tarfile.endswith('.ociarchive')
         # We do this in two stages, because right now ex-container only writes to
         # non-archive repos.  Also, in the privileged case we need sudo to write
         # to `repo-build`, though it might be good to change this by default.
-        if os.environ.get('COSA_PRIVILEGED', '') == '1':
+        if not is_oci_imported and os.environ.get('COSA_PRIVILEGED', '') == '1':
             build_repo = os.path.join(repo, '../../cache/repo-build')
+            # note: this actually is the same as `container unencapsulate` and
+            # so only works with "pure OSTree OCI" encapsulated commits (legacy path)
             subprocess.check_call(['sudo', 'ostree', 'container', 'import', '--repo', build_repo,
                                    '--write-ref', buildmeta['buildid'],
                                    'ostree-unverified-image:oci-archive:' + tarfile])
@@ -344,10 +350,24 @@ def import_ostree_commit(workdir, buildpath, buildmeta, extract_json=True, parti
         else:
             with tempfile.TemporaryDirectory(dir=tmpdir) as tmpd:
                 subprocess.check_call(['ostree', 'init', '--repo', tmpd, '--mode=bare-user'])
-                subprocess.check_call(['ostree', 'container', 'import', '--repo', tmpd,
-                                       '--write-ref', buildmeta['buildid'],
-                                       'ostree-unverified-image:oci-archive:' + tarfile])
+                if not is_oci_imported:
+                    subprocess.check_call(['ostree', 'container', 'import', '--repo', tmpd,
+                                           '--write-ref', buildmeta['buildid'],
+                                           'ostree-unverified-image:oci-archive:' + tarfile])
+                else:
+                    subprocess.check_call(['ostree', 'container', 'image', 'pull', tmpd,
+                                           f'ostree-unverified-image:oci-archive:{tarfile}'])
+                    ref_prefix = 'ostree/container/image'
+                    # awkwardly work around the fact that there is no --write-ref equivalent
+                    refs = subprocess.check_output(['ostree', 'refs', '--repo', tmpd, ref_prefix],
+                                                   encoding='utf-8').splitlines()
+                    assert len(refs) == 1
+                    ref = f'{ref_prefix}/{refs[0]}'
+                    subprocess.check_call(['ostree', 'refs', '--repo', tmpd, ref, '--create', buildmeta['buildid']])
                 subprocess.check_call(['ostree', f'--repo={repo}', 'pull-local', tmpd, buildmeta['buildid']])
+
+        commit = subprocess.check_output(['ostree', 'rev-parse', '--repo', repo, buildmeta['buildid']],
+                                         encoding='utf-8').strip()
 
         # Also extract image.json since it's commonly needed by image builds
         if extract_json:

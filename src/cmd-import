@@ -1,0 +1,165 @@
+#!/usr/bin/python3
+
+import argparse
+import datetime
+import json
+import os
+import subprocess
+import tempfile
+import shutil
+from stat import (
+    S_IREAD,
+    S_IRGRP,
+    S_IROTH)
+from cosalib.builds import Builds
+from cosalib.cmdlib import (
+    rfc3339_time,
+    get_basearch,
+    sha256sum_file)
+
+VALID_NAMES = ["fedora-coreos", "rhcos", "scos"]
+
+
+def main():
+    args = parse_args()
+    with tempfile.TemporaryDirectory(prefix='cosa-import-', dir='tmp') as tmpd:
+        tmp_ociarchive = os.path.join(tmpd, "out.ociarchive")
+
+        metadata = prepare_build(args, tmp_ociarchive)
+
+        name = metadata['Labels']['com.coreos.osname']
+        buildid = metadata['Labels']['org.opencontainers.image.version']
+        arch = get_basearch()
+
+        manifest = generate_manifest_json(tmpd, tmp_ociarchive, name, buildid, arch)
+        meta_json = generate_meta_json(tmp_ociarchive, metadata, manifest['metadata'], name)
+
+        finalize_build(tmp_ociarchive, meta_json, manifest, buildid, arch)
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(prog='cosa import')
+    parser.add_argument("srcimg", metavar='IMAGE',
+                        help="image to import (containers-transports(5) format)")
+    return parser.parse_args()
+
+
+def prepare_build(args, target_ociarchive):
+    import_oci_archive(args, target_ociarchive)
+    return inspect_oci_archive(target_ociarchive)
+
+
+def finalize_build(source_ociarchive, meta_json, manifest, buildid, arch):
+    os.makedirs(f'builds/{buildid}/{arch}/', exist_ok=True)
+
+    archive_name = meta_json['images']['ostree']['path']
+    archive_path = f'builds/{buildid}/{arch}/{archive_name}'
+    # Move ociarchive to build dir
+    shutil.move(source_ociarchive, archive_path)
+
+    # move manifest file
+    manifest_fname = manifest['metadata']['path']
+    shutil.move(manifest['src_path'], f'builds/{buildid}/{arch}/{manifest_fname}')
+
+    with open(f'builds/{buildid}/{arch}/meta.json', 'w') as meta_file:
+        json.dump(meta_json, meta_file, indent=4)
+
+    # Symlink build to latest
+    if os.path.exists('builds/latest'):
+        os.remove('builds/latest')
+    os.symlink(f'{buildid}', 'builds/latest', target_is_directory=True)
+
+    builds = Builds()
+    update_builds_json(builds, buildid, arch)
+
+    print(f'Imported OCI image as build {buildid}')
+
+
+def update_builds_json(builds, buildid, arch):
+    builds.insert_build(buildid, arch)
+    builds.bump_timestamp()
+    builds.flush()
+
+
+def import_oci_archive(args, target):
+    subprocess.check_call(['skopeo', 'copy', args.srcimg,
+                           f"oci-archive:{target}"])
+
+
+def inspect_oci_archive(image):
+    out = subprocess.check_output(['skopeo', 'inspect',
+                                   f'oci-archive:{image}'])
+    return json.loads(out)
+
+
+def generate_manifest_json(tmpd, ociarchive, name, buildid, arch):
+    manifest = subprocess.check_output(["skopeo", "inspect", "--raw", f"oci-archive:{ociarchive}"])
+
+    ostree_oci_manifest_path = f"{name}-{buildid}-ostree.{arch}-manifest.json"
+    manifest_json_dest = f'{tmpd}/manifest.json'
+
+    manifest_json_sha256 = None
+    manifest_json_size = None
+    with open(manifest_json_dest, 'wb') as manifest_json:
+        manifest_json.write(manifest)
+        os.fchmod(manifest_json.fileno(), S_IREAD | S_IRGRP | S_IROTH)
+
+        manifest_json_sha256 = sha256sum_file(manifest_json_dest)
+        manifest_json_size = os.path.getsize(manifest_json_dest)
+
+    manifest_metadata = {
+        'path': ostree_oci_manifest_path,
+        'sha256': manifest_json_sha256,
+        'size': manifest_json_size,
+        "skip-compression": True,
+    }
+
+    return {
+        'metadata': manifest_metadata,
+        'src_path': manifest_json_dest
+    }
+
+
+def parse_timestamp(timestamp):
+    # datetime's doesn't support nanoseconds.
+    # So trim it.
+    if len(timestamp) > 26 and timestamp[19] == '.':
+        timestamp = timestamp[:26] + "Z"
+
+    timestamp = datetime.datetime.strptime(timestamp, '%Y-%m-%dT%H:%M:%S.%fZ')
+    return rfc3339_time(timestamp.replace(tzinfo=datetime.timezone.utc))
+
+
+def generate_meta_json(ociarchive, metadata, oci_manifest, name):
+    archive_sha256sum = sha256sum_file(ociarchive)
+
+    # let raise if missing
+    assert metadata['Labels']['containers.bootc'] == '1'
+
+    buildid = metadata['Labels']['org.opencontainers.image.version']
+    arch = get_basearch()
+    created_timestamp = parse_timestamp(metadata['Created'])
+
+    meta_json = {
+        'ostree-version': buildid,  # proxy version label
+        'buildid': buildid,  # also version label
+        'coreos-assembler.build-timestamp': created_timestamp,  # proxy OCI build timestamp
+        'coreos-assembler.oci-imported': True,
+        'name': name,
+        'ostree-timestamp': created_timestamp,
+        'images': {
+            'ostree': {
+                "path": f"{name}-{buildid}-ostree.{arch}.ociarchive",
+                "sha256": archive_sha256sum,
+                "skip-compression": True
+            },
+            'oci-manifest': oci_manifest,
+        },
+        'coreos-assembler.basearch': arch,
+    }
+
+    return meta_json
+
+
+if __name__ == '__main__':
+    main()
