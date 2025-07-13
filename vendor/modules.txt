@@ -256,8 +256,8 @@ github.com/clarketm/json
 # github.com/containers/image/v5 v5.34.2
 ## explicit; go 1.22.8
 github.com/containers/image/v5/docker/reference
-# github.com/containers/storage v1.57.2
-## explicit; go 1.22.0
+# github.com/containers/storage v1.58.0
+## explicit; go 1.23.0
 github.com/containers/storage/pkg/regexp
 # github.com/coreos/butane v0.24.0
 ## explicit; go 1.20
