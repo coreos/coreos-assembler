@@ -387,8 +387,8 @@ github.com/coreos/vcontext/yaml
 # github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
 ## explicit
 github.com/davecgh/go-spew/spew
-# github.com/digitalocean/go-libvirt v0.0.0-20250317183548-13bf9b43b50b
-## explicit; go 1.21
+# github.com/digitalocean/go-libvirt v0.0.0-20250616175656-5843751af96c
+## explicit; go 1.23.0
 github.com/digitalocean/go-libvirt
 github.com/digitalocean/go-libvirt/internal/constants
 github.com/digitalocean/go-libvirt/internal/event

@@ -66,7 +66,7 @@ require (
 	github.com/containers/storage v1.57.2 // indirect
 	github.com/coreos/go-json v0.0.0-20231102161613-e49c8866685a // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
-	github.com/digitalocean/go-libvirt v0.0.0-20250317183548-13bf9b43b50b // indirect
+	github.com/digitalocean/go-libvirt v0.0.0-20250616175656-5843751af96c // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.8 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect
