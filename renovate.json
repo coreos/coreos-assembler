@@ -7,17 +7,10 @@
     "vendor/**"
   ],
   "branchConcurrentLimit": 0,
+  "gomod": {
+    "enabled": false
+  },
   "packageRules": [
-    {
-      "matchDatasources": ["go"],
-      "enabled": false,
-      "description": "Disable updates for Go modules"
-    },
-    {
-      "matchDatasources": ["golang-version"],
-      "enabled": false,
-      "description": "Disable updates for Go modules"
-    },
     {
       "matchDatasources": ["docker"],
       "matchDepNames": ["quay.io/fedora/fedora"],
