@@ -106,6 +106,15 @@ func (a *API) getVMParameters(name, userdata, sshkey, storageAccountURI, size st
 			Version:   &a.opts.Version,
 		}
 	}
+	var managedIdentity *armcompute.VirtualMachineIdentity
+	if a.opts.ManagedIdentityID != "" {
+		managedIdentity = &armcompute.VirtualMachineIdentity{
+			Type: to.Ptr(armcompute.ResourceIdentityTypeUserAssigned),
+			UserAssignedIdentities: map[string]*armcompute.UserAssignedIdentitiesValue{
+				a.opts.ManagedIdentityID: {},
+			},
+		}
+	}
 	// UltraSSDEnabled=true is required for NVMe support on Gen2 VMs
 	additionalCapabilities := &armcompute.AdditionalCapabilities{
 		UltraSSDEnabled: to.Ptr(true),
@@ -117,6 +126,7 @@ func (a *API) getVMParameters(name, userdata, sshkey, storageAccountURI, size st
 		Tags: map[string]*string{
 			"createdBy": to.Ptr("mantle"),
 		},
+		Identity: managedIdentity,
 		Properties: &armcompute.VirtualMachineProperties{
 			HardwareProfile: &armcompute.HardwareProfile{
 				VMSize: to.Ptr(armcompute.VirtualMachineSizeTypes(size)),

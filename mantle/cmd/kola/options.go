@@ -102,6 +102,7 @@ func init() {
 	sv(&kola.AzureOptions.Location, "azure-location", "westus", "Azure location (default \"westus\"")
 	sv(&kola.AzureOptions.Size, "azure-size", "", "Azure machine size")
 	sv(&kola.AzureOptions.AvailabilityZone, "azure-availability-zone", "1", "Azure Availability Zone (default \"1\")")
+	sv(&kola.AzureOptions.ManagedIdentityID, "azure-managed-identity", "", "Azure Managed Identity resource ID to assign to VM")
 
 	// do-specific options
 	sv(&kola.DOOptions.ConfigPath, "do-config-file", "", "DigitalOcean config file (default \"~/"+auth.DOConfigPath+"\")")
