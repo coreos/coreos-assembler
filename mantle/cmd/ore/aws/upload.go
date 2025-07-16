@@ -47,29 +47,28 @@ After a successful run, the final line of output will be a line of JSON describi
 		SilenceUsage: true,
 	}
 
-	uploadSourceObject          string
-	uploadBucket                string
-	uploadImageName             string
-	uploadImageArchitecture     string
-	uploadFile                  string
-	uploadDiskSizeGiB           uint
-	uploadDiskSizeInspect       bool
-	uploadDeleteObject          bool
-	uploadForce                 bool
-	uploadSourceSnapshot        string
-	uploadObjectFormat          aws.EC2ImageFormat
-	uploadAMIName               string
-	uploadAMIDescription        string
-	uploadPublic                bool
-	uploadGrantUsers            []string
-	uploadGrantUsersSnapshot    []string
-	uploadTags                  []string
-	uploadIMDSv2Only            bool
-	uploadVolumeType            string
-	uploadX86BootMode           string
-	uploadCreateWinLIAMI        bool
-	uploadWinLIwindowsServerAMI string
-	uploadWinLIInstanceType     string
+	uploadSourceObject        string
+	uploadBucket              string
+	uploadImageName           string
+	uploadImageArchitecture   string
+	uploadFile                string
+	uploadDiskSizeGiB         uint
+	uploadDiskSizeInspect     bool
+	uploadDeleteObject        bool
+	uploadForce               bool
+	uploadSourceSnapshot      string
+	uploadObjectFormat        aws.EC2ImageFormat
+	uploadAMIName             string
+	uploadAMIDescription      string
+	uploadPublic              bool
+	uploadGrantUsers          []string
+	uploadGrantUsersSnapshot  []string
+	uploadTags                []string
+	uploadIMDSv2Only          bool
+	uploadVolumeType          string
+	uploadX86BootMode         string
+	uploadCreateWinLIAMI      bool
+	uploadWinLIBillingProduct string
 )
 
 func init() {
@@ -95,8 +94,7 @@ func init() {
 	cmdUpload.Flags().StringVar(&uploadVolumeType, "volume-type", "gp3", "EBS volume type (gp3, gp2, io1, st1, sc1, standard, etc.)")
 	cmdUpload.Flags().StringVar(&uploadX86BootMode, "x86-boot-mode", "uefi-preferred", "Set boot mode (uefi-preferred, uefi)")
 	cmdUpload.Flags().BoolVar(&uploadCreateWinLIAMI, "winli", false, "Create a Windows LI AMI")
-	cmdUpload.Flags().StringVar(&uploadWinLIwindowsServerAMI, "windows-ami", "", "Windows Server AMI used to create a Windows LI AMI")
-	cmdUpload.Flags().StringVar(&uploadWinLIInstanceType, "winli-instance-type", "t2.large", "ec2 instance type used to create a Windows LI AMI")
+	cmdUpload.Flags().StringVar(&uploadWinLIBillingProduct, "winli-billing-product", "", "Windows billing product code used to create a Windows LI AMI")
 }
 
 func defaultBucketNameForRegion(region string) string {
@@ -140,8 +138,16 @@ func runUpload(cmd *cobra.Command, args []string) error {
 		fmt.Fprintf(os.Stderr, "Unrecognized args in aws upload cmd: %v\n", args)
 		os.Exit(2)
 	}
+	if uploadSourceObject != "" && uploadSourceSnapshot != "" {
+		fmt.Fprintf(os.Stderr, "At most one of --source-object and --source-snapshot may be specified.\n")
+		os.Exit(2)
+	}
 	if uploadDiskSizeInspect && (uploadSourceObject != "" || uploadSourceSnapshot != "") {
 		fmt.Fprintf(os.Stderr, "--disk-size-inspect cannot be used with --source-object or --source-snapshot.\n")
+		os.Exit(2)
+	}
+	if uploadFile == "" && !uploadCreateWinLIAMI {
+		fmt.Fprintf(os.Stderr, "specify --file\n")
 		os.Exit(2)
 	}
 	if uploadImageName == "" {
@@ -152,24 +158,13 @@ func runUpload(cmd *cobra.Command, args []string) error {
 		fmt.Fprintf(os.Stderr, "unknown AMI name; specify --ami-name\n")
 		os.Exit(2)
 	}
-	if uploadCreateWinLIAMI {
-		if uploadWinLIwindowsServerAMI == "" {
-			fmt.Fprintf(os.Stderr, "--windows-ami must be provided with --winli\n")
-			os.Exit(2)
-		}
-		if uploadSourceSnapshot == "" {
-			fmt.Fprintf(os.Stderr, "--source-snapshot must be provided with --winli\n")
-			os.Exit(2)
-		}
-	} else {
-		if uploadSourceObject != "" && uploadSourceSnapshot != "" {
-			fmt.Fprintf(os.Stderr, "At most one of --source-object and --source-snapshot may be specified.\n")
-			os.Exit(2)
-		}
-		if uploadFile == "" {
-			fmt.Fprintf(os.Stderr, "specify --file\n")
-			os.Exit(2)
-		}
+	if uploadWinLIBillingProduct != "" && !uploadCreateWinLIAMI {
+		fmt.Fprintf(os.Stderr, "--winli-billing-product can only be used with --winli\n")
+		os.Exit(2)
+	}
+	if uploadCreateWinLIAMI && uploadSourceSnapshot == "" {
+		fmt.Fprintf(os.Stderr, "unknown source snapshot; specify --source-snapshot\n")
+		os.Exit(2)
 	}
 
 	var err error
@@ -270,20 +265,10 @@ func runUpload(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// create AMIs and grant permissions
-	var amiID string
-	if uploadWinLIwindowsServerAMI == "" {
-		amiID, err = API.CreateHVMImage(sourceSnapshot, uploadDiskSizeGiB, uploadAMIName, uploadAMIDescription, uploadImageArchitecture, uploadVolumeType, uploadIMDSv2Only, uploadX86BootMode)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "unable to create HVM image: %v\n", err)
-			os.Exit(1)
-		}
-	} else {
-		amiID, sourceSnapshot, err = API.CreateWinLiImage(sourceSnapshot, uploadAMIName, uploadAMIDescription, uploadImageArchitecture, uploadWinLIwindowsServerAMI, uploadWinLIInstanceType, uploadVolumeType)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "unable to create WinLI image: %v\n", err)
-			os.Exit(1)
-		}
+	amiID, err = API.CreateHVMImage(sourceSnapshot, uploadDiskSizeGiB, uploadAMIName, uploadAMIDescription, uploadImageArchitecture, uploadVolumeType, uploadIMDSv2Only, uploadX86BootMode, uploadWinLIBillingProduct)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "unable to create HVM image: %v\n", err)
+		os.Exit(1)
 	}
 
 	if len(uploadGrantUsers) > 0 {

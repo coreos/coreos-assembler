@@ -160,11 +160,8 @@ def aws_run_ore(build, args):
         winli_description = ""
         buildmeta_key = "amis"
 
-    if args.windows_ami:
-        ore_args.extend(['--windows-ami', f"{args.windows_ami}"])
-
-    if args.winli_instance_type:
-        ore_args.extend(['--winli-instance-type', f"{args.winli_instance_type}"])
+    if args.winli_billing_product:
+        ore_args.extend(['--winli-billing-product', f"{args.winli_billing_product}"])
 
     if args.bucket:
         ore_args.extend(['--bucket', f"{args.bucket}"])
@@ -223,6 +220,5 @@ def aws_cli(parser):
     parser.add_argument("--tags", help="list of key=value tags to attach to the AMI",
                         action='append', default=[])
     parser.add_argument("--winli", action="store_true", help="create an AWS Windows LI Ami")
-    parser.add_argument("--windows-ami", help="Windows Server AMI ID used to create AWS Windows LI image")
-    parser.add_argument("--winli-instance-type", help="ec2 instance type used to create AWS Windows LI image")
+    parser.add_argument("--winli-billing-product", help="Windows billing product code used to create a Windows LI AMI")
     return parser
