@@ -136,7 +136,6 @@ def aws_run_ore(build, args):
         ore_args.extend(['--x86-boot-mode', image_json['aws-x86-boot-mode']])
 
     if args.winli:
-        ore_args.extend(["--winli"])
         winli_name = "-winli"
         winli_description = " Windows License Included"
         buildmeta_key = "aws-winli"
@@ -153,18 +152,14 @@ def aws_run_ore(build, args):
         ore_args.extend(['--source-snapshot', f"{source_snapshot}"])
     else:
         ore_args.extend([
-            '--file', f"{build.image_path}",
             '--disk-size-inspect'
         ])
         winli_name = ""
         winli_description = ""
         buildmeta_key = "amis"
 
-    if args.windows_ami:
-        ore_args.extend(['--windows-ami', f"{args.windows_ami}"])
-
-    if args.winli_instance_type:
-        ore_args.extend(['--winli-instance-type', f"{args.winli_instance_type}"])
+    if args.winli_billing_product:
+        ore_args.extend(['--billing-product-code', f"{args.winli_billing_product}"])
 
     if args.bucket:
         ore_args.extend(['--bucket', f"{args.bucket}"])
@@ -175,6 +170,7 @@ def aws_run_ore(build, args):
         '--name', f"{build.build_name}{winli_name}-{build.build_id}-{build.basearch}",
         '--ami-description', f"{build.summary} {build.build_id} {build.basearch}{winli_description}",
         '--arch', f"{build.basearch}",
+        '--file', f"{build.image_path}",
         '--delete-object'
     ])
     for user in args.grant_user:
@@ -223,6 +219,5 @@ def aws_cli(parser):
     parser.add_argument("--tags", help="list of key=value tags to attach to the AMI",
                         action='append', default=[])
     parser.add_argument("--winli", action="store_true", help="create an AWS Windows LI Ami")
-    parser.add_argument("--windows-ami", help="Windows Server AMI ID used to create AWS Windows LI image")
-    parser.add_argument("--winli-instance-type", help="ec2 instance type used to create AWS Windows LI image")
+    parser.add_argument("--winli-billing-product", help="Windows billing product code used to create a Windows LI AMI")
     return parser
