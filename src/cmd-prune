@@ -183,5 +183,25 @@ for build in builds_to_delete:
         error_during_pruning = True
         print(f"{e}")
 
+# and delete any "unowned" blob refs from the tmp repo
+if os.path.exists('tmp/repo'):
+    prefix = 'ostree/container/blob/'
+    referenced_blobs = set()
+    for build in builds.get_builds():
+        meta = builds.get_build_meta(build['id'])
+        build_dir = builds.get_build_dir(build['id'])
+        with open(os.path.join(build_dir, meta['images']['oci-manifest']['path'])) as f:
+            oci_manifest = json.load(f)
+            referenced_blobs.update([prefix + layer['digest'].replace(':', '_3A_')
+                                     for layer in oci_manifest['layers']])
+    blobs = set(subprocess.check_output(['ostree', 'refs', '--repo=tmp/repo',
+                                         '--list', 'ostree/container/blob'],
+                                        encoding='utf-8').splitlines())
+    blobs_to_delete = blobs.difference(referenced_blobs)
+    if len(blobs_to_delete) > 0:
+        print(f"Deleting {len(blobs_to_delete)} blob refs")
+        subprocess.check_output(['ostree', 'refs', '--repo=tmp/repo',
+                                 '--delete'] + list(blobs_to_delete))
+
 if error_during_pruning:
     sys.exit(1)
