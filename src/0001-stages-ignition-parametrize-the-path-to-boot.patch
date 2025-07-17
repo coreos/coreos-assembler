@@ -1,0 +1,69 @@
+From e37bd5d256c02f2a7693ec220322cf131e8e5274 Mon Sep 17 00:00:00 2001
+From: jbtrystram <jbtrystram@redhat.com>
+Date: Thu, 17 Jul 2025 15:59:27 +0200
+Subject: [PATCH] stages/ignition: parametrize the path to boot
+
+Allow passing a mount to specify where to write the igntion.firstboot
+file.
+This keeps the default `tree:///` value to not break existing stages.
+---
+ stages/org.osbuild.ignition           | 13 ++++++++-----
+ stages/org.osbuild.ignition.meta.json |  5 +++++
+ 2 files changed, 13 insertions(+), 5 deletions(-)
+
+diff --git a/stages/org.osbuild.ignition b/stages/org.osbuild.ignition
+index 23f91c48..4466cabf 100755
+--- a/stages/org.osbuild.ignition
++++ b/stages/org.osbuild.ignition
+@@ -2,18 +2,17 @@
+ import sys
+ 
+ import osbuild.api
++from osbuild.util import parsing
+ 
+ 
+-def main(tree, options):
+-    network = options.get("network", [])
+-
++def main(network, location):
+     # grub, when detecting the '/boot/ignition.firstboot' file
+     # will set the "ignition_firstboot" option so that ignition
+     # gets triggered during that boot. Additionally, the file
+     # itself will be sourced this the 'ignition_network_kcmdline'
+     # that is also in the "ignition_firstboot" variable can be
+     # overwritten with the contents of `network`
+-    with open(f"{tree}/boot/ignition.firstboot", "w", encoding="utf8") as f:
++    with open(f"{location}/ignition.firstboot", "w", encoding="utf8") as f:
+         if network:
+             netstr = " ".join(network)
+             f.write(f"set ignition_network_kcmdline='{netstr}'")
+@@ -23,5 +22,9 @@ def main(tree, options):
+ 
+ if __name__ == '__main__':
+     args = osbuild.api.arguments()
+-    r = main(args["tree"], args.get("options", {}))
++    options = args.get("options", {})
++    target = options.get("target", "tree:///boot")
++    location = parsing.parse_location(target, args)
++    network = options.get("network", [])
++    r = main(network, location)
+     sys.exit(r)
+diff --git a/stages/org.osbuild.ignition.meta.json b/stages/org.osbuild.ignition.meta.json
+index 612d59c7..dd295c24 100644
+--- a/stages/org.osbuild.ignition.meta.json
++++ b/stages/org.osbuild.ignition.meta.json
+@@ -22,6 +22,11 @@
+         "items": {
+           "type": "string"
+         }
++      },
++      "target": {
++        "type": "string",
++        "description": "Location to write the 'ignition.firstboot' file.",
++        "default": "tree:///boot"
+       }
+     }
+   }
+-- 
+2.50.1
+
