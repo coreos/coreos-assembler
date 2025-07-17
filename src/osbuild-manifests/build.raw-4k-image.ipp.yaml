@@ -122,6 +122,10 @@ pipelines:
               partition:
                 mpp-format-int: '{image4k.layout[''boot''].partnum}'
               target: /boot-mount-point
+      # Set the context of the root of disk so that we avoid unlabeled_t files.
+      # Here we make sure to not mount the boot partition because we want to label
+      # the directory mount point
+      # https://github.com/coreos/fedora-coreos-tracker/issues/1772
       - type: org.osbuild.selinux
         options:
           file_contexts: input://tree/etc/selinux/targeted/contexts/files/file_contexts
@@ -147,6 +151,8 @@ pipelines:
             partition:
               mpp-format-int: '{image4k.layout[''root''].partnum}'
             target: /
+      # Then we mount the boot parition and label again so the /boot/efi
+      # mount point is labeled properly
       - type: org.osbuild.selinux
         options:
           file_contexts: input://tree/etc/selinux/targeted/contexts/files/file_contexts
