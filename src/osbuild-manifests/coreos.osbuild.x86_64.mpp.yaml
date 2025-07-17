@@ -37,11 +37,11 @@ mpp-vars:
   # matches. Unfortunately for FCOS there is no python so we can't
   # really use FCOS as the buildroot so we'll use the host as the
   # buildroot there.
-  buildroot:
-    mpp-if: osname in ['rhcos', 'scos']
-    then: "name:deployed-tree"
-    else:
-      mpp-format-string: '{host_as_buildroot}'
+  buildroot: "name:deployed-tree"
+    # mpp-if: osname in ['rhcos', 'scos', 'fc']
+    # then: "name:deployed-tree"
+    # else:
+    #   mpp-format-string: '{host_as_buildroot}'
 mpp-define-images:
   - id: image
     sector_size:
@@ -162,86 +162,6 @@ pipelines:
             origin: org.osbuild.pipeline
             references:
               - name:deployed-tree
-      - type: org.osbuild.ostree.init-fs
-      - type: org.osbuild.ostree.os-init
-        options:
-          osname:
-            mpp-format-string: '{osname}'
-      - type: org.osbuild.ostree.config
-        options:
-          repo: /ostree/repo
-          config:
-            sysroot:
-              readonly: true
-              bootloader: none
-              # https://github.com/coreos/fedora-coreos-tracker/issues/1333
-              bls-append-except-default: grub_users=""
-              # Opt-in to https://github.com/ostreedev/ostree/pull/2705 which will
-              # add /boot as the prefix on top of BLS config entries. This is OK
-              # because there is a symlink that is created in the root of the boot
-              # filesystem by OSTree (boot -> .) that makes it so that /boot paths
-              # will always work.
-              bootprefix: true
-      - type: org.osbuild.mkdir
-        options:
-          paths:
-            - path: /boot/efi
-              mode: 493
-      - type: org.osbuild.ignition
-      # Deploy via ociarchive or container
-      - mpp-if: ociarchive != ''
-        then:
-          type: org.osbuild.ostree.deploy.container
-          options:
-            osname:
-              mpp-format-string: '{osname}'
-            target_imgref:
-              mpp-format-string: '{container_imgref}'
-            mounts:
-              - /boot
-              - /boot/efi
-            kernel_opts:
-              - rw
-              - '$ignition_firstboot'
-              - mpp-format-string: '{extra_kargs}'
-          inputs:
-            images:
-              type: org.osbuild.containers
-              origin: org.osbuild.pipeline
-              references:
-                name:oci-archive:
-                  name: coreos.ociarchive
-        else:
-          type: org.osbuild.ostree.deploy.container
-          options:
-            osname:
-              mpp-format-string: '{osname}'
-            target_imgref:
-              mpp-format-string: '{container_imgref}'
-            mounts:
-              - /boot
-              - /boot/efi
-            kernel_opts:
-              - rw
-              - '$ignition_firstboot'
-              - mpp-format-string: '{extra_kargs}'
-          inputs:
-            images:
-              type: org.osbuild.containers
-              origin: org.osbuild.source
-              mpp-resolve-images:
-                images:
-                  - source: $container_repo
-                    tag: $container_tag
-      - type: org.osbuild.ostree.aleph
-        options:
-          coreos_compat: true
-          deployment:
-            default: true
-      - type: org.osbuild.ostree.selinux
-        options:
-          deployment:
-            default: true
   - name: raw-image
     build:
       mpp-format-string: '{buildroot}'
@@ -342,69 +262,25 @@ pipelines:
             partition:
               mpp-format-int: '{image.layout[''boot''].partnum}'
             target: /boot-mount-point
-      - type: org.osbuild.selinux
-        options:
-          file_contexts: input://tree/etc/selinux/targeted/contexts/files/file_contexts
-          target: mount://root/
-        inputs:
-          tree:
-            type: org.osbuild.tree
+      # Use bootc install to-filesystem to install the ostree content from the container image
+      # inside our disc image
+      - type: org.osbuild.bootc.install-to-filesystem
+        inputs: 
+          images:
+            type: org.osbuild.containers
             origin: org.osbuild.pipeline
             references:
-              - name:deployed-tree
-        devices:
-          disk:
-            type: org.osbuild.loopback
-            options:
-              filename: disk.img
-              partscan: true
-        mounts:
-          - name: root
-            type: org.osbuild.xfs
-            source: disk
-            partition:
-              mpp-format-int: '{image.layout[''root''].partnum}'
-            target: /
-      - type: org.osbuild.selinux
+              name:oci-archive:
+                name: coreos.ociarchive
         options:
-          file_contexts: input://tree/etc/selinux/targeted/contexts/files/file_contexts
-          target: mount://root/boot/
-        inputs:
-          tree:
-            type: org.osbuild.tree
-            origin: org.osbuild.pipeline
-            references:
-              - name:deployed-tree
-        devices:
-          disk:
-            type: org.osbuild.loopback
-            options:
-              filename: disk.img
-              partscan: true
-        mounts:
-          - name: root
-            type: org.osbuild.xfs
-            source: disk
-            partition:
-              mpp-format-int: '{image.layout[''root''].partnum}'
-            target: /
-          - name: boot
-            type: org.osbuild.ext4
-            source: disk
-            partition:
-              mpp-format-int: '{image.layout[''boot''].partnum}'
-            target: /boot
-      - type: org.osbuild.copy
-        inputs:
-          tree:
-            type: org.osbuild.tree
-            origin: org.osbuild.pipeline
-            references:
-              - name:tree
-        options:
-          paths:
-            - from: input://tree/
-              to: mount://root/
+          kernel-args:
+            - '$ignition_firstboot'
+            - mpp-format-string: '{extra_kargs}'
+          target-imgref:
+            mpp-format-string: '{container_imgref}'
+          stateroot: fedora-coreos
+          boot-mount-spec: ""
+          root-mount-spec: ""
         devices:
           disk:
             type: org.osbuild.loopback
@@ -430,13 +306,11 @@ pipelines:
             partition:
               mpp-format-int: '{image.layout[''EFI-SYSTEM''].partnum}'
             target: /boot/efi
-      - type: org.osbuild.bootupd
+      # set up the `ignition.firstboot` stamp at the end because
+      # bootc want empty filesystems
+      - type: org.osbuild.ignition
         options:
-          bios:
-            device: disk
-          static-configs: true
-          deployment:
-            default: true
+          target: mount://boot/
         devices:
           disk:
             type: org.osbuild.loopback
@@ -456,36 +330,6 @@ pipelines:
             partition:
               mpp-format-int: '{image.layout[''boot''].partnum}'
             target: /boot
-          - name: efi
-            type: org.osbuild.fat
-            source: disk
-            partition:
-              mpp-format-int: '{image.layout[''EFI-SYSTEM''].partnum}'
-            target: /boot/efi
-      - type: org.osbuild.chattr
-        options:
-          items:
-            mount://root/:
-              immutable: true
-        devices:
-          disk:
-            type: org.osbuild.loopback
-            options:
-              filename: disk.img
-              partscan: true
-        mounts:
-          - name: root
-            type: org.osbuild.xfs
-            source: disk
-            partition:
-              mpp-format-int: '{image.layout[''root''].partnum}'
-            target: /
-          - name: ostree.deployment
-            type: org.osbuild.ostree.deployment
-            options:
-              source: mount
-              deployment:
-                default: true
   - name: raw-4k-image
     build:
       mpp-format-string: '{buildroot}'
@@ -596,16 +440,25 @@ pipelines:
             partition:
               mpp-format-int: '{image4k.layout[''boot''].partnum}'
             target: /boot-mount-point
-      - type: org.osbuild.selinux
-        options:
-          file_contexts: input://tree/etc/selinux/targeted/contexts/files/file_contexts
-          target: mount://root/
-        inputs:
-          tree:
-            type: org.osbuild.tree
+      # Use bootc install to-filesystem to install the ostree content from the container image
+      # inside our disc image
+      - type: org.osbuild.bootc.install-to-filesystem
+        inputs: 
+          images:
+            type: org.osbuild.containers
             origin: org.osbuild.pipeline
             references:
-              - name:deployed-tree
+              name:oci-archive:
+                name: coreos.ociarchive
+        options:
+          kernel-args:
+            - '$ignition_firstboot'
+            - mpp-format-string: '{extra_kargs}'
+          target-imgref:
+            mpp-format-string: '{container_imgref}'
+          stateroot: fedora-coreos
+          boot-mount-spec: ""
+          root-mount-spec: ""
         devices:
           disk:
             type: org.osbuild.loopback
@@ -619,82 +472,25 @@ pipelines:
             type: org.osbuild.xfs
             source: disk
             partition:
-              mpp-format-int: '{image4k.layout[''root''].partnum}'
-            target: /
-      - type: org.osbuild.selinux
-        options:
-          file_contexts: input://tree/etc/selinux/targeted/contexts/files/file_contexts
-          target: mount://root/boot/
-        inputs:
-          tree:
-            type: org.osbuild.tree
-            origin: org.osbuild.pipeline
-            references:
-              - name:deployed-tree
-        devices:
-          disk:
-            type: org.osbuild.loopback
-            options:
-              filename: disk.img
-              partscan: true
-              sector-size:
-                  mpp-format-int: "{four_k_sector_size}"
-        mounts:
-          - name: root
-            type: org.osbuild.xfs
-            source: disk
-            partition:
-              mpp-format-int: '{image4k.layout[''root''].partnum}'
+              mpp-format-int: '{image.layout[''root''].partnum}'
             target: /
           - name: boot
             type: org.osbuild.ext4
             source: disk
             partition:
-              mpp-format-int: '{image4k.layout[''boot''].partnum}'
-            target: /boot
-      - type: org.osbuild.copy
-        inputs:
-          tree:
-            type: org.osbuild.tree
-            origin: org.osbuild.pipeline
-            references:
-              - name:tree
-        options:
-          paths:
-            - from: input://tree/
-              to: mount://root/
-        devices:
-          disk:
-            type: org.osbuild.loopback
-            options:
-              filename: disk.img
-              partscan: true
-              sector-size:
-                  mpp-format-int: "{four_k_sector_size}"
-        mounts:
-          - name: root
-            type: org.osbuild.xfs
-            source: disk
-            partition:
-              mpp-format-int: '{image4k.layout[''root''].partnum}'
-            target: /
-          - name: boot
-            type: org.osbuild.ext4
-            source: disk
-            partition:
-              mpp-format-int: '{image4k.layout[''boot''].partnum}'
+              mpp-format-int: '{image.layout[''boot''].partnum}'
             target: /boot
           - name: efi
             type: org.osbuild.fat
             source: disk
             partition:
-              mpp-format-int: '{image4k.layout[''EFI-SYSTEM''].partnum}'
+              mpp-format-int: '{image.layout[''EFI-SYSTEM''].partnum}'
             target: /boot/efi
-      - type: org.osbuild.bootupd
+      # set up the `ignition.firstboot` stamp at the end because
+      # bootc want empty filesystems
+      - type: org.osbuild.ignition
         options:
-          static-configs: true
-          deployment:
-            default: true
+          target: mount://boot/
         devices:
           disk:
             type: org.osbuild.loopback
@@ -708,46 +504,14 @@ pipelines:
             type: org.osbuild.xfs
             source: disk
             partition:
-              mpp-format-int: '{image4k.layout[''root''].partnum}'
+              mpp-format-int: '{image.layout[''root''].partnum}'
             target: /
           - name: boot
             type: org.osbuild.ext4
             source: disk
             partition:
-              mpp-format-int: '{image4k.layout[''boot''].partnum}'
+              mpp-format-int: '{image.layout[''boot''].partnum}'
             target: /boot
-          - name: efi
-            type: org.osbuild.fat
-            source: disk
-            partition:
-              mpp-format-int: '{image4k.layout[''EFI-SYSTEM''].partnum}'
-            target: /boot/efi
-      - type: org.osbuild.chattr
-        options:
-          items:
-            mount://root/:
-              immutable: true
-        devices:
-          disk:
-            type: org.osbuild.loopback
-            options:
-              filename: disk.img
-              partscan: true
-              sector-size:
-                  mpp-format-int: "{four_k_sector_size}"
-        mounts:
-          - name: root
-            type: org.osbuild.xfs
-            source: disk
-            partition:
-              mpp-format-int: '{image4k.layout[''root''].partnum}'
-            target: /
-          - name: ostree.deployment
-            type: org.osbuild.ostree.deployment
-            options:
-              source: mount
-              deployment:
-                default: true
   - mpp-import-pipelines:
       path: platform.aliyun.ipp.yaml
   - mpp-import-pipelines:
