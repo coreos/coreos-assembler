@@ -774,7 +774,7 @@ rc=0
 if [ -z "${RUNVM_SHELL:-}" ]; then
   (cd ${workdir}; bash ${tmp_builddir}/cmd.sh |& tee /dev/virtio-ports/cosa-cmdout) || rc=\$?
 else
-  (cd ${workdir}; bash)
+  (cd ${workdir}; RUNVM_SHELL=${RUNVM_SHELL:-} bash)
 fi
 echo \$rc > ${rc_file}
 if [ -n "\${cachedev}" ]; then
