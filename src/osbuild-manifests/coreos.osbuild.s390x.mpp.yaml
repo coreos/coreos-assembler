@@ -7,6 +7,7 @@ mpp-vars:
   container_repo: $container_repo
   container_tag: $container_tag
   extra_kargs: $extra_kargs
+  use_bootc_install: $use_bootc_install
   metal_image_size_mb: $metal_image_size_mb
   cloud_image_size_mb: $cloud_image_size_mb
   bios_boot_size_mb: 1
@@ -51,6 +52,15 @@ mpp-vars:
     then: "name:deployed-tree"
     else:
       mpp-format-string: '{host_as_buildroot}'
+  # Set the names of the files to use to import raw and raw4k pipelines
+  raw_image_pipeline_file:
+    mpp-if: use_bootc_install == 'true'
+    then: "build.raw-image-bootc.ipp.yaml"
+    else: "build.raw-image.ipp.yaml"
+  raw_4k_image_pipeline_file:
+    mpp-if: use_bootc_install == 'true'
+    then: "build.raw-4k-image-bootc.ipp.yaml"
+    else: "build.raw-4k-image.ipp.yaml"
 mpp-define-images:
   - id: image
     sector_size:
@@ -90,9 +100,9 @@ pipelines:
   - mpp-import-pipelines:
       path: build.common.ipp.yaml
   - mpp-import-pipelines:
-      path: build.raw-image.ipp.yaml
+      path: $raw_image_pipeline_file
   - mpp-import-pipelines:
-      path: build.raw-4k-image.ipp.yaml
+      path: $raw_4k_image_pipeline_file
   - mpp-import-pipelines:
       path: platform.ibmcloud.ipp.yaml
   - mpp-import-pipelines:
