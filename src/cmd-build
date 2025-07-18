@@ -648,9 +648,8 @@ rm -rf "${tmp_builddir}"
 # Replace the latest link
 ln -Tsf "${buildid}" builds/latest
 
-if [ "${SKIP_PRUNE}" == 1 ]; then
-  insert_build "${buildid}" "${workdir}"
-else
+insert_build "${buildid}" "${workdir}"
+if [ "${SKIP_PRUNE}" == 0 ]; then
   "${dn}"/cmd-prune --workdir "${workdir}"
 fi
 
