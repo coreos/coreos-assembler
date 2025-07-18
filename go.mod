@@ -24,10 +24,10 @@ require (
 	github.com/coreos/ignition/v2 v2.22.0
 	github.com/coreos/pkg v0.0.0-20240122114842-bbd7aa9bf6fb
 	github.com/coreos/rpmostree-client-go v0.0.0-20240514234259-72a33e8554b6
-	github.com/coreos/stream-metadata-go v0.4.8
+	github.com/coreos/stream-metadata-go v0.4.9
 	github.com/coreos/vcontext v0.0.0-20231102161604-685dc7299dc5
 	github.com/digitalocean/go-qemu v0.0.0-20250212194115-ee9b0668d242
-	github.com/digitalocean/godo v1.157.0
+	github.com/digitalocean/godo v1.159.0
 	github.com/frostschutz/go-fibmap v0.0.0-20160825162329-b32c231bfe6a
 	github.com/google/uuid v1.6.0
 	github.com/gophercloud/gophercloud v1.14.1
@@ -48,7 +48,7 @@ require (
 	golang.org/x/net v0.42.0
 	golang.org/x/oauth2 v0.30.0
 	golang.org/x/term v0.33.0
-	google.golang.org/api v0.241.0
+	google.golang.org/api v0.242.0
 	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.1
 )
