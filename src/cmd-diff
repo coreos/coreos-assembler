@@ -6,9 +6,12 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
+from multiprocessing import Process
 
 from dataclasses import dataclass
 from enum import IntEnum
+import guestfs
 from typing import Callable
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -304,6 +307,100 @@ def diff_live_sysroot(diff_from, diff_to):
     git_diff(dir_from, dir_to)
 
 
+def get_metal_path(build_target):
+    metal_file = build_target.meta.get('images', {}).get('metal')
+
+    if not metal_file:
+        raise Exception(f"Could not find metal image for build {build_target.id}")
+    return os.path.join(build_target.dir, metal_file['path'])
+
+
+def diff_metal_partitions(diff_from, diff_to):
+    metal_from = get_metal_path(diff_from)
+    metal_to = get_metal_path(diff_to)
+    diff_cmd_outputs(['sgdisk', '-p'], metal_from, metal_to)
+
+
+def run_guestfs_mount(image_path, mount_target):
+    """This function runs in a background thread."""
+    g = None
+    try:
+        g = guestfs.GuestFS(python_return_dict=True)
+        g.set_backend("direct")
+        g.add_drive_opts(image_path, readonly=1)
+        g.launch()
+
+        # Mount the disks in the guestfs VM
+        root = g.findfs_label("root")
+        g.mount_ro(root, "/")
+        boot = g.findfs_label("boot")
+        g.mount_ro(boot, "/boot")
+        efi = g.findfs_label("EFI-SYSTEM")
+        g.mount_ro(efi, "/boot/efi")
+
+        # This is a blocking call that runs the FUSE server
+        g.mount_local(mount_target)
+        g.mount_local_run()
+
+    except Exception as e:
+        print(f"Error in guestfs process for {image_path}: {e}", file=sys.stderr)
+    finally:
+        if g:
+            g.close()
+
+
+def diff_metal(diff_from, diff_to):
+    metal_from = get_metal_path(diff_from)
+    metal_to = get_metal_path(diff_to)
+
+    mount_dir_from = os.path.join(cache_dir("metal"), diff_from.id)
+    mount_dir_to = os.path.join(cache_dir("metal"), diff_to.id)
+
+    for d in [mount_dir_from, mount_dir_to]:
+        if os.path.exists(d):
+            shutil.rmtree(d)
+        os.makedirs(d)
+
+    # As the libreguest mount call is blocking until unmounted, let's
+    # do that in a separate thread
+    p_from = Process(target=run_guestfs_mount, args=(metal_from, mount_dir_from))
+    p_to = Process(target=run_guestfs_mount, args=(metal_to, mount_dir_to))
+
+    try:
+        p_from.start()
+        p_to.start()
+        # Wait for the FUSE mounts to be ready. We'll check for a known file.
+        for i, d in enumerate([mount_dir_from, mount_dir_to]):
+            p = p_from if i == 0 else p_to
+            timeout = 60  # seconds
+            start_time = time.time()
+            check_file = os.path.join(d, 'ostree')
+            while not os.path.exists(check_file):
+                time.sleep(1)
+                if time.time() - start_time > timeout:
+                    raise Exception(f"Timeout waiting for mount in {d}")
+                if not p.is_alive():
+                    raise Exception(f"A guestfs process for {os.path.basename(d)} died unexpectedly.")
+
+        # Now that the mounts are live, we can diff them
+        git_diff(mount_dir_from, mount_dir_to)
+
+    finally:
+        # Unmount the FUSE binds, this will make the guestfs mount calls return
+        runcmd(['fusermount', '-u', mount_dir_from], check=False)
+        runcmd(['fusermount', '-u', mount_dir_to], check=False)
+
+        # Ensure the background processes are terminated
+        def shutdown_process(process):
+            process.join(timeout=5)
+            if process.is_alive():
+                process.terminate()
+                process.join()
+
+        shutdown_process(p_from)
+        shutdown_process(p_to)
+
+
 def diff_cmd_outputs(cmd, file_from, file_to):
     with tempfile.NamedTemporaryFile(prefix=cmd[0] + '-') as f_from, \
          tempfile.NamedTemporaryFile(prefix=cmd[0] + '-') as f_to:
@@ -356,6 +453,10 @@ DIFFERS = [
            needs_ostree=OSTreeImport.NO, function=diff_live_sysroot_tree),
     Differ("live-sysroot", "Diff live '/root.[ero|squash]fs' (embed into live-rootfs) content",
            needs_ostree=OSTreeImport.NO, function=diff_live_sysroot),
+    Differ("metal-part-table", "Diff metal disk image partition tables",
+           needs_ostree=OSTreeImport.NO, function=diff_metal_partitions),
+    Differ("metal", "Diff metal disk image content",
+           needs_ostree=OSTreeImport.NO, function=diff_metal),
 ]
 
 if __name__ == '__main__':
