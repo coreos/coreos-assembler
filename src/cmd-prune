@@ -190,10 +190,12 @@ if os.path.exists('tmp/repo'):
     for build in builds.get_builds():
         meta = builds.get_build_meta(build['id'])
         build_dir = builds.get_build_dir(build['id'])
-        with open(os.path.join(build_dir, meta['images']['oci-manifest']['path'])) as f:
-            oci_manifest = json.load(f)
-            referenced_blobs.update([prefix + layer['digest'].replace(':', '_3A_')
-                                     for layer in oci_manifest['layers']])
+        oci_manifest = os.path.join(build_dir, meta['images']['oci-manifest']['path'])
+        if os.path.exists(oci_manifest):
+            with open(oci_manifest) as f:
+                oci_manifest = json.load(f)
+                referenced_blobs.update([prefix + layer['digest'].replace(':', '_3A_')
+                                         for layer in oci_manifest['layers']])
     blobs = set(subprocess.check_output(['ostree', 'refs', '--repo=tmp/repo',
                                          '--list', 'ostree/container/blob'],
                                         encoding='utf-8').splitlines())
