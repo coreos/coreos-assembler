@@ -367,7 +367,7 @@ github.com/coreos/pkg/multierror
 ## explicit; go 1.17
 github.com/coreos/rpmostree-client-go/pkg/client
 github.com/coreos/rpmostree-client-go/pkg/imgref
-# github.com/coreos/stream-metadata-go v0.4.8
+# github.com/coreos/stream-metadata-go v0.4.9
 ## explicit; go 1.18
 github.com/coreos/stream-metadata-go/arch
 github.com/coreos/stream-metadata-go/fedoracoreos
@@ -398,7 +398,7 @@ github.com/digitalocean/go-libvirt/socket/dialers
 # github.com/digitalocean/go-qemu v0.0.0-20250212194115-ee9b0668d242
 ## explicit; go 1.18
 github.com/digitalocean/go-qemu/qmp
-# github.com/digitalocean/godo v1.157.0
+# github.com/digitalocean/godo v1.159.0
 ## explicit; go 1.23
 github.com/digitalocean/godo
 github.com/digitalocean/godo/metrics
@@ -755,7 +755,7 @@ golang.org/x/text/unicode/norm
 # golang.org/x/time v0.12.0
 ## explicit; go 1.23.0
 golang.org/x/time/rate
-# google.golang.org/api v0.241.0
+# google.golang.org/api v0.242.0
 ## explicit; go 1.23.0
 google.golang.org/api/compute/v1
 google.golang.org/api/googleapi

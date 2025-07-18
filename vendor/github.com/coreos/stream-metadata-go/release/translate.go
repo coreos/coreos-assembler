@@ -232,6 +232,13 @@ func (releaseArch *Arch) toStreamArch(rel *Release) stream.Arch {
 		}
 	}
 
+	if releaseArch.Media.OracleCloud != nil {
+		artifacts["oraclecloud"] = stream.PlatformArtifacts{
+			Release: rel.Release,
+			Formats: mapFormats(releaseArch.Media.OracleCloud.Artifacts),
+		}
+	}
+
 	// if releaseArch.Media.Packet != nil {
 	// 	packet := StreamMediaDetails{
 	// 		Release: rel.Release,
