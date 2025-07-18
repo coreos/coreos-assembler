@@ -295,7 +295,7 @@ def import_ostree_commit(workdir, buildpath, buildmeta, extract_json=True, parti
               lifetime=LOCK_DEFAULT_LIFETIME):
         repo = os.path.join(tmpdir, 'repo')
         commit = buildmeta['ostree-commit']
-        is_oci_imported = buildmeta.get('coreos-assembler.oci-imported', False)
+        was_oci_imported = buildmeta.get('coreos-assembler.oci-imported', False)
         tarfile = os.path.join(buildpath, buildmeta['images']['ostree']['path'])
         # create repo in case e.g. tmp/ was cleared out; idempotent
         subprocess.check_call(['ostree', 'init', '--repo', repo, '--mode=archive'])
@@ -334,7 +334,9 @@ def import_ostree_commit(workdir, buildpath, buildmeta, extract_json=True, parti
         # We do this in two stages, because right now ex-container only writes to
         # non-archive repos.  Also, in the privileged case we need sudo to write
         # to `repo-build`, though it might be good to change this by default.
-        if is_oci_imported:
+        if was_oci_imported:
+            # This was initially imported using `cosa import`. Go through that
+            # path again because it's not an encapsulated commit.
             import_oci_archive(tmpdir, tarfile, buildmeta['buildid'])
         elif os.environ.get('COSA_PRIVILEGED', '') == '1':
             build_repo = os.path.join(repo, '../../cache/repo-build')
@@ -361,6 +363,10 @@ def import_ostree_commit(workdir, buildpath, buildmeta, extract_json=True, parti
 
 
 def import_oci_archive(parent_tmpd, ociarchive, ref):
+    '''
+    Imports layered/non-encapsulated OCI archive into the tmp/repo. Returns
+    the OSTree commit that was imported.
+    '''
     with tempfile.TemporaryDirectory(dir=parent_tmpd) as tmpd:
         subprocess.check_call(['ostree', 'init', '--repo', tmpd, '--mode=bare-user'])
 
@@ -379,6 +385,8 @@ def import_oci_archive(parent_tmpd, ociarchive, ref):
                                f'ostree-unverified-image:oci-archive:{ociarchive}'])
 
         # awkwardly work around the fact that there is no --write-ref equivalent
+        # XXX: we can make this better once we can rely on --ostree-digestfile
+        # https://github.com/bootc-dev/bootc/pull/1421
         refs = subprocess.check_output(['ostree', 'refs', '--repo', tmpd,
                                         '--list', 'ostree/container/image'],
                                        encoding='utf-8').splitlines()
@@ -393,7 +401,8 @@ def import_oci_archive(parent_tmpd, ociarchive, ref):
                                             encoding='utf-8').splitlines()
         subprocess.check_call(['ostree', 'pull-local', '--repo', 'tmp/repo', tmpd] + blob_refs)
 
-    return subprocess.check_output(['ostree', 'rev-parse', '--repo', 'tmp/repo', ref], encoding='utf-8').strip()
+    ostree_commit = subprocess.check_output(['ostree', 'rev-parse', '--repo', 'tmp/repo', ref], encoding='utf-8').strip()
+    return ostree_commit
 
 
 def get_basearch():
