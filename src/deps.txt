@@ -104,3 +104,6 @@ erofs-utils
 
 # Support for copr build in coreos-ci
 copr-cli
+
+# To mount metal disk images in cmd-diff
+python3-libguestfs
