@@ -767,20 +767,6 @@ arches:
     name: gnupg2-smime
     evr: 2.4.7-2.fc42
     sourcerpm: gnupg2-2.4.7-2.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/g/go-filesystem-3.6.0-6.fc42.x86_64.rpm
-    repoid: fedora
-    size: 8867
-    checksum: sha256:20cc3cd9a2b597444b80f6cfd266218ffbd944071e4366fe91d8c92a08b69ead
-    name: go-filesystem
-    evr: 3.6.0-6.fc42
-    sourcerpm: go-rpm-macros-3.6.0-6.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/g/go-srpm-macros-3.6.0-6.fc42.noarch.rpm
-    repoid: fedora
-    size: 28322
-    checksum: sha256:677c782cdde009da911ed8d4de880f910c163db203d078e19e65b146e75d4d58
-    name: go-srpm-macros
-    evr: 3.6.0-6.fc42
-    sourcerpm: go-rpm-macros-3.6.0-6.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/g/gobject-introspection-1.84.0-1.fc42.x86_64.rpm
     repoid: fedora
     size: 122816
@@ -4624,6 +4610,20 @@ arches:
     name: gnutls-utils
     evr: 3.8.10-1.fc42
     sourcerpm: gnutls-3.8.10-1.fc42.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/g/go-filesystem-3.7.0-1.fc42.x86_64.rpm
+    repoid: updates
+    size: 8819
+    checksum: sha256:404a93dfd45e3cc569ba3acb2076477a8d934ac63f6e36af1d562a257bcdbab8
+    name: go-filesystem
+    evr: 3.7.0-1.fc42
+    sourcerpm: go-rpm-macros-3.7.0-1.fc42.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/g/go-srpm-macros-3.7.0-1.fc42.noarch.rpm
+    repoid: updates
+    size: 28611
+    checksum: sha256:bc854af7e59ce23b948edcdf098c38ca5a922f249888a66c70ce56da1c026c0a
+    name: go-srpm-macros
+    evr: 3.7.0-1.fc42
+    sourcerpm: go-rpm-macros-3.7.0-1.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/g/golang-1.24.5-1.fc42.x86_64.rpm
     repoid: updates
     size: 687588
@@ -5891,20 +5891,20 @@ arches:
     name: python3-awscrt
     evr: 0.27.2-1.fc42
     sourcerpm: python-awscrt-0.27.2-1.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/python3-boto3-1.39.6-1.fc42.noarch.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/python3-boto3-1.39.8-1.fc42.noarch.rpm
     repoid: updates
-    size: 446789
-    checksum: sha256:ea01c680388979a59cc43fd58bc4a11ff4200945569fef2d1f95cece3b587873
+    size: 447566
+    checksum: sha256:66fa018992fd5c6c985fe9cd1ef48be49b2728560253900c6beb81e7227a7404
     name: python3-boto3
-    evr: 1.39.6-1.fc42
-    sourcerpm: python-boto3-1.39.6-1.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/python3-botocore-1.39.6-1.fc42.noarch.rpm
+    evr: 1.39.8-1.fc42
+    sourcerpm: python-boto3-1.39.8-1.fc42.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/python3-botocore-1.39.8-1.fc42.noarch.rpm
     repoid: updates
-    size: 8388824
-    checksum: sha256:1c73a485ee85e02f0685e08597fcee509376e0e6e22b7de8528951f738197d07
+    size: 8415838
+    checksum: sha256:eddd2e5d77f31b53079f7606921f6d8424fca33221775939ba55783c4543c6b7
     name: python3-botocore
-    evr: 1.39.6-1.fc42
-    sourcerpm: python-botocore-1.39.6-1.fc42.src.rpm
+    evr: 1.39.8-1.fc42
+    sourcerpm: python-botocore-1.39.8-1.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/python3-dill-0.4.0-1.fc42.noarch.rpm
     repoid: updates
     size: 281781
@@ -6059,13 +6059,13 @@ arches:
     name: python3-typer-slim
     evr: 0.15.4-4.fc42
     sourcerpm: python-typer-0.15.4-4.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/python3-unbound-1.23.0-3.fc42.x86_64.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/python3-unbound-1.23.1-1.fc42.x86_64.rpm
     repoid: updates
-    size: 120851
-    checksum: sha256:c7bac174c56cfb6a606440360133ab01efb560421bebce031e07c2d8fdb77a3f
+    size: 121125
+    checksum: sha256:049f3d4678e001c4557eac2026528a2d680912680f2491d85ded1510ac211158
     name: python3-unbound
-    evr: 1.23.0-3.fc42
-    sourcerpm: unbound-1.23.0-3.fc42.src.rpm
+    evr: 1.23.1-1.fc42
+    sourcerpm: unbound-1.23.1-1.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/q/qatzip-libs-1.3.1-1.fc42.x86_64.rpm
     repoid: updates
     size: 67584
@@ -6801,20 +6801,20 @@ arches:
     name: tiwilink-firmware
     evr: 20250708-1.fc42
     sourcerpm: linux-firmware-20250708-1.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/u/unbound-anchor-1.23.0-3.fc42.x86_64.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/u/unbound-anchor-1.23.1-1.fc42.x86_64.rpm
     repoid: updates
-    size: 38489
-    checksum: sha256:a582e964bb26c562156fce496beffdf783a7a520f4c59d79c9c081d085a7c219
+    size: 38739
+    checksum: sha256:f58de3ff6454ac1b5a154b910f67c5f601b143892442650e787a6239722fe2b2
     name: unbound-anchor
-    evr: 1.23.0-3.fc42
-    sourcerpm: unbound-1.23.0-3.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/u/unbound-libs-1.23.0-3.fc42.x86_64.rpm
+    evr: 1.23.1-1.fc42
+    sourcerpm: unbound-1.23.1-1.fc42.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/u/unbound-libs-1.23.1-1.fc42.x86_64.rpm
     repoid: updates
-    size: 573759
-    checksum: sha256:3f60b902ea4b90ecad7fe67227bc88640ae04519b672f6e5a9c1484485ba8402
+    size: 574354
+    checksum: sha256:9ae1c50745453029f02e0c015cfbd5212037aaf759a1d496cc3a4e1b58faa749
     name: unbound-libs
-    evr: 1.23.0-3.fc42
-    sourcerpm: unbound-1.23.0-3.fc42.src.rpm
+    evr: 1.23.1-1.fc42
+    sourcerpm: unbound-1.23.1-1.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/u/upower-1.90.9-4.fc42.x86_64.rpm
     repoid: updates
     size: 119751
