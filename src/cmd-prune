@@ -190,6 +190,9 @@ if os.path.exists('tmp/repo'):
     for build in builds.get_builds():
         meta = builds.get_build_meta(build['id'])
         build_dir = builds.get_build_dir(build['id'])
+        # could happen if e.g. only the ostree artifact was uploaded
+        if 'oci-manifest' not in meta['images']:
+            continue
         oci_manifest = os.path.join(build_dir, meta['images']['oci-manifest']['path'])
         if os.path.exists(oci_manifest):
             with open(oci_manifest) as f:
