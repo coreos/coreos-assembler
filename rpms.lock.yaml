@@ -6647,20 +6647,20 @@ arches:
     name: seavgabios-bin
     evr: 1.17.0-4.fc42
     sourcerpm: seabios-1.17.0-4.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/s/selinux-policy-41.45-1.fc42.noarch.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/s/selinux-policy-42.1-1.fc42.noarch.rpm
     repoid: updates
-    size: 55602
-    checksum: sha256:91a40d5ddb48c781e8c816a4a7c6c22f1daf317d6f28f5545945a1be2a0166d4
+    size: 55908
+    checksum: sha256:f71102d79f5624da81e2a96d4b6c6b0aaf45900931cfd6f24f0825bd89b22003
     name: selinux-policy
-    evr: 41.45-1.fc42
-    sourcerpm: selinux-policy-41.45-1.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/s/selinux-policy-targeted-41.45-1.fc42.noarch.rpm
+    evr: 42.1-1.fc42
+    sourcerpm: selinux-policy-42.1-1.fc42.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/s/selinux-policy-targeted-42.1-1.fc42.noarch.rpm
     repoid: updates
-    size: 7113210
-    checksum: sha256:90a81e1e22fcdc91686fbf74c9f1ffaf88806706327293365a5d08040a21c8a2
+    size: 7115263
+    checksum: sha256:9509220d33764d102ce66d483cc71d01fea7a3c3ee2c91ceb0f454d5d7c91c40
     name: selinux-policy-targeted
-    evr: 41.45-1.fc42
-    sourcerpm: selinux-policy-41.45-1.fc42.src.rpm
+    evr: 42.1-1.fc42
+    sourcerpm: selinux-policy-42.1-1.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/s/skopeo-1.19.0-2.fc42.x86_64.rpm
     repoid: updates
     size: 9342698
