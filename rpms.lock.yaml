@@ -137,13 +137,6 @@ arches:
     name: avif-pixbuf-loader
     evr: 1.1.1-1.fc42
     sourcerpm: libavif-1.1.1-1.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/b/binutils-2.44-3.fc42.x86_64.rpm
-    repoid: fedora
-    size: 6098686
-    checksum: sha256:9657d854cbe19334c9bd7b12ceca74f0690fa60f7a5135330dbdfcab8bf6631a
-    name: binutils
-    evr: 2.44-3.fc42
-    sourcerpm: binutils-2.44-3.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/b/boost-iostreams-1.83.0-12.fc42.x86_64.rpm
     repoid: fedora
     size: 41294
@@ -802,20 +795,6 @@ arches:
     name: gperftools-libs
     evr: 2.15-5.fc42
     sourcerpm: gperftools-2.15-5.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/g/gpgme-1.24.2-1.fc42.x86_64.rpm
-    repoid: fedora
-    size: 224920
-    checksum: sha256:d112d61c278f59eb56422bd589a461b2d5a84f27fd8b757a11ac480b38e22cc2
-    name: gpgme
-    evr: 1.24.2-1.fc42
-    sourcerpm: gpgme-1.24.2-1.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/g/gpgmepp-1.24.2-1.fc42.x86_64.rpm
-    repoid: fedora
-    size: 147006
-    checksum: sha256:db3f719ce81f06e3da00c8729a29958b58832e70c738a081063042d1d9944684
-    name: gpgmepp
-    evr: 1.24.2-1.fc42
-    sourcerpm: gpgme-1.24.2-1.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/g/graphene-1.10.6-10.fc42.x86_64.rpm
     repoid: fedora
     size: 62735
@@ -4239,6 +4218,13 @@ arches:
     name: awscli2
     evr: 2.27.0-2.fc42
     sourcerpm: awscli2-2.27.0-2.fc42.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/b/binutils-2.44-5.fc42.x86_64.rpm
+    repoid: updates
+    size: 6051559
+    checksum: sha256:c6d17fe006e3d6a38889a9facf985dbd7fb610952c33ec27ea06cdfa1fe5981f
+    name: binutils
+    evr: 2.44-5.fc42
+    sourcerpm: binutils-2.44-5.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/b/bluez-libs-5.83-2.fc42.x86_64.rpm
     repoid: updates
     size: 85453
@@ -4645,6 +4631,20 @@ arches:
     name: golang-src
     evr: 1.24.5-1.fc42
     sourcerpm: golang-1.24.5-1.fc42.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/g/gpgme-1.24.3-1.fc42.x86_64.rpm
+    repoid: updates
+    size: 224312
+    checksum: sha256:b84885ed2279f7df8af68a5eaec8cd6f847d73df1a13ea33bbe3b5699d0c5fba
+    name: gpgme
+    evr: 1.24.3-1.fc42
+    sourcerpm: gpgme-1.24.3-1.fc42.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/g/gpgmepp-1.24.3-1.fc42.x86_64.rpm
+    repoid: updates
+    size: 146603
+    checksum: sha256:11345c99c1a5eef932783ddc63aa3229ce02b3b2af6b475e5a12e5cbd860bdae
+    name: gpgmepp
+    evr: 1.24.3-1.fc42
+    sourcerpm: gpgme-1.24.3-1.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/g/grub2-common-2.12-32.fc42.noarch.rpm
     repoid: updates
     size: 1044881
@@ -4778,13 +4778,13 @@ arches:
     name: iputils
     evr: 20240905-4.fc42
     sourcerpm: iputils-20240905-4.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/k/kernel-core-6.15.6-200.fc42.x86_64.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/k/kernel-core-6.15.7-200.fc42.x86_64.rpm
     repoid: updates
-    size: 20132813
-    checksum: sha256:d3b6a449c05b344a013149cbfc4f1817f9841f27b133f9e44c3c54f75902abc0
+    size: 20129829
+    checksum: sha256:44a2192e340833f7026784dafcd43ec35d56e2b9ffb4bbf774c176e04a3ad8b2
     name: kernel-core
-    evr: 6.15.6-200.fc42
-    sourcerpm: kernel-6.15.6-200.fc42.src.rpm
+    evr: 6.15.7-200.fc42
+    sourcerpm: kernel-6.15.7-200.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/k/kernel-headers-6.15.3-200.fc42.x86_64.rpm
     repoid: updates
     size: 1745556
@@ -4792,20 +4792,20 @@ arches:
     name: kernel-headers
     evr: 6.15.3-200.fc42
     sourcerpm: kernel-headers-6.15.3-200.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/k/kernel-modules-6.15.6-200.fc42.x86_64.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/k/kernel-modules-6.15.7-200.fc42.x86_64.rpm
     repoid: updates
-    size: 100243605
-    checksum: sha256:5515e29b7d9c3f36c4c90214a41e3f23f1bcd1c1142333a7cd5d1ef0b7673121
+    size: 100284081
+    checksum: sha256:8d5b2ffb1de517ebcf6a78f3047ee6d96fb76723b79d1e837a73bab9c70ac9ae
     name: kernel-modules
-    evr: 6.15.6-200.fc42
-    sourcerpm: kernel-6.15.6-200.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/k/kernel-modules-core-6.15.6-200.fc42.x86_64.rpm
+    evr: 6.15.7-200.fc42
+    sourcerpm: kernel-6.15.7-200.fc42.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/k/kernel-modules-core-6.15.7-200.fc42.x86_64.rpm
     repoid: updates
-    size: 71906457
-    checksum: sha256:9232ad6f8315c49dc7e60847bd7123f39de75de7ef093ca559b15a4787c2ebdd
+    size: 71903465
+    checksum: sha256:381957f8650088ce362f2f36b212db9efb83c6dc0b578bbff23d27993ef91e0e
     name: kernel-modules-core
-    evr: 6.15.6-200.fc42
-    sourcerpm: kernel-6.15.6-200.fc42.src.rpm
+    evr: 6.15.7-200.fc42
+    sourcerpm: kernel-6.15.7-200.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/k/koji-1.35.3-1.fc42.noarch.rpm
     repoid: updates
     size: 272456
@@ -5891,20 +5891,20 @@ arches:
     name: python3-awscrt
     evr: 0.27.2-1.fc42
     sourcerpm: python-awscrt-0.27.2-1.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/python3-boto3-1.39.9-1.fc42.noarch.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/python3-boto3-1.39.10-1.fc42.noarch.rpm
     repoid: updates
-    size: 447770
-    checksum: sha256:cee5cd49754126eb85139c2d1cbfccff6645d25c88deb475b5d593b789fd83a8
+    size: 447878
+    checksum: sha256:507af935e7cf68e3c551c1b9818e6a6b0b74dc8f0821bb1503921d530e771fe7
     name: python3-boto3
-    evr: 1.39.9-1.fc42
-    sourcerpm: python-boto3-1.39.9-1.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/python3-botocore-1.39.9-1.fc42.noarch.rpm
+    evr: 1.39.10-1.fc42
+    sourcerpm: python-boto3-1.39.10-1.fc42.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/python3-botocore-1.39.10-1.fc42.noarch.rpm
     repoid: updates
-    size: 8422643
-    checksum: sha256:266a1b0d823fba54861d3f3e3e6915a542eec5a91d509b78e378a234b52ea703
+    size: 8424448
+    checksum: sha256:a1730ef70f393c9264fc093cc43e4bd002f0d937a3b3c61a7d0c018100abe9d9
     name: python3-botocore
-    evr: 1.39.9-1.fc42
-    sourcerpm: python-botocore-1.39.9-1.fc42.src.rpm
+    evr: 1.39.10-1.fc42
+    sourcerpm: python-botocore-1.39.10-1.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/python3-dill-0.4.0-1.fc42.noarch.rpm
     repoid: updates
     size: 281781
@@ -6003,13 +6003,13 @@ arches:
     name: python3-ruamel-yaml
     evr: 0.18.14-1.fc42
     sourcerpm: python-ruamel-yaml-0.18.14-1.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/python3-s3transfer-0.13.0-2.fc42.noarch.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/python3-s3transfer-0.13.1-1.fc42.noarch.rpm
     repoid: updates
-    size: 165218
-    checksum: sha256:06ca6c15b201d93b9cd412817cf3b75461f21f3bac0b9ea87070ca50d5434519
+    size: 165481
+    checksum: sha256:c3a7690a7f3a79ba660510e4ef66f8c6cb27c597468a6ea5ad00817aa9b34a6e
     name: python3-s3transfer
-    evr: 0.13.0-2.fc42
-    sourcerpm: python-s3transfer-0.13.0-2.fc42.src.rpm
+    evr: 0.13.1-1.fc42
+    sourcerpm: python-s3transfer-0.13.1-1.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/python3-setools-4.5.1-6.fc42.x86_64.rpm
     repoid: updates
     size: 744592
