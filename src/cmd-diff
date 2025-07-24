@@ -6,8 +6,6 @@ import shutil
 import subprocess
 import sys
 import tempfile
-import time
-from multiprocessing import Process
 
 from dataclasses import dataclass
 from enum import IntEnum
@@ -96,6 +94,11 @@ def main():
     for differ in active_differs:
         differ.function(diff_from, diff_to)
 
+    if args.artifact:
+        diff_artifact(diff_from, diff_to, args.artifact)
+    if args.artifact_part_table:
+        diff_artifact_partitions(diff_from, diff_to, args.artifact_part_table)
+
     if args.gc:
         # some of the dirs in the rootfs are dumb and have "private" bits
         runcmd(['find', DIFF_CACHE, '-type', 'd', '-exec', 'chmod', 'u+rwx', '{}', '+'])
@@ -109,6 +112,8 @@ def parse_args():
     parser.add_argument("--to", dest='diff_to', help="Second build ID")
     parser.add_argument("--gc", action='store_true', help="Delete cached diff content")
     parser.add_argument("--arch", dest='arch', help="Architecture of builds")
+    parser.add_argument("--artifact", help="Diff artifact image content. e.g. 'metal'")
+    parser.add_argument("--artifact-part-table", help="Diff artifact disk image partition tables. e.g. 'metal'")
 
     for differ in DIFFERS:
         parser.add_argument("--" + differ.name, action='store_true', default=False,
@@ -318,87 +323,53 @@ def get_metal_path(build_target):
 def diff_metal_partitions(diff_from, diff_to):
     metal_from = get_metal_path(diff_from)
     metal_to = get_metal_path(diff_to)
-    diff_cmd_outputs(['sgdisk', '-p'], metal_from, metal_to)
-
-
-def run_guestfs_mount(image_path, mount_target):
-    """This function runs in a background thread."""
-    g = None
-    try:
-        g = guestfs.GuestFS(python_return_dict=True)
-        g.set_backend("direct")
-        g.add_drive_opts(image_path, readonly=1)
-        g.launch()
-
-        # Mount the disks in the guestfs VM
-        root = g.findfs_label("root")
-        g.mount_ro(root, "/")
-        boot = g.findfs_label("boot")
-        g.mount_ro(boot, "/boot")
-        efi = g.findfs_label("EFI-SYSTEM")
-        g.mount_ro(efi, "/boot/efi")
-
-        # This is a blocking call that runs the FUSE server
-        g.mount_local(mount_target)
-        g.mount_local_run()
-
-    except Exception as e:
-        print(f"Error in guestfs process for {image_path}: {e}", file=sys.stderr)
-    finally:
-        if g:
-            g.close()
+    diff_cmd_outputs(['sfdisk', '--dump'], metal_from, metal_to)
 
 
 def diff_metal(diff_from, diff_to):
     metal_from = get_metal_path(diff_from)
     metal_to = get_metal_path(diff_to)
 
-    mount_dir_from = os.path.join(cache_dir("metal"), diff_from.id)
-    mount_dir_to = os.path.join(cache_dir("metal"), diff_to.id)
+    dir_from = os.path.join(cache_dir("metal"), diff_from.id)
+    dir_to = os.path.join(cache_dir("metal"), diff_to.id)
 
-    for d in [mount_dir_from, mount_dir_to]:
-        if os.path.exists(d):
-            shutil.rmtree(d)
-        os.makedirs(d)
+    for image_path, target_dir in [(metal_from, dir_from), (metal_to, dir_to)]:
+        if os.path.exists(target_dir):
+            shutil.rmtree(target_dir)
+        os.makedirs(target_dir)
 
-    # As the libreguest mount call is blocking until unmounted, let's
-    # do that in a separate thread
-    p_from = Process(target=run_guestfs_mount, args=(metal_from, mount_dir_from))
-    p_to = Process(target=run_guestfs_mount, args=(metal_to, mount_dir_to))
+        g = None
+        try:
+            g = guestfs.GuestFS(python_return_dict=True)
+            g.set_backend("direct")
+            g.add_drive_opts(image_path, readonly=1)
+            g.launch()
 
-    try:
-        p_from.start()
-        p_to.start()
-        # Wait for the FUSE mounts to be ready. We'll check for a known file.
-        for i, d in enumerate([mount_dir_from, mount_dir_to]):
-            p = p_from if i == 0 else p_to
-            timeout = 60  # seconds
-            start_time = time.time()
-            check_file = os.path.join(d, 'ostree')
-            while not os.path.exists(check_file):
-                time.sleep(1)
-                if time.time() - start_time > timeout:
-                    raise Exception(f"Timeout waiting for mount in {d}")
-                if not p.is_alive():
-                    raise Exception(f"A guestfs process for {os.path.basename(d)} died unexpectedly.")
+            # Mount the disks in the guestfs VM
+            root = g.findfs_label("root")
+            g.mount_ro(root, "/")
+            boot = g.findfs_label("boot")
+            g.mount_ro(boot, "/boot")
+            efi = g.findfs_label("EFI-SYSTEM")
+            g.mount_ro(efi, "/boot/efi")
 
-        # Now that the mounts are live, we can diff them
-        git_diff(mount_dir_from, mount_dir_to)
+            # Exclude backing block devices from the tar
+            excludes = ["*backingFsBlockDev"]
 
-    finally:
-        # Unmount the FUSE binds, this will make the guestfs mount calls return
-        runcmd(['fusermount', '-u', mount_dir_from], check=False)
-        runcmd(['fusermount', '-u', mount_dir_to], check=False)
+            with tempfile.NamedTemporaryFile(suffix=".tar", delete=True) as tmp_tar:
+                g.tar_out("/", tmp_tar.name, xattrs=True, selinux=True, excludes= excludes)
+                # Extract the tarball
+                runcmd(['tar', '-xf', tmp_tar.name, '-C', target_dir])
 
-        # Ensure the background processes are terminated
-        def shutdown_process(process):
-            process.join(timeout=5)
-            if process.is_alive():
-                process.terminate()
-                process.join()
+        except Exception as e:
+            print(f"Error in guestfs process for {image_path}: {e}", file=sys.stderr)
+            raise
+        finally:
+            if g:
+                g.close()
 
-        shutdown_process(p_from)
-        shutdown_process(p_to)
+    # Now that the contents are downloaded, we can diff them
+    git_diff(dir_from, dir_to)
 
 
 def diff_cmd_outputs(cmd, file_from, file_to):
