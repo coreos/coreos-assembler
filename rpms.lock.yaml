@@ -5765,55 +5765,55 @@ arches:
     name: perl-vars
     evr: 1.05-518.fc42
     sourcerpm: perl-5.40.2-518.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/pipewire-1.4.6-1.fc42.x86_64.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/pipewire-1.4.7-1.fc42.x86_64.rpm
     repoid: updates
-    size: 138371
-    checksum: sha256:3c6fd93725da1a3a67aa3327cbfa46f5ff51ce988ca5ddfaa7ab46168fc6abe9
+    size: 137973
+    checksum: sha256:bbf3cbc159a686cae4824288bab3cc647407febff424f59771a0f35bee3f0ad8
     name: pipewire
-    evr: 1.4.6-1.fc42
-    sourcerpm: pipewire-1.4.6-1.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/pipewire-alsa-1.4.6-1.fc42.x86_64.rpm
+    evr: 1.4.7-1.fc42
+    sourcerpm: pipewire-1.4.7-1.fc42.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/pipewire-alsa-1.4.7-1.fc42.x86_64.rpm
     repoid: updates
-    size: 62925
-    checksum: sha256:d8fda78fadc191dfed3fb9578b3b08795fb62e800279897ecc15b562a1c7df9a
+    size: 62224
+    checksum: sha256:92c8bd08a9dcb6ca95e02aa891ceb07e3b24de18eb12160f14ba775fb4bf6108
     name: pipewire-alsa
-    evr: 1.4.6-1.fc42
-    sourcerpm: pipewire-1.4.6-1.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/pipewire-jack-audio-connection-kit-1.4.6-1.fc42.x86_64.rpm
+    evr: 1.4.7-1.fc42
+    sourcerpm: pipewire-1.4.7-1.fc42.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/pipewire-jack-audio-connection-kit-1.4.7-1.fc42.x86_64.rpm
     repoid: updates
-    size: 13617
-    checksum: sha256:a31d0dbad3c43c01a6a18c95eb1156ee92a875f7a179d8157158ce800840e981
+    size: 13110
+    checksum: sha256:201d3d448513d96012d11070fb368502e4de25427e8d197ad5a94112c5662c65
     name: pipewire-jack-audio-connection-kit
-    evr: 1.4.6-1.fc42
-    sourcerpm: pipewire-1.4.6-1.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/pipewire-jack-audio-connection-kit-libs-1.4.6-1.fc42.x86_64.rpm
+    evr: 1.4.7-1.fc42
+    sourcerpm: pipewire-1.4.7-1.fc42.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/pipewire-jack-audio-connection-kit-libs-1.4.7-1.fc42.x86_64.rpm
     repoid: updates
-    size: 148613
-    checksum: sha256:0f62f090843a69c6cbfd11152d6288e22157ac3f1c8b09c9530fdadb438a08d2
+    size: 148043
+    checksum: sha256:56f6fd4f1fd279e1bc9c0976ca1162ced6bbbf9a7c4602d25fbd082f04f63622
     name: pipewire-jack-audio-connection-kit-libs
-    evr: 1.4.6-1.fc42
-    sourcerpm: pipewire-1.4.6-1.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/pipewire-libs-1.4.6-1.fc42.x86_64.rpm
+    evr: 1.4.7-1.fc42
+    sourcerpm: pipewire-1.4.7-1.fc42.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/pipewire-libs-1.4.7-1.fc42.x86_64.rpm
     repoid: updates
-    size: 2535926
-    checksum: sha256:ac4e14ea60291f2476161372f65c1a244758faa3a16d27f8379f9373087e4097
+    size: 2535270
+    checksum: sha256:620271face9f3fa704a26448be700b65f0c59fbea6b84518abbf46ed5a3657c3
     name: pipewire-libs
-    evr: 1.4.6-1.fc42
-    sourcerpm: pipewire-1.4.6-1.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/pipewire-plugin-libcamera-1.4.6-1.fc42.x86_64.rpm
+    evr: 1.4.7-1.fc42
+    sourcerpm: pipewire-1.4.7-1.fc42.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/pipewire-plugin-libcamera-1.4.7-1.fc42.x86_64.rpm
     repoid: updates
-    size: 77741
-    checksum: sha256:91cc22bea95a35bf511893cee58d7c9fca5642c47895f529d9d0256b8406fe1d
+    size: 77242
+    checksum: sha256:1bd37a3cf231574e72b8cbce59039efb6827f3ec7b4e8e847df09637a83ab57d
     name: pipewire-plugin-libcamera
-    evr: 1.4.6-1.fc42
-    sourcerpm: pipewire-1.4.6-1.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/pipewire-pulseaudio-1.4.6-1.fc42.x86_64.rpm
+    evr: 1.4.7-1.fc42
+    sourcerpm: pipewire-1.4.7-1.fc42.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/pipewire-pulseaudio-1.4.7-1.fc42.x86_64.rpm
     repoid: updates
-    size: 216065
-    checksum: sha256:8b91a104ef675f1f71bf106b2266d7c5d6fbbe423c58f81b25184cfe48a3dc6d
+    size: 215508
+    checksum: sha256:fb7863e754a7e38cdc0d5a3f6de428e8318290e306f1edf84bcf58addcaaab6e
     name: pipewire-pulseaudio
-    evr: 1.4.6-1.fc42
-    sourcerpm: pipewire-1.4.6-1.fc42.src.rpm
+    evr: 1.4.7-1.fc42
+    sourcerpm: pipewire-1.4.7-1.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/pixman-0.46.2-1.fc42.x86_64.rpm
     repoid: updates
     size: 299759
@@ -5891,20 +5891,20 @@ arches:
     name: python3-awscrt
     evr: 0.27.2-1.fc42
     sourcerpm: python-awscrt-0.27.2-1.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/python3-boto3-1.39.10-1.fc42.noarch.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/python3-boto3-1.39.11-1.fc42.noarch.rpm
     repoid: updates
-    size: 447878
-    checksum: sha256:507af935e7cf68e3c551c1b9818e6a6b0b74dc8f0821bb1503921d530e771fe7
+    size: 447980
+    checksum: sha256:a42a63e37dfc6a9ee1ceea3b0d7019661632fe24896b001a2374cb197d65710e
     name: python3-boto3
-    evr: 1.39.10-1.fc42
-    sourcerpm: python-boto3-1.39.10-1.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/python3-botocore-1.39.10-1.fc42.noarch.rpm
+    evr: 1.39.11-1.fc42
+    sourcerpm: python-boto3-1.39.11-1.fc42.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/python3-botocore-1.39.11-1.fc42.noarch.rpm
     repoid: updates
-    size: 8424448
-    checksum: sha256:a1730ef70f393c9264fc093cc43e4bd002f0d937a3b3c61a7d0c018100abe9d9
+    size: 8424302
+    checksum: sha256:925cece7913491dc7627b585f7607ae7a314baf5472ee966354f95fd58a44282
     name: python3-botocore
-    evr: 1.39.10-1.fc42
-    sourcerpm: python-botocore-1.39.10-1.fc42.src.rpm
+    evr: 1.39.11-1.fc42
+    sourcerpm: python-botocore-1.39.11-1.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/python3-dill-0.4.0-1.fc42.noarch.rpm
     repoid: updates
     size: 281781
