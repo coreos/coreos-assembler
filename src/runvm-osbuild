@@ -71,14 +71,6 @@ container_imgref=$(getconfig "container-imgref")
 container_repo=$(getconfig_def "container-repo" "")
 container_tag=$(getconfig_def "container-tag" "")
 extra_kargs=$(getconfig "extra-kargs-string" "")
-# If we are not deploying via container let's go ahead and
-# set the OSTree repo and ref information
-ostree_ref=""
-ostree_repo=""
-if [ -z "${deploy_via_container}" ]; then
-    ostree_ref=$(getconfig "ostree-ref")
-    ostree_repo="file://$(getconfig "ostree-repo")"
-fi
 
 # Since it doesn't exist create loop-control
 [ ! -e /dev/loop-control ] && mknod /dev/loop-control c 10 237
@@ -111,8 +103,6 @@ set -x; osbuild-mpp                                       \
     -D arch=\""$(arch)"\"                                 \
     -D artifact_name_prefix=\""${artifact_name_prefix}"\" \
     -D build_version=\""${build_version}"\"               \
-    -D ostree_ref=\""${ostree_ref}"\"                     \
-    -D ostree_repo=\""${ostree_repo}"\"                   \
     -D ociarchive=\""${ostree_container}"\"               \
     -D osname=\""${osname}"\"                             \
     -D container_imgref=\""${container_imgref}"\"         \
