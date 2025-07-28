@@ -1,0 +1,91 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+dn=$(dirname "$0")
+# shellcheck source=src/cmdlib.sh
+. "${dn}"/cmdlib.sh
+
+print_help() {
+    cat 1>&2 <<'EOF'
+Usage: coreos-assembler build-with-buildah
+       coreos-assembler build-with-buildah [OPTIONS]...
+
+  Build bootable container (ostree) and image base artifacts using the container runtime (buildah).
+  `cosa build` will pivot to this script when the environment variable `COREOS_ASSEMBLER_BUILD_WITH_BUILDAH` is set.
+
+  The following options are supported:
+  --versionary          Use the versionary script from the source config to drive version.
+EOF
+}
+
+VERSIONARY=
+VERSION=
+rc=0
+options=$(getopt --options h,v --longoptions help,versionary -- "$@") || rc=$?
+[ $rc -eq 0 ] || {
+    print_help
+    exit 1
+}
+eval set -- "$options"
+while true; do
+    case "$1" in
+        -h | --help)
+            print_help
+            exit 0
+            ;;
+        -v | --versionary)
+            VERSIONARY=1
+            ;;
+        --)
+            shift
+            break
+            ;;
+        -*)
+            fatal "$0: unrecognized option: $1"
+            ;;
+        *)
+            break
+            ;;
+    esac
+    shift
+done
+
+if [ -n "${VERSIONARY}" ]; then
+    # let error out if file does not exist
+    VERSION=$(src/config/versionary)
+    echo "New version will be ${VERSION}"
+fi
+
+build_with_buildah() {
+    VERSION=$1
+    echo "Building with container runtime (buildah)..."
+
+    tempdir=$(mktemp -d --tmpdir=tmp "build-with-buildah.XXXXXXXX")
+
+    # the config dir virtiofs mount is mounted ro; copy it to the tempdir
+    cp -r src/config/ "${tempdir}/src"
+
+    tmp_oci_archive_path=$(realpath "${tempdir}/out.ociarchive")
+
+    argsfile=build-args.conf
+    if [ -n "${variant:-}" ]; then
+        argsfile=build-args-${variant}.conf
+    fi
+
+    set -- build --security-opt=label=disable --cap-add=all --device /dev/fuse \
+            --build-arg-file "$argsfile" -v "$(realpath "${tempdir}/src")":/run/src \
+            -t oci-archive:"${tmp_oci_archive_path}"
+
+    if [ -n "${VERSION}" ]; then
+        set -- "$@" --build-arg VERSION="${VERSION}"
+    fi
+
+    /usr/lib/coreos-assembler/cmd-supermin-run --cache \
+        env -C "${tempdir}/src" TMPDIR="$(realpath cache)" buildah "$@" .
+
+    /usr/lib/coreos-assembler/cmd-import "oci-archive:${tmp_oci_archive_path}"
+
+    rm -rf "${tempdir}"
+}
+
+build_with_buildah "$VERSION"

@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+if [ -n "${COSA_BUILD_WITH_BUILDAH:-}" ]; then
+    exec /usr/lib/coreos-assembler/cmd-build-with-buildah "$@"
+fi
+
 dn=$(dirname "$0")
 # shellcheck source=src/cmdlib.sh
 . "${dn}"/cmdlib.sh
