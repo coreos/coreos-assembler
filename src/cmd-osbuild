@@ -183,7 +183,6 @@ generate_runvm_osbuild_config() {
     image_json=${workdir}/tmp/image.json
 
     # Grab a few values from $image_json
-    deploy_via_container=$(getconfig_def "deploy-via-container" "" "${image_json}")
     extra_kargs="$(python3 -c 'import sys, json; args = json.load(sys.stdin)["extra-kargs"]; print(" ".join(args))' < "${image_json}")"
 
     # OStree container ociarchive file path
@@ -222,7 +221,6 @@ generate_runvm_osbuild_config() {
 artifact-name-prefix: "${name}-${build}"
 build-version: "${build}"
 container-imgref: "${container_imgref}"
-deploy-via-container: "${deploy_via_container}"
 osname: "${name}"
 ostree-container: "${ostree_container}"
 extra-kargs-string: "${extra_kargs}"
