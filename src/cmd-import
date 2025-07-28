@@ -65,7 +65,12 @@ def parse_args():
 
 def generate_oci_archive(args, tmpd):
     tmpf = os.path.join(tmpd, 'out.ociarchive')
-    subprocess.check_call(['skopeo', 'copy', '--preserve-digests', args.srcimg,
+
+    if args.srcimg.startswith('oci-archive:'):
+        print(f"Copying {args.srcimg.partition(':')[2]} to {tmpf}")
+        shutil.copy(args.srcimg.partition(':')[2], tmpf)
+    else:
+        subprocess.check_call(['skopeo', 'copy', '--preserve-digests', args.srcimg,
                            f"oci-archive:{tmpf}"])
     return tmpf
 
