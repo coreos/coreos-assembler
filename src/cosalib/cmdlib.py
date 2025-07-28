@@ -391,7 +391,9 @@ def import_oci_archive(parent_tmpd, ociarchive, ref):
                                         '--list', 'ostree/container/image'],
                                        encoding='utf-8').splitlines()
         assert len(refs) == 1
-        subprocess.check_call(['ostree', 'refs', '--repo', tmpd, refs[0], '--create', ref])
+        # --force is needed for builds from cosa build-oci (using buildah) where
+        # the ref seems to be already present in the repo.
+        subprocess.check_call(['ostree', 'refs', '--repo', tmpd, refs[0], '--create', ref, '--force'])
         subprocess.check_call(['ostree', 'refs', '--repo', 'tmp/repo', ref, '--delete'])
         subprocess.check_call(['ostree', 'pull-local', '--repo', 'tmp/repo', tmpd, ref])
 
