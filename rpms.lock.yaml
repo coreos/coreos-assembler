@@ -4337,13 +4337,13 @@ arches:
     name: criu-libs
     evr: 4.1-2.fc42
     sourcerpm: criu-4.1-2.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/c/crun-1.22-1.fc42.x86_64.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/c/crun-1.23-1.fc42.x86_64.rpm
     repoid: updates
-    size: 257985
-    checksum: sha256:f867dca6a5a7b936b9d07aa31178c94e7b2913bdea9c737fb517b3357fa3e1b5
+    size: 260527
+    checksum: sha256:682183d72f93b299f24464dca57aa93664f795975369e193b397abf600433a19
     name: crun
-    evr: 1.22-1.fc42
-    sourcerpm: crun-1.22-1.fc42.src.rpm
+    evr: 1.23-1.fc42
+    sourcerpm: crun-1.23-1.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/c/cryptsetup-2.8.0-1.fc42.x86_64.rpm
     repoid: updates
     size: 351878
@@ -4771,13 +4771,13 @@ arches:
     name: iptables-libs
     evr: 1.8.11-8.fc42
     sourcerpm: iptables-1.8.11-8.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/i/iputils-20240905-4.fc42.x86_64.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/i/iputils-20250602-3.fc42.x86_64.rpm
     repoid: updates
-    size: 198107
-    checksum: sha256:b88f74760e6e14ed2d34aa682022f70a2832047412d6dcb14fef9facba9463a0
+    size: 214421
+    checksum: sha256:83794dc5da5bedb3be82f10cc37e9c8866997ba66d7ed19e4cfaf944070f933f
     name: iputils
-    evr: 20240905-4.fc42
-    sourcerpm: iputils-20240905-4.fc42.src.rpm
+    evr: 20250602-3.fc42
+    sourcerpm: iputils-20250602-3.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/k/kernel-core-6.15.7-200.fc42.x86_64.rpm
     repoid: updates
     size: 20129829
