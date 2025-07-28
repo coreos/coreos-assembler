@@ -96,6 +96,13 @@ func run(argv []string) error {
 	case "build-extensions-container", // old alias
 		"buildextend-extensions-container":
 		return buildExtensionContainer()
+	case "build":
+		// We don't expect any other arguments
+		// Possible to make better by checking if '--native' in argv.
+		if len(argv) == 1 && argv[0] == "--native" {
+			return buildContainerNative()
+		}
+		// otherwise, build the traditional way
 	}
 
 	target := fmt.Sprintf("/usr/lib/coreos-assembler/cmd-%s", cmd)
