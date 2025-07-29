@@ -37,11 +37,11 @@ mpp-vars:
   # matches. Unfortunately for FCOS there is no python so we can't
   # really use FCOS as the buildroot so we'll use the host as the
   # buildroot there.
-  buildroot: "name:deployed-tree"
-    # mpp-if: osname in ['rhcos', 'scos', 'fc']
-    # then: "name:deployed-tree"
-    # else:
-    #   mpp-format-string: '{host_as_buildroot}'
+  buildroot:
+    mpp-if: osname in ['rhcos', 'scos']
+    then: "name:deployed-tree"
+    else:
+      mpp-format-string: '{host_as_buildroot}'
 mpp-define-images:
   - id: image
     sector_size:
