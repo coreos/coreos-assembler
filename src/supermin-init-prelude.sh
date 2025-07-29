@@ -87,3 +87,13 @@ touch /etc/cosa-supermin
 # the missing link.  Hehe.
 update-alternatives --install /etc/alternatives/iptables iptables /usr/sbin/iptables-legacy 1
 update-alternatives --install /etc/alternatives/ip6tables ip6tables /usr/sbin/ip6tables-legacy 1
+
+# To build the disk image using osbuild and bootc install to-filesystem we need to
+# have a prepare-root config in the build environnement for bootc to read.
+# This workaround can be removed when https://github.com/bootc-dev/bootc/issues/1410
+# is fixed or we have python in all streams which allows us to use the OCI image as the buildroot.
+# Note that RHCOS and SCOS use the OCI as buildroot so they should not be affected by this.
+cat > /usr/lib/ostree/prepare-root.conf <<EOF
+[composefs]
+enabled = true
+EOF
