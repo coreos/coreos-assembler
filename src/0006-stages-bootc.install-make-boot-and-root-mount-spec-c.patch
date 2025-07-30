@@ -1,0 +1,81 @@
+From 8e23f3fd16c96f5122d7572efb98776540683df4 Mon Sep 17 00:00:00 2001
+From: jbtrystram <jbtrystram@redhat.com>
+Date: Mon, 21 Jul 2025 20:49:13 +0200
+Subject: [PATCH 6/6] stages/bootc.install: make boot and root mount spec
+ customizable
+
+Allow passing custom mount specs for boot and root. Optional fields.
+---
+ stages/org.osbuild.bootc.install-to-filesystem  | 17 +++++++++++++++++
+ ...sbuild.bootc.install-to-filesystem.meta.json | 16 ++++++++++++++--
+ 2 files changed, 31 insertions(+), 2 deletions(-)
+
+diff --git a/stages/org.osbuild.bootc.install-to-filesystem b/stages/org.osbuild.bootc.install-to-filesystem
+index 3d4c67cc..634263e2 100755
+--- a/stages/org.osbuild.bootc.install-to-filesystem
++++ b/stages/org.osbuild.bootc.install-to-filesystem
+@@ -46,6 +46,23 @@ def main(options, inputs, paths):
+         stateroot = options.get("stateroot")
+         if stateroot:
+             pargs.extend(["--stateroot", stateroot])
++        # Passing the flag with an empty value is intentional:
++        # it triggers a supported behaviour where mountspec
++        # kernel arguments are ommited.
++        # See https://github.com/bootc-dev/bootc/pull/1451
++        if "root-mount-spec" in options:
++            root_spec = options["root-mount-spec"]
++            if root_spec == "":
++                pargs.extend(["--root-mount-spec="])
++            else:
++                pargs.extend(["--root-mount-spec", root_spec])
++        if "boot-mount-spec" in options:
++            boot_spec = options["boot-mount-spec"]
++            if boot_spec == "":
++                pargs.extend(["--boot-mount-spec="])
++            else:
++                pargs.extend(["--boot-mount-spec", boot_spec])
++
+         # add target and go
+         pargs.append(dst)
+         subprocess.run(pargs, env=env, check=True)
+diff --git a/stages/org.osbuild.bootc.install-to-filesystem.meta.json b/stages/org.osbuild.bootc.install-to-filesystem.meta.json
+index a5a157c6..53369218 100644
+--- a/stages/org.osbuild.bootc.install-to-filesystem.meta.json
++++ b/stages/org.osbuild.bootc.install-to-filesystem.meta.json
+@@ -7,12 +7,16 @@
+     "mounted in the \"mounts\" path.",
+     "Buildhost commands used: bootc"
+   ],
+-  "capabilities": ["CAP_MAC_ADMIN"],
++  "capabilities": [
++    "CAP_MAC_ADMIN"
++  ],
+   "schema_2": {
+     "inputs": {
+       "type": "object",
+       "additionalProperties": false,
+-      "required": ["images"],
++      "required": [
++        "images"
++      ],
+       "properties": {
+         "images": {
+           "type": "object",
+@@ -44,6 +48,14 @@
+         "stateroot": {
+           "type": "string",
+           "description": "The stateroot name to use. If not specified, defer to bootc's default"
++        },
++        "root-mount-spec": {
++          "type": "string",
++          "description": "Source device specification for the root filesystem. If not provided, the UUID of the target filesystem will be used."
++        },
++        "boot-mount-spec": {
++          "type": "string",
++          "description": "Mount specification for the /boot filesystem. If `/boot` is detected as a mounted partition, then its UUID will be used."
+         }
+       }
+     },
+-- 
+2.50.1
+
