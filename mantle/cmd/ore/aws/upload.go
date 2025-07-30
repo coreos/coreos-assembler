@@ -207,15 +207,20 @@ func runUpload(cmd *cobra.Command, args []string) error {
 	}
 
 	if uploadForce {
-		var err error
-		if !uploadCreateWinLIAMI {
-			err = API.RemoveImage(uploadAMIName, s3BucketName, s3ObjectPath)
-		} else {
-			err = API.RemoveImage(uploadAMIName, "", "")
-		}
+		err := API.RemoveImage(uploadAMIName)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "%v\n", err)
 			os.Exit(1)
+		}
+		// Since we are force uploading delete the s3 object used previously too
+		// if it exists. A "NoSuchKey" err means it didn't exist and we can ignore.
+		if uploadSourceObject == "" && uploadSourceSnapshot == "" {
+			if err := API.DeleteObject(s3BucketName, s3ObjectPath); err != nil {
+				if !strings.Contains(err.Error(), "NoSuchKey") {
+					fmt.Fprintf(os.Stderr, "unable to delete object: %v\n", err)
+					os.Exit(1)
+				}
+			}
 		}
 	}
 

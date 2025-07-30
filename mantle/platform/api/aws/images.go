@@ -478,23 +478,7 @@ func (a *API) deregisterImageIfExists(name string) error {
 }
 
 // Remove all uploaded data associated with an AMI.
-func (a *API) RemoveImage(name, s3BucketName, s3ObjectPath string) error {
-	// Delete S3 object if bucket and path are specified.
-	if s3BucketName != "" && s3ObjectPath != "" {
-		err := a.DeleteObject(s3BucketName, s3ObjectPath)
-		if err != nil {
-			if awsErr, ok := err.(awserr.Error); ok {
-				if awsErr.Code() != "NoSuchKey" {
-					return err
-				}
-			} else {
-				return err
-			}
-		} else {
-			plog.Infof("Deleted existing S3 object bucket:%s path:%s", s3BucketName, s3ObjectPath)
-		}
-	}
-
+func (a *API) RemoveImage(name string) error {
 	// compatibility with old versions of this code, which created HVM
 	// AMIs with an "-hvm" suffix
 	err := a.deregisterImageIfExists(name + "-hvm")
