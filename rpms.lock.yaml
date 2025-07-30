@@ -4778,13 +4778,13 @@ arches:
     name: iputils
     evr: 20250602-3.fc42
     sourcerpm: iputils-20250602-3.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/k/kernel-core-6.15.7-200.fc42.x86_64.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/k/kernel-core-6.15.8-200.fc42.x86_64.rpm
     repoid: updates
-    size: 20129829
-    checksum: sha256:44a2192e340833f7026784dafcd43ec35d56e2b9ffb4bbf774c176e04a3ad8b2
+    size: 20132677
+    checksum: sha256:bc3a25a3c0ff1fe730d9f676f86ab7eb2c8d9433bd4cfe62c9626f3292bdfe38
     name: kernel-core
-    evr: 6.15.7-200.fc42
-    sourcerpm: kernel-6.15.7-200.fc42.src.rpm
+    evr: 6.15.8-200.fc42
+    sourcerpm: kernel-6.15.8-200.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/k/kernel-headers-6.15.3-200.fc42.x86_64.rpm
     repoid: updates
     size: 1745556
@@ -4792,20 +4792,20 @@ arches:
     name: kernel-headers
     evr: 6.15.3-200.fc42
     sourcerpm: kernel-headers-6.15.3-200.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/k/kernel-modules-6.15.7-200.fc42.x86_64.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/k/kernel-modules-6.15.8-200.fc42.x86_64.rpm
     repoid: updates
-    size: 100284081
-    checksum: sha256:8d5b2ffb1de517ebcf6a78f3047ee6d96fb76723b79d1e837a73bab9c70ac9ae
+    size: 100294897
+    checksum: sha256:cef4f1f2ad7eee708ea42e6adcea6bf5724bb0da34deeea9691386588a281a21
     name: kernel-modules
-    evr: 6.15.7-200.fc42
-    sourcerpm: kernel-6.15.7-200.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/k/kernel-modules-core-6.15.7-200.fc42.x86_64.rpm
+    evr: 6.15.8-200.fc42
+    sourcerpm: kernel-6.15.8-200.fc42.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/k/kernel-modules-core-6.15.8-200.fc42.x86_64.rpm
     repoid: updates
-    size: 71903465
-    checksum: sha256:381957f8650088ce362f2f36b212db9efb83c6dc0b578bbff23d27993ef91e0e
+    size: 71908497
+    checksum: sha256:3c63942411c14bc782b18f727fba60e7c3faa794eb9fdfa412e08f3bc802da4b
     name: kernel-modules-core
-    evr: 6.15.7-200.fc42
-    sourcerpm: kernel-6.15.7-200.fc42.src.rpm
+    evr: 6.15.8-200.fc42
+    sourcerpm: kernel-6.15.8-200.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/k/koji-1.35.3-1.fc42.noarch.rpm
     repoid: updates
     size: 272456
