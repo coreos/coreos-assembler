@@ -97,10 +97,8 @@ func run(argv []string) error {
 		"buildextend-extensions-container":
 		return buildExtensionContainer()
 	case "build":
-		// We don't expect any other arguments
-		// Possible to make better by checking if '--native' in argv.
-		if len(argv) == 1 && argv[0] == "--native" {
-			return buildContainerNative()
+		if mustBuildWithBuildah(argv) {
+			return buildWithBuildah()
 		}
 		// otherwise, build the traditional way
 	}
@@ -123,6 +121,13 @@ func run(argv []string) error {
 		return err
 	}
 	return nil
+}
+
+func mustBuildWithBuildah(argv []string) bool {
+	mustEnvOption, ok := os.LookupEnv("COREOS_ASSEMBLER_BUILD_WITH_BUILDAH")
+	// We don't expect any other arguments
+	// Possible to make better by checking if '--native' in argv.
+	return (len(argv) == 1 && argv[0] == "--with-buildah") || (ok && mustEnvOption == "1")
 }
 
 func initializeGlobalState(argv []string) error {
