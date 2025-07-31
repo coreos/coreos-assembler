@@ -38,6 +38,8 @@ Usage: coreos-assembler build --help
   --autolock=VERSION    If no base lockfile used, create one from any arch build of `VERSION`.
                         Note this is automatically enabled when adding to an existing multi-arch
                         non-strict build.
+  --with-buildah        Use the container runtime (buildah) to build ostree and container artifacts.
+                        Cannot be used with other options.
 
   Additional environment variables supported:
 
