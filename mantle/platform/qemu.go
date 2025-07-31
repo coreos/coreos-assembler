@@ -705,6 +705,13 @@ func (builder *QemuBuilder) setupAdditionalNetworking() error {
 
 		netdev := fmt.Sprintf("user,id=eth%s,dhcpstart=10.0.2.%s", idSuffix, netSuffix)
 		device := virtio(builder.architecture, "net", fmt.Sprintf("netdev=eth%s,mac=52:55:00:d1:56:%s", idSuffix, macSuffix))
+		// On s390x, devices use the CCW bus instead of PCI, which may cause them to appear in a different order.
+		// By default, the CSSID is 0xFE and the SSID is 0x0. For additional NICs, set the SSID to 0x1
+		// to avoid interference with other CCW devices
+		if builder.architecture == "s390x" {
+			device += fmt.Sprintf(",devno=fe.1.%04x", i)
+		}
+
 		builder.Append("-netdev", netdev, "-device", device)
 		macCounter++
 	}
