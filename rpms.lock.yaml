@@ -1922,13 +1922,6 @@ arches:
     name: libsodium
     evr: 1.0.20-4.fc42
     sourcerpm: libsodium-1.0.20-4.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/l/libsoup3-3.6.5-1.fc42.x86_64.rpm
-    repoid: fedora
-    size: 399015
-    checksum: sha256:99e8fc8788527fb6ff31b5fba83fe19f1ad20f22440a94398ff4e39a7a1060f6
-    name: libsoup3
-    evr: 3.6.5-1.fc42
-    sourcerpm: libsoup3-3.6.5-1.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/l/libss-1.47.2-3.fc42.x86_64.rpm
     repoid: fedora
     size: 32979
@@ -4190,13 +4183,13 @@ arches:
     name: awscli2
     evr: 2.27.0-2.fc42
     sourcerpm: awscli2-2.27.0-2.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/b/binutils-2.44-5.fc42.x86_64.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/b/binutils-2.44-6.fc42.x86_64.rpm
     repoid: updates
-    size: 6051559
-    checksum: sha256:c6d17fe006e3d6a38889a9facf985dbd7fb610952c33ec27ea06cdfa1fe5981f
+    size: 6050610
+    checksum: sha256:2da59bdbbb1eb1de8e019de7c86c0291830e26fc1f5555f78afe618d96e092a0
     name: binutils
-    evr: 2.44-5.fc42
-    sourcerpm: binutils-2.44-5.fc42.src.rpm
+    evr: 2.44-6.fc42
+    sourcerpm: binutils-2.44-6.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/b/bluez-libs-5.83-2.fc42.x86_64.rpm
     repoid: updates
     size: 85453
@@ -4463,13 +4456,13 @@ arches:
     name: file
     evr: 5.46-3.fc42
     sourcerpm: file-5.46-3.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/f/filesystem-srpm-macros-3.18-42.fc42.noarch.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/f/filesystem-srpm-macros-3.18-47.fc42.noarch.rpm
     repoid: updates
-    size: 26404
-    checksum: sha256:a134bab9c91db365550693aa688454a69c2842e93aa488a89505a3f84a10682e
+    size: 26699
+    checksum: sha256:87f82ae4bf600bef5ae4ae100c43c465a1653ea06677be4cb622769a940639fa
     name: filesystem-srpm-macros
-    evr: 3.18-42.fc42
-    sourcerpm: filesystem-3.18-42.fc42.src.rpm
+    evr: 3.18-47.fc42
+    sourcerpm: filesystem-3.18-47.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/f/fonts-filesystem-2.0.5-22.fc42.noarch.rpm
     repoid: updates
     size: 8935
@@ -4981,6 +4974,13 @@ arches:
     name: libsmbclient
     evr: 2:4.22.3-2.fc42
     sourcerpm: samba-4.22.3-2.fc42.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/l/libsoup3-3.6.5-2.fc42.x86_64.rpm
+    repoid: updates
+    size: 400247
+    checksum: sha256:29709d870830227df970a3479e9ad03646fc8ba0c2892cfdbf00b7b70dae0bde
+    name: libsoup3
+    evr: 3.6.5-2.fc42
+    sourcerpm: libsoup3-3.6.5-2.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/l/libswresample-free-7.1.1-4.fc42.x86_64.rpm
     repoid: updates
     size: 69492
@@ -5646,13 +5646,13 @@ arches:
     name: perl-POSIX
     evr: 2.20-518.fc42
     sourcerpm: perl-5.40.2-518.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/perl-Scalar-List-Utils-1.69-1.fc42.x86_64.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/perl-Scalar-List-Utils-1.70-1.fc42.x86_64.rpm
     repoid: updates
-    size: 76605
-    checksum: sha256:dee28af95c89cb85daf6f76e4ca690d0373ae90984cf502c1647e8044dd1d634
+    size: 76390
+    checksum: sha256:f8e3fb0b3e7f019e584464234b8eee0f60afc043688f38e879d04b78543af1bd
     name: perl-Scalar-List-Utils
-    evr: 5:1.69-1.fc42
-    sourcerpm: perl-Scalar-List-Utils-1.69-1.fc42.src.rpm
+    evr: 5:1.70-1.fc42
+    sourcerpm: perl-Scalar-List-Utils-1.70-1.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/perl-SelectSaver-1.02-518.fc42.noarch.rpm
     repoid: updates
     size: 12095
@@ -5856,13 +5856,13 @@ arches:
     name: python3
     evr: 3.13.5-1.fc42
     sourcerpm: python3.13-3.13.5-1.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/python3-audit-4.0.5-2.fc42.x86_64.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/python3-audit-4.1.1-1.fc42.x86_64.rpm
     repoid: updates
-    size: 70997
-    checksum: sha256:15daea040a45c9242e9ea06cc315c9ec6d1038b6c274698b52654f91472af071
+    size: 71241
+    checksum: sha256:61449c2b42c38f78f915c835af7fe6bb1b7d15469eb81b32d53a20afabd2bc57
     name: python3-audit
-    evr: 4.0.5-2.fc42
-    sourcerpm: audit-4.0.5-2.fc42.src.rpm
+    evr: 4.1.1-1.fc42
+    sourcerpm: audit-4.1.1-1.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/python3-awscrt-0.27.2-1.fc42.x86_64.rpm
     repoid: updates
     size: 1023120
