@@ -107,3 +107,6 @@ copr-cli
 
 # To mount metal disk images in cmd-diff
 python3-libguestfs
+
+# For generating kubernetes YAML files (e.g Konflux resources)
+kustomize
