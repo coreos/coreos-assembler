@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"net"
 	"regexp"
+	"runtime"
 	"strings"
 	"time"
 
@@ -502,6 +503,10 @@ func setupMultipleNetworkTest(c cluster.TestCluster, primaryMac, secondaryMac st
 		MachineOptions: platform.MachineOptions{
 			AdditionalNics: 2,
 		},
+	}
+	// On s390x, multiple NICs are ordered by the CCW device number. Use classic ethX names to ensure consistent and ordered naming.
+	if runtime.GOARCH == "s390x" {
+		options.AppendKernelArgs = "net.ifnames=0"
 	}
 
 	var userdata = conf.Ignition(fmt.Sprintf(`{
