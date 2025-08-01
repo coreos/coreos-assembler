@@ -190,12 +190,15 @@ patch_osbuild() {
    ## Now all the software is under the /usr/lib/osbuild dir and we can patch
    #cat foo.patch | patch -d /usr/lib/osbuild -p1
    patch -d /usr/lib/osbuild -p1 < /usr/lib/coreos-assembler/0001-live-artifacts-read-os-name-from-usr-lib-os-release.patch
+   patch -d /usr/lib/osbuild -p1 < /usr/lib/coreos-assembler/0001-stages-ignition-parametrize-the-path-to-boot.patch
+   patch -d /usr/lib/osbuild -p1 < /usr/lib/coreos-assembler/0005-stages-bootc.install-to-filesystem-parametrize-state.patch
+   patch -d /usr/lib/osbuild -p1 < /usr/lib/coreos-assembler/0006-stages-bootc.install-make-boot-and-root-mount-spec-c.patch
 
    ## And then move the files back; supermin appliance creation will need it back
    ## in the places delivered by the RPM.
    mv /usr/lib/osbuild/tools/osbuild-mpp /usr/bin/osbuild-mpp
    mv /usr/lib/osbuild/osbuild /usr/lib/python3.13/site-packages/osbuild
-   mkdir /usr/lib/osbuild/osbuild
+   mkdir -p /usr/lib/osbuild/osbuild
 }
 
 if [ $# -ne 0 ]; then
