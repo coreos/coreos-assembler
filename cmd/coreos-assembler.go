@@ -96,6 +96,11 @@ func run(argv []string) error {
 	case "build-extensions-container", // old alias
 		"buildextend-extensions-container":
 		return buildExtensionContainer()
+	case "build":
+		if mustBuildWithBuildah(argv) {
+			return buildWithBuildah()
+		}
+		// otherwise, build the traditional way
 	}
 
 	target := fmt.Sprintf("/usr/lib/coreos-assembler/cmd-%s", cmd)
@@ -116,6 +121,13 @@ func run(argv []string) error {
 		return err
 	}
 	return nil
+}
+
+func mustBuildWithBuildah(argv []string) bool {
+	mustEnvOption, ok := os.LookupEnv("COREOS_ASSEMBLER_BUILD_WITH_BUILDAH")
+	// We don't expect any other arguments
+	// Possible to make better by checking if '--native' in argv.
+	return (len(argv) == 1 && argv[0] == "--with-buildah") || (ok && mustEnvOption == "1")
 }
 
 func initializeGlobalState(argv []string) error {

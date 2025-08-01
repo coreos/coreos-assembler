@@ -195,7 +195,7 @@ patch_osbuild() {
    ## in the places delivered by the RPM.
    mv /usr/lib/osbuild/tools/osbuild-mpp /usr/bin/osbuild-mpp
    mv /usr/lib/osbuild/osbuild /usr/lib/python3.13/site-packages/osbuild
-   mkdir /usr/lib/osbuild/osbuild
+   mkdir -p /usr/lib/osbuild/osbuild
 }
 
 if [ $# -ne 0 ]; then
