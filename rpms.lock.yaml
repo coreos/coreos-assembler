@@ -662,20 +662,6 @@ arches:
     name: gdisk
     evr: 1.0.10-3.fc42
     sourcerpm: gdisk-1.0.10-3.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/g/gdk-pixbuf2-2.42.12-10.fc42.x86_64.rpm
-    repoid: fedora
-    size: 502386
-    checksum: sha256:d02b522b9ec30d4c71122943a9cb2090db0a78966bea3e6cdccbe50ebcb04489
-    name: gdk-pixbuf2
-    evr: 2.42.12-10.fc42
-    sourcerpm: gdk-pixbuf2-2.42.12-10.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/g/gdk-pixbuf2-modules-2.42.12-10.fc42.x86_64.rpm
-    repoid: fedora
-    size: 28600
-    checksum: sha256:50bcbba4fd2a05c7d97db31a9d567fe69415c52af4d2abb6d2ff5fb76c50d1d6
-    name: gdk-pixbuf2-modules
-    evr: 2.42.12-10.fc42
-    sourcerpm: gdk-pixbuf2-2.42.12-10.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/g/genisoimage-1.1.11-59.fc42.x86_64.rpm
     repoid: fedora
     size: 335067
@@ -1089,27 +1075,6 @@ arches:
     name: lcms2
     evr: 2.16-5.fc42
     sourcerpm: lcms2-2.16-5.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/l/libX11-1.8.11-1.fc42.x86_64.rpm
-    repoid: fedora
-    size: 671077
-    checksum: sha256:11bad0cedd5b95a32f990ff349c4c5a56515d55c88623cb3a6749eaf58a08591
-    name: libX11
-    evr: 1.8.11-1.fc42
-    sourcerpm: libX11-1.8.11-1.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/l/libX11-common-1.8.11-1.fc42.noarch.rpm
-    repoid: fedora
-    size: 180328
-    checksum: sha256:9b229a641b4fbb88f3240703bafc78ff0850b06f586e440f5e08546d3ce24855
-    name: libX11-common
-    evr: 1.8.11-1.fc42
-    sourcerpm: libX11-1.8.11-1.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/l/libX11-xcb-1.8.11-1.fc42.x86_64.rpm
-    repoid: fedora
-    size: 11961
-    checksum: sha256:f61009cf25531de762e6248620befe404f3db6ddbe93b210f344c9d8fa6c66f2
-    name: libX11-xcb
-    evr: 1.8.11-1.fc42
-    sourcerpm: libX11-1.8.11-1.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/l/libXau-1.0.12-2.fc42.x86_64.rpm
     repoid: fedora
     size: 34396
@@ -2818,13 +2783,6 @@ arches:
     name: polkit-pkla-compat
     evr: 0.1-30.fc42
     sourcerpm: polkit-pkla-compat-0.1-30.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/p/poppler-25.02.0-1.fc42.x86_64.rpm
-    repoid: fedora
-    size: 1337302
-    checksum: sha256:013bbd720e320c517ebfa2eb2401143db1ae5b499fab43edcf022004d2f8017c
-    name: poppler
-    evr: 25.02.0-1.fc42
-    sourcerpm: poppler-25.02.0-1.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/p/poppler-data-0.4.11-9.fc42.noarch.rpm
     repoid: fedora
     size: 2068036
@@ -2832,13 +2790,6 @@ arches:
     name: poppler-data
     evr: 0.4.11-9.fc42
     sourcerpm: poppler-data-0.4.11-9.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/p/poppler-glib-25.02.0-1.fc42.x86_64.rpm
-    repoid: fedora
-    size: 205786
-    checksum: sha256:8a5f4d63d3947bef38702e84dff5182011f5ab8c1118f7534056c4f11c97754e
-    name: poppler-glib
-    evr: 25.02.0-1.fc42
-    sourcerpm: poppler-25.02.0-1.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/p/procps-ng-4.0.4-6.fc42.x86_64.rpm
     repoid: fedora
     size: 374107
@@ -4302,13 +4253,13 @@ arches:
     name: criu-libs
     evr: 4.1-2.fc42
     sourcerpm: criu-4.1-2.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/c/crun-1.23-1.fc42.x86_64.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/c/crun-1.23.1-1.fc42.x86_64.rpm
     repoid: updates
-    size: 260527
-    checksum: sha256:682183d72f93b299f24464dca57aa93664f795975369e193b397abf600433a19
+    size: 260827
+    checksum: sha256:506938c0ef7183ca4597768d31f9168c7a478779ad50e941e13967dc3aae5759
     name: crun
-    evr: 1.23-1.fc42
-    sourcerpm: crun-1.23-1.fc42.src.rpm
+    evr: 1.23.1-1.fc42
+    sourcerpm: crun-1.23.1-1.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/c/cryptsetup-2.8.0-1.fc42.x86_64.rpm
     repoid: updates
     size: 351878
@@ -4498,6 +4449,20 @@ arches:
     name: gdb-minimal
     evr: 16.3-1.fc42
     sourcerpm: gdb-16.3-1.fc42.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/g/gdk-pixbuf2-2.42.12-12.fc42.x86_64.rpm
+    repoid: updates
+    size: 500650
+    checksum: sha256:be2d92d5cd1c5e362989740051fe42ae73730c2c11323a87e323af576b5b5bf5
+    name: gdk-pixbuf2
+    evr: 2.42.12-12.fc42
+    sourcerpm: gdk-pixbuf2-2.42.12-12.fc42.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/g/gdk-pixbuf2-modules-2.42.12-12.fc42.x86_64.rpm
+    repoid: updates
+    size: 28691
+    checksum: sha256:8931bbef3df66cf04103d99e45c321303ba6729e14e55f8a8567dc89b0fcf882
+    name: gdk-pixbuf2-modules
+    evr: 2.42.12-12.fc42
+    sourcerpm: gdk-pixbuf2-2.42.12-12.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/g/giflib-5.2.2-6.fc42.x86_64.rpm
     repoid: updates
     size: 53465
@@ -4687,13 +4652,13 @@ arches:
     name: hwdata
     evr: 0.397-1.fc42
     sourcerpm: hwdata-0.397-1.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/i/ignition-validate-2.21.0-2.fc42.x86_64.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/i/ignition-validate-2.22.0-3.fc42.x86_64.rpm
     repoid: updates
-    size: 1787841
-    checksum: sha256:a74f87d9028f0016ed6dbf372255c93fe5530463219c4a675a32dd5d736e7e45
+    size: 1787777
+    checksum: sha256:b6fbcf93b80f0a1caeca03e8aed8c0e0b000d44962ebc89b830915a59ab3d8d0
     name: ignition-validate
-    evr: 2.21.0-2.fc42
-    sourcerpm: ignition-2.21.0-2.fc42.src.rpm
+    evr: 2.22.0-3.fc42
+    sourcerpm: ignition-2.22.0-3.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/i/intel-audio-firmware-20250708-1.fc42.noarch.rpm
     repoid: updates
     size: 3409022
@@ -4806,6 +4771,27 @@ arches:
     name: less
     evr: 679-1.fc42
     sourcerpm: less-679-1.fc42.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/l/libX11-1.8.12-1.fc42.x86_64.rpm
+    repoid: updates
+    size: 671113
+    checksum: sha256:a7bfe940edd316567cb7607cdbd655193705308afacef1d9c729ccba38abda93
+    name: libX11
+    evr: 1.8.12-1.fc42
+    sourcerpm: libX11-1.8.12-1.fc42.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/l/libX11-common-1.8.12-1.fc42.noarch.rpm
+    repoid: updates
+    size: 180118
+    checksum: sha256:0a7900dab9c4ed2faec3fcc1665a5e3bb830538eca2d55b37f335620a407d8fe
+    name: libX11-common
+    evr: 1.8.12-1.fc42
+    sourcerpm: libX11-1.8.12-1.fc42.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/l/libX11-xcb-1.8.12-1.fc42.x86_64.rpm
+    repoid: updates
+    size: 11810
+    checksum: sha256:4e5dbe747ef395752efe413342443104bdcee6f79e1acf7c43d3d62dbbdcb086
+    name: libX11-xcb
+    evr: 1.8.12-1.fc42
+    sourcerpm: libX11-1.8.12-1.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/l/libavcodec-free-7.1.1-4.fc42.x86_64.rpm
     repoid: updates
     size: 4435276
@@ -5163,20 +5149,20 @@ arches:
     name: linux-firmware-whence
     evr: 20250708-1.fc42
     sourcerpm: linux-firmware-20250708-1.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/l/llvm-filesystem-20.1.8-1.fc42.x86_64.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/l/llvm-filesystem-20.1.8-3.fc42.x86_64.rpm
     repoid: updates
-    size: 15371
-    checksum: sha256:92446b0de56b3522bea72d6012118c9d6512cfe42d90fe49950a7c67ec67b2c5
+    size: 15513
+    checksum: sha256:ba05034e07d002a08b3619894b2c60d25b32564f992fe2d9a9ea0697674c78e6
     name: llvm-filesystem
-    evr: 20.1.8-1.fc42
-    sourcerpm: llvm-20.1.8-1.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/l/llvm-libs-20.1.8-1.fc42.x86_64.rpm
+    evr: 20.1.8-3.fc42
+    sourcerpm: llvm-20.1.8-3.fc42.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/l/llvm-libs-20.1.8-3.fc42.x86_64.rpm
     repoid: updates
-    size: 35138150
-    checksum: sha256:92632b057c23f3f63173854b1362ebccf89de863de3da3f1481516f2fd873727
+    size: 35141915
+    checksum: sha256:a3d1aa9631c589a70a97918563fe1f946338ab9e92c72ecbe072990bc11c0f5b
     name: llvm-libs
-    evr: 20.1.8-1.fc42
-    sourcerpm: llvm-20.1.8-1.fc42.src.rpm
+    evr: 20.1.8-3.fc42
+    sourcerpm: llvm-20.1.8-3.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/m/mbedtls-3.6.4-1.fc42.x86_64.rpm
     repoid: updates
     size: 523162
@@ -5464,20 +5450,20 @@ arches:
     name: osbuild-tools
     evr: 156-1.fc42
     sourcerpm: osbuild-156-1.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/o/ostree-2025.3-2.fc42.x86_64.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/o/ostree-2025.4-2.fc42.x86_64.rpm
     repoid: updates
-    size: 294151
-    checksum: sha256:a0409431ae71c37cac4c36022f1233fa763d7546ca87c0007efa54b8db10f74e
+    size: 294559
+    checksum: sha256:f2228315ffa396f36513a2fc05639bfa316b45ee848fa7b43232f5e8c903596d
     name: ostree
-    evr: 2025.3-2.fc42
-    sourcerpm: ostree-2025.3-2.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/o/ostree-libs-2025.3-2.fc42.x86_64.rpm
+    evr: 2025.4-2.fc42
+    sourcerpm: ostree-2025.4-2.fc42.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/o/ostree-libs-2025.4-2.fc42.x86_64.rpm
     repoid: updates
-    size: 495627
-    checksum: sha256:a72db8d1d99e1ff423df1ff0130774e1bff11b66e4ccefbf1d21f8510dfcdf83
+    size: 496113
+    checksum: sha256:f5ecad2862c06972abf5acfc7edf4012d7857a6448a23b3669dd47a82b755735
     name: ostree-libs
-    evr: 2025.3-2.fc42
-    sourcerpm: ostree-2025.3-2.fc42.src.rpm
+    evr: 2025.4-2.fc42
+    sourcerpm: ostree-2025.4-2.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/pango-1.56.4-1.fc42.x86_64.rpm
     repoid: updates
     size: 359217
@@ -5821,6 +5807,20 @@ arches:
     name: polkit-libs
     evr: 126-3.fc42.1
     sourcerpm: polkit-126-3.fc42.1.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/poppler-25.02.0-2.fc42.x86_64.rpm
+    repoid: updates
+    size: 1333260
+    checksum: sha256:ba248223079fab49b8ea7a2a9d42823f0554ee6d86fbde4a208df6dfc0ba2220
+    name: poppler
+    evr: 25.02.0-2.fc42
+    sourcerpm: poppler-25.02.0-2.fc42.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/poppler-glib-25.02.0-2.fc42.x86_64.rpm
+    repoid: updates
+    size: 205210
+    checksum: sha256:bd1e33b39439f5866c0fb31b184481b0c3adcc9228b3cf606bb6f808d8a1bd54
+    name: poppler-glib
+    evr: 25.02.0-2.fc42
+    sourcerpm: poppler-25.02.0-2.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/protobuf-c-1.5.1-1.fc42.x86_64.rpm
     repoid: updates
     size: 33386
