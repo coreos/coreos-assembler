@@ -44,14 +44,10 @@ spec:
     value: false
   #- name: prefetch-input
   #  value: '[{"type": "rpm", "path": "ci/hermetic"}]'
-  # Note: to be removed once rpm fully supported
-  # https://github.com/hermetoproject/hermeto?tab=readme-ov-file#package-managers
-  - name: dev-package-managers
-    value: true
   pipelineRef:
     params:
     - name: bundle
-      value: quay.io/jcapitao/tekton-catalog/pipeline-docker-build-multi-platform-oci-ta@sha256:52a4ef40ecdabd82822e583f67f010d5771b92d959df55087456ed6aa3c7606e
+      value: quay.io/konflux-ci/tekton-catalog/pipeline-docker-build-multi-platform-oci-ta@sha256:39a1abd4657035029db5e1e215333aba0cf094c3984df58e12cb157f4cb62207
     - name: name
       value: docker-build-multi-platform-oci-ta
     - name: kind
