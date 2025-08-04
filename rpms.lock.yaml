@@ -4491,20 +4491,41 @@ arches:
     name: git-core-doc
     evr: 2.50.1-1.fc42
     sourcerpm: git-2.50.1-1.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/g/glibc-devel-2.41-9.fc42.x86_64.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/g/glibc-2.41-10.fc42.x86_64.rpm
     repoid: updates
-    size: 641586
-    checksum: sha256:22da0cccaabdc97d1ac8a5d7c0b62437491b512bf617cbfed68fcdc0c39d78e2
+    size: 2350277
+    checksum: sha256:dad9de7f0200676c9ab009a1ff899edec8a3a4ae19b439c5569ccca0a1ee286e
+    name: glibc
+    evr: 2.41-10.fc42
+    sourcerpm: glibc-2.41-10.fc42.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/g/glibc-common-2.41-10.fc42.x86_64.rpm
+    repoid: updates
+    size: 395973
+    checksum: sha256:052d32b6ff3a1424f696e0c2082c3939579c9130a8133b1365cdf5b2e0bbac0f
+    name: glibc-common
+    evr: 2.41-10.fc42
+    sourcerpm: glibc-2.41-10.fc42.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/g/glibc-devel-2.41-10.fc42.x86_64.rpm
+    repoid: updates
+    size: 639558
+    checksum: sha256:59221d688144a6f29eca5c067c43fa1081bdc037697074a46a4027c2b7f04130
     name: glibc-devel
-    evr: 2.41-9.fc42
-    sourcerpm: glibc-2.41-9.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/g/glibc-gconv-extra-2.41-9.fc42.x86_64.rpm
+    evr: 2.41-10.fc42
+    sourcerpm: glibc-2.41-10.fc42.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/g/glibc-gconv-extra-2.41-10.fc42.x86_64.rpm
     repoid: updates
-    size: 1725814
-    checksum: sha256:40a9ebb776ab91ddd9e28473961af8f19df8cbbd88286a00bf88a7592cd139bd
+    size: 1723861
+    checksum: sha256:fd6c7b7e3ab95e61f324fcfe44563945a3f659b12860426a98ca6d3be669151d
     name: glibc-gconv-extra
-    evr: 2.41-9.fc42
-    sourcerpm: glibc-2.41-9.fc42.src.rpm
+    evr: 2.41-10.fc42
+    sourcerpm: glibc-2.41-10.fc42.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/g/glibc-minimal-langpack-2.41-10.fc42.x86_64.rpm
+    repoid: updates
+    size: 102413
+    checksum: sha256:80dd348998e17b876502bb771dbaafd76fccf051426a7a17ecc7152000dd9860
+    name: glibc-minimal-langpack
+    evr: 2.41-10.fc42
+    sourcerpm: glibc-2.41-10.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/g/glusterfs-client-xlators-11.2-1.fc42.x86_64.rpm
     repoid: updates
     size: 787602
@@ -4932,20 +4953,20 @@ arches:
     name: libnotify
     evr: 0.8.6-1.fc42
     sourcerpm: libnotify-0.8.6-1.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/l/librados2-19.2.2-2.fc42.x86_64.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/l/librados2-19.2.3-1.fc42.x86_64.rpm
     repoid: updates
-    size: 4509681
-    checksum: sha256:5f33a70e6e286e77e7affe0e8aefde7d3405183a80205b9dee8595ac6b81816f
+    size: 4474333
+    checksum: sha256:8d107bb3b99d9730bc74e48627b297a1806a581f3c00b23d4c4f77a1345c4e72
     name: librados2
-    evr: 2:19.2.2-2.fc42
-    sourcerpm: ceph-19.2.2-2.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/l/librbd1-19.2.2-2.fc42.x86_64.rpm
+    evr: 2:19.2.3-1.fc42
+    sourcerpm: ceph-19.2.3-1.fc42.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/l/librbd1-19.2.3-1.fc42.x86_64.rpm
     repoid: updates
-    size: 4001741
-    checksum: sha256:c5466a863b3b2ec8751c59a6bf53d55cf7f2793303c45ca0d70047c91e90553a
+    size: 3892353
+    checksum: sha256:753cded917d0bbbecd2d96041a9ceddb80416a60f1d57e17ee3c1042dde53d7d
     name: librbd1
-    evr: 2:19.2.2-2.fc42
-    sourcerpm: ceph-19.2.2-2.fc42.src.rpm
+    evr: 2:19.2.3-1.fc42
+    sourcerpm: ceph-19.2.3-1.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/l/libselinux-utils-3.8-2.fc42.x86_64.rpm
     repoid: updates
     size: 123102
