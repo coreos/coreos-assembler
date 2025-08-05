@@ -4491,20 +4491,6 @@ arches:
     name: git-core-doc
     evr: 2.50.1-1.fc42
     sourcerpm: git-2.50.1-1.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/g/glibc-2.41-10.fc42.x86_64.rpm
-    repoid: updates
-    size: 2350277
-    checksum: sha256:dad9de7f0200676c9ab009a1ff899edec8a3a4ae19b439c5569ccca0a1ee286e
-    name: glibc
-    evr: 2.41-10.fc42
-    sourcerpm: glibc-2.41-10.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/g/glibc-common-2.41-10.fc42.x86_64.rpm
-    repoid: updates
-    size: 395973
-    checksum: sha256:052d32b6ff3a1424f696e0c2082c3939579c9130a8133b1365cdf5b2e0bbac0f
-    name: glibc-common
-    evr: 2.41-10.fc42
-    sourcerpm: glibc-2.41-10.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/g/glibc-devel-2.41-10.fc42.x86_64.rpm
     repoid: updates
     size: 639558
@@ -4517,13 +4503,6 @@ arches:
     size: 1723861
     checksum: sha256:fd6c7b7e3ab95e61f324fcfe44563945a3f659b12860426a98ca6d3be669151d
     name: glibc-gconv-extra
-    evr: 2.41-10.fc42
-    sourcerpm: glibc-2.41-10.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/g/glibc-minimal-langpack-2.41-10.fc42.x86_64.rpm
-    repoid: updates
-    size: 102413
-    checksum: sha256:80dd348998e17b876502bb771dbaafd76fccf051426a7a17ecc7152000dd9860
-    name: glibc-minimal-langpack
     evr: 2.41-10.fc42
     sourcerpm: glibc-2.41-10.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/g/glusterfs-client-xlators-11.2-1.fc42.x86_64.rpm
@@ -5891,20 +5870,20 @@ arches:
     name: python3-awscrt
     evr: 0.27.2-1.fc42
     sourcerpm: python-awscrt-0.27.2-1.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/python3-boto3-1.39.15-1.fc42.noarch.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/python3-boto3-1.39.16-1.fc42.noarch.rpm
     repoid: updates
-    size: 448774
-    checksum: sha256:ecb6fed5323d761186d7468ce42e49d0de26f0cf70fcc8dc609a30115e67dbde
+    size: 449101
+    checksum: sha256:d26a6519e1767c0c53531eaf2745bfe99ff6301879aa28cdefbc9ad8f2343d74
     name: python3-boto3
-    evr: 1.39.15-1.fc42
-    sourcerpm: python-boto3-1.39.15-1.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/python3-botocore-1.39.15-1.fc42.noarch.rpm
+    evr: 1.39.16-1.fc42
+    sourcerpm: python-boto3-1.39.16-1.fc42.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/python3-botocore-1.39.16-1.fc42.noarch.rpm
     repoid: updates
-    size: 8440991
-    checksum: sha256:d8a3f2910af20f01f2abecf88c0c8de805fbb0b0bd22f71f3df5bba22c309c96
+    size: 8444201
+    checksum: sha256:b151948b80b577a0168be4e4a3f0e06b1696caeb2689e21d966a76567e1ddbd7
     name: python3-botocore
-    evr: 1.39.15-1.fc42
-    sourcerpm: python-botocore-1.39.15-1.fc42.src.rpm
+    evr: 1.39.16-1.fc42
+    sourcerpm: python-botocore-1.39.16-1.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/python3-dill-0.4.0-1.fc42.noarch.rpm
     repoid: updates
     size: 281781
