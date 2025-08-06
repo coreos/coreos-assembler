@@ -2825,13 +2825,6 @@ arches:
     name: python-pip-wheel
     evr: 24.3.1-2.fc42
     sourcerpm: python-pip-24.3.1-2.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/p/python-srpm-macros-3.13-4.fc42.noarch.rpm
-    repoid: fedora
-    size: 23528
-    checksum: sha256:9292fc1a17c491c2a1af39ffe8f524d1efc26b2c5b294407d67dcc229f5b988e
-    name: python-srpm-macros
-    evr: 3.13-4.fc42
-    sourcerpm: python-rpm-macros-3.13-4.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/p/python3-Automat-24.8.1-1.fc42.noarch.rpm
     repoid: fedora
     size: 119096
@@ -4708,13 +4701,13 @@ arches:
     name: iputils
     evr: 20250602-3.fc42
     sourcerpm: iputils-20250602-3.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/k/kernel-core-6.15.8-200.fc42.x86_64.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/k/kernel-core-6.15.9-201.fc42.x86_64.rpm
     repoid: updates
-    size: 20132677
-    checksum: sha256:bc3a25a3c0ff1fe730d9f676f86ab7eb2c8d9433bd4cfe62c9626f3292bdfe38
+    size: 20129777
+    checksum: sha256:b6c2b53365ff0f7c5ed5fbdb9efe43ce30c5f93e4919d92cca240637896694c1
     name: kernel-core
-    evr: 6.15.8-200.fc42
-    sourcerpm: kernel-6.15.8-200.fc42.src.rpm
+    evr: 6.15.9-201.fc42
+    sourcerpm: kernel-6.15.9-201.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/k/kernel-headers-6.15.3-200.fc42.x86_64.rpm
     repoid: updates
     size: 1745556
@@ -4722,20 +4715,20 @@ arches:
     name: kernel-headers
     evr: 6.15.3-200.fc42
     sourcerpm: kernel-headers-6.15.3-200.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/k/kernel-modules-6.15.8-200.fc42.x86_64.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/k/kernel-modules-6.15.9-201.fc42.x86_64.rpm
     repoid: updates
-    size: 100294897
-    checksum: sha256:cef4f1f2ad7eee708ea42e6adcea6bf5724bb0da34deeea9691386588a281a21
+    size: 100291145
+    checksum: sha256:4a54f669ea5d77e199adaafc611335f6c380018390f4ee568a34a2bc8aba30d7
     name: kernel-modules
-    evr: 6.15.8-200.fc42
-    sourcerpm: kernel-6.15.8-200.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/k/kernel-modules-core-6.15.8-200.fc42.x86_64.rpm
+    evr: 6.15.9-201.fc42
+    sourcerpm: kernel-6.15.9-201.fc42.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/k/kernel-modules-core-6.15.9-201.fc42.x86_64.rpm
     repoid: updates
-    size: 71908497
-    checksum: sha256:3c63942411c14bc782b18f727fba60e7c3faa794eb9fdfa412e08f3bc802da4b
+    size: 71912181
+    checksum: sha256:a27c1f283c6c804d61ea4b4e1e179260429aa7f1ccf4705c05435491650de78f
     name: kernel-modules-core
-    evr: 6.15.8-200.fc42
-    sourcerpm: kernel-6.15.8-200.fc42.src.rpm
+    evr: 6.15.9-201.fc42
+    sourcerpm: kernel-6.15.9-201.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/k/koji-1.35.3-1.fc42.noarch.rpm
     repoid: updates
     size: 272456
@@ -5842,6 +5835,13 @@ arches:
     name: pyproject-srpm-macros
     evr: 1.18.3-1.fc42
     sourcerpm: pyproject-rpm-macros-1.18.3-1.fc42.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/python-srpm-macros-3.13-5.fc42.noarch.rpm
+    repoid: updates
+    size: 23001
+    checksum: sha256:30031f967a3e3aef16801d62a762eccc3af7073ad4b0631f7265001ba60a4b90
+    name: python-srpm-macros
+    evr: 3.13-5.fc42
+    sourcerpm: python-rpm-macros-3.13-5.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/python-unversioned-command-3.13.5-1.fc42.noarch.rpm
     repoid: updates
     size: 12619
