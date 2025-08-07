@@ -14,16 +14,15 @@ Usage: coreos-assembler build-with-buildah
   `cosa build` will pivot to this script when the environment variable `COREOS_ASSEMBLER_BUILD_WITH_BUILDAH` is set.
 
   The following options are supported:
-  --versionary          Use the versionary script from the source config to drive version.
-  --direct              Run buildah directly rather than within supermin.
+  --version           Use the versionary script from the source config to drive version.
+  --direct            Run buildah directly rather than within supermin.
 EOF
 }
 
-VERSIONARY=
 VERSION=
 DIRECT=
 rc=0
-options=$(getopt --options h,v,d --longoptions help,versionary,direct -- "$@") || rc=$?
+options=$(getopt --options h,v,d --longoptions help,version:,direct -- "$@") || rc=$?
 [ $rc -eq 0 ] || {
     print_help
     exit 1
@@ -35,8 +34,9 @@ while true; do
             print_help
             exit 0
             ;;
-        -v | --versionary)
-            VERSIONARY=1
+        -v | --version)
+            shift
+            VERSION=$1
             ;;
         -d | --direct)
             DIRECT=1
@@ -55,15 +55,13 @@ while true; do
     shift
 done
 
-if [ -n "${VERSIONARY}" ]; then
+if [ -z "${VERSION}" ]; then
     # let error out if file does not exist
     VERSION=$(src/config/versionary)
-    echo "New version will be ${VERSION}"
 fi
 
 build_with_buildah() {
-    VERSION=$1
-    echo "Building with container runtime (buildah)..."
+    echo "Building with container runtime (buildah) with VERSION=${VERSION}..."
 
     tempdir=$(mktemp -d --tmpdir=tmp "build-with-buildah.XXXXXXXX")
 
@@ -77,13 +75,15 @@ build_with_buildah() {
         argsfile=build-args-${variant}.conf
     fi
 
+    if [ "$(check_build_exists "${VERSION}")" == "True" ]; then
+        echo "Build ${VERSION} already exists"
+        exit 0
+    fi
+
     set -- build --security-opt=label=disable --cap-add=all --device /dev/fuse \
             --build-arg-file "$argsfile" -v "$(realpath "${tempdir}/src")":/run/src \
+            --build-arg VERSION="${VERSION}" \
             -t oci-archive:"${tmp_oci_archive_path}"
-
-    if [ -n "${VERSION}" ]; then
-        set -- "$@" --build-arg VERSION="${VERSION}"
-    fi
 
     if [ -n "$DIRECT" ]; then
         # turn on layer caching in the direct case; it wouldn't hurt in the
@@ -99,4 +99,4 @@ build_with_buildah() {
     rm -rf "${tempdir}"
 }
 
-build_with_buildah "$VERSION"
+build_with_buildah
