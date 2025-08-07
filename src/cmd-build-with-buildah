@@ -15,13 +15,15 @@ Usage: coreos-assembler build-with-buildah
 
   The following options are supported:
   --versionary          Use the versionary script from the source config to drive version.
+  --direct              Run buildah directly rather than within supermin.
 EOF
 }
 
 VERSIONARY=
 VERSION=
+DIRECT=
 rc=0
-options=$(getopt --options h,v --longoptions help,versionary -- "$@") || rc=$?
+options=$(getopt --options h,v,d --longoptions help,versionary,direct -- "$@") || rc=$?
 [ $rc -eq 0 ] || {
     print_help
     exit 1
@@ -35,6 +37,9 @@ while true; do
             ;;
         -v | --versionary)
             VERSIONARY=1
+            ;;
+        -d | --direct)
+            DIRECT=1
             ;;
         --)
             shift
@@ -80,8 +85,14 @@ build_with_buildah() {
         set -- "$@" --build-arg VERSION="${VERSION}"
     fi
 
-    /usr/lib/coreos-assembler/cmd-supermin-run --cache \
-        env -C "${tempdir}/src" TMPDIR="$(realpath cache)" buildah "$@" .
+    if [ -n "$DIRECT" ]; then
+        # turn on layer caching in the direct case; it wouldn't hurt in the
+        # supermin path, but it'd be a waste of space on the rootfs
+        env -C "${tempdir}/src" buildah "$@" --layers=true .
+    else
+        /usr/lib/coreos-assembler/cmd-supermin-run --cache \
+            env -C "${tempdir}/src" TMPDIR="$(realpath cache)" buildah "$@" .
+    fi
 
     /usr/lib/coreos-assembler/cmd-import "oci-archive:${tmp_oci_archive_path}"
 
