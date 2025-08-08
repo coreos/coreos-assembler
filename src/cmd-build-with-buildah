@@ -14,7 +14,7 @@ Usage: coreos-assembler build-with-buildah
   `cosa build` will pivot to this script when the environment variable `COREOS_ASSEMBLER_BUILD_WITH_BUILDAH` is set.
 
   The following options are supported:
-  --version           Use the versionary script from the source config to drive version.
+  --version=VERSION   Use the given version instead of using versionary.
   --direct            Run buildah directly rather than within supermin.
 EOF
 }
