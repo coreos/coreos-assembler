@@ -4624,13 +4624,13 @@ arches:
     name: guestfs-tools
     evr: 1.54.0-1.fc42
     sourcerpm: guestfs-tools-1.54.0-1.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/h/hwdata-0.397-1.fc42.noarch.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/h/hwdata-0.398-1.fc42.noarch.rpm
     repoid: updates
-    size: 1732769
-    checksum: sha256:17a92c7595b9c3619c2ced985e9942470a84833e3333c3d8de99ea318951011a
+    size: 1736523
+    checksum: sha256:a9be1bd8aa0c7433653fb15a203e3c09b9c3aa64e7659eaf92fa141d1c593865
     name: hwdata
-    evr: 0.397-1.fc42
-    sourcerpm: hwdata-0.397-1.fc42.src.rpm
+    evr: 0.398-1.fc42
+    sourcerpm: hwdata-0.398-1.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/i/ignition-validate-2.22.0-3.fc42.x86_64.rpm
     repoid: updates
     size: 1787777
@@ -4680,13 +4680,13 @@ arches:
     name: iptables-libs
     evr: 1.8.11-8.fc42
     sourcerpm: iptables-1.8.11-8.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/i/iputils-20250602-3.fc42.x86_64.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/i/iputils-20250605-1.fc42.x86_64.rpm
     repoid: updates
-    size: 214421
-    checksum: sha256:83794dc5da5bedb3be82f10cc37e9c8866997ba66d7ed19e4cfaf944070f933f
+    size: 214586
+    checksum: sha256:9dfa398b56b0f65d591241238b77fd0a5f9b778a63f7cce6c5f702b9bb12b3ab
     name: iputils
-    evr: 20250602-3.fc42
-    sourcerpm: iputils-20250602-3.fc42.src.rpm
+    evr: 20250605-1.fc42
+    sourcerpm: iputils-20250605-1.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/k/kernel-core-6.15.9-201.fc42.x86_64.rpm
     repoid: updates
     size: 20129777
@@ -5863,20 +5863,20 @@ arches:
     name: python3-awscrt
     evr: 0.27.2-1.fc42
     sourcerpm: python-awscrt-0.27.2-1.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/python3-boto3-1.40.2-1.fc42.noarch.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/python3-boto3-1.40.4-1.fc42.noarch.rpm
     repoid: updates
-    size: 449793
-    checksum: sha256:a34dc27b15b321c5c3097162bc31b761a9450702aa4a5dd2e4479b18dcb43a5b
+    size: 450694
+    checksum: sha256:ee8dc1a56298fd7dd855f806f65a1daa921dcc20cadb1c8db462065c8ab1969a
     name: python3-boto3
-    evr: 1.40.2-1.fc42
-    sourcerpm: python-boto3-1.40.2-1.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/python3-botocore-1.40.2-1.fc42.noarch.rpm
+    evr: 1.40.4-1.fc42
+    sourcerpm: python-boto3-1.40.4-1.fc42.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/python3-botocore-1.40.4-1.fc42.noarch.rpm
     repoid: updates
-    size: 8468867
-    checksum: sha256:2fa3d2fb9e4ef671c55e15d0dcabd103e8d3fd6b3fbbb8d3d3416a57c18d8c6c
+    size: 8483202
+    checksum: sha256:6f059b87c026fc92f5aa96970d5dfbbfbae6b50d3b028d78355929883895226c
     name: python3-botocore
-    evr: 1.40.2-1.fc42
-    sourcerpm: python-botocore-1.40.2-1.fc42.src.rpm
+    evr: 1.40.4-1.fc42
+    sourcerpm: python-botocore-1.40.4-1.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/python3-dill-0.4.0-1.fc42.noarch.rpm
     repoid: updates
     size: 281781
@@ -6899,19 +6899,19 @@ arches:
     name: xdg-desktop-portal
     evr: 1.20.3-1.fc42
     sourcerpm: xdg-desktop-portal-1.20.3-1.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/x/xen-libs-4.19.2-4.fc42.x86_64.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/x/xen-libs-4.19.3-2.fc42.x86_64.rpm
     repoid: updates
-    size: 666564
-    checksum: sha256:8a4e4bc3e49f7bfc52fbb4217b17ef4f388e1e2a76d5a87f053d9bd31b464d64
+    size: 665861
+    checksum: sha256:40f99ac863ed11cae6b090c3943800f1a3d10d05b2e5c8dda0807f7d52d710a9
     name: xen-libs
-    evr: 4.19.2-4.fc42
-    sourcerpm: xen-4.19.2-4.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/x/xen-licenses-4.19.2-4.fc42.x86_64.rpm
+    evr: 4.19.3-2.fc42
+    sourcerpm: xen-4.19.3-2.fc42.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/x/xen-licenses-4.19.3-2.fc42.x86_64.rpm
     repoid: updates
-    size: 52476
-    checksum: sha256:08dd5e275b8d74fe9c7122890a62ad78129efda62c12b61004c4107ba3d3a7af
+    size: 51785
+    checksum: sha256:3c70f4b84b360bfdc8640b208e000ac34d76ea2a637cc56421901afeb74e0d72
     name: xen-licenses
-    evr: 4.19.2-4.fc42
-    sourcerpm: xen-4.19.2-4.fc42.src.rpm
+    evr: 4.19.3-2.fc42
+    sourcerpm: xen-4.19.3-2.fc42.src.rpm
   source: []
   module_metadata: []
