@@ -70,9 +70,12 @@ build_with_buildah() {
 
     tmp_oci_archive_path=$(realpath "${tempdir}/out.ociarchive")
 
-    argsfile=build-args.conf
-    if [ -n "${variant:-}" ]; then
+    initconfig="src/config.json"
+    if [ -f "${initconfig}" ]; then
+        variant="$(jq --raw-output '."coreos-assembler.config-variant"' "${initconfig}")"
         argsfile=build-args-${variant}.conf
+    else
+        argsfile=build-args.conf
     fi
 
     if [ -e "builds/$VERSION" ]; then
