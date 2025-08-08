@@ -107,6 +107,12 @@ build_with_buildah() {
         set -- "$@" --label fedora-coreos.stream="$stream"
     fi
 
+    if [ -d "src/yumrepos" ] && [ -e "src/yumrepos/${variant:-}.repo" ]; then
+        set -- "$@" --secret id=yumrepos,src="$(realpath "src/yumrepos/$variant.repo")" \
+                    --secret id=contentsets,src="$(realpath src/yumrepos/content_sets.yaml)" \
+                    -v /etc/pki/ca-trust:/etc/pki/ca-trust:ro
+    fi
+
     if [ -n "$DIRECT" ]; then
         # turn on layer caching in the direct case; it wouldn't hurt in the
         # supermin path, but it'd be a waste of space on the rootfs
