@@ -15,14 +15,16 @@ Usage: coreos-assembler build-with-buildah
 
   The following options are supported:
   --version=VERSION   Use the given version instead of using versionary.
+  --versionary        Generate non-development version using versionary.
   --direct            Run buildah directly rather than within supermin.
 EOF
 }
 
 VERSION=
+VERSIONARY=
 DIRECT=
 rc=0
-options=$(getopt --options h,v,d --longoptions help,version:,direct -- "$@") || rc=$?
+options=$(getopt --options h,d --longoptions help,version:,versionary,direct -- "$@") || rc=$?
 [ $rc -eq 0 ] || {
     print_help
     exit 1
@@ -34,9 +36,12 @@ while true; do
             print_help
             exit 0
             ;;
-        -v | --version)
+        --version)
             shift
             VERSION=$1
+            ;;
+        --versionary)
+            VERSIONARY=1
             ;;
         -d | --direct)
             DIRECT=1
@@ -57,7 +62,11 @@ done
 
 if [ -z "${VERSION}" ]; then
     # let error out if file does not exist
-    VERSION=$(src/config/versionary)
+    if [ -z "${VERSIONARY}" ]; then
+        VERSION=$(src/config/versionary --dev)
+    else
+        VERSION=$(src/config/versionary)
+    fi
 fi
 
 build_with_buildah() {
