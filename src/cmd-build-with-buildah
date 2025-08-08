@@ -73,8 +73,10 @@ build_with_buildah() {
     initconfig="src/config.json"
     if [ -f "${initconfig}" ]; then
         variant="$(jq --raw-output '."coreos-assembler.config-variant"' "${initconfig}")"
+        manifest="src/config/manifest-${variant}.yaml"
         argsfile=build-args-${variant}.conf
     else
+        manifest="src/config/manifest.yaml"
         argsfile=build-args.conf
     fi
 
@@ -87,6 +89,14 @@ build_with_buildah() {
             --build-arg-file "$argsfile" -v "$(realpath "${tempdir}/src")":/run/src \
             --build-arg VERSION="${VERSION}" \
             -t oci-archive:"${tmp_oci_archive_path}"
+
+    # XXX: Temporary hack until we have https://github.com/coreos/rpm-ostree/pull/5454
+    # which would allow us to fold this back into the build process.
+    # shellcheck source=/dev/null
+    stream=$(yaml2json "$manifest" /dev/stdout | jq -r '.variables.stream')
+    if [ "${stream}" != null ]; then
+        set -- "$@" --label fedora-coreos.stream="$stream"
+    fi
 
     if [ -n "$DIRECT" ]; then
         # turn on layer caching in the direct case; it wouldn't hurt in the
