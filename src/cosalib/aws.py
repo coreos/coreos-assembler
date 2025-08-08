@@ -157,9 +157,7 @@ def aws_run_ore(build, args):
             '--billing-product-code', f"{args.winli_billing_product}"
         ])
     else:
-        ore_args.extend([
-            '--disk-size-inspect'
-        ])
+        ore_args.extend(['--disk-size-inspect'])
         winli_name = ""
         winli_description = ""
         buildmeta_key = "amis"

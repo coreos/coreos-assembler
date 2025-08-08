@@ -852,3 +852,18 @@ func getImageSnapshotID(image *ec2.Image) (string, error) {
 	// and it's just a sorta eventual consistency thing
 	return "", fmt.Errorf("no backing block device for %v", image.ImageId)
 }
+
+func (a *API) FindSnapshotDiskSizeGiB(snapshotID string) (uint, error) {
+	result, err := a.ec2.DescribeSnapshots(&ec2.DescribeSnapshotsInput{
+		SnapshotIds: []*string{&snapshotID},
+	})
+	if err != nil {
+		return 0, fmt.Errorf("failed to describe snapshot: %v", err)
+	}
+
+	if len(result.Snapshots) == 0 {
+		return 0, fmt.Errorf("no snapshot found with ID %s", snapshotID)
+	}
+
+	return uint(aws.Int64Value(result.Snapshots[0].VolumeSize)), nil
+}

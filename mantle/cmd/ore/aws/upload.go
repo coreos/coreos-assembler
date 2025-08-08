@@ -157,6 +157,7 @@ func runUpload(cmd *cobra.Command, args []string) error {
 		os.Exit(2)
 	}
 
+	var err error
 	if uploadDiskSizeInspect {
 		imageInfo, err := util.GetImageInfo(uploadFile)
 		if err != nil {
@@ -172,8 +173,15 @@ func runUpload(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	if uploadSourceSnapshot != "" {
+		uploadDiskSizeGiB, err = API.FindSnapshotDiskSizeGiB(uploadSourceSnapshot)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Unable to query size of disk from snapshot: %v\n", err)
+			os.Exit(1)
+		}
+	}
+
 	var s3URL *url.URL
-	var err error
 	if uploadSourceObject != "" {
 		s3URL, err = url.Parse(uploadSourceObject)
 		if err != nil {
