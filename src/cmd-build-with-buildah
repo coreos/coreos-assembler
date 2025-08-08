@@ -75,7 +75,7 @@ build_with_buildah() {
         argsfile=build-args-${variant}.conf
     fi
 
-    if [ "$(check_build_exists "${VERSION}")" == "True" ]; then
+    if [ -e "builds/$VERSION" ]; then
         echo "Build ${VERSION} already exists"
         exit 0
     fi
