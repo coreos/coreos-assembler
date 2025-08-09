@@ -4176,13 +4176,13 @@ arches:
     name: cirrus-audio-firmware
     evr: 20250708-1.fc42
     sourcerpm: linux-firmware-20250708-1.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/c/container-selinux-2.239.0-1.fc42.noarch.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/c/container-selinux-2.240.0-1.fc42.noarch.rpm
     repoid: updates
-    size: 59464
-    checksum: sha256:98b653c34e8d68e020400ae34d600d056d0b8f000314f225cc20214b4e301d22
+    size: 59381
+    checksum: sha256:4f287091daf074d0b175128559276a6bea57c0c79b81459b826f0631da2744e2
     name: container-selinux
-    evr: 4:2.239.0-1.fc42
-    sourcerpm: container-selinux-2.239.0-1.fc42.src.rpm
+    evr: 4:2.240.0-1.fc42
+    sourcerpm: container-selinux-2.240.0-1.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/c/containers-common-0.63.1-1.fc42.noarch.rpm
     repoid: updates
     size: 100111
@@ -4323,20 +4323,34 @@ arches:
     name: dwz
     evr: 0.16-1.fc42
     sourcerpm: dwz-0.16-1.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/e/edk2-aarch64-20250523-12.fc42.noarch.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/e/edk2-aarch64-20250523-14.fc42.noarch.rpm
     repoid: updates
-    size: 11100953
-    checksum: sha256:85d15af78c7a1222d7d32c9efbbed2169eea09e348913c720b8fd2dd9f6b52e4
+    size: 10847073
+    checksum: sha256:e7d14c7989d5edf16434f73464309791c2759080202b36fa18afad1a2b7245a0
     name: edk2-aarch64
-    evr: 20250523-12.fc42
-    sourcerpm: edk2-20250523-12.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/e/edk2-ovmf-20250523-12.fc42.noarch.rpm
+    evr: 20250523-14.fc42
+    sourcerpm: edk2-20250523-14.fc42.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/e/edk2-ovmf-20250523-14.fc42.noarch.rpm
     repoid: updates
-    size: 13860638
-    checksum: sha256:d868986b0c16c89b5b3ef8f26a8e6aa9f4b49369758598bf594a01c2ac584b08
+    size: 15880881
+    checksum: sha256:280a9e0cdcdf187a37bd2681da6792753a9489610c9a3bf3b066b3e1339d05f1
     name: edk2-ovmf
-    evr: 20250523-12.fc42
-    sourcerpm: edk2-20250523-12.fc42.src.rpm
+    evr: 20250523-14.fc42
+    sourcerpm: edk2-20250523-14.fc42.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/e/edk2-shell-aa64-20250523-14.fc42.noarch.rpm
+    repoid: updates
+    size: 271943
+    checksum: sha256:9da99766811e0a68340f9b95db6e3c8060a9ed50498afcd29ee19aba3c6cac30
+    name: edk2-shell-aa64
+    evr: 20250523-14.fc42
+    sourcerpm: edk2-20250523-14.fc42.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/e/edk2-shell-x64-20250523-14.fc42.noarch.rpm
+    repoid: updates
+    size: 286733
+    checksum: sha256:46396fa35efee86eeeeb71ee5b7cfcb7c8941650b32bf1c2e56b92fbedf640c2
+    name: edk2-shell-x64
+    evr: 20250523-14.fc42
+    sourcerpm: edk2-20250523-14.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/e/efi-filesystem-6-3.fc42.noarch.rpm
     repoid: updates
     size: 8272
@@ -5457,20 +5471,20 @@ arches:
     name: pango
     evr: 1.56.4-1.fc42
     sourcerpm: pango-1.56.4-1.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/passt-0^20250611.g0293c6f-1.fc42.x86_64.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/passt-0^20250805.g309eefd-2.fc42.x86_64.rpm
     repoid: updates
-    size: 273527
-    checksum: sha256:ecab935792c723631ebe20518a0a1fd80898fe273e34305d085ca145665f2bc5
+    size: 278149
+    checksum: sha256:49a0e3f2c3749aad7866495a59c2b351b1c87118e4e3efd31ea8dbd7395ecca9
     name: passt
-    evr: 0^20250611.g0293c6f-1.fc42
-    sourcerpm: passt-0^20250611.g0293c6f-1.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/passt-selinux-0^20250611.g0293c6f-1.fc42.noarch.rpm
+    evr: 0^20250805.g309eefd-2.fc42
+    sourcerpm: passt-0^20250805.g309eefd-2.fc42.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/passt-selinux-0^20250805.g309eefd-2.fc42.noarch.rpm
     repoid: updates
-    size: 33790
-    checksum: sha256:a06bfcb1aa6a2163deac14ef4974f7bbc8cfe0dfef64e9426aa644b9219ed1f3
+    size: 33768
+    checksum: sha256:77e619f8375d67b070ecb1d3e3312b50b9c509cb246ea7c92cfe0f0802650962
     name: passt-selinux
-    evr: 0^20250611.g0293c6f-1.fc42
-    sourcerpm: passt-0^20250611.g0293c6f-1.fc42.src.rpm
+    evr: 0^20250805.g309eefd-2.fc42
+    sourcerpm: passt-0^20250805.g309eefd-2.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/patch-2.8-1.fc42.x86_64.rpm
     repoid: updates
     size: 116216
