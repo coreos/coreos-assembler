@@ -1105,17 +1105,6 @@ cmdlib.import_ostree_commit(workdir, builddir, buildmeta, extract_json=('${extra
 ")
 }
 
-check_build_exists() {
-    local buildid=$1; shift
-    (python3 -c "
-import sys
-sys.path.insert(0, '${DIR}')
-from cosalib.builds import Builds
-builds = Builds('${workdir:-$(pwd)}')
-print(builds.has('${buildid}'))
-")
-}
-
 # Extract the value of NAME from os-release
 extract_osrelease_name() {
     local buildid=$1; shift
