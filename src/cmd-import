@@ -49,11 +49,14 @@ def main():
         # import into the tmp/repo to get the ostree-commit but also so it's cached
         ostree_commit = import_oci_archive(tmpd, tmp_oci_archive, buildid)
 
+        # artificially recreate generated lockfile
+        tmp_lockfile = generate_lockfile(tmpd, ostree_commit)
+
         # create meta.json
         build_meta = generate_build_meta(tmp_oci_archive, tmp_oci_manifest, metadata, ostree_commit)
 
         # move into official location
-        finalize_build(builds, build_meta, tmp_oci_archive, tmp_oci_manifest)
+        finalize_build(builds, build_meta, tmp_oci_archive, tmp_oci_manifest, tmp_lockfile)
 
     subprocess.check_call(['/usr/lib/coreos-assembler/cmd-prune'])
 
@@ -82,6 +85,25 @@ def generate_oci_manifest(args, tmpd):
     with open(tmpf, 'wb') as f:
         f.write(subprocess.check_output(["skopeo", "inspect", "--raw", args.srcimg]))
         os.fchmod(f.fileno(), S_IREAD | S_IRGRP | S_IROTH)
+    return tmpf
+
+
+def generate_lockfile(tmpd, ostree_commit):
+    tmpf = os.path.join(tmpd, 'lockfile.json')
+
+    out = subprocess.check_output(['rpm-ostree', 'db', 'list', '--repo', 'tmp/repo', ostree_commit], encoding='utf-8')
+    rpmdb = {}
+    for line in out.splitlines():
+        if not line.startswith(' '):
+            continue
+        n, ev, ra = line.strip().rsplit('-', 2)
+        rpmdb[n] = {'evra': f'{ev}-{ra}'}
+
+    with open(tmpf, 'w') as f:
+        json.dump(fp=f, obj={
+            'packages': rpmdb
+        })
+
     return tmpf
 
 
@@ -117,7 +139,7 @@ def generate_build_meta(tmp_oci_archive, tmp_oci_manifest, metadata, ostree_comm
     }
 
 
-def finalize_build(builds, build_meta, tmp_oci_archive, tmp_oci_manifest):
+def finalize_build(builds, build_meta, tmp_oci_archive, tmp_oci_manifest, tmp_lockfile):
     buildid = build_meta['buildid']
     arch = build_meta['coreos-assembler.basearch']
 
@@ -126,6 +148,7 @@ def finalize_build(builds, build_meta, tmp_oci_archive, tmp_oci_manifest):
 
     shutil.move(tmp_oci_archive, f'{destdir}/{build_meta['images']['ostree']['path']}')
     shutil.move(tmp_oci_manifest, f'{destdir}/{build_meta['images']['oci-manifest']['path']}')
+    shutil.move(tmp_lockfile, f'{destdir}/manifest-lock.generated.{arch}.json')
 
     with open(f'{destdir}/meta.json', 'w') as f:
         json.dump(build_meta, f, indent=4)
