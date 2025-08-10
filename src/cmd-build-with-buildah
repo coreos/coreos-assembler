@@ -17,14 +17,18 @@ Usage: coreos-assembler build-with-buildah
   --version=VERSION   Use the given version instead of using versionary.
   --versionary        Generate non-development version using versionary.
   --direct            Run buildah directly rather than within supermin.
+  --autolock=VERSION  If no base lockfile used, create one from any arch build of `VERSION`.
+                      Note this is automatically enabled when adding to an existing multi-arch
+                      non-strict build.
 EOF
 }
 
 VERSION=
 VERSIONARY=
 DIRECT=
+AUTOLOCK_VERSION=
 rc=0
-options=$(getopt --options h,d --longoptions help,version:,versionary,direct -- "$@") || rc=$?
+options=$(getopt --options h,d --longoptions help,version:,versionary,direct,autolock: -- "$@") || rc=$?
 [ $rc -eq 0 ] || {
     print_help
     exit 1
@@ -45,6 +49,10 @@ while true; do
             ;;
         -d | --direct)
             DIRECT=1
+            ;;
+        --autolock)
+            shift;
+            AUTOLOCK_VERSION=$1
             ;;
         --)
             shift
@@ -92,6 +100,18 @@ build_with_buildah() {
     if [ -e "builds/$VERSION" ]; then
         echo "Build ${VERSION} already exists"
         exit 0
+    fi
+
+    # Apply autolock from another build for this version (or for another version if
+    # explicitly provided via --autolock) if no base lockfile exists.
+    lockfile="manifest-lock.${arch}.json"
+    if [ ! -f "src/config/${lockfile}" ] && { [ -n "${VERSION}" ] || [ -n "${AUTOLOCK_VERSION}" ]; }; then
+        autolockfile=$(tmprepo=tmp/repo; workdir=.;
+                       generate_autolock "${AUTOLOCK_VERSION:-${VERSION}}")
+        if [ -n "${autolockfile}" ]; then
+            echo "Injecting autolock-generated ${lockfile}..."
+            cp "${autolockfile}" "${tempdir}/src/${lockfile}"
+        fi
     fi
 
     set -- build --security-opt=label=disable --cap-add=all --device /dev/fuse \
