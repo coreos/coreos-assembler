@@ -55,6 +55,8 @@ def main():
         # move into official location
         finalize_build(builds, build_meta, tmp_oci_archive, tmp_oci_manifest)
 
+    subprocess.check_call(['/usr/lib/coreos-assembler/cmd-prune'])
+
 
 def parse_args():
     parser = argparse.ArgumentParser(prog='cosa import')
