@@ -305,6 +305,13 @@ arches:
     name: cpio
     evr: 2.15-4.fc42
     sourcerpm: cpio-2.15-4.fc42.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/c/cpp-15.0.1-0.11.fc42.x86_64.rpm
+    repoid: fedora
+    size: 13500003
+    checksum: sha256:6007918d3963b22c35d9199437c9067b9250d063afadc7ea91fc0b2fb6aabc5e
+    name: cpp
+    evr: 15.0.1-0.11.fc42
+    sourcerpm: gcc-15.0.1-0.11.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/c/createrepo_c-1.2.0-3.fc42.x86_64.rpm
     repoid: fedora
     size: 79697
@@ -655,6 +662,20 @@ arches:
     name: game-music-emu
     evr: 0.6.3-17.fc42
     sourcerpm: game-music-emu-0.6.3-17.fc42.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/g/gcc-15.0.1-0.11.fc42.x86_64.rpm
+    repoid: fedora
+    size: 41310623
+    checksum: sha256:ee378a7143cafe3beb7035ac429435f7299fb81575a1572aeefb18dcead0441f
+    name: gcc
+    evr: 15.0.1-0.11.fc42
+    sourcerpm: gcc-15.0.1-0.11.fc42.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/g/gcc-plugin-annobin-15.0.1-0.11.fc42.x86_64.rpm
+    repoid: fedora
+    size: 47944
+    checksum: sha256:17e6576df18e13f2119252e7ed323a7f1021b6c8bd23cb1fbfa59366a0ed8197
+    name: gcc-plugin-annobin
+    evr: 15.0.1-0.11.fc42
+    sourcerpm: gcc-15.0.1-0.11.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/g/gdisk-1.0.10-3.fc42.x86_64.rpm
     repoid: fedora
     size: 264652
@@ -1467,6 +1488,13 @@ arches:
     name: libglvnd-glx
     evr: 1:1.7.0-7.fc42
     sourcerpm: libglvnd-1.7.0-7.fc42.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/l/libgomp-15.0.1-0.11.fc42.x86_64.rpm
+    repoid: fedora
+    size: 366942
+    checksum: sha256:04067aa1a2bb05d018a6d3fe1c600f1a0393a57515222534b544687e2892e8b0
+    name: libgomp
+    evr: 15.0.1-0.11.fc42
+    sourcerpm: gcc-15.0.1-0.11.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/l/libgpg-error-1.51-2.fc42.x86_64.rpm
     repoid: fedora
     size: 242926
@@ -4204,13 +4232,6 @@ arches:
     name: coreos-installer
     evr: 0.24.0-2.fc42
     sourcerpm: rust-coreos-installer-0.24.0-2.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/c/cpp-15.1.1-2.fc42.x86_64.rpm
-    repoid: updates
-    size: 13525524
-    checksum: sha256:4a503c8965071f6b92cce5c95e4d1f3b6b3781254e0e4456a180c149fde9c599
-    name: cpp
-    evr: 15.1.1-2.fc42
-    sourcerpm: gcc-15.1.1-2.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/c/cpuinfo-24.09.26-2.git1e83a2f.fc42.1.x86_64.rpm
     repoid: updates
     size: 44895
@@ -4421,20 +4442,6 @@ arches:
     name: fonts-srpm-macros
     evr: 1:2.0.5-22.fc42
     sourcerpm: fonts-rpm-macros-2.0.5-22.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/g/gcc-15.1.1-2.fc42.x86_64.rpm
-    repoid: updates
-    size: 41306834
-    checksum: sha256:597e0fc19cf8da8c3ccf54d75b3d14e775214d995c80baa9b46bac19ca67f975
-    name: gcc
-    evr: 15.1.1-2.fc42
-    sourcerpm: gcc-15.1.1-2.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/g/gcc-plugin-annobin-15.1.1-2.fc42.x86_64.rpm
-    repoid: updates
-    size: 52968
-    checksum: sha256:c373407997508a11c9ec243a68c2b1345eb68e7485fa1000e55f75b065099712
-    name: gcc-plugin-annobin
-    evr: 15.1.1-2.fc42
-    sourcerpm: gcc-15.1.1-2.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/g/gdb-minimal-16.3-1.fc42.x86_64.rpm
     repoid: updates
     size: 4621379
@@ -4988,13 +4995,13 @@ arches:
     name: libtpms
     evr: 0.10.1-1.fc42
     sourcerpm: libtpms-0.10.1-1.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/l/libtsan-15.1.1-2.fc42.x86_64.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/l/libtsan-15.2.1-1.fc42.x86_64.rpm
     repoid: updates
-    size: 468602
-    checksum: sha256:a6218beaf17b490498ed2a26c77f1b52e7a13ce00069dd23b0a4cefefd478d10
+    size: 472804
+    checksum: sha256:9b27df7dba8dbfc503b8bb1125e191f753be6f4a3be3969a322d86054882b27b
     name: libtsan
-    evr: 15.1.1-2.fc42
-    sourcerpm: gcc-15.1.1-2.fc42.src.rpm
+    evr: 15.2.1-1.fc42
+    sourcerpm: gcc-15.2.1-1.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/l/libusb1-1.0.29-1.fc42.x86_64.rpm
     repoid: updates
     size: 81294
