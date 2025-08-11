@@ -91,12 +91,6 @@ outdir=cache/osbuild/out
 
 processed_json=$(mktemp -t osbuild-XXXX.json)
 
-# Run `podman images` here to initialize a few directories inside the
-# supermin VM. Otherwise the org.osbuild.container-deploy stage will
-# fail to copy things into containers-storage. This also happens to
-# clean up a skopeo error relating to /etc/containers/networks not existing.
-podman images > /dev/null
-
 # Run through the preprocessor
 # Note: don't quote the size arguements since they are numbers, not strings
 set -x; osbuild-mpp                                       \
