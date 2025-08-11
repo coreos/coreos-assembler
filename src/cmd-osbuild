@@ -397,7 +397,12 @@ main() {
     fi
 
     outdir=$(mktemp -p "${tmp_builddir}" -d)
-    runvm_with_cache -- /usr/lib/coreos-assembler/runvm-osbuild                                         \
+    if has_privileges && [ "${COSA_NO_KVM:-}" == "1" ]; then
+        cmd="env" # run outside of supermin if we are root already
+    else
+        cmd="runvm_with_cache"
+    fi
+    $cmd -- /usr/lib/coreos-assembler/runvm-osbuild                                                     \
                 --config "${runvm_osbuild_config_json}"                                                 \
                 --mpp "/usr/lib/coreos-assembler/osbuild-manifests/coreos.osbuild.${basearch}.mpp.yaml" \
                 --outdir "${outdir}"                                                                    \
