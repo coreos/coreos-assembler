@@ -37,8 +37,9 @@ log_disk_usage(){
     # 10 seconds.
     yellow="\033[33m"; default="\033[39m"
     (while true; do
-        echo -e "$yellow"; df -kh ./cache; echo -e "$default";
         sleep 10;
+        test -e ./cache || continue
+        echo -e "$yellow"; df -kh ./cache; echo -e "$default";
         pgrep --exact osbuild >/dev/null || break;
     done) &
 }
