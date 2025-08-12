@@ -364,7 +364,10 @@ def run_guestfs_mount(image_path, mount_target):
             g.close()
 
 
-def diff_metal(diff_from, diff_to):
+# Generator that will mount up metal image filesystems and yield
+# the paths to be used for analysis and then clean up once given back
+# control.
+def diff_metal_helper(diff_from, diff_to):
     metal_from = get_metal_path(diff_from)
     metal_to = get_metal_path(diff_to)
 
@@ -397,8 +400,8 @@ def diff_metal(diff_from, diff_to):
                 if not p.is_alive():
                     raise Exception(f"A guestfs process for {os.path.basename(d)} died unexpectedly.")
 
-        # Now that the mounts are live, we can diff them
-        git_diff(mount_dir_from, mount_dir_to)
+        # Allow the caller to operate on these values
+        yield mount_dir_from, mount_dir_to
 
     finally:
         # Unmount the FUSE binds, this will make the guestfs mount calls return
@@ -414,6 +417,11 @@ def diff_metal(diff_from, diff_to):
 
         shutdown_process(p_from)
         shutdown_process(p_to)
+
+
+def diff_metal(diff_from, diff_to):
+    for mount_dir_from, mount_dir_to in diff_metal_helper(diff_from, diff_to):
+        git_diff(mount_dir_from, mount_dir_to)
 
 
 def diff_cmd_outputs(cmd, path_from, path_to, strategy: DiffCmdOutputStrategy = DiffCmdOutputStrategy.TEMPLATE):
