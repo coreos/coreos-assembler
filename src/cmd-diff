@@ -424,6 +424,18 @@ def diff_metal(diff_from, diff_to):
         git_diff(mount_dir_from, mount_dir_to)
 
 
+def diff_metal_du(diff_from, diff_to):
+    for mount_dir_from, mount_dir_to in diff_metal_helper(diff_from, diff_to):
+        cmd = ['find', '.', '-type', 'd', '-exec', 'du', '-sh', '{}', ';']
+        diff_cmd_outputs(cmd, mount_dir_from, mount_dir_to, strategy=DiffCmdOutputStrategy.CD)
+
+
+def diff_metal_ls(diff_from, diff_to):
+    for mount_dir_from, mount_dir_to in diff_metal_helper(diff_from, diff_to):
+        cmd = ['find', '.']
+        diff_cmd_outputs(cmd, mount_dir_from, mount_dir_to, strategy=DiffCmdOutputStrategy.CD)
+
+
 def diff_cmd_outputs(cmd, path_from, path_to, strategy: DiffCmdOutputStrategy = DiffCmdOutputStrategy.TEMPLATE):
     workingdir = None
     with tempfile.NamedTemporaryFile(prefix=cmd[0] + '-') as from_output, \
@@ -485,6 +497,10 @@ DIFFERS = [
            needs_ostree=OSTreeImport.NO, function=diff_metal_partitions),
     Differ("metal", "Diff metal disk image content",
            needs_ostree=OSTreeImport.NO, function=diff_metal),
+    Differ("metal-du", "Compare directory usage of metal disk image content",
+           needs_ostree=OSTreeImport.NO, function=diff_metal_du),
+    Differ("metal-ls", "Compare directory listing of metal disk image content",
+           needs_ostree=OSTreeImport.NO, function=diff_metal_ls),
 ]
 
 if __name__ == '__main__':
