@@ -37,6 +37,11 @@ class OSTreeImport(IntEnum):
     FULL = 3
 
 
+class DiffCmdOutputStrategy(IntEnum):
+    CD = 1
+    TEMPLATE = 2
+
+
 @dataclass
 class Differ:
     name: str
@@ -401,16 +406,20 @@ def diff_metal(diff_from, diff_to):
         shutdown_process(p_to)
 
 
-def diff_cmd_outputs(cmd, path_from, path_to):
+def diff_cmd_outputs(cmd, path_from, path_to, strategy: DiffCmdOutputStrategy = DiffCmdOutputStrategy.TEMPLATE):
+    workingdir = None
     with tempfile.NamedTemporaryFile(prefix=cmd[0] + '-') as from_output, \
          tempfile.NamedTemporaryFile(prefix=cmd[0] + '-') as to_output:
         for path, output in (path_from, from_output), (path_to, to_output):
             c = list(cmd)
-            if '{}' not in c:
-                c += ['{}']
-            idx = c.index('{}')
-            c[idx] = path
-            subprocess.run(c, check=True, stdout=output).stdout
+            if strategy == DiffCmdOutputStrategy.TEMPLATE:
+                if '{}' not in c:
+                    c += ['{}']
+                idx = c.index('{}')
+                c[idx] = path
+            elif strategy == DiffCmdOutputStrategy.CD:
+                workingdir = path
+            subprocess.run(c, cwd=workingdir, check=True, stdout=output).stdout
         git_diff(from_output.name, to_output.name)
 
 
