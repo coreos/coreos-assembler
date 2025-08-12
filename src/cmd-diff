@@ -401,17 +401,17 @@ def diff_metal(diff_from, diff_to):
         shutdown_process(p_to)
 
 
-def diff_cmd_outputs(cmd, file_from, file_to):
-    with tempfile.NamedTemporaryFile(prefix=cmd[0] + '-') as f_from, \
-         tempfile.NamedTemporaryFile(prefix=cmd[0] + '-') as f_to:
-        for file, output in (file_from, f_from), (file_to, f_to):
+def diff_cmd_outputs(cmd, path_from, path_to):
+    with tempfile.NamedTemporaryFile(prefix=cmd[0] + '-') as from_output, \
+         tempfile.NamedTemporaryFile(prefix=cmd[0] + '-') as to_output:
+        for path, output in (path_from, from_output), (path_to, to_output):
             c = list(cmd)
             if '{}' not in c:
                 c += ['{}']
             idx = c.index('{}')
-            c[idx] = file
-            subprocess.run(c, check=True, stdout=file).stdout
-        git_diff(f_from.name, f_to.name)
+            c[idx] = path
+            subprocess.run(c, check=True, stdout=output).stdout
+        git_diff(from_output.name, to_output.name)
 
 
 def git_diff(arg_from, arg_to):
