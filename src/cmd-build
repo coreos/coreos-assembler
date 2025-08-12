@@ -502,16 +502,6 @@ else
                 )
     fi
 
-    last_build_manifest=()
-    if rpm-ostree compose container-encapsulate --help |grep -q -e "--previous-build-manifest"; then
-      # Use the last stable release if buildfetch used
-      if [ -n "${PARENT_BUILD}" ] && [ -f "${parent_builddir}/${name}-${PARENT_BUILD}-ostree.${basearch}-manifest.json" ]; then
-        last_build_manifest+=("--previous-build-manifest=${parent_builddir}/${name}-${PARENT_BUILD}-ostree.${basearch}-manifest.json")
-      # Use the previous local build
-      elif [ -n "${previous_build}" ] && [ -f "${previous_builddir}/${name}-${previous_build}-ostree.${basearch}-manifest.json" ]; then
-        last_build_manifest+=("--previous-build-manifest=${previous_builddir}/${name}-${previous_build}-ostree.${basearch}-manifest.json")
-      fi
-    fi
     runv rpm-ostree compose container-encapsulate --max-layers="$MAX_OSTREECONTAINER_LAYERS" --format-version=1 \
         --repo="${tmprepo}" \
         --label="coreos-assembler.image-config-checksum=${image_config_checksum}" \
@@ -519,7 +509,6 @@ else
         --label="org.opencontainers.image.source=${gitsrc}" \
         --label="org.opencontainers.image.revision=${config_gitrev}" \
         --copymeta-opt=fedora-coreos.stream \
-        "${last_build_manifest[@]}" \
         "${labels[@]}" \
         "${buildid}" \
         oci-archive:"${ostree_tarfile_path}".tmp:latest
