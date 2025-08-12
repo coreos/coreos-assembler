@@ -404,15 +404,13 @@ def diff_metal(diff_from, diff_to):
 def diff_cmd_outputs(cmd, file_from, file_to):
     with tempfile.NamedTemporaryFile(prefix=cmd[0] + '-') as f_from, \
          tempfile.NamedTemporaryFile(prefix=cmd[0] + '-') as f_to:
-        if '{}' not in cmd:
-            cmd += ['{}']
-        idx = cmd.index('{}')
-        cmd_from = list(cmd)
-        cmd_from[idx] = file_from
-        subprocess.run(cmd_from, check=True, stdout=f_from).stdout
-        cmd_to = list(cmd)
-        cmd_to[idx] = file_to
-        subprocess.run(cmd_to, check=True, stdout=f_to).stdout
+        for file, output in (file_from, f_from), (file_to, f_to):
+            c = list(cmd)
+            if '{}' not in c:
+                c += ['{}']
+            idx = c.index('{}')
+            c[idx] = file
+            subprocess.run(c, check=True, stdout=file).stdout
         git_diff(f_from.name, f_to.name)
 
 
