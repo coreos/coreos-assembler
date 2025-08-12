@@ -49,10 +49,16 @@ TMP_REPO = 'tmp/repo'
 
 DIFF_CACHE = 'tmp/diff-cache'
 
+USE_DIFFTOOL = False
+
 
 def main():
     args = parse_args()
     builds = Builds()
+
+    # Modify the USE_DIFFTOOL global based on the --difftool argument
+    global USE_DIFFTOOL
+    USE_DIFFTOOL = args.difftool
 
     latest_build = builds.get_latest()
 
@@ -109,6 +115,7 @@ def parse_args():
     parser.add_argument("--to", dest='diff_to', help="Second build ID")
     parser.add_argument("--gc", action='store_true', help="Delete cached diff content")
     parser.add_argument("--arch", dest='arch', help="Architecture of builds")
+    parser.add_argument("--difftool", action='store_true', help="Use git difftool")
 
     for differ in DIFFERS:
         parser.add_argument("--" + differ.name, action='store_true', default=False,
@@ -420,7 +427,10 @@ def diff_cmd_outputs(cmd, path_from, path_to, strategy='template'):
 
 
 def git_diff(arg_from, arg_to):
-    runcmd(['git', 'diff', '--no-index', arg_from, arg_to], check=False)
+    subcmd = 'diff'
+    if USE_DIFFTOOL:
+        subcmd = 'difftool'
+    runcmd(['git', subcmd, '--no-index', arg_from, arg_to], check=False)
 
 
 def cache_dir(dir):
