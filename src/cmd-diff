@@ -449,7 +449,7 @@ def diff_cmd_outputs(cmd, path_from, path_to, strategy: DiffCmdOutputStrategy = 
                 c[idx] = path
             elif strategy == DiffCmdOutputStrategy.CD:
                 workingdir = path
-            subprocess.run(c, cwd=workingdir, check=True, stdout=output).stdout
+            subprocess.run(c, cwd=workingdir, check=True, stdout=output)
         git_diff(from_output.name, to_output.name)
 
 
