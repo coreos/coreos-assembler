@@ -74,12 +74,13 @@ if args.pkgcache:
     if len(builds) > 0:
         latest_build = builds[0]
         metapath = f"builds/latest/{arch}/commitmeta.json"
-        with open(metapath) as f:
-            meta = json.load(f)
-        build_pkg_nevra = meta['rpmostree.rpmdb.pkglist']
-        for pkg in build_pkg_nevra:
-            cache_branch = nevra_to_cache_branch(pkg)
-            build_pkg.append(cache_branch)
+        if os.path.exists(metapath):
+            with open(metapath) as f:
+                meta = json.load(f)
+            build_pkg_nevra = meta['rpmostree.rpmdb.pkglist']
+            for pkg in build_pkg_nevra:
+                cache_branch = nevra_to_cache_branch(pkg)
+                build_pkg.append(cache_branch)
 
     # In order to improve efficiency, only prune those refs packages modified over 30 days
     ref_pkg = subprocess.check_output("find cache/pkgcache-repo/refs/heads/rpmostree/pkg/ -mtime +30 -type f", shell=True).decode('utf-8').split("\n")
