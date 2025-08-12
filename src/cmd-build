@@ -12,25 +12,12 @@ dn=$(dirname "$0")
 print_help() {
     cat 1>&2 <<'EOF'
 Usage: coreos-assembler build --help
-       coreos-assembler build [OPTIONS]... [TARGET]...
-
-  Build bootable container (ostree) and image base artifacts from previously fetched packages.
-  Accepted TARGET arguments:
-
-  - container  Build the bootable container image (ostree)
-  - ostree     Deprecated alias for container
-  - qemu       Also create a QCOW2 image to run with QEMU
-  - metal      Also create a raw disk image
-  - metal4k    Also create a raw disk image for 4K native disks
-
-  The "qemu" and "metal" targets imply "container". If unspecified, defaults to
-  "qemu". They are equivalent to manually running buildextend-[TARGET] after.
+       coreos-assembler build [OPTIONS]...
 
   The following options are supported:
 
   --delay-meta-merge    Set 'coreos-assembler.delayed-meta-merge' in build metadata (default: false)
   --force               Always create a new OSTree commit, even if nothing appears to have changed
-  --force-image         Force an image rebuild even if there were no changes to image input
   --skip-prune          Skip prunning previous builds
   -F | --fetch          Also perform a fetch
   --strict              Only allow installing locked packages when using lockfiles
@@ -54,7 +41,6 @@ EOF
 # Parse options
 DELAY_META_MERGE=false
 FORCE=
-FORCE_IMAGE=
 FETCH=
 SKIP_PRUNE=0
 PREPARE_ONLY=0
@@ -90,9 +76,6 @@ while true; do
             ;;
         --skip-config-archive)
             CONFIG_ARCHIVE=0
-            ;;
-        --force-image)
-            FORCE_IMAGE=1
             ;;
         --skip-prune)
             SKIP_PRUNE=1
@@ -148,42 +131,19 @@ if test -n "${FETCH}"; then
     cosa fetch
 fi
 
-if [ $# -eq 0 ]; then
-    set -- qemu
-fi
-
 if [ -z "${VERSION}" ] && [ -n "${VERSIONARY}" ]; then
     # let error out if file does not exist
     VERSION=$(src/config/versionary)
     echo "New version will be ${VERSION}"
 fi
 
-# sanity check the targets and aggregate into a set
-declare -A targets=( )
+# backwards compat for when `ostree` or `container` specified on CLI
 for target in "$@"; do
-    # Process the alias
-    if [[ $target == ostree ]]; then
-        target=container
-    fi
-    # Except we *always* build the container image, so ignore
-    # it as a request.
-    if [[ $target != container ]]; then
-        case "$target" in
-            metal|metal4k|qemu|secex) ;;
-            *) fatal "Unrecognized target: $target" ;;
-        esac
-        targets[$target]=1
-    fi
+    case "$target" in
+        ostree|container) ;;
+        *) fatal "Unrecognized target: $target" ;;
+    esac
 done
-
-build_followup_targets() {
-    cd "${workdir}"
-    for target in "${!targets[@]}"; do
-        if ! "/usr/lib/coreos-assembler/cmd-buildextend-${target}"; then
-            fatal "failed buildextend-${target}"
-        fi
-    done
-}
 
 prepare_build
 
@@ -267,9 +227,6 @@ if [ -f "${ks_path}" ]; then
     fatal "Kickstart support was removed; migrate to image.yaml"
 fi
 image_config_checksum=$(< "${image_json}" sha256sum_str)
-if [ -n "${previous_build}" ]; then
-    previous_image_input_checksum=$(jq -r '.["coreos-assembler.image-input-checksum"]' < "${previous_builddir}/meta.json")
-fi
 echo "Image Config checksum: ${image_config_checksum}"
 
 # Generate metadata that's *input* to the ostree commit
@@ -391,19 +348,6 @@ else
     commit="${previous_commit}"
     image_input_checksum=$( (echo "${commit}" && echo "${image_config_checksum}") | sha256sum_str)
     echo "commit: ${commit} image: ${image_input_checksum}"
-    # Note we may not actually have a previous build in the case of
-    # successfully composing an ostree but failing the image on the
-    # first build.
-    # FORCE_IMAGE forces a build even if there were no ostree changes
-    if [ -z "$FORCE_IMAGE" ] && [ -n "${previous_build}" ] && [ "${image_input_checksum}" = "${previous_image_input_checksum}" ]; then
-        echo "No changes in image inputs."
-        # But still run through the follow-up targets. This allows us to have
-        # e.g. `cosa build metal` be idempotent even if the initial build failed
-        # for whatever reason. `buildextend-[metal|qemu]` should already be
-        # idempotent.
-        build_followup_targets
-        exit 0
-    fi
 
     # Grab the previous treecompose JSON (local developer case: treecompose succeeded but
     # image build failed) if possible, otherwise grab the previous build
@@ -651,6 +595,3 @@ if [ -n "${TAG}" ]; then
     # meh... not much can go wrong with `cosa tag`
     /usr/lib/coreos-assembler/cmd-tag update --build "${buildid}" --tag "${TAG}"
 fi
-
-# and finally, build the specified targets
-build_followup_targets
