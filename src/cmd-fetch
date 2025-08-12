@@ -96,6 +96,13 @@ if [ $# -ne 0 ]; then
     fatal "ERROR: Too many arguments"
 fi
 
+if [ -n "${COSA_BUILD_WITH_BUILDAH:-}" ]; then
+    # shellcheck disable=SC2016
+    info 'fetch is not useful when using $COSA_BUILD_WITH_BUILDAH'
+    info 'Skipping fetch'
+    exit 0
+fi
+
 prepare_build
 
 lock_args=
