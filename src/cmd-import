@@ -79,7 +79,7 @@ def generate_oci_archive(args, tmpd):
         shutil.copy(args.srcimg.partition(':')[2], tmpf)
     else:
         subprocess.check_call(['skopeo', 'copy', '--preserve-digests', args.srcimg,
-                           f"oci-archive:{tmpf}"])
+                               f"oci-archive:{tmpf}"])
     return tmpf
 
 
