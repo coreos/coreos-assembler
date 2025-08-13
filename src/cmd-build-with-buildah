@@ -133,6 +133,13 @@ build_with_buildah() {
                     -v /etc/pki/ca-trust:/etc/pki/ca-trust:ro
     fi
 
+    if [ -d overrides ]; then
+        if [[ -n $(ls overrides/rpm/*.rpm 2> /dev/null) ]]; then
+            (cd overrides/rpm && rm -rf .repodata && createrepo_c .)
+        fi
+        set -- "$@" -v "$(realpath overrides)":/run/src/overrides
+    fi
+
     if [ -n "$DIRECT" ]; then
         # turn on layer caching in the direct case; it wouldn't hurt in the
         # supermin path, but it'd be a waste of space on the rootfs
