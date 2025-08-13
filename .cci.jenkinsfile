@@ -61,13 +61,4 @@ pod(image: imageName + ":latest", kvm: true, cpu: "${cpuCount}", memory: "${memo
     stage("Upload Dry Run") {
         utils.cosaCmd(cosaDir: "/srv", args: "buildupload --dry-run s3 --acl=public-read my-nonexistent-bucket/my/prefix")
     }
-
-    // Random other tests that aren't about building. XXX: These should be part of `make
-    // check` or something and use dummy cosa builds.
-    stage("CLI Tests") {
-        shwrap("""
-            cd /srv
-            ${env.WORKSPACE}/tests/test_pruning.sh
-        """)
-    }
 }
