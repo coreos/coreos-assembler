@@ -116,8 +116,7 @@ build_with_buildah() {
 
     set -- build --security-opt=label=disable --cap-add=all --device /dev/fuse \
             --build-arg-file "$argsfile" -v "$(realpath "${tempdir}/src")":/run/src \
-            --build-arg VERSION="${VERSION}" \
-            -t oci-archive:"${tmp_oci_archive_path}"
+            --build-arg VERSION="${VERSION}"
 
     # XXX: Temporary hack until we have https://github.com/coreos/rpm-ostree/pull/5454
     # which would allow us to fold this back into the build process.
@@ -143,13 +142,28 @@ build_with_buildah() {
     if [ -n "$DIRECT" ]; then
         # turn on layer caching in the direct case; it wouldn't hurt in the
         # supermin path, but it'd be a waste of space on the rootfs
-        env -C "${tempdir}/src" buildah "$@" --layers=true .
+        set -- "$@" --layers=true
+        # output to a tag since it's more convenient for development;
+        # buildah doesn't support doing both at once
+        # shellcheck disable=SC1090
+        osname=$(source "src/config/${argsfile}"; echo "${NAME}")
+        final_ref="containers-storage:localhost/${osname}:${VERSION}"
     else
-        /usr/lib/coreos-assembler/cmd-supermin-run --cache \
-            env -C "${tempdir}/src" TMPDIR="$(realpath cache)" buildah "$@" .
+        final_ref="oci-archive:${tmp_oci_archive_path}"
     fi
 
-    /usr/lib/coreos-assembler/cmd-import "oci-archive:${tmp_oci_archive_path}"
+    # and finally, add the tag and context dir
+    set -- "$@" -t "${final_ref}" .
+
+    echo "Running:" buildah "$@"
+    if [ -n "$DIRECT" ]; then
+        env -C "${tempdir}/src" buildah "$@"
+    else
+        /usr/lib/coreos-assembler/cmd-supermin-run --cache \
+            env -C "${tempdir}/src" TMPDIR="$(realpath cache)" buildah "$@"
+    fi
+
+    /usr/lib/coreos-assembler/cmd-import "${final_ref}"
 
     rm -rf "${tempdir}"
 }
