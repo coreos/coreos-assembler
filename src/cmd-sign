@@ -111,6 +111,14 @@ def cmd_robosignatory(args):
 def robosign_ostree(args, s3, build, gpgkey):
     builds = Builds()
     builddir = builds.get_build_dir(args.build, args.arch)
+
+    if build['coreos-assembler.oci-imported']:
+        # this is a known gap currently; we just no-op for
+        # now until we cut over to Konflux and stop using this code; see
+        # https://github.com/coreos/fedora-coreos-tracker/issues/1986
+        print("OSTree commit signing is not supported on imported OCI builds; ignoring...")
+        return
+
     checksum = build['ostree-commit']
 
     # Copy commit object to a temporary location. A preferred approach here is
