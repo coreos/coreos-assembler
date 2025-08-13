@@ -58,13 +58,16 @@ def main():
         # move into official location
         finalize_build(builds, build_meta, tmp_oci_archive, tmp_oci_manifest, tmp_lockfile)
 
-    subprocess.check_call(['/usr/lib/coreos-assembler/cmd-prune'])
+    if not args.skip_prune:
+        subprocess.check_call(['/usr/lib/coreos-assembler/cmd-prune'])
 
 
 def parse_args():
     parser = argparse.ArgumentParser(prog='cosa import')
     parser.add_argument("srcimg", metavar='IMAGE',
                         help="image to import (containers-transports(5) format)")
+    parser.add_argument("--skip-prune", action='store_true',
+                        help="Skip prunning previous builds")
     return parser.parse_args()
 
 
