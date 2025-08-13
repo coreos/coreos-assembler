@@ -4036,20 +4036,20 @@ arches:
     name: alsa-lib
     evr: 1.2.14-3.fc42
     sourcerpm: alsa-lib-1.2.14-3.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/a/amd-gpu-firmware-20250708-1.fc42.noarch.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/a/amd-gpu-firmware-20250808-1.fc42.noarch.rpm
     repoid: updates
-    size: 27362671
-    checksum: sha256:192843c82df5e1812f504de89a47f1282319f66b5b13d2b5e25a00abc9d58cdf
+    size: 27636899
+    checksum: sha256:56dad6891d30bbad7930777083b5141eea06a8aa63fc4430e1de4b70c1cf81b9
     name: amd-gpu-firmware
-    evr: 20250708-1.fc42
-    sourcerpm: linux-firmware-20250708-1.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/a/amd-ucode-firmware-20250708-1.fc42.noarch.rpm
+    evr: 20250808-1.fc42
+    sourcerpm: linux-firmware-20250808-1.fc42.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/a/amd-ucode-firmware-20250808-1.fc42.noarch.rpm
     repoid: updates
-    size: 379875
-    checksum: sha256:c62a330c4ec7f44147c418890441edce2135a304160af71a5a5059762a28dce5
+    size: 410317
+    checksum: sha256:894d7b0662a95454e81f11d5bf3ae5b5b5db0e7e55111cdf89f6497989aa4089
     name: amd-ucode-firmware
-    evr: 20250708-1.fc42
-    sourcerpm: linux-firmware-20250708-1.fc42.src.rpm
+    evr: 20250808-1.fc42
+    sourcerpm: linux-firmware-20250808-1.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/a/annobin-docs-12.94-1.fc42.noarch.rpm
     repoid: updates
     size: 92597
@@ -4078,13 +4078,13 @@ arches:
     name: at-spi2-core
     evr: 2.56.3-1.fc42
     sourcerpm: at-spi2-core-2.56.3-1.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/a/atheros-firmware-20250708-1.fc42.noarch.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/a/atheros-firmware-20250808-1.fc42.noarch.rpm
     repoid: updates
-    size: 38516554
-    checksum: sha256:aebe338ca2112cdb93163a8b2b5ae9af797f9774871ddd85aab942f776bda744
+    size: 38393962
+    checksum: sha256:6433b3af27d9015716ad6d9f499f2ae1c96864b7af4f06331b0f36535cc91269
     name: atheros-firmware
-    evr: 20250708-1.fc42
-    sourcerpm: linux-firmware-20250708-1.fc42.src.rpm
+    evr: 20250808-1.fc42
+    sourcerpm: linux-firmware-20250808-1.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/a/atk-2.56.3-1.fc42.x86_64.rpm
     repoid: updates
     size: 82049
@@ -4127,13 +4127,13 @@ arches:
     name: bootupd
     evr: 0.2.28-2.fc42
     sourcerpm: rust-bootupd-0.2.28-2.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/b/brcmfmac-firmware-20250708-1.fc42.noarch.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/b/brcmfmac-firmware-20250808-1.fc42.noarch.rpm
     repoid: updates
-    size: 10051211
-    checksum: sha256:dc1d4eaacc5e018ea7df12f462899914ba0c1bfc8b5cd30f6db3e06bf44891a5
+    size: 10052728
+    checksum: sha256:867ab79a207a3d59edafffcfd46e9b6845ba9199abc9a828b65baac22c932020
     name: brcmfmac-firmware
-    evr: 20250708-1.fc42
-    sourcerpm: linux-firmware-20250708-1.fc42.src.rpm
+    evr: 20250808-1.fc42
+    sourcerpm: linux-firmware-20250808-1.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/b/btrfs-progs-6.15-1.fc42.x86_64.rpm
     repoid: updates
     size: 1339968
@@ -4155,13 +4155,13 @@ arches:
     name: butane
     evr: 0.24.0-1.fc42
     sourcerpm: butane-0.24.0-1.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/c/cirrus-audio-firmware-20250708-1.fc42.noarch.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/c/cirrus-audio-firmware-20250808-1.fc42.noarch.rpm
     repoid: updates
-    size: 1863808
-    checksum: sha256:4eeecb4ab8b2e5580f283b836ccfccfaeb8fd36fdd69cda9c1216002811a9325
+    size: 2135428
+    checksum: sha256:1497f9b31544b7f8719252f8c255cbe1471d6441c6d42e2cc5f3918939350422
     name: cirrus-audio-firmware
-    evr: 20250708-1.fc42
-    sourcerpm: linux-firmware-20250708-1.fc42.src.rpm
+    evr: 20250808-1.fc42
+    sourcerpm: linux-firmware-20250808-1.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/c/container-selinux-2.240.0-1.fc42.noarch.rpm
     repoid: updates
     size: 59381
@@ -4519,27 +4519,27 @@ arches:
     name: go-srpm-macros
     evr: 3.7.0-1.fc42
     sourcerpm: go-rpm-macros-3.7.0-1.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/g/golang-1.24.5-1.fc42.x86_64.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/g/golang-1.24.6-1.fc42.x86_64.rpm
     repoid: updates
-    size: 687588
-    checksum: sha256:250f607d0afeb1cac312c596a6f1b9a7eeb7eb3373123f265818b40808f84563
+    size: 687113
+    checksum: sha256:746bf1d49af870fadd525ba5590f833e6f0530c96793356d1e8877cd46a6af36
     name: golang
-    evr: 1.24.5-1.fc42
-    sourcerpm: golang-1.24.5-1.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/g/golang-bin-1.24.5-1.fc42.x86_64.rpm
+    evr: 1.24.6-1.fc42
+    sourcerpm: golang-1.24.6-1.fc42.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/g/golang-bin-1.24.6-1.fc42.x86_64.rpm
     repoid: updates
-    size: 30738937
-    checksum: sha256:ba040aff9ffa947d623479e75670e7b099e52896106bc8898ede4e644ad41908
+    size: 30725547
+    checksum: sha256:5f3cda65c3e554d180a204b07c8b8f0564b9124b0da706ea489273378f15e691
     name: golang-bin
-    evr: 1.24.5-1.fc42
-    sourcerpm: golang-1.24.5-1.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/g/golang-src-1.24.5-1.fc42.noarch.rpm
+    evr: 1.24.6-1.fc42
+    sourcerpm: golang-1.24.6-1.fc42.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/g/golang-src-1.24.6-1.fc42.noarch.rpm
     repoid: updates
-    size: 13757569
-    checksum: sha256:53be4fe9a9a082f315b6215a5ed7ac7086c612e6d61dcc8d102a663bfd42305f
+    size: 13759884
+    checksum: sha256:406153747190f1d93486001519c2ce9718ec95b397ae53133ca01e4bb5b8937a
     name: golang-src
-    evr: 1.24.5-1.fc42
-    sourcerpm: golang-1.24.5-1.fc42.src.rpm
+    evr: 1.24.6-1.fc42
+    sourcerpm: golang-1.24.6-1.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/g/gpgme-1.24.3-1.fc42.x86_64.rpm
     repoid: updates
     size: 224312
@@ -4638,20 +4638,20 @@ arches:
     name: ignition-validate
     evr: 2.22.0-3.fc42
     sourcerpm: ignition-2.22.0-3.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/i/intel-audio-firmware-20250708-1.fc42.noarch.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/i/intel-audio-firmware-20250808-1.fc42.noarch.rpm
     repoid: updates
-    size: 3409022
-    checksum: sha256:b250ca114877fa130332aa2577dd3b5a0d79882dae63f8b2704f0a397574f4c0
+    size: 3410605
+    checksum: sha256:217f08de92bdd3e13983f1f1c01e6494e495d1c11e05c4eedb79e253079a034e
     name: intel-audio-firmware
-    evr: 20250708-1.fc42
-    sourcerpm: linux-firmware-20250708-1.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/i/intel-gpu-firmware-20250708-1.fc42.noarch.rpm
+    evr: 20250808-1.fc42
+    sourcerpm: linux-firmware-20250808-1.fc42.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/i/intel-gpu-firmware-20250808-1.fc42.noarch.rpm
     repoid: updates
-    size: 9246467
-    checksum: sha256:80d1f77745eca3c32f934f1459c9b20f0b5c3ec5ca7feb36a6e3cab08f20afcc
+    size: 9248366
+    checksum: sha256:f396b560df44467188ba493cb2d87d124758a3c8973b103431924422b95416c2
     name: intel-gpu-firmware
-    evr: 20250708-1.fc42
-    sourcerpm: linux-firmware-20250708-1.fc42.src.rpm
+    evr: 20250808-1.fc42
+    sourcerpm: linux-firmware-20250808-1.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/i/intel-vpl-gpu-rt-25.2.5-1.fc42.x86_64.rpm
     repoid: updates
     size: 2526161
@@ -5121,20 +5121,20 @@ arches:
     name: libxdp
     evr: 1.5.5-1.fc42
     sourcerpm: xdp-tools-1.5.5-1.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/l/linux-firmware-20250708-1.fc42.noarch.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/l/linux-firmware-20250808-1.fc42.noarch.rpm
     repoid: updates
-    size: 44937262
-    checksum: sha256:d50dfe2e00406c0407c6dda9d29adb99a4ca26597bc0234a03ba998b7db72624
+    size: 44198529
+    checksum: sha256:5e4e4f9cad04878ba205d1470e950b74d707dea4481f185816e7fb4f1c1f5b03
     name: linux-firmware
-    evr: 20250708-1.fc42
-    sourcerpm: linux-firmware-20250708-1.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/l/linux-firmware-whence-20250708-1.fc42.noarch.rpm
+    evr: 20250808-1.fc42
+    sourcerpm: linux-firmware-20250808-1.fc42.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/l/linux-firmware-whence-20250808-1.fc42.noarch.rpm
     repoid: updates
-    size: 64980
-    checksum: sha256:c402107e5573f5c2f6285288433508d7eccb4f1c5714bb10f37760448370e3ca
+    size: 65334
+    checksum: sha256:b64e2d1517799d4899bbd53a3203e60494493453a8e631ab8b524c3cf90f69b8
     name: linux-firmware-whence
-    evr: 20250708-1.fc42
-    sourcerpm: linux-firmware-20250708-1.fc42.src.rpm
+    evr: 20250808-1.fc42
+    sourcerpm: linux-firmware-20250808-1.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/l/llvm-filesystem-20.1.8-3.fc42.x86_64.rpm
     repoid: updates
     size: 15513
@@ -5226,13 +5226,13 @@ arches:
     name: mpg123-libs
     evr: 1.32.10-1.fc42
     sourcerpm: mpg123-1.32.10-1.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/m/mt7xxx-firmware-20250708-1.fc42.noarch.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/m/mt7xxx-firmware-20250808-1.fc42.noarch.rpm
     repoid: updates
-    size: 20369544
-    checksum: sha256:de9feb712174dc15dc8382bcef8948b5296103d00a54ab2eeddffe3de4338ea0
+    size: 20388760
+    checksum: sha256:d76d78be4dffa5599e329950559b65baada732fd999bfaeffcc8b489a512a258
     name: mt7xxx-firmware
-    evr: 20250708-1.fc42
-    sourcerpm: linux-firmware-20250708-1.fc42.src.rpm
+    evr: 20250808-1.fc42
+    sourcerpm: linux-firmware-20250808-1.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/m/mtools-4.0.49-1.fc42.x86_64.rpm
     repoid: updates
     size: 228051
@@ -5373,20 +5373,20 @@ arches:
     name: ntfsprogs
     evr: 2:2022.10.3-9.fc42
     sourcerpm: ntfs-3g-2022.10.3-9.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/n/nvidia-gpu-firmware-20250708-1.fc42.noarch.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/n/nvidia-gpu-firmware-20250808-1.fc42.noarch.rpm
     repoid: updates
-    size: 104073273
-    checksum: sha256:f61b6cabf78477c5ea3ca61259adfd24ea2149727426221b00f5e4a00485a357
+    size: 104074833
+    checksum: sha256:d220a3d893b06b410bf6529c8936bb559db83eb7ae518ce0ee487c4d2631b3b4
     name: nvidia-gpu-firmware
-    evr: 20250708-1.fc42
-    sourcerpm: linux-firmware-20250708-1.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/n/nxpwireless-firmware-20250708-1.fc42.noarch.rpm
+    evr: 20250808-1.fc42
+    sourcerpm: linux-firmware-20250808-1.fc42.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/n/nxpwireless-firmware-20250808-1.fc42.noarch.rpm
     repoid: updates
-    size: 954359
-    checksum: sha256:9ff8d0650996ddd8953df1fd9ea06ee16ca4c59c9183fe7bf859323cdd584ed7
+    size: 955924
+    checksum: sha256:b6f45f7facd768bf75a9c6d6ba63ea490190571acf006f10c3ba29c98b4f2d2b
     name: nxpwireless-firmware
-    evr: 20250708-1.fc42
-    sourcerpm: linux-firmware-20250708-1.fc42.src.rpm
+    evr: 20250808-1.fc42
+    sourcerpm: linux-firmware-20250808-1.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/o/openjpeg-2.5.3-8.fc42.x86_64.rpm
     repoid: updates
     size: 196486
@@ -5842,20 +5842,20 @@ arches:
     name: python-srpm-macros
     evr: 3.13-5.fc42
     sourcerpm: python-rpm-macros-3.13-5.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/python-unversioned-command-3.13.5-1.fc42.noarch.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/python-unversioned-command-3.13.6-1.fc42.noarch.rpm
     repoid: updates
-    size: 12619
-    checksum: sha256:267ecaf8d81e885c8e8a31267c10744cee1a08ebd0cf9b9981507c9d6787b8b3
+    size: 13089
+    checksum: sha256:d50c12eb04537dcecb46c08eb73f2f24e178a3af36cb82be34fd8e7f65886917
     name: python-unversioned-command
-    evr: 3.13.5-1.fc42
-    sourcerpm: python3.13-3.13.5-1.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/python3-3.13.5-1.fc42.x86_64.rpm
+    evr: 3.13.6-1.fc42
+    sourcerpm: python3.13-3.13.6-1.fc42.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/python3-3.13.6-1.fc42.x86_64.rpm
     repoid: updates
-    size: 30857
-    checksum: sha256:8486d3a3582549e02630ca24ead2d05464ec55349756d14ed55dd726d8f0e633
+    size: 31311
+    checksum: sha256:76292b1b15205cc1b1d561a39e1828d75696d1520ad57f4fafb5c63965b36917
     name: python3
-    evr: 3.13.5-1.fc42
-    sourcerpm: python3.13-3.13.5-1.fc42.src.rpm
+    evr: 3.13.6-1.fc42
+    sourcerpm: python3.13-3.13.6-1.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/python3-audit-4.1.1-1.fc42.x86_64.rpm
     repoid: updates
     size: 71241
@@ -5870,20 +5870,20 @@ arches:
     name: python3-awscrt
     evr: 0.27.2-1.fc42
     sourcerpm: python-awscrt-0.27.2-1.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/python3-boto3-1.40.6-1.fc42.noarch.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/python3-boto3-1.40.7-1.fc42.noarch.rpm
     repoid: updates
-    size: 450873
-    checksum: sha256:7cb41f9f3ce926434006dfae05da82a5afa2cf4f9e5538630e7e0879983d7947
+    size: 450994
+    checksum: sha256:ec4d8d607fd80ce56d41d0add63ae7e00a36f74947a0e05faa33bf3d83ff5ea0
     name: python3-boto3
-    evr: 1.40.6-1.fc42
-    sourcerpm: python-boto3-1.40.6-1.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/python3-botocore-1.40.6-1.fc42.noarch.rpm
+    evr: 1.40.7-1.fc42
+    sourcerpm: python-boto3-1.40.7-1.fc42.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/python3-botocore-1.40.7-1.fc42.noarch.rpm
     repoid: updates
-    size: 8487983
-    checksum: sha256:ff3aa4deee1a7c255d08f4d2479716d75b14871214bc88f6db777f2eae40b6a9
+    size: 8490024
+    checksum: sha256:64625c1d2e2ac792aa0ad74c9164eaa7b01f9d2fce58f03562d6f307150c995e
     name: python3-botocore
-    evr: 1.40.6-1.fc42
-    sourcerpm: python-botocore-1.40.6-1.fc42.src.rpm
+    evr: 1.40.7-1.fc42
+    sourcerpm: python-botocore-1.40.7-1.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/python3-dill-0.4.0-1.fc42.noarch.rpm
     repoid: updates
     size: 281781
@@ -5926,13 +5926,13 @@ arches:
     name: python3-librepo
     evr: 1.20.0-1.fc42
     sourcerpm: librepo-1.20.0-1.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/python3-libs-3.13.5-1.fc42.x86_64.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/python3-libs-3.13.6-1.fc42.x86_64.rpm
     repoid: updates
-    size: 9639056
-    checksum: sha256:ef278678c3ca38a0660edb85ab53137c3568268aab0b40c7a03e42eaca4ffeac
+    size: 9649687
+    checksum: sha256:f2a1046ed560efa772947876758b5bb502c4cdbf61e44aac5c9e06e967b4b22b
     name: python3-libs
-    evr: 3.13.5-1.fc42
-    sourcerpm: python3.13-3.13.5-1.fc42.src.rpm
+    evr: 3.13.6-1.fc42
+    sourcerpm: python3.13-3.13.6-1.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/python3-libselinux-3.8-2.fc42.x86_64.rpm
     repoid: updates
     size: 205321
@@ -6059,6 +6059,13 @@ arches:
     name: qatzip-libs
     evr: 1.3.1-1.fc42
     sourcerpm: qatzip-1.3.1-1.fc42.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/q/qcom-wwan-firmware-20250808-1.fc42.noarch.rpm
+    repoid: updates
+    size: 310935
+    checksum: sha256:ff6886347b71249fd8e364067b0d5c6de7b5a97bb7071b26a84f4633cf89f415
+    name: qcom-wwan-firmware
+    evr: 20250808-1.fc42
+    sourcerpm: linux-firmware-20250808-1.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/q/qemu-audio-alsa-9.2.4-1.fc42.x86_64.rpm
     repoid: updates
     size: 23490
@@ -6556,13 +6563,13 @@ arches:
     name: rav1e-libs
     evr: 0.7.1-8.fc42
     sourcerpm: rust-rav1e-0.7.1-8.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/r/realtek-firmware-20250708-1.fc42.noarch.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/r/realtek-firmware-20250808-1.fc42.noarch.rpm
     repoid: updates
-    size: 5515788
-    checksum: sha256:887248cdef01bf9da264ae75350de4c0fa7355cc682f4bd4cdfe88fec7ade140
+    size: 5544305
+    checksum: sha256:d0d4325303274b101c3440af9741bb5602fd7d6da91e8068150a3cec730e12de
     name: realtek-firmware
-    evr: 20250708-1.fc42
-    sourcerpm: linux-firmware-20250708-1.fc42.src.rpm
+    evr: 20250808-1.fc42
+    sourcerpm: linux-firmware-20250808-1.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/r/redhat-rpm-config-342-4.fc42.noarch.rpm
     repoid: updates
     size: 83033
@@ -6794,13 +6801,13 @@ arches:
     name: tinysparql
     evr: 3.9.2-1.fc42
     sourcerpm: tinysparql-3.9.2-1.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/t/tiwilink-firmware-20250708-1.fc42.noarch.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/t/tiwilink-firmware-20250808-1.fc42.noarch.rpm
     repoid: updates
-    size: 4845546
-    checksum: sha256:bc8e80093586f1dd77ab81d75c3808129cc8cf33fd06e8aa561ea153576c06c5
+    size: 4847113
+    checksum: sha256:44fe787ca9d6e8f15bf50a57e0710cadc9db4359f6ec245bd5812a0289e1ea0b
     name: tiwilink-firmware
-    evr: 20250708-1.fc42
-    sourcerpm: linux-firmware-20250708-1.fc42.src.rpm
+    evr: 20250808-1.fc42
+    sourcerpm: linux-firmware-20250808-1.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/u/unbound-anchor-1.23.1-1.fc42.x86_64.rpm
     repoid: updates
     size: 38739
