@@ -20,6 +20,7 @@ Usage: coreos-assembler build-with-buildah
   --autolock=VERSION  If no base lockfile used, create one from any arch build of `VERSION`.
                       Note this is automatically enabled when adding to an existing multi-arch
                       non-strict build.
+  --skip-prune        Skip prunning previous builds
 EOF
 }
 
@@ -27,8 +28,9 @@ VERSION=
 VERSIONARY=
 DIRECT=
 AUTOLOCK_VERSION=
+SKIP_PRUNE=
 rc=0
-options=$(getopt --options h,d --longoptions help,version:,versionary,direct,autolock: -- "$@") || rc=$?
+options=$(getopt --options h,d --longoptions help,version:,versionary,direct,autolock:,skip-prune -- "$@") || rc=$?
 [ $rc -eq 0 ] || {
     print_help
     exit 1
@@ -53,6 +55,9 @@ while true; do
         --autolock)
             shift;
             AUTOLOCK_VERSION=$1
+            ;;
+        --skip-prune)
+            SKIP_PRUNE=1
             ;;
         --)
             shift
@@ -163,7 +168,7 @@ build_with_buildah() {
             env -C "${tempdir}/src" TMPDIR="$(realpath cache)" buildah "$@"
     fi
 
-    /usr/lib/coreos-assembler/cmd-import "${final_ref}"
+    /usr/lib/coreos-assembler/cmd-import "${final_ref}" ${SKIP_PRUNE:+--skip-prune}
 
     rm -rf "${tempdir}"
 }
