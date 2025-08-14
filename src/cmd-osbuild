@@ -398,7 +398,10 @@ main() {
 
     outdir=$(mktemp -p "${tmp_builddir}" -d)
     if has_privileges && [ "${COSA_NO_KVM:-}" == "1" ]; then
-        cmd="env" # run outside of supermin if we are root already
+        # Run outside of supermin if we are root already. This is useful
+        # mostly on riscv where /dev/kvm isn't really supported by any
+        # hardware right now (2025/08).
+        cmd="env"
     else
         cmd="runvm_with_cache"
     fi
