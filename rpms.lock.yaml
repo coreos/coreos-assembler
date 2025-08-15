@@ -67,13 +67,6 @@ arches:
     name: ansible-srpm-macros
     evr: 1-17.1.fc42
     sourcerpm: ansible-packaging-1-17.1.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/a/apr-1.7.5-2.fc42.x86_64.rpm
-    repoid: fedora
-    size: 126841
-    checksum: sha256:4ffd846d202aed5de385c1ce00bb2620029731047446f9f4217b5673b71d60fe
-    name: apr
-    evr: 1.7.5-2.fc42
-    sourcerpm: apr-1.7.5-2.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/a/apr-util-1.6.3-22.fc42.x86_64.rpm
     repoid: fedora
     size: 96770
@@ -998,13 +991,6 @@ arches:
     name: json-glib
     evr: 1.10.6-2.fc42
     sourcerpm: json-glib-1.10.6-2.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/j/jxl-pixbuf-loader-0.11.1-2.fc42.x86_64.rpm
-    repoid: fedora
-    size: 20856
-    checksum: sha256:de67709ed1f81ea5e1b260e3be874d1fdf4a4759f96d79187586abde1ffa01e5
-    name: jxl-pixbuf-loader
-    evr: 1:0.11.1-2.fc42
-    sourcerpm: jpegxl-0.11.1-2.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/k/kbd-2.7.1-3.fc42.x86_64.rpm
     repoid: fedora
     size: 395008
@@ -1565,13 +1551,6 @@ arches:
     name: libjpeg-turbo
     evr: 3.1.0-2.fc42
     sourcerpm: libjpeg-turbo-3.1.0-2.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/l/libjxl-0.11.1-2.fc42.x86_64.rpm
-    repoid: fedora
-    size: 1142152
-    checksum: sha256:35e1bfb3262ff53fe3b0621e608031df1741e4e2fac18814b27b3b2831122158
-    name: libjxl
-    evr: 1:0.11.1-2.fc42
-    sourcerpm: jpegxl-0.11.1-2.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/l/libkcapi-1.5.0-5.fc42.x86_64.rpm
     repoid: fedora
     size: 47684
@@ -4064,6 +4043,13 @@ arches:
     name: annobin-plugin-gcc
     evr: 12.94-1.fc42
     sourcerpm: annobin-12.94-1.fc42.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/a/apr-1.7.6-3.fc42.x86_64.rpm
+    repoid: updates
+    size: 132926
+    checksum: sha256:d93ef6e1ac78c4d8a0d79ad9b200780e13183964d49b7628fa756841b7592790
+    name: apr
+    evr: 1.7.6-3.fc42
+    sourcerpm: apr-1.7.6-3.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/a/at-spi2-atk-2.56.3-1.fc42.x86_64.rpm
     repoid: updates
     size: 88516
@@ -4281,13 +4267,13 @@ arches:
     name: diffutils
     evr: 3.12-1.fc42
     sourcerpm: diffutils-3.12-1.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/d/distribution-gpg-keys-1.113-1.fc42.noarch.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/d/distribution-gpg-keys-1.114-1.fc42.noarch.rpm
     repoid: updates
-    size: 740206
-    checksum: sha256:d6bb9a621bd08a2553a8b513d3cb0a908518bea0b247b2e16a27b2a0fbe393e3
+    size: 741601
+    checksum: sha256:2a22061e3705ef8ab7a527772ff860cc888a50e4e846ec132427aeba004ae2cc
     name: distribution-gpg-keys
-    evr: 1.113-1.fc42
-    sourcerpm: distribution-gpg-keys-1.113-1.fc42.src.rpm
+    evr: 1.114-1.fc42
+    sourcerpm: distribution-gpg-keys-1.114-1.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/d/dnsmasq-2.90-6.fc42.x86_64.rpm
     repoid: updates
     size: 369692
@@ -4687,6 +4673,13 @@ arches:
     name: iputils
     evr: 20250605-1.fc42
     sourcerpm: iputils-20250605-1.fc42.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/j/jxl-pixbuf-loader-0.11.1-4.fc42.x86_64.rpm
+    repoid: updates
+    size: 20337
+    checksum: sha256:272dfc6e58026e44b1be2525d80fcf73bf67910865f441b7ddb4f3f21486bc58
+    name: jxl-pixbuf-loader
+    evr: 1:0.11.1-4.fc42
+    sourcerpm: jpegxl-0.11.1-4.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/k/kernel-core-6.15.9-201.fc42.x86_64.rpm
     repoid: updates
     size: 20129777
@@ -4869,6 +4862,13 @@ arches:
     name: libguestfs-xfs
     evr: 1:1.56.1-1.fc42
     sourcerpm: libguestfs-1.56.1-1.fc42.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/l/libjxl-0.11.1-4.fc42.x86_64.rpm
+    repoid: updates
+    size: 1141059
+    checksum: sha256:5f1d53ea3e346d519848d0ca8c9a9b4795ccc09e9c3efba5d884d3fe1c6a0e41
+    name: libjxl
+    evr: 1:0.11.1-4.fc42
+    sourcerpm: jpegxl-0.11.1-4.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/l/libkadm5-1.21.3-6.fc42.x86_64.rpm
     repoid: updates
     size: 78204
@@ -4953,13 +4953,13 @@ arches:
     name: libswresample-free
     evr: 7.1.1-4.fc42
     sourcerpm: ffmpeg-7.1.1-4.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/l/libtiff-4.7.0-6.fc42.x86_64.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/l/libtiff-4.7.0-7.fc42.x86_64.rpm
     repoid: updates
-    size: 225195
-    checksum: sha256:b2f502c60d6016621e061268cbb4daea628e0dafd41df6e7a895050de9f420d9
+    size: 226378
+    checksum: sha256:79387ffee67c196ad0f5cb7f4b04acb76e1d9780029b20b645d7c471334c4457
     name: libtiff
-    evr: 4.7.0-6.fc42
-    sourcerpm: libtiff-4.7.0-6.fc42.src.rpm
+    evr: 4.7.0-7.fc42
+    sourcerpm: libtiff-4.7.0-7.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/l/libtinysparql-3.9.2-1.fc42.x86_64.rpm
     repoid: updates
     size: 382529
@@ -4981,13 +4981,13 @@ arches:
     name: libtsan
     evr: 15.2.1-1.fc42
     sourcerpm: gcc-15.2.1-1.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/l/libusb1-1.0.29-1.fc42.x86_64.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/l/libusb1-1.0.29-3.fc42.x86_64.rpm
     repoid: updates
-    size: 81294
-    checksum: sha256:a9e3c679c116ba8a0e88c8723b232718096ba308161448ca2b642dc097be927d
+    size: 81755
+    checksum: sha256:d2704dde7d7aca5e208639eca2ebf0bac02d167f92883a63c7947384cf907566
     name: libusb1
-    evr: 1.0.29-1.fc42
-    sourcerpm: libusb1-1.0.29-1.fc42.src.rpm
+    evr: 1.0.29-3.fc42
+    sourcerpm: libusb1-1.0.29-3.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/l/libvirt-client-11.0.0-3.fc42.x86_64.rpm
     repoid: updates
     size: 429191
