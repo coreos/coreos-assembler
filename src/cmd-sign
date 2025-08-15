@@ -112,7 +112,7 @@ def robosign_ostree(args, s3, build, gpgkey):
     builds = Builds()
     builddir = builds.get_build_dir(args.build, args.arch)
 
-    if build['coreos-assembler.oci-imported']:
+    if build.get('coreos-assembler.oci-imported', None):
         # this is a known gap currently; we just no-op for
         # now until we cut over to Konflux and stop using this code; see
         # https://github.com/coreos/fedora-coreos-tracker/issues/1986
