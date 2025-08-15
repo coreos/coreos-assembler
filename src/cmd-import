@@ -78,8 +78,11 @@ def generate_oci_archive(args, tmpd):
         print(f"Copying {args.srcimg.partition(':')[2]} to {tmpf}")
         shutil.copy(args.srcimg.partition(':')[2], tmpf)
     else:
-        subprocess.check_call(['skopeo', 'copy', '--preserve-digests', args.srcimg,
-                               f"oci-archive:{tmpf}"])
+        extra_args = []
+        # in the containers-storage case, there's no digest to preserve
+        if not args.srcimg.startswith('containers-storage'):
+            extra_args += ['--preserve-digests']
+        subprocess.check_call(['skopeo', 'copy', args.srcimg, f"oci-archive:{tmpf}"] + extra_args)
     return tmpf
 
 
