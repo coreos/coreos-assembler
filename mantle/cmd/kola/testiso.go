@@ -189,7 +189,6 @@ ExecStart=/bin/sh -c "journalctl -t coreos-installer-service | /usr/bin/awk '/[D
 ExecStart=/bin/sh -c "/usr/bin/udevadm settle"
 ExecStart=/bin/sh -c "/usr/bin/mount /dev/disk/by-label/root /mnt"
 ExecStart=/bin/sh -c "/usr/bin/jq -er '.[\"build\"]? + .[\"version\"]? == \"%s\"' /mnt/.coreos-aleph-version.json"
-ExecStart=/bin/sh -c "/usr/bin/jq -er '.[\"ostree-commit\"] == \"%s\"' /mnt/.coreos-aleph-version.json"
 [Install]
 RequiredBy=coreos-installer.target
 `
@@ -833,7 +832,7 @@ func testPXE(ctx context.Context, inst platform.Install, outdir string) (time.Du
 	liveConfig.AddSystemdUnit("coreos-test-entered-emergency-target.service", signalFailureUnit, conf.Enable)
 
 	if isOffline {
-		contents := fmt.Sprintf(downloadCheck, kola.CosaBuild.Meta.OstreeVersion, kola.CosaBuild.Meta.OstreeCommit)
+		contents := fmt.Sprintf(downloadCheck, kola.CosaBuild.Meta.OstreeVersion)
 		liveConfig.AddSystemdUnit("coreos-installer-offline-check.service", contents, conf.Enable)
 	}
 
