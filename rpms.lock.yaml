@@ -5303,48 +5303,48 @@ arches:
     name: nfs-utils
     evr: 1:2.8.3-2.rc3.fc42
     sourcerpm: nfs-utils-2.8.3-2.rc3.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/n/nspr-4.36.0-10.fc42.x86_64.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/n/nspr-4.37.0-1.fc42.x86_64.rpm
     repoid: updates
-    size: 140795
-    checksum: sha256:11e5d470581f84729b22c97f2d9974ae82b10a7298d5bc9ae95e8024be1415a3
+    size: 140917
+    checksum: sha256:f452f522429d29052c62240cb474b66d3804f0deb85e196119ac9d16aef15d4e
     name: nspr
-    evr: 4.36.0-10.fc42
-    sourcerpm: nss-3.113.0-1.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/n/nss-3.113.0-1.fc42.x86_64.rpm
+    evr: 4.37.0-1.fc42
+    sourcerpm: nss-3.114.0-1.fc42.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/n/nss-3.114.0-1.fc42.x86_64.rpm
     repoid: updates
-    size: 728995
-    checksum: sha256:113eb55b1867d2d811120ba49b178919b44c2966de2e595c5721f189ad7dc69f
+    size: 727369
+    checksum: sha256:40a09afaca57d0faa6aa2ac06068161ccc9bd23f027423be5d4e4cd6a452b333
     name: nss
-    evr: 3.113.0-1.fc42
-    sourcerpm: nss-3.113.0-1.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/n/nss-softokn-3.113.0-1.fc42.x86_64.rpm
+    evr: 3.114.0-1.fc42
+    sourcerpm: nss-3.114.0-1.fc42.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/n/nss-softokn-3.114.0-1.fc42.x86_64.rpm
     repoid: updates
-    size: 426448
-    checksum: sha256:1921247827c6603cbb94a35386e39bc3de7e01371224857451f5ca96cbfdbe68
+    size: 429007
+    checksum: sha256:5e3869e58e28e08b88dd036d965ad2d1e964cfcf52cb677639fa45b2e5ca7a9a
     name: nss-softokn
-    evr: 3.113.0-1.fc42
-    sourcerpm: nss-3.113.0-1.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/n/nss-softokn-freebl-3.113.0-1.fc42.x86_64.rpm
+    evr: 3.114.0-1.fc42
+    sourcerpm: nss-3.114.0-1.fc42.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/n/nss-softokn-freebl-3.114.0-1.fc42.x86_64.rpm
     repoid: updates
-    size: 336847
-    checksum: sha256:4d08f223edb9d2dde063898505907674f599dd55a969d1770690da266157a139
+    size: 336982
+    checksum: sha256:f37f3c9d493ef6a1eb3e791dbfe032d19630ce202e79f8f24b7cec86b7d878b0
     name: nss-softokn-freebl
-    evr: 3.113.0-1.fc42
-    sourcerpm: nss-3.113.0-1.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/n/nss-sysinit-3.113.0-1.fc42.x86_64.rpm
+    evr: 3.114.0-1.fc42
+    sourcerpm: nss-3.114.0-1.fc42.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/n/nss-sysinit-3.114.0-1.fc42.x86_64.rpm
     repoid: updates
-    size: 19429
-    checksum: sha256:45d734fc100be0aaf90a3538b55957023ff509817e839a9d95c7ccd0fd7c6504
+    size: 19322
+    checksum: sha256:db48514e373642c507feb72d28e5ea51f721df895952cedce0712d33ed58694c
     name: nss-sysinit
-    evr: 3.113.0-1.fc42
-    sourcerpm: nss-3.113.0-1.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/n/nss-util-3.113.0-1.fc42.x86_64.rpm
+    evr: 3.114.0-1.fc42
+    sourcerpm: nss-3.114.0-1.fc42.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/n/nss-util-3.114.0-1.fc42.x86_64.rpm
     repoid: updates
-    size: 87964
-    checksum: sha256:52e4eb9cc9782d6214535023e3c70ee76bf9dfc59d962fee4d5a838a2e5f7bb4
+    size: 87655
+    checksum: sha256:92f1da9a8731c3920732d039a20202b4a96c3007930ba05532cdf3316f67f73a
     name: nss-util
-    evr: 3.113.0-1.fc42
-    sourcerpm: nss-3.113.0-1.fc42.src.rpm
+    evr: 3.114.0-1.fc42
+    sourcerpm: nss-3.114.0-1.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/n/ntfs-3g-2022.10.3-9.fc42.x86_64.rpm
     repoid: updates
     size: 130837
