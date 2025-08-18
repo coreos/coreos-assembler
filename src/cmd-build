@@ -345,28 +345,8 @@ if [ -f "${changed_stamp}" ] && [ -f "${composejson}" ]; then
     # Save this in case the image build fails
     cp-reflink "${composejson}" "${workdir}"/tmp/compose-"${commit}".json
 else
-    commit="${previous_commit}"
-    image_input_checksum=$( (echo "${commit}" && echo "${image_config_checksum}") | sha256sum_str)
-    echo "commit: ${commit} image: ${image_input_checksum}"
-
-    # Grab the previous treecompose JSON (local developer case: treecompose succeeded but
-    # image build failed) if possible, otherwise grab the previous build
-    cached_previous_composejson=${workdir}/tmp/compose-${commit}.json
-    if [ -f "${cached_previous_composejson}" ]; then
-        echo "Resuming partial build from: ${commit}"
-        cp-reflink "${cached_previous_composejson}" "${composejson}"
-    else
-        if [ -z "${previous_build}" ]; then
-            # This can happen if building the bootable container worked on the first time,
-            # but image creation failed, and then tmp/ was nuked before trying a
-            # second time. Just recommend re-running with --force.
-            fatal "compose tree had no changes, but no previous build or cached data; try rerunning with --force"
-        fi
-        echo "Commit ${commit} unchanged; reusing previous build's rpm-ostree metadata"
-        # This will have all of the data from the previous build, but we'll
-        # overwrite things.
-        cp-reflink "${previous_builddir}"/meta.json "${composejson}"
-    fi
+    echo "No changes in build inputs."
+    exit 0
 fi
 
 if [ -n "${previous_build}" ]; then
@@ -388,8 +368,6 @@ else
     echo '{}' > tmp/parent-diff.json
 fi
 
-image_input_checksum=$( (echo "${commit}" && echo "${image_config_checksum}") | sha256sum_str)
-echo "New image input checksum: ${image_input_checksum}"
 init_build_meta_json "${commit}" "${PARENT_BUILD:-}" tmp/
 buildid=$(jq -r '.["buildid"]' < tmp/meta.json)
 echo "New build ID: ${buildid}"
@@ -449,7 +427,6 @@ else
     runv rpm-ostree compose container-encapsulate --max-layers="$MAX_OSTREECONTAINER_LAYERS" --format-version=1 \
         --repo="${tmprepo}" \
         --label="coreos-assembler.image-config-checksum=${image_config_checksum}" \
-        --label="coreos-assembler.image-input-checksum=${image_input_checksum}" \
         --label="org.opencontainers.image.source=${gitsrc}" \
         --label="org.opencontainers.image.revision=${config_gitrev}" \
         --copymeta-opt=fedora-coreos.stream \
@@ -479,7 +456,6 @@ cat > tmp/buildmeta.json <<EOF
  "summary": "${summary//\"/\\\"}",
  "coreos-assembler.build-timestamp": "${build_timestamp}",
  "coreos-assembler.image-config-checksum": "${image_config_checksum}",
- "coreos-assembler.image-input-checksum": "${image_input_checksum}",
  "coreos-assembler.code-source": "${src_location}",
 EOF
 
