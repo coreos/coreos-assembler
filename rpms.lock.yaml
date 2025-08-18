@@ -3994,13 +3994,13 @@ arches:
     name: zvbi
     evr: 0.2.43-2.fc42
     sourcerpm: zvbi-0.2.43-2.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/a/aardvark-dns-1.15.0-1.fc42.x86_64.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/a/aardvark-dns-1.16.0-1.fc42.x86_64.rpm
     repoid: updates
-    size: 898723
-    checksum: sha256:bcac10f597a13fc7c46a7a51146925870f49a75dca0cf74fc553da8c885c32da
+    size: 905729
+    checksum: sha256:d4cb8afcf305795770bf6bc172526d8fa1ccfb60026af1dfccd4b6173b7734e2
     name: aardvark-dns
-    evr: 2:1.15.0-1.fc42
-    sourcerpm: aardvark-dns-1.15.0-1.fc42.src.rpm
+    evr: 2:1.16.0-1.fc42
+    sourcerpm: aardvark-dns-1.16.0-1.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/a/alsa-lib-1.2.14-3.fc42.x86_64.rpm
     repoid: updates
     size: 544003
@@ -5100,13 +5100,13 @@ arches:
     name: libxcrypt-devel
     evr: 4.4.38-7.fc42
     sourcerpm: libxcrypt-4.4.38-7.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/l/libxdp-1.5.5-1.fc42.x86_64.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/l/libxdp-1.5.6-1.fc42.x86_64.rpm
     repoid: updates
-    size: 67187
-    checksum: sha256:eee9474d0033f8a2d86dcfe7040c69141059bcc7921eda99ec79e4ec936f370e
+    size: 66978
+    checksum: sha256:253d5a27b88b033814403876bdb3d1798ccbac620f0aacad5e6d568c0f27d623
     name: libxdp
-    evr: 1.5.5-1.fc42
-    sourcerpm: xdp-tools-1.5.5-1.fc42.src.rpm
+    evr: 1.5.6-1.fc42
+    sourcerpm: xdp-tools-1.5.6-1.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/l/linux-firmware-20250808-1.fc42.noarch.rpm
     repoid: updates
     size: 44198529
@@ -5289,13 +5289,13 @@ arches:
     name: ndctl-libs
     evr: 82-1.fc42
     sourcerpm: ndctl-82-1.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/n/netavark-1.15.2-1.fc42.x86_64.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/n/netavark-1.16.0-1.fc42.x86_64.rpm
     repoid: updates
-    size: 3755657
-    checksum: sha256:846405dad558cb7dd3e2cf46560d03b7d2545f898da3584b4e5daf79e3c24e5b
+    size: 3817050
+    checksum: sha256:0d7198b2ec140d5cbc317ed9ab2c61d95933340970728a1bcec9dea9d0f61a24
     name: netavark
-    evr: 2:1.15.2-1.fc42
-    sourcerpm: netavark-1.15.2-1.fc42.src.rpm
+    evr: 2:1.16.0-1.fc42
+    sourcerpm: netavark-1.16.0-1.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/n/nfs-utils-2.8.3-2.rc3.fc42.x86_64.rpm
     repoid: updates
     size: 487670
@@ -5863,20 +5863,20 @@ arches:
     name: python3-awscrt
     evr: 0.27.2-1.fc42
     sourcerpm: python-awscrt-0.27.2-1.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/python3-boto3-1.40.9-1.fc42.noarch.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/python3-boto3-1.40.11-1.fc42.noarch.rpm
     repoid: updates
-    size: 451646
-    checksum: sha256:275f89ab8666c9b17f5e88106ae030c7675d8bff4b4868c73baa161cbcd8544c
+    size: 452336
+    checksum: sha256:3ac3d11c9906050ea0d6e536a47c8c14f0ef86b6af410dfc75921061dd08d3f1
     name: python3-boto3
-    evr: 1.40.9-1.fc42
-    sourcerpm: python-boto3-1.40.9-1.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/python3-botocore-1.40.9-1.fc42.noarch.rpm
+    evr: 1.40.11-1.fc42
+    sourcerpm: python-boto3-1.40.11-1.fc42.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/python3-botocore-1.40.11-1.fc42.noarch.rpm
     repoid: updates
-    size: 8492955
-    checksum: sha256:3aa15c5e93382aa715ab57055d74ec8f9a44b83b46c362878b230305cc1edd75
+    size: 8506671
+    checksum: sha256:e2b4d540b7e6a00cb4dd20b552c2580d250a82611f200591bd08512ffbb6d1b2
     name: python3-botocore
-    evr: 1.40.9-1.fc42
-    sourcerpm: python-botocore-1.40.9-1.fc42.src.rpm
+    evr: 1.40.11-1.fc42
+    sourcerpm: python-botocore-1.40.11-1.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/python3-dill-0.4.0-1.fc42.noarch.rpm
     repoid: updates
     size: 281781
@@ -6577,20 +6577,20 @@ arches:
     name: rpcbind
     evr: 1.2.8-0.fc42
     sourcerpm: rpcbind-1.2.8-0.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/r/rpm-ostree-2025.9-1.fc42.x86_64.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/r/rpm-ostree-2025.10-1.fc42.x86_64.rpm
     repoid: updates
-    size: 4767887
-    checksum: sha256:186ab5b43d41dd4b80e40899750691c34c7b965dde4953d9ea9355b651d4f48b
+    size: 4793538
+    checksum: sha256:e11f8024e7cdbff9de866e146133fc80b41be1691d78eb0e23416fde8f2e288c
     name: rpm-ostree
-    evr: 2025.9-1.fc42
-    sourcerpm: rpm-ostree-2025.9-1.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/r/rpm-ostree-libs-2025.9-1.fc42.x86_64.rpm
+    evr: 2025.10-1.fc42
+    sourcerpm: rpm-ostree-2025.10-1.fc42.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/r/rpm-ostree-libs-2025.10-1.fc42.x86_64.rpm
     repoid: updates
-    size: 49342
-    checksum: sha256:977622d91954611497f532e9b8a9688b31a231ab9834ba2bdd03851e1923cc1c
+    size: 49541
+    checksum: sha256:89f8bf33249a7320c4e5b8b791c259d7b1dd57a054b2c6725cd8884889af1310
     name: rpm-ostree-libs
-    evr: 2025.9-1.fc42
-    sourcerpm: rpm-ostree-2025.9-1.fc42.src.rpm
+    evr: 2025.10-1.fc42
+    sourcerpm: rpm-ostree-2025.10-1.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/s/SDL3-3.2.16-1.fc42.x86_64.rpm
     repoid: updates
     size: 1051158
