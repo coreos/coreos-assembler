@@ -565,12 +565,22 @@ func syncFindParentImageOptions() error {
 	skipSignature := false
 	switch kola.Options.Distribution {
 	case "fcos":
-		// We're taking liberal shortcuts here... the cleaner way to do this is
-		// parse commitmeta.json for `fedora-coreos.stream`
-		if kola.CosaBuild.Meta.BuildRef == "" {
-			return errors.New("no ref in build metadata")
+		var stream string
+		if kola.CosaBuild.Meta.CosaImportedOciImage {
+			s, ok := kola.CosaBuild.Meta.OciLabels["fedora-coreos.stream"]
+			if !ok {
+				return errors.New("label 'fedora-coreos.stream' not found in build metadata")
+			}
+			stream = string(s)
+		} else {
+			// We still support this legacy hack for now, but eventually when we're
+			// confident that latest kola doesn't need to handle builds built with the
+			// legacy path, we can remove this code.
+			if kola.CosaBuild.Meta.BuildRef == "" {
+				return errors.New("no ref in build metadata")
+			}
+			stream = filepath.Base(kola.CosaBuild.Meta.BuildRef)
 		}
-		stream := filepath.Base(kola.CosaBuild.Meta.BuildRef)
 		parentBaseURL, err = getParentFcosBuildBase(stream)
 		if err != nil {
 			return err
