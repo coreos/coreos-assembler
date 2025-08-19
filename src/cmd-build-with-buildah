@@ -128,7 +128,8 @@ build_with_buildah() {
     # shellcheck source=/dev/null
     stream=$(yaml2json "$manifest" /dev/stdout | jq -r '.variables.stream')
     if [ "${stream}" != null ]; then
-        set -- "$@" --label fedora-coreos.stream="$stream"
+        set -- "$@" --label fedora-coreos.stream="$stream" \
+                    --annotation fedora-coreos.stream="$stream"
     fi
 
     if [ -d "src/yumrepos" ] && [ -e "src/yumrepos/${variant:-}.repo" ]; then
