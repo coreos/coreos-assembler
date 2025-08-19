@@ -291,7 +291,8 @@
     "coreos-assembler.meta-stamp",
     "coreos-assembler.overrides-active",
     "coreos-assembler.yumrepos-git",
-    "coreos-assembeler.oci-imported",
+    "coreos-assembler.oci-imported",
+    "coreos-assembler.oci-imported-labels",
     "fedora-coreos.parent-commit",
     "fedora-coreos.parent-version",
     "ref"
@@ -378,6 +379,15 @@
       "type": "boolean",
       "title": "COSA imported OCI image",
       "default": "False"
+    },
+    "coreos-assembler.oci-imported-labels": {
+      "$id": "#/properties/coreos-assembler.oci-imported-labels",
+      "type": "object",
+      "title": "OCI Labels",
+      "default": {},
+      "additionalProperties": {
+        "type": "string"
+      }
     },
     "coreos-assembler.code-source": {
       "$id": "#/properties/coreos-assembler.code-source",
