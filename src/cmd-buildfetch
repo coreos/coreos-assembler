@@ -147,7 +147,14 @@ def main():
         assert builddir.startswith("builds/")
         builddir = builddir[len("builds/"):]
 
-        default_objects = ['meta.json', 'commitmeta.json', 'ostree-commit-object']
+        default_objects = ['meta.json']
+        # The commitmeta.json and ostree-commit-object exist in
+        # the non-container build path so we only try to fetch them
+        # if they exist.
+        optional_default_objects = ['commitmeta.json', 'ostree-commit-object']
+        for f in optional_default_objects:
+            if fetcher.exists(f'{builddir}/{f}'):
+                default_objects.append(f)
         objects = default_objects + args.file
         for f in objects:
             fetcher.fetch(f'{builddir}/{f}')
