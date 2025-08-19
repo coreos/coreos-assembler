@@ -127,6 +127,7 @@ def generate_build_meta(tmp_oci_archive, tmp_oci_manifest, metadata, ostree_comm
         'coreos-assembler.basearch': arch,
         'coreos-assembler.build-timestamp': created_timestamp,
         'coreos-assembler.oci-imported': True,
+        'coreos-assembler.oci-imported-labels': metadata.get('Labels', {}),
         'ostree-timestamp': created_timestamp,
         'images': {
             'ostree': {
