@@ -148,7 +148,7 @@ func fcosUpgradeBasic(c cluster.TestCluster) {
 		c.Fatal(err)
 	}
 	usingContainer := booted.ContainerImageReference != ""
-	sourceContainerRef := fmt.Sprintf("ostree-unverified-image:oci-archive:%s:latest", containerImageFilename)
+	sourceContainerRef := fmt.Sprintf("ostree-unverified-image:oci-archive:%s", containerImageFilename)
 
 	c.Run("setup", func(c cluster.TestCluster) {
 		ostreeref := kola.CosaBuild.Meta.BuildRef
@@ -162,13 +162,12 @@ func fcosUpgradeBasic(c cluster.TestCluster) {
 		}
 
 		// Keep any changes around here in sync with tests/rhcos/upgrade.go too!
-
 		// See https://github.com/coreos/fedora-coreos-tracker/issues/812
 		if usingContainer {
 			// In the container path we'll pass this file directly, so put it outside
 			// of the user's home directory so the systemd service can find it.
 			c.RunCmdSyncf(m, "sudo mv %s /var/tmp/%s", containerImageFilename, containerImageFilename)
-			sourceContainerRef = fmt.Sprintf("ostree-unverified-image:oci-archive:/var/tmp/%s:latest", containerImageFilename)
+			sourceContainerRef = fmt.Sprintf("ostree-unverified-image:oci-archive:/var/tmp/%s", containerImageFilename)
 		} else {
 			tmprepo := workdir + "/repo-bare"
 			// TODO: https://github.com/ostreedev/ostree-rs-ext/issues/34
@@ -210,11 +209,13 @@ func fcosUpgradeBasic(c cluster.TestCluster) {
 
 	c.Run("upgrade-from-current", func(c cluster.TestCluster) {
 		newVersion := kola.CosaBuild.Meta.OstreeVersion + ".kola"
-		ostreeCommit := kola.CosaBuild.Meta.OstreeCommit
 		if usingContainer {
+			// until https://github.com/bootc-dev/bootc/pull/1421 propagates, we can't rely on kola.CosaBuild.Meta.OstreeCommit being the same
+			ostreeCommit := c.MustSSHf(m, "sudo rpm-ostree status --json | jq -r '.deployments[0].checksum'")
 			newCommit := c.MustSSHf(m, "sudo ostree commit -b testupdate --tree=ref=%s --add-metadata-string version=%s", ostreeCommit, newVersion)
 			rpmostreeRebase(c, m, string(newCommit), newVersion)
 		} else {
+			ostreeCommit := kola.CosaBuild.Meta.OstreeCommit
 			ostree_command := "ostree commit --repo %s -b %s --tree ref=%s --add-metadata-string version=%s " +
 				"--keep-metadata='fedora-coreos.stream' --keep-metadata='coreos-assembler.basearch' --parent=%s"
 			newCommit := c.MustSSHf(m,
