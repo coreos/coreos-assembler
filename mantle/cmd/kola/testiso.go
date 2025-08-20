@@ -264,6 +264,21 @@ RequiredBy=coreos-installer.target
 # for iso-as-disk
 RequiredBy=multi-user.target`
 
+// Verify that the volume ID is the OS name. See also
+// https://github.com/openshift/assisted-image-service/pull/477.
+// This is the same as the LABEL of the block device for ISO9660. See
+// https://github.com/util-linux/util-linux/blob/643bdae8e38055e36acf2963c3416de206081507/libblkid/src/superblocks/iso9660.c#L366-L377
+var verifyIsoVolumeId = `[Unit]
+Description=Verify ISO Volume ID
+OnFailure=emergency.target
+OnFailureJobMode=isolate
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=bash -c "[[ $(lsblk -no LABEL /dev/sr0) == %s-* ]]"
+[Install]
+RequiredBy=coreos-installer.target`
+
 // Unit to check that /run/media/iso is not mounted when
 // coreos.liveiso.fromram kernel argument is passed
 var isoNotMountedUnit = `[Unit]
@@ -886,6 +901,8 @@ func testLiveIso(ctx context.Context, inst platform.Install, outdir string, mini
 	liveConfig.AddSystemdUnit("verify-no-efi-boot-entry.service", verifyNoEFIBootEntry, conf.Enable)
 	liveConfig.AddSystemdUnit("iso-not-mounted-when-fromram.service", isoNotMountedUnit, conf.Enable)
 	liveConfig.AddSystemdUnit("coreos-test-entered-emergency-target.service", signalFailureUnit, conf.Enable)
+	volumeIdUnitContents := fmt.Sprintf(verifyIsoVolumeId, kola.CosaBuild.Meta.Name)
+	liveConfig.AddSystemdUnit("verify-iso-volume-id.service", volumeIdUnitContents, conf.Enable)
 
 	targetConfig := *virtioJournalConfig
 	targetConfig.AddSystemdUnit("coreos-test-installer.service", signalCompletionUnit, conf.Enable)
