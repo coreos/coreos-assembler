@@ -601,10 +601,12 @@ type installerConfig struct {
 
 func (inst *Install) InstallViaISOEmbed(kargs []string, liveIgnition, targetIgnition conf.Conf, outdir string, offline, minimal bool) (*InstalledMachine, error) {
 	artifacts := []string{"live-iso"}
-	if inst.Native4k {
-		artifacts = append(artifacts, "metal4k")
-	} else {
-		artifacts = append(artifacts, "metal")
+	if !offline {
+		if inst.Native4k {
+			artifacts = append(artifacts, "metal4k")
+		} else {
+			artifacts = append(artifacts, "metal")
+		}
 	}
 	if err := inst.checkArtifactsExist(artifacts); err != nil {
 		return nil, err
@@ -676,17 +678,6 @@ func (inst *Install) InstallViaISOEmbed(kargs []string, liveIgnition, targetIgni
 	}
 	srcisopath = newIso
 
-	var metalimg string
-	if inst.Native4k {
-		metalimg = inst.CosaBuild.Meta.BuildArtifacts.Metal4KNative.Path
-	} else {
-		metalimg = inst.CosaBuild.Meta.BuildArtifacts.Metal.Path
-	}
-	metalname, err := setupMetalImage(builddir, metalimg, tempdir)
-	if err != nil {
-		return nil, errors.Wrapf(err, "setting up metal image")
-	}
-
 	var serializedTargetConfig string
 	if offline {
 		// note we leave ImageURL empty here; offline installs should now be the
@@ -696,6 +687,17 @@ func (inst *Install) InstallViaISOEmbed(kargs []string, liveIgnition, targetIgni
 		// final installed host booting offline
 		serializedTargetConfig = inst.ignition.String()
 	} else {
+		var metalimg string
+		if inst.Native4k {
+			metalimg = inst.CosaBuild.Meta.BuildArtifacts.Metal4KNative.Path
+		} else {
+			metalimg = inst.CosaBuild.Meta.BuildArtifacts.Metal.Path
+		}
+		metalname, err := setupMetalImage(builddir, metalimg, tempdir)
+		if err != nil {
+			return nil, errors.Wrapf(err, "setting up metal image")
+		}
+
 		mux := http.NewServeMux()
 		mux.Handle("/", http.FileServer(http.Dir(tempdir)))
 		listener, err := net.Listen("tcp", ":0")
