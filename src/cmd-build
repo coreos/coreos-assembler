@@ -424,6 +424,11 @@ else
                 )
     fi
 
+    # For parity with the new container-native path:
+    # https://github.com/coreos/fedora-coreos-config/pull/3584
+    # That label is used by e.g. the osbuild live stage.
+    labels+=("--label=com.coreos.osname=${name}")
+
     runv rpm-ostree compose container-encapsulate --max-layers="$MAX_OSTREECONTAINER_LAYERS" --format-version=1 \
         --repo="${tmprepo}" \
         --label="coreos-assembler.image-config-checksum=${image_config_checksum}" \
