@@ -587,6 +587,8 @@ func (inst *Install) runPXE(kern *kernelSetup, offline bool) (*InstalledMachine,
 	return &instmachine, nil
 }
 
+// This object gets serialized to YAML and fed to coreos-installer:
+// https://coreos.github.io/coreos-installer/customizing-install/#config-file-format
 type installerConfig struct {
 	ImageURL     string   `yaml:"image-url,omitempty"`
 	IgnitionFile string   `yaml:"ignition-file,omitempty"`
