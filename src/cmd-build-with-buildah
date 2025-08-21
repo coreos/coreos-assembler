@@ -111,8 +111,6 @@ build_with_buildah() {
     # This is analogous to the chmod we do in cmdlib.sh in the legacy path.
     chmod -R gu-s "${tempdir}/src"
 
-    tmp_oci_archive_path=$(realpath "${tempdir}/out.ociarchive")
-
     initconfig="src/config.json"
     if [ -f "${initconfig}" ]; then
         variant="$(jq --raw-output '."coreos-assembler.config-variant"' "${initconfig}")"
@@ -197,29 +195,31 @@ build_with_buildah() {
         set -- "$@" -v "$(realpath overrides)":/src/overrides
     fi
 
-    if [ -n "$DIRECT" ]; then
-        # output to a tag since it's more convenient for development;
-        # buildah doesn't support doing both at once
-        osname=$(eval "$(grep 'NAME=' "src/config/${argsfile}")"; echo "${NAME}")
-        final_ref="containers-storage:localhost/${osname}:${VERSION}"
-    else
-        # In the supermin path ensure the ociarchive gets compressed
-        set -- "$@" --disable-compression=false
-        final_ref="oci-archive:${tmp_oci_archive_path}"
-    fi
+    # We'll also copy to an intermediate ociarchive file before
+    # passing that ociarchive to cosa import
+    tmp_oci_archive="oci-archive:$(realpath "${tempdir}/out.ociarchive")"
 
-    # and finally, add the tag and context dir
-    set -- "$@" -t "${final_ref}" .
+    # Set the output tag to be something unique
+    osname=$(eval "$(grep 'NAME=' "src/config/${argsfile}")"; echo "${NAME}")
+    final_ref="containers-storage:localhost/${osname}:${VERSION}"
+    # and add the unique tag and context dir to the command
+    set -- "$@" --tag "${final_ref}" .
 
     echo "Running:" buildah "$@"
     if [ -n "$DIRECT" ]; then
-        env -C "${tempdir}/src" buildah "$@"
+        cmd="bash"
     else
-        /usr/lib/coreos-assembler/cmd-supermin-run --cache \
-            env -C "${tempdir}/src" TMPDIR="$(realpath cache)" buildah "$@"
+        cmd="/usr/lib/coreos-assembler/cmd-supermin-run --cache"
     fi
+    cat <<EOF > "${tempdir}/build-with-buildah-script.sh"
+        set -euxo pipefail
+        env -C ${tempdir}/src TMPDIR=$(realpath cache) buildah $@
+        skopeo copy --quiet "${final_ref}" "${tmp_oci_archive}"
+EOF
+    chmod +x "${tempdir}/build-with-buildah-script.sh"
+    $cmd "${tempdir}/build-with-buildah-script.sh"
 
-    new_inputhash=$(skopeo inspect "${final_ref}" | jq -r '.Labels."com.coreos.inputhash"')
+    new_inputhash=$(skopeo inspect "${tmp_oci_archive}" | jq -r '.Labels."com.coreos.inputhash"')
     if [ -n "${previous_inputhash}" ] && [ "$previous_inputhash" = "$new_inputhash" ]; then
         echo "Input hash unchanged ($new_inputhash)"
         if [ -z "$FORCE" ]; then
@@ -229,8 +229,9 @@ build_with_buildah() {
         fi
     fi
 
+    # Finally import the ociarchive, if we should
     if [ -z "${skip_import:-}" ]; then
-        /usr/lib/coreos-assembler/cmd-import "${final_ref}" \
+        /usr/lib/coreos-assembler/cmd-import "${tmp_oci_archive}" \
             ${PARENT_BUILD:+--parent-build=${PARENT_BUILD}} ${SKIP_PRUNE:+--skip-prune}
     fi
 
