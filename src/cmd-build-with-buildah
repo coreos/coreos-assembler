@@ -159,6 +159,8 @@ build_with_buildah() {
         osname=$(source "src/config/${argsfile}"; echo "${NAME}")
         final_ref="containers-storage:localhost/${osname}:${VERSION}"
     else
+        # In the supermin path ensure the ociarchive gets compressed
+        set -- "$@" --disable-compression=false
         final_ref="oci-archive:${tmp_oci_archive_path}"
     fi
 
