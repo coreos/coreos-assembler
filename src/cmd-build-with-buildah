@@ -160,6 +160,7 @@ build_with_buildah() {
     # For the source: check if there's only one remote, if so use it with get-url
     # For revision: rev-parse
     set -- build --security-opt=label=disable --cap-add=all --device /dev/fuse \
+            --pull=newer --layers=true \
             --build-arg-file "$argsfile" -v "$(realpath "${tempdir}/src")":/run/src \
             --build-arg VERSION="${VERSION}" \
             --label org.opencontainers.image.source="${source}" \
@@ -197,9 +198,6 @@ build_with_buildah() {
     fi
 
     if [ -n "$DIRECT" ]; then
-        # turn on layer caching in the direct case; it wouldn't hurt in the
-        # supermin path, but it'd be a waste of space on the rootfs
-        set -- "$@" --layers=true
         # output to a tag since it's more convenient for development;
         # buildah doesn't support doing both at once
         osname=$(eval "$(grep 'NAME=' "src/config/${argsfile}")"; echo "${NAME}")
