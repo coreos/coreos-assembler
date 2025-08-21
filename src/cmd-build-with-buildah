@@ -14,13 +14,14 @@ Usage: coreos-assembler build-with-buildah
   `cosa build` will pivot to this script when the environment variable `COREOS_ASSEMBLER_BUILD_WITH_BUILDAH` is set.
 
   The following options are supported:
-  --version=VERSION   Use the given version instead of using versionary.
-  --versionary        Generate non-development version using versionary.
-  --direct            Run buildah directly rather than within supermin.
-  --autolock=VERSION  If no base lockfile used, create one from any arch build of `VERSION`.
-                      Note this is automatically enabled when adding to an existing multi-arch
-                      non-strict build.
-  --skip-prune        Skip prunning previous builds
+  --version=VERSION      Use the given version instead of using versionary.
+  --versionary           Generate non-development version using versionary.
+  --direct               Run buildah directly rather than within supermin.
+  --autolock=VERSION     If no base lockfile used, create one from any arch build of `VERSION`.
+                         Note this is automatically enabled when adding to an existing multi-arch
+                         non-strict build.
+  --skip-prune           Skip prunning previous builds
+  --parent-build=VERSION This option does nothing and is provided for backwards compatibility.
 EOF
 }
 
@@ -30,7 +31,7 @@ DIRECT=
 AUTOLOCK_VERSION=
 SKIP_PRUNE=
 rc=0
-options=$(getopt --options h,d --longoptions help,version:,versionary,direct,autolock:,skip-prune -- "$@") || rc=$?
+options=$(getopt --options h,d --longoptions help,version:,versionary,direct,autolock:,skip-prune,parent-build: -- "$@") || rc=$?
 [ $rc -eq 0 ] || {
     print_help
     exit 1
@@ -58,6 +59,9 @@ while true; do
             ;;
         --skip-prune)
             SKIP_PRUNE=1
+            ;;
+        --parent-build)
+            shift
             ;;
         --)
             shift
