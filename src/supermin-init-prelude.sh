@@ -55,6 +55,20 @@ done
 cachedev=$(blkid -lt LABEL=cosa-cache -o device || true)
 if [ -n "${cachedev}" ]; then
     mount "${cachedev}" "${workdir}"/cache
+    # Also set up container storage on the cache. We use a symlink
+    # rather than configuring graphroot in containers/storage.conf
+    # because when osbuild runs it will use the /etc/containers/storage.conf
+    # from the host (if using host as buildroot) and then will run out
+    # of space in "${workdir}"/cache/cache-containers-storage inside
+    # the bwrap environment. Doing it with a symlink means we can
+    # still use the cache from the host, but inside osbuild it will
+    # just get a blank /var/lib/containers to operate on.
+    mkdir -p "${workdir}"/cache/cache-containers-storage
+    rm -rf /var/lib/containers
+    ln -s "${workdir}"/cache/cache-containers-storage /var/lib/containers
+    # Prune all containers and images more than a few days old. Our
+    # inputs here change daily so this should be reasonable.
+    podman system prune --all --force --filter until=72h
 else
     echo "No cosa-cache filesystem found!"
 fi
