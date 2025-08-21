@@ -89,6 +89,10 @@ build_with_buildah() {
 
     # the config dir virtiofs mount is mounted ro; copy it to the tempdir
     cp -r src/config/ "${tempdir}/src"
+    # Make sure there are no setgid/setuid bits in there.
+    # See e.g. https://github.com/coreos/fedora-coreos-tracker/issues/1003.
+    # This is analogous to the chmod we do in cmdlib.sh in the legacy path.
+    chmod -R gu-s "${tempdir}/src"
 
     tmp_oci_archive_path=$(realpath "${tempdir}/out.ociarchive")
 
