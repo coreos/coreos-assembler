@@ -123,6 +123,7 @@ build_with_buildah() {
     lockfile="manifest-lock.${arch}.json"
     if [ ! -f "src/config/${lockfile}" ] && { [ -n "${VERSION}" ] || [ -n "${AUTOLOCK_VERSION}" ]; }; then
         autolockfile=$(tmprepo=tmp/repo; workdir=.;
+                       ostree init --repo="${tmprepo}" --mode=archive;
                        generate_autolock "${AUTOLOCK_VERSION:-${VERSION}}")
         if [ -n "${autolockfile}" ]; then
             echo "Injecting autolock-generated ${lockfile}..."
