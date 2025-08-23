@@ -113,8 +113,8 @@ build_with_buildah() {
         argsfile=build-args.conf
     fi
 
-    if [ -e "builds/$VERSION" ]; then
-        echo "Build ${VERSION} already exists"
+    if [ -e "builds/$VERSION/${arch}" ]; then
+        echo "Build ${VERSION} ($arch) already exists"
         exit 0
     fi
 
