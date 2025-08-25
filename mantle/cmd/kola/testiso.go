@@ -272,10 +272,13 @@ var verifyIsoVolumeId = `[Unit]
 Description=Verify ISO Volume ID
 OnFailure=emergency.target
 OnFailureJobMode=isolate
+# only if we're actually mounting the ISO
+ConditionPathIsMountPoint=/run/media/iso
 [Service]
 Type=oneshot
 RemainAfterExit=yes
-ExecStart=bash -c "[[ $(lsblk -no LABEL /dev/sr0) == %s-* ]]"
+# the backing device name is arch-dependent, but we know it's mounted on /run/media/iso
+ExecStart=bash -c "[[ $(findmnt -no LABEL /run/media/iso) == %s-* ]]"
 [Install]
 RequiredBy=coreos-installer.target`
 
