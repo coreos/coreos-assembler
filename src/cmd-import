@@ -145,7 +145,7 @@ def generate_build_meta(tmp_oci_archive, tmp_oci_manifest, metadata, ostree_comm
         },
     }
 
-    # proxy build repo and commit to the standard cosa key
+    # proxy build repo and commit to the standard cosa keys
     source = metadata.get('Labels', {}).get('org.opencontainers.image.source')
     commit = metadata.get('Labels', {}).get('org.opencontainers.image.revision')
     if source and commit:
@@ -153,6 +153,7 @@ def generate_build_meta(tmp_oci_archive, tmp_oci_manifest, metadata, ostree_comm
             'origin': source,
             'commit': commit,
         }
+        meta['coreos-assembler.config-gitrev'] = commit
 
     # add a reference to ourselves as well
     try:
