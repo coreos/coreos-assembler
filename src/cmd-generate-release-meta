@@ -122,7 +122,12 @@ def append_build(out, input_):
     if args.stream_name:
         streamnamesrc = {'branch': args.stream_name}
     else:
-        streamnamesrc = input_.get('coreos-assembler.container-config-git')
+        fcos_stream = input_.get('coreos-assembler.oci-imported-labels', {}).get('fedora-coreos.stream')
+        if fcos_stream:
+            streamnamesrc = {'branch': fcos_stream}
+        else:
+            streamnamesrc = input_.get('coreos-assembler.container-config-git')
+
     ensure_dup(streamnamesrc, out, 'branch', 'stream')
 
     def artifact(i):
