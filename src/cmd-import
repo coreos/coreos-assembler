@@ -119,7 +119,7 @@ def generate_build_meta(tmp_oci_archive, tmp_oci_manifest, metadata, ostree_comm
     created_timestamp = parse_timestamp(metadata['Created'])
     arch = get_basearch()
 
-    return {
+    meta = {
         'ostree-commit': ostree_commit,
         'ostree-version': buildid,
         'buildid': buildid,
@@ -144,6 +144,17 @@ def generate_build_meta(tmp_oci_archive, tmp_oci_manifest, metadata, ostree_comm
             },
         },
     }
+
+    # proxy build repo and commit to the standard cosa key
+    source = metadata.get('Labels', {}).get('org.opencontainers.image.source')
+    commit = metadata.get('Labels', {}).get('org.opencontainers.image.revision')
+    if source and commit:
+        meta['coreos-assembler.container-config-git'] = {
+            'origin': source,
+            'commit': commit,
+        }
+
+    return meta
 
 
 def finalize_build(builds, build_meta, tmp_oci_archive, tmp_oci_manifest, tmp_lockfile):
