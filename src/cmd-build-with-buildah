@@ -162,8 +162,13 @@ build_with_buildah() {
     fi
 
     if [ -d overrides ]; then
-        if [[ -n $(ls overrides/rpm/*.rpm 2> /dev/null) ]]; then
-            (cd overrides/rpm && rm -rf .repodata && createrepo_c .)
+        if [ -d overrides/rpm ]; then
+            # Clean up any previous repo metadata
+            rm -rf overrides/rpm/repodata
+            if [[ -n $(ls overrides/rpm/*.rpm 2> /dev/null) ]]; then
+                # Generate new repo metadata since there are RPMs
+                (cd overrides/rpm && createrepo_c .)
+            fi
         fi
         set -- "$@" -v "$(realpath overrides)":/run/src/overrides
     fi
