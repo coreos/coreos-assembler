@@ -131,9 +131,20 @@ build_with_buildah() {
         fi
     fi
 
+    # Here we call prepare_git_artifacts just for its git logic, We don't
+    # actually care about the JSON file; the source of truth is in the labels.
+    prepare_git_artifacts src/config "${tempdir}/coreos-assembler-config-git.json"
+    source=$(jq -r .git.origin "${tempdir}/coreos-assembler-config-git.json")
+    commit=$(jq -r .git.commit "${tempdir}/coreos-assembler-config-git.json")
+    rm -f "${tempdir}/coreos-assembler-config-git.json"
+
+    # For the source: check if there's only one remote, if so use it with get-url
+    # For revision: rev-parse
     set -- build --security-opt=label=disable --cap-add=all --device /dev/fuse \
             --build-arg-file "$argsfile" -v "$(realpath "${tempdir}/src")":/run/src \
-            --build-arg VERSION="${VERSION}"
+            --build-arg VERSION="${VERSION}" \
+            --label org.opencontainers.image.source="${source}" \
+            --label org.opencontainers.image.revision="${commit}"
 
     # XXX: Temporary hack until we have https://github.com/coreos/rpm-ostree/pull/5454
     # which would allow us to fold this back into the build process.
