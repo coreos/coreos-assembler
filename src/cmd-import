@@ -154,6 +154,14 @@ def generate_build_meta(tmp_oci_archive, tmp_oci_manifest, metadata, ostree_comm
             'commit': commit,
         }
 
+    # add a reference to ourselves as well
+    try:
+        with open('/cosa/coreos-assembler-git.json') as f:
+            cosa_git = json.load(f)
+            meta['coreos-assembler.container-image-git'] = cosa_git['git']
+    except FileNotFoundError:
+        pass
+
     return meta
 
 
