@@ -52,7 +52,7 @@ def main():
         tmp_oci_manifest = generate_oci_manifest(tmp_oci_archive, tmpd)
 
         # import into the tmp/repo to get the ostree-commit but also so it's cached
-        ostree_commit = import_oci_archive(tmpd, tmp_oci_archive, buildid)
+        ostree_commit = import_oci_archive(tmpd, 'tmp/repo', tmp_oci_archive, buildid)
 
         # create meta.json
         build_meta = generate_build_meta(tmp_oci_archive, tmp_oci_manifest, metadata, ostree_commit)
