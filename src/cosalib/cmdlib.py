@@ -337,7 +337,7 @@ def import_ostree_commit(workdir, buildpath, buildmeta, extract_json=True, parti
         if was_oci_imported:
             # This was initially imported using `cosa import`. Go through that
             # path again because it's not an encapsulated commit.
-            import_oci_archive(tmpdir, tarfile, buildmeta['buildid'])
+            import_oci_archive(tmpdir, repo, tarfile, buildmeta['buildid'])
         elif os.environ.get('COSA_PRIVILEGED', '') == '1':
             build_repo = os.path.join(repo, '../../cache/repo-build')
             # note: this actually is the same as `container unencapsulate` and
@@ -362,46 +362,46 @@ def import_ostree_commit(workdir, buildpath, buildmeta, extract_json=True, parti
             extract_image_json(workdir, commit)
 
 
-def import_oci_archive(parent_tmpd, ociarchive, ref):
+def import_oci_archive(parent_tmpd, repo, ociarchive, ref):
     '''
-    Imports layered/non-encapsulated OCI archive into the tmp/repo. Returns
-    the OSTree commit that was imported.
+    Imports layered/non-encapsulated OCI archive into the repo
+    (usually tmp/repo). Returns the OSTree commit that was imported.
     '''
-    with tempfile.TemporaryDirectory(dir=parent_tmpd) as tmpd:
-        subprocess.check_call(['ostree', 'init', '--repo', tmpd, '--mode=bare-user'])
+    with tempfile.TemporaryDirectory(dir=parent_tmpd) as tmprepo:
+        subprocess.check_call(['ostree', 'init', '--repo', tmprepo, '--mode=bare-user'])
 
         # Init tmp/repo in case it doesn't exist.
         # If it exists, no problem. It's idempotent
-        subprocess.check_call(['ostree', 'init', '--repo', 'tmp/repo', '--mode=archive'])
+        subprocess.check_call(['ostree', 'init', '--repo', repo, '--mode=archive'])
 
         # import all the blob refs for more efficient import into bare-user repo
-        blob_refs = subprocess.check_output(['ostree', 'refs', '--repo', 'tmp/repo',
+        blob_refs = subprocess.check_output(['ostree', 'refs', '--repo', repo,
                                              '--list', 'ostree/container/blob'],
                                             encoding='utf-8').splitlines()
         if len(blob_refs) > 0:
-            subprocess.check_call(['ostree', 'pull-local', '--repo', tmpd, 'tmp/repo'] + blob_refs)
+            subprocess.check_call(['ostree', 'pull-local', '--repo', tmprepo, repo] + blob_refs)
 
-        subprocess.check_call(['ostree', 'container', 'image', 'pull', tmpd,
+        subprocess.check_call(['ostree', 'container', 'image', 'pull', tmprepo,
                                f'ostree-unverified-image:oci-archive:{ociarchive}'])
 
         # awkwardly work around the fact that there is no --write-ref equivalent
         # XXX: we can make this better once we can rely on --ostree-digestfile
         # https://github.com/bootc-dev/bootc/pull/1421
-        refs = subprocess.check_output(['ostree', 'refs', '--repo', tmpd,
+        refs = subprocess.check_output(['ostree', 'refs', '--repo', tmprepo,
                                         '--list', 'ostree/container/image'],
                                        encoding='utf-8').splitlines()
         assert len(refs) == 1
-        subprocess.check_call(['ostree', 'refs', '--repo', tmpd, refs[0], '--create', ref])
-        subprocess.check_call(['ostree', 'refs', '--repo', 'tmp/repo', ref, '--delete'])
-        subprocess.check_call(['ostree', 'pull-local', '--repo', 'tmp/repo', tmpd, ref])
+        subprocess.check_call(['ostree', 'refs', '--repo', tmprepo, refs[0], '--create', ref])
+        subprocess.check_call(['ostree', 'refs', '--repo', repo, ref, '--delete'])
+        subprocess.check_call(['ostree', 'pull-local', '--repo', repo, tmprepo, ref])
 
         # export back all the blob refs for more efficient imports of next builds
-        blob_refs = subprocess.check_output(['ostree', 'refs', '--repo', tmpd,
+        blob_refs = subprocess.check_output(['ostree', 'refs', '--repo', tmprepo,
                                              '--list', 'ostree/container/blob'],
                                             encoding='utf-8').splitlines()
-        subprocess.check_call(['ostree', 'pull-local', '--repo', 'tmp/repo', tmpd] + blob_refs)
+        subprocess.check_call(['ostree', 'pull-local', '--repo', repo, tmprepo] + blob_refs)
 
-    ostree_commit = subprocess.check_output(['ostree', 'rev-parse', '--repo', 'tmp/repo', ref], encoding='utf-8').strip()
+    ostree_commit = subprocess.check_output(['ostree', 'rev-parse', '--repo', repo, ref], encoding='utf-8').strip()
     return ostree_commit
 
 
