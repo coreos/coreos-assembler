@@ -209,13 +209,11 @@ func fcosUpgradeBasic(c cluster.TestCluster) {
 
 	c.Run("upgrade-from-current", func(c cluster.TestCluster) {
 		newVersion := kola.CosaBuild.Meta.OstreeVersion + ".kola"
+		ostreeCommit := kola.CosaBuild.Meta.OstreeCommit
 		if usingContainer {
-			// until https://github.com/bootc-dev/bootc/pull/1421 propagates, we can't rely on kola.CosaBuild.Meta.OstreeCommit being the same
-			ostreeCommit := c.MustSSHf(m, "sudo rpm-ostree status --json | jq -r '.deployments[0].checksum'")
 			newCommit := c.MustSSHf(m, "sudo ostree commit -b testupdate --tree=ref=%s --add-metadata-string version=%s", ostreeCommit, newVersion)
 			rpmostreeRebase(c, m, string(newCommit), newVersion)
 		} else {
-			ostreeCommit := kola.CosaBuild.Meta.OstreeCommit
 			ostree_command := "ostree commit --repo %s -b %s --tree ref=%s --add-metadata-string version=%s " +
 				"--keep-metadata='fedora-coreos.stream' --keep-metadata='coreos-assembler.basearch' --parent=%s"
 			newCommit := c.MustSSHf(m,
