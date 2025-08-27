@@ -37,8 +37,9 @@ def main():
     buildid = metadata['Labels']['org.opencontainers.image.version']
 
     builds = Builds()
-    if builds.has(buildid):
-        print(f"ERROR: Build ID {buildid} already exists!")
+    arch = get_basearch()
+    if builds.has(buildid) and arch in builds.get_build_arches(buildid):
+        print(f"ERROR: Build ID {buildid} ({arch}) already exists!")
         sys.exit(1)
 
     with tempfile.TemporaryDirectory(prefix='cosa-import-', dir='tmp') as tmpd:
