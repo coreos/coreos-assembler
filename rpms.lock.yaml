@@ -4575,13 +4575,13 @@ arches:
     name: intel-gpu-firmware
     evr: 20250808-1.fc42
     sourcerpm: linux-firmware-20250808-1.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/i/intel-vpl-gpu-rt-25.2.5-1.fc42.x86_64.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/i/intel-vpl-gpu-rt-25.3.2-1.fc42.x86_64.rpm
     repoid: updates
-    size: 2526161
-    checksum: sha256:faffe351673b8649c93ba7730c52bfc4c6b20a874ad671a4871ad062d6827da2
+    size: 3971133
+    checksum: sha256:0ce667bcb2f34a1bd68f2b4446a7e8ecb6d420eb8edd14395ea3d5bbca700f2f
     name: intel-vpl-gpu-rt
-    evr: 25.2.5-1.fc42
-    sourcerpm: intel-vpl-gpu-rt-25.2.5-1.fc42.src.rpm
+    evr: 25.3.2-1.fc42
+    sourcerpm: intel-vpl-gpu-rt-25.3.2-1.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/i/iptables-legacy-1.8.11-8.fc42.x86_64.rpm
     repoid: updates
     size: 56299
@@ -4827,13 +4827,13 @@ arches:
     name: libldb
     evr: 2:4.22.4-1.fc42
     sourcerpm: samba-4.22.4-1.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/l/libnbd-1.22.3-1.fc42.x86_64.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/l/libnbd-1.22.4-1.fc42.x86_64.rpm
     repoid: updates
-    size: 177245
-    checksum: sha256:42ca1fa7153674a146b7be69db88e7130611386ae758dfa35c10ee3e17fe75ce
+    size: 177263
+    checksum: sha256:d8c18abc36f8d76384966ad8607b610c93a5f46911b8adfc44599a8a2ce81302
     name: libnbd
-    evr: 1.22.3-1.fc42
-    sourcerpm: libnbd-1.22.3-1.fc42.src.rpm
+    evr: 1.22.4-1.fc42
+    sourcerpm: libnbd-1.22.4-1.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/l/libnfs-6.0.2-6.fc42.x86_64.rpm
     repoid: updates
     size: 175950
@@ -4904,13 +4904,13 @@ arches:
     name: libswresample-free
     evr: 7.1.1-4.fc42
     sourcerpm: ffmpeg-7.1.1-4.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/l/libtiff-4.7.0-7.fc42.x86_64.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/l/libtiff-4.7.0-8.fc42.x86_64.rpm
     repoid: updates
-    size: 226378
-    checksum: sha256:79387ffee67c196ad0f5cb7f4b04acb76e1d9780029b20b645d7c471334c4457
+    size: 226468
+    checksum: sha256:afd94f066d12fffb925ed877e8050202b70a94f5701add07333d9576dcdd45cb
     name: libtiff
-    evr: 4.7.0-7.fc42
-    sourcerpm: libtiff-4.7.0-7.fc42.src.rpm
+    evr: 4.7.0-8.fc42
+    sourcerpm: libtiff-4.7.0-8.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/l/libtinysparql-3.9.2-1.fc42.x86_64.rpm
     repoid: updates
     size: 382529
@@ -5821,20 +5821,20 @@ arches:
     name: python3-awscrt
     evr: 0.27.2-1.fc42
     sourcerpm: python-awscrt-0.27.2-1.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/python3-boto3-1.40.15-1.fc42.noarch.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/python3-boto3-1.40.17-1.fc42.noarch.rpm
     repoid: updates
-    size: 453186
-    checksum: sha256:36bbd3e008cf78462e09952eb84a5c4e8e06aa509c8725b196a5358a9a1267e0
+    size: 453606
+    checksum: sha256:16b073c9bfeab1b1baa7a43afa151ce98c2e4117cfa5f48c8329ea9c847d4d40
     name: python3-boto3
-    evr: 1.40.15-1.fc42
-    sourcerpm: python-boto3-1.40.15-1.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/python3-botocore-1.40.15-1.fc42.noarch.rpm
+    evr: 1.40.17-1.fc42
+    sourcerpm: python-boto3-1.40.17-1.fc42.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/python3-botocore-1.40.17-1.fc42.noarch.rpm
     repoid: updates
-    size: 8514099
-    checksum: sha256:d8f60440346da1491f7e23ff49ffd9fd9d3b33c32e10de1f5c6c27ee0409ba25
+    size: 8521028
+    checksum: sha256:8285add89893728b065378fb9874006cd7309842d90fee119360ecf1d95cae75
     name: python3-botocore
-    evr: 1.40.15-1.fc42
-    sourcerpm: python-botocore-1.40.15-1.fc42.src.rpm
+    evr: 1.40.17-1.fc42
+    sourcerpm: python-botocore-1.40.17-1.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/python3-dill-0.4.0-1.fc42.noarch.rpm
     repoid: updates
     size: 281781
