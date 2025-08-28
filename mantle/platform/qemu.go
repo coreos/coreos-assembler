@@ -1649,7 +1649,12 @@ func (builder *QemuBuilder) VirtioJournal(config *conf.Conf, queryArguments stri
 	# won't be added to this unit, which would cause it to get
 	# taken down when isolating to emergency.target
 	DefaultDependencies=no
-	After=systemd.journal.service
+	After=systemd-journald.socket
+	# Do however ensure we get killed before /var is going to be
+	# unmounted, otherwise we keep it open.
+	After=local-fs.target
+	# Do get killed on shutdown
+	Conflicts=shutdown.target
 	# After systemd-journal-flush because otherwise the journalctl -f
 	# below will stop when the journal is flushed. Not sure if this is
 	# a bug or intended behavior.
