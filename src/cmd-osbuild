@@ -406,13 +406,22 @@ main() {
         cmd="runvm_with_cache"
     fi
 
+    # Use the bootc install to-filesystem manifest for rawhide
+    # See discussion in https://github.com/coreos/coreos-assembler/pull/4224#pullrequestreview-3076134370
+    # Remove when we switch to use bootc install to-filesystem to all streams
+    releasever=${build%%.*}
+    with_bootc_install=""
+    if [ "$releasever" -ge 44 ]; then
+        with_bootc_install=".bootc"
+    fi
+
     # To get a shell in the osbuild supermin VM uncomment this.
     # osbuild can be started with `bash tmp/build.<artifact>/cmd.sh`
     # See comment about checkpoints in runvm-osbuild
     # RUNVM_SHELL=1 \
     $cmd -- /usr/lib/coreos-assembler/runvm-osbuild                                         \
                 --config "${runvm_osbuild_config_json}"                                                 \
-                --mpp "/usr/lib/coreos-assembler/osbuild-manifests/coreos.osbuild.${basearch}.mpp.yaml" \
+                --mpp "/usr/lib/coreos-assembler/osbuild-manifests/coreos.osbuild.${basearch}${with_bootc_install}.mpp.yaml" \
                 --outdir "${outdir}"                                                                    \
                 --platforms "$(IFS=,; echo "${platforms[*]}")"
 
