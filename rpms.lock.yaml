@@ -4043,13 +4043,20 @@ arches:
     name: bluez-libs
     evr: 5.83-2.fc42
     sourcerpm: bluez-5.83-2.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/b/bootupd-0.2.28-2.fc42.x86_64.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/b/bootc-1.6.0-1.fc42.x86_64.rpm
     repoid: updates
-    size: 1305310
-    checksum: sha256:0a7d3d7b69563d64c6b586fd900b7971ed09894a5ffb9e0906b2c144ea12b636
+    size: 3173676
+    checksum: sha256:38a38891a0c8e523a8e2ec28701388c405da1847e3d3bef09a3374d00843a1d3
+    name: bootc
+    evr: 1.6.0-1.fc42
+    sourcerpm: bootc-1.6.0-1.fc42.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/b/bootupd-0.2.29-1.fc42.x86_64.rpm
+    repoid: updates
+    size: 1312127
+    checksum: sha256:9e594bb52e8725e9aa1301e33dd658f7fc6350e3ef1ce9d181c69b363012735d
     name: bootupd
-    evr: 0.2.28-2.fc42
-    sourcerpm: rust-bootupd-0.2.28-2.fc42.src.rpm
+    evr: 0.2.29-1.fc42
+    sourcerpm: rust-bootupd-0.2.29-1.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/b/brcmfmac-firmware-20250808-1.fc42.noarch.rpm
     repoid: updates
     size: 10052728
@@ -4393,20 +4400,41 @@ arches:
     name: git-core-doc
     evr: 2.51.0-2.fc42
     sourcerpm: git-2.51.0-2.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/g/glibc-devel-2.41-10.fc42.x86_64.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/g/glibc-2.41-11.fc42.x86_64.rpm
     repoid: updates
-    size: 639558
-    checksum: sha256:59221d688144a6f29eca5c067c43fa1081bdc037697074a46a4027c2b7f04130
+    size: 2354467
+    checksum: sha256:ec788e3417a54ad596791e38f6ec8cc5b8622baa20bc8545b946986d7cde31fe
+    name: glibc
+    evr: 2.41-11.fc42
+    sourcerpm: glibc-2.41-11.fc42.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/g/glibc-common-2.41-11.fc42.x86_64.rpm
+    repoid: updates
+    size: 394830
+    checksum: sha256:c68f18bd19d9a410892f009ddb049010148e9828c1e26ffbdba938601b8b6b9b
+    name: glibc-common
+    evr: 2.41-11.fc42
+    sourcerpm: glibc-2.41-11.fc42.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/g/glibc-devel-2.41-11.fc42.x86_64.rpm
+    repoid: updates
+    size: 638196
+    checksum: sha256:bdbd57953d94fed0e6e2386be3061cc5eacddf13401fcc9c80ad3bc153aec0bc
     name: glibc-devel
-    evr: 2.41-10.fc42
-    sourcerpm: glibc-2.41-10.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/g/glibc-gconv-extra-2.41-10.fc42.x86_64.rpm
+    evr: 2.41-11.fc42
+    sourcerpm: glibc-2.41-11.fc42.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/g/glibc-gconv-extra-2.41-11.fc42.x86_64.rpm
     repoid: updates
-    size: 1723861
-    checksum: sha256:fd6c7b7e3ab95e61f324fcfe44563945a3f659b12860426a98ca6d3be669151d
+    size: 1722252
+    checksum: sha256:ebd842e0fde8d8cf4a1e47f8bb863c2f4945af929b9edb8f42329933ad7c6965
     name: glibc-gconv-extra
-    evr: 2.41-10.fc42
-    sourcerpm: glibc-2.41-10.fc42.src.rpm
+    evr: 2.41-11.fc42
+    sourcerpm: glibc-2.41-11.fc42.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/g/glibc-minimal-langpack-2.41-11.fc42.x86_64.rpm
+    repoid: updates
+    size: 101117
+    checksum: sha256:0f8ad59ae0ab9d94e6c7821ac3cc2d9fc66474eb97e63a3744218e65be024abb
+    name: glibc-minimal-langpack
+    evr: 2.41-11.fc42
+    sourcerpm: glibc-2.41-11.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/g/glusterfs-client-xlators-11.2-1.fc42.x86_64.rpm
     repoid: updates
     size: 787602
@@ -5821,20 +5849,20 @@ arches:
     name: python3-awscrt
     evr: 0.27.2-1.fc42
     sourcerpm: python-awscrt-0.27.2-1.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/python3-boto3-1.40.17-1.fc42.noarch.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/python3-boto3-1.40.18-1.fc42.noarch.rpm
     repoid: updates
-    size: 453606
-    checksum: sha256:16b073c9bfeab1b1baa7a43afa151ce98c2e4117cfa5f48c8329ea9c847d4d40
+    size: 454097
+    checksum: sha256:7de1f605bb671c5c18c8c42a8c9ce7f87ef63720f4c7af0765189f0b6ac63fd2
     name: python3-boto3
-    evr: 1.40.17-1.fc42
-    sourcerpm: python-boto3-1.40.17-1.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/python3-botocore-1.40.17-1.fc42.noarch.rpm
+    evr: 1.40.18-1.fc42
+    sourcerpm: python-boto3-1.40.18-1.fc42.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/python3-botocore-1.40.18-1.fc42.noarch.rpm
     repoid: updates
-    size: 8521028
-    checksum: sha256:8285add89893728b065378fb9874006cd7309842d90fee119360ecf1d95cae75
+    size: 8523884
+    checksum: sha256:0c9235f0e22c8d860a1f569ba3d1548746398258317bcdba3429acac74748949
     name: python3-botocore
-    evr: 1.40.17-1.fc42
-    sourcerpm: python-botocore-1.40.17-1.fc42.src.rpm
+    evr: 1.40.18-1.fc42
+    sourcerpm: python-botocore-1.40.18-1.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/python3-dill-0.4.0-1.fc42.noarch.rpm
     repoid: updates
     size: 281781
@@ -6913,13 +6941,6 @@ arches:
     name: zlib-ng
     evr: 2.2.5-2.fc42
     sourcerpm: zlib-ng-2.2.5-2.fc42.src.rpm
-  - url: https://kojipkgs.fedoraproject.org/repos-dist/f42-coreos-continuous/latest/x86_64/Packages/b/bootc-1.6.0-1.fc42.x86_64.rpm
-    repoid: coreos-continuous
-    size: 3166764
-    checksum: sha256:7c206feffb99d89dbd464c6700378ff5924b1543af783ef327b67ebbcee3cfc6
-    name: bootc
-    evr: 1.6.0-1.fc42
-    sourcerpm: bootc-1.6.0-1.fc42.src.rpm
   - url: https://kojipkgs.fedoraproject.org/repos-dist/f42-coreos-continuous/latest/x86_64/Packages/c/coreos-installer-0.24.0-4.fc42.x86_64.rpm
     repoid: coreos-continuous
     size: 3513290
