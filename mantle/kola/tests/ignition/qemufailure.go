@@ -133,7 +133,17 @@ func verifyError(builder *platform.QemuBuilder, searchPattern string) error {
 		if err := inst.Kill(); err != nil {
 			return errors.Wrapf(err, "failed to kill the vm instance")
 		}
-		return errors.Wrapf(ctx.Err(), "timed out waiting for initramfs error")
+		// If somehow the journal dumping failed let's flag that. We
+		// just ignore errors here. This effort is only trying to help
+		// be more informative about why things failed. This "string"
+		// we are searching for comes from ignition-virtio-dump-journal
+		searchPattern = "Didn't find virtio port /dev/virtio-ports/com.coreos.ignition.journal"
+		found, _ := fileContainsPattern(builder.ConsoleFile, searchPattern)
+		if found {
+			return errors.Wrapf(ctx.Err(), "Journal dumping during emergency.target failed")
+		} else {
+			return errors.Wrapf(ctx.Err(), "timed out waiting for initramfs error")
+		}
 	case err := <-errchan:
 		if err != nil {
 			return err
