@@ -38,7 +38,7 @@ def main():
             config = git['commit']
             if 'branch' in git:
                 config = f"{git['branch']} ({config[:12]})"
-            if git['dirty'] != "false":
+            if git.get('dirty', 'false') != "false":
                 config += " (dirty)"
             print(f"      Config: {config}")
         if build['id'] in tags:
