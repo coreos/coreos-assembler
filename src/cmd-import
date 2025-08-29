@@ -155,7 +155,7 @@ def generate_build_meta(tmp_oci_archive, tmp_oci_manifest, metadata, ostree_comm
             'commit': commit,
         }
 
-    summary = metadata.get('Labels', {}).get('org.opencontainers.image.title')
+    summary = metadata.get('Labels', {}).get('org.opencontainers.image.description')
     if summary:
         meta['summary'] = summary
 
