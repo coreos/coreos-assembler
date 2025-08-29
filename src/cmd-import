@@ -155,6 +155,10 @@ def generate_build_meta(tmp_oci_archive, tmp_oci_manifest, metadata, ostree_comm
             'commit': commit,
         }
 
+    summary = metadata.get('Labels', {}).get('org.opencontainers.image.title')
+    if summary:
+        meta['summary'] = summary
+
     # add a reference to ourselves as well
     try:
         with open('/cosa/coreos-assembler-git.json') as f:
