@@ -4078,13 +4078,13 @@ arches:
     name: btrfs-progs
     evr: 6.16-1.fc42
     sourcerpm: btrfs-progs-6.16-1.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/b/buildah-1.40.1-1.fc42.x86_64.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/b/buildah-1.41.3-1.fc42.x86_64.rpm
     repoid: updates
-    size: 11273004
-    checksum: sha256:82e3a826d67dcbe11b0e6a75abbf5f8ca5dd8b4973ab2e36fef42683809473e8
+    size: 10146135
+    checksum: sha256:3afa4ee3d67c3b2b9cab555fcf37e702b220b950f407717b380cac49e2949276
     name: buildah
-    evr: 2:1.40.1-1.fc42
-    sourcerpm: buildah-1.40.1-1.fc42.src.rpm
+    evr: 2:1.41.3-1.fc42
+    sourcerpm: buildah-1.41.3-1.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/b/butane-0.24.0-1.fc42.x86_64.rpm
     repoid: updates
     size: 2763088
@@ -4106,20 +4106,20 @@ arches:
     name: container-selinux
     evr: 4:2.241.0-1.fc42
     sourcerpm: container-selinux-2.241.0-1.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/c/containers-common-0.63.1-1.fc42.noarch.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/c/containers-common-0.64.1-2.fc42.noarch.rpm
     repoid: updates
-    size: 100111
-    checksum: sha256:1a2c13bf53f381b97e0aa8fa7e7d31357a6ff5dda061aafcaf03218f7805937f
+    size: 100562
+    checksum: sha256:cff1ae6f68deeb44289cab72c1902b64823aa99135f815823b50c5d628cdd0bd
     name: containers-common
-    evr: 5:0.63.1-1.fc42
-    sourcerpm: containers-common-0.63.1-1.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/c/containers-common-extra-0.63.1-1.fc42.noarch.rpm
+    evr: 5:0.64.1-2.fc42
+    sourcerpm: containers-common-0.64.1-2.fc42.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/c/containers-common-extra-0.64.1-2.fc42.noarch.rpm
     repoid: updates
-    size: 10025
-    checksum: sha256:a78df5aa4d8744c365037d2ad2e408f7a0a1c6892a4adb993dd72ced742c7aa9
+    size: 10205
+    checksum: sha256:07575aafce96b75610ab59eae58e97b36c29f55df163a218ed6de11deb11bc30
     name: containers-common-extra
-    evr: 5:0.63.1-1.fc42
-    sourcerpm: containers-common-0.63.1-1.fc42.src.rpm
+    evr: 5:0.64.1-2.fc42
+    sourcerpm: containers-common-0.64.1-2.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/c/cpp-15.2.1-1.fc42.x86_64.rpm
     repoid: updates
     size: 13554335
@@ -5737,13 +5737,13 @@ arches:
     name: pixman
     evr: 0.46.2-1.fc42
     sourcerpm: pixman-0.46.2-1.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/podman-5.5.2-1.fc42.x86_64.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/podman-5.6.0-1.fc42.x86_64.rpm
     repoid: updates
-    size: 16707272
-    checksum: sha256:60c133f19f95f4aee86942ca89fc428da82f24059d7b18e3df449a3e96cad6b6
+    size: 15417780
+    checksum: sha256:7fb15ab91d2286b7eaf87331f42cf9d616c8fbde23bc1eb6d918de84e954a780
     name: podman
-    evr: 5:5.5.2-1.fc42
-    sourcerpm: podman-5.5.2-1.fc42.src.rpm
+    evr: 5:5.6.0-1.fc42
+    sourcerpm: podman-5.6.0-1.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/p/polkit-126-3.fc42.1.x86_64.rpm
     repoid: updates
     size: 164541
@@ -6626,13 +6626,13 @@ arches:
     name: selinux-policy-targeted
     evr: 42.6-1.fc42
     sourcerpm: selinux-policy-42.6-1.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/s/skopeo-1.19.0-2.fc42.x86_64.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/s/skopeo-1.20.0-1.fc42.x86_64.rpm
     repoid: updates
-    size: 9342698
-    checksum: sha256:6a468a13596310074be6fb7546f185482fa6e93472c92f8a52875f0c98b3ada0
+    size: 8061893
+    checksum: sha256:aa1d8cd2ea6809d8033daffef80c565f9d3a5c8d6560e5745f0515b3acc7e7d3
     name: skopeo
-    evr: 1:1.19.0-2.fc42
-    sourcerpm: skopeo-1.19.0-2.fc42.src.rpm
+    evr: 1:1.20.0-1.fc42
+    sourcerpm: skopeo-1.20.0-1.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/s/spirv-tools-libs-2025.2-2.fc42.x86_64.rpm
     repoid: updates
     size: 1609753
