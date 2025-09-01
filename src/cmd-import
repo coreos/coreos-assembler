@@ -50,14 +50,14 @@ def main():
         # import into the tmp/repo to get the ostree-commit but also so it's cached
         ostree_commit = import_oci_archive(tmpd, tmp_oci_archive, buildid)
 
-        # artificially recreate generated lockfile
-        tmp_lockfile = generate_lockfile(tmpd, ostree_commit)
-
         # create meta.json
         build_meta = generate_build_meta(tmp_oci_archive, tmp_oci_manifest, metadata, ostree_commit)
 
+        # artificially recreate generated lockfile and commitmeta.json
+        tmp_lockfile, tmp_commitmeta = generate_lockfile_and_commitmeta(tmpd, ostree_commit, build_meta)
+
         # move into official location
-        finalize_build(builds, build_meta, tmp_oci_archive, tmp_oci_manifest, tmp_lockfile)
+        finalize_build(builds, build_meta, tmp_oci_archive, tmp_oci_manifest, tmp_lockfile, tmp_commitmeta)
 
     if not args.skip_prune:
         subprocess.check_call(['/usr/lib/coreos-assembler/cmd-prune'])
@@ -95,23 +95,51 @@ def generate_oci_manifest(args, tmpd):
     return tmpf
 
 
-def generate_lockfile(tmpd, ostree_commit):
-    tmpf = os.path.join(tmpd, 'lockfile.json')
-
+def generate_lockfile_and_commitmeta(tmpd, ostree_commit, build_meta):
+    tmp_lockfile = os.path.join(tmpd, 'lockfile.json')
+    tmp_commitmeta = os.path.join(tmpd, 'commitmeta.json')
     out = subprocess.check_output(['rpm-ostree', 'db', 'list', '--repo', 'tmp/repo', ostree_commit], encoding='utf-8')
     rpmdb = {}
+    pkglist = []
+    ostree_linux = ""
     for line in out.splitlines():
         if not line.startswith(' '):
             continue
         n, ev, ra = line.strip().rsplit('-', 2)
         rpmdb[n] = {'evra': f'{ev}-{ra}'}
 
-    with open(tmpf, 'w') as f:
+        if ':' in ev:
+            e, v = ev.split(':')
+        else:
+            e, v = ("0", ev)
+        r, a = ra.rsplit('.', 1)
+        pkglist.append([n, e, v, r, a])
+        if n == 'kernel':
+            ostree_linux = f"{v}-{r}.{a}"
+
+    commitmeta = {
+        'coreos-assembler.config-gitrev': build_meta.get('coreos-assembler.container-config-git', {}).get('commit', ''),
+        'coreos-assembler.basearch': build_meta.get('coreos-assembler.basearch', ''),
+        'version': build_meta.get('buildid', ''),
+        'ostree.bootable': True if build_meta.get('coreos-assembler.oci-imported-labels', {}).get('ostree.bootable', '0') == '1' else False,
+        'ostree.linux': ostree_linux,
+        'rpmostree.rpmdb.pkglist': pkglist,
+        'synthetic': True,
+    }
+
+    stream = build_meta.get('coreos-assembler.oci-imported-labels', {}).get('fedora-coreos.stream', '')
+    if stream != '':
+        commitmeta['fedora-coreos.stream'] = stream
+
+    with open(tmp_commitmeta, 'w') as f:
+        json.dump(commitmeta, f, indent=2)
+
+    with open(tmp_lockfile, 'w') as f:
         json.dump(fp=f, obj={
             'packages': rpmdb
         })
 
-    return tmpf
+    return tmp_lockfile, tmp_commitmeta
 
 
 def generate_build_meta(tmp_oci_archive, tmp_oci_manifest, metadata, ostree_commit):
@@ -170,7 +198,7 @@ def generate_build_meta(tmp_oci_archive, tmp_oci_manifest, metadata, ostree_comm
     return meta
 
 
-def finalize_build(builds, build_meta, tmp_oci_archive, tmp_oci_manifest, tmp_lockfile):
+def finalize_build(builds, build_meta, tmp_oci_archive, tmp_oci_manifest, tmp_lockfile, tmp_commitmeta):
     buildid = build_meta['buildid']
     arch = build_meta['coreos-assembler.basearch']
 
@@ -180,6 +208,7 @@ def finalize_build(builds, build_meta, tmp_oci_archive, tmp_oci_manifest, tmp_lo
     shutil.move(tmp_oci_archive, f'{destdir}/{build_meta['images']['ostree']['path']}')
     shutil.move(tmp_oci_manifest, f'{destdir}/{build_meta['images']['oci-manifest']['path']}')
     shutil.move(tmp_lockfile, f'{destdir}/manifest-lock.generated.{arch}.json')
+    shutil.move(tmp_commitmeta, f'{destdir}/commitmeta.json')
 
     with open(f'{destdir}/meta.json', 'w') as f:
         json.dump(build_meta, f, indent=4)
