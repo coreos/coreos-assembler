@@ -45,6 +45,10 @@ systemd:
         [Unit]
         Description=Configure Multipath
         ConditionFirstBoot=true
+        # Services with ConditionFirstBoot=true should use both
+        # Before= and Wants= on first-boot-complete.target
+        Before=first-boot-complete.target
+        Wants=first-boot-complete.target
         ConditionPathExists=!/etc/multipath.conf
         Before=multipathd.service
         DefaultDependencies=no
@@ -61,6 +65,10 @@ systemd:
         [Unit]
         Description=Set Up Multipath On /var/lib/containers
         ConditionFirstBoot=true
+        # Services with ConditionFirstBoot=true should use both
+        # Before= and Wants= on first-boot-complete.target
+        Before=first-boot-complete.target
+        Wants=first-boot-complete.target
         Requires=dev-disk-by\x2did-dm\x2duuid\x2dmpath\x2d0x0000000000000001.device
         After=dev-disk-by\x2did-dm\x2duuid\x2dmpath\x2d0x0000000000000001.device
         # See https://github.com/coreos/coreos-assembler/pull/2457
