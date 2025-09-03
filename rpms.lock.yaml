@@ -6794,20 +6794,20 @@ arches:
     name: unbound-libs
     evr: 1.23.1-1.fc42
     sourcerpm: unbound-1.23.1-1.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/u/upower-1.90.9-4.fc42.x86_64.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/u/upower-1.90.10-1.fc42.x86_64.rpm
     repoid: updates
-    size: 119751
-    checksum: sha256:c636178fc943d205ac2de2f4700e26e6127b499752fdbbf9751fb1d0bae3089e
+    size: 122496
+    checksum: sha256:0c9cc3d164f12c0a4ca7cb382ec6eb65e15f62f4ea1c0316be56e9c37d3e1b52
     name: upower
-    evr: 1.90.9-4.fc42
-    sourcerpm: upower-1.90.9-4.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/u/upower-libs-1.90.9-4.fc42.x86_64.rpm
+    evr: 1.90.10-1.fc42
+    sourcerpm: upower-1.90.10-1.fc42.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/u/upower-libs-1.90.10-1.fc42.x86_64.rpm
     repoid: updates
-    size: 59694
-    checksum: sha256:f6747db985d6b4a4015fd17771be96d62c811e96c45bac30f6f3658b0df3f791
+    size: 60948
+    checksum: sha256:acc78873da072810c2c00b1b22ff1b3585ef6084764ba3865e8df1cb9c0cfb96
     name: upower-libs
-    evr: 1.90.9-4.fc42
-    sourcerpm: upower-1.90.9-4.fc42.src.rpm
+    evr: 1.90.10-1.fc42
+    sourcerpm: upower-1.90.10-1.fc42.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/42/Everything/x86_64/Packages/v/virt-win-reg-1.54.0-1.fc42.noarch.rpm
     repoid: updates
     size: 32573
