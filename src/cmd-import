@@ -48,7 +48,7 @@ def main():
         tmp_oci_manifest = generate_oci_manifest(args, tmpd)
 
         # import into the tmp/repo to get the ostree-commit but also so it's cached
-        ostree_commit = import_oci_archive(tmpd, tmp_oci_archive, buildid)
+        ostree_commit = import_oci_archive(tmpd, 'tmp/repo', tmp_oci_archive, buildid)
 
         # artificially recreate generated lockfile
         tmp_lockfile = generate_lockfile(tmpd, ostree_commit)
