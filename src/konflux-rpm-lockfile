@@ -1,0 +1,310 @@
+#!/usr/bin/python
+
+import argparse
+import json
+import os
+import sys
+import subprocess
+import yaml
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from cosalib.cmdlib import get_basearch
+
+
+def format_packages_with_repoid(pkgs, repos):
+    """
+    Takes a list of package URLs and repos and returns a list
+    of package dictionaries with repoids.
+    """
+    packages = []
+    local_repos = list(repos)
+    if "fedora-coreos-pool" in local_repos:
+        local_repos.remove("fedora-coreos-pool")
+
+    if not local_repos:
+        if pkgs:
+            print("Error: No repos to associate with packages.", file=sys.stderr)
+            sys.exit(1)
+        return []
+
+    # We want to ensure that hermeto creates repo definitions for every repository.
+    # A round-robin assignment ensures each repo is mentioned at least once.
+    # This is needed because rpm-ostree uses the full list of repos to
+    # resolve packages and errors out if a repository is missing.
+    repo_numbers = len(local_repos)
+    for i, pkg in enumerate(pkgs):
+        packages.append({"url": pkg, "repoid": local_repos[i % repo_numbers]})
+    return packages
+
+
+def write_hermeto_lockfile(arch_packages, repos):
+    """
+    Writes the hermeto lockfile structure.
+    """
+    arches = []
+    for arch_data in arch_packages:
+        arch = arch_data['arch']
+        pkgs = arch_data['packages']
+        formatted_packages = format_packages_with_repoid(pkgs, repos)
+        arches.append({
+            'arch': arch,
+            'packages': formatted_packages
+        })
+
+    lockfile = {
+        'lockfileVersion': 1,
+        "lockfileVendor": "redhat",
+        "arches": arches
+    }
+
+    return lockfile
+
+
+def merge_lockfiles(base_lockfile, next_lockfile, override=False):
+    """
+    Merges a lockfile into a base lockfile.
+
+    If is_override is True, it will only add packages to existing
+    architectures. Otherwise, it will add new architectures.
+    """
+    if not next_lockfile:
+        return base_lockfile
+
+    # Create a dictionary for base arches for easy lookup
+    base_arches = {arch['arch']: arch for arch in base_lockfile.get('arches', [])}
+
+    next_arches_list = next_lockfile.get('arches', [])
+    if not next_arches_list:
+        return base_lockfile
+
+    for next_arch_entry in next_arches_list:
+        if not isinstance(next_arch_entry, dict):
+            continue
+        arch = next_arch_entry.get('arch', None)
+        if not arch:
+            continue
+
+        next_packages = next_arch_entry.get('packages', [])
+        if arch in base_arches:
+            # Arch exists, merge packages
+            base_packages = base_arches[arch].get('packages', [])
+            base_packages += next_packages
+        elif not override:
+            # Arch is new and this is not an override, so add it
+            base_arches[arch] = next_arch_entry
+
+    # Reconstruct the arches list
+    base_lockfile['arches'] = list(base_arches.values())
+    return base_lockfile
+
+
+def query_packages_location(locks, repoquery_args):
+    """
+    Resolves packages URLs for a given architecture.
+    """
+    pkg_urls = []
+    if not locks:
+        return pkg_urls
+
+    locked_nevras = [f'{k}-{v.get('evra', '')}' for (k, v) in locks.items()]
+    queryfmt = ["--queryformat", "%{name} %{location}\n"]
+    cmd = ['dnf', 'repoquery'] + locked_nevras + repoquery_args + queryfmt
+    result = subprocess.check_output(cmd, text=True)
+
+    processed_urls = {}
+    for line in result.split('\n'):
+        # ignore empty lines
+        if not line:
+            continue
+        name, url = line.split(' ')
+        # Prioritize the url from fedora-coreos-pool
+        # there is a bug in dnf here where the url returned is incorrect when the
+        # repofile have more than one baseurl, which causes ppc64le and s390x
+        # urls comming from fedora and fedora-updates to be invalid
+        # See https://github.com/rpm-software-management/dnf5/issues/2466
+        existing_url = processed_urls.get(name, None)
+        if 'coreos-pool' in url or not existing_url:
+            processed_urls[name] = url
+
+    pkg_urls = list(processed_urls.values())
+    # sanity check all the locked packages got resolved
+    if len(pkg_urls) != len(locked_nevras):
+        print("Some packages from the lockfile could not be resolved. The rpm-ostree lockfile is probably out of date.")
+        sys.exit(1)
+
+    print(f"Done. Resolved location for {len(pkg_urls)} packages.")
+    return pkg_urls
+
+
+def get_locked_nevras(srcdir, arch):
+
+    path = os.path.join(srcdir, f"manifest-lock.{arch}.json")
+
+    data = {}
+    try:
+        with open(path, encoding='utf-8') as f:
+            data = json.load(f)
+    except IOError as e:
+        print(f"Cannot read rpm-ostree lockfile. Reason: {e}")
+        sys.exit(1)
+
+    return data.get('packages', [])
+
+
+def generate_main(args):
+    """
+    Generates the cachi2/hermeto RPM lock file.
+    """
+    contextdir = args.context
+    manifest = os.path.abspath(args.manifest)
+    output_path = args.output
+    arches = args.arch
+
+    if not arches:
+        arches_to_resolve = [get_basearch()]
+    elif 'all' in arches:
+        arches_to_resolve = ['x86_64', 'aarch64', 's390x', 'ppc64le']
+    else:
+        arches_to_resolve = arches
+
+    if os.path.exists(manifest):
+        with open(manifest, 'r', encoding='utf-8') as f:
+            manifest_data = json.load(f)
+    else:
+        print(f"flattened manifest not found at {manifest}")
+        sys.exit(1)
+
+    repos = manifest_data.get('repos', [])
+    repos += manifest_data.get('lockfile-repos', [])
+
+    # Tell dnf to load repos files from $contextdir
+    repoquery_args = ["--refresh", "--quiet", f"--setopt=reposdir={contextdir}"]
+    repoquery_args.extend([f"--repo={','.join(repos)}"])
+
+    packages = []
+    for arch in arches_to_resolve:
+        locks = get_locked_nevras(contextdir, arch)
+        if not locks:
+            print(f"This tool derive the konflux lockfile from rpm-ostree lockfiles. Empty manifest-lock for {arch} in {contextdir}")
+            sys.exit(1)
+        print(f"Resolving packages for {arch}...")
+        arch_args = []
+        if arch is not get_basearch():
+            # append noarch as well because otherwise those packages get excluded from results
+            # We use --forcearch here because otherwise dnf still respect the system basearch
+            # we have to specify both --arch and --forcearch to get both result for $arch and $noarch
+            arch_args = ['--forcearch', arch, '--arch', arch, '--arch', 'noarch']
+        pkg_urls = query_packages_location(locks, repoquery_args + arch_args)
+        packages.append({'arch': arch, 'packages': pkg_urls})
+
+    lockfile = write_hermeto_lockfile(packages, repos)
+
+    try:
+        with open(output_path, 'w', encoding='utf-8') as f:
+            yaml.safe_dump(lockfile, f, default_flow_style=False)
+    except IOError as e:
+        print(f"\u274c Error: Could not write to output file '{output_path}'. Reason: {e}")
+        sys.exit(1)
+
+
+def merge_main(args):
+    """
+    Merges multiple lockfiles into one, optionally applying an override file.
+    """
+    if not args.input:
+        print("Error: at least one input file is required for merging.", file=sys.stderr)
+        sys.exit(1)
+
+    try:
+        with open(args.input[0], 'r', encoding='utf-8') as f:
+            base_lockfile = yaml.safe_load(f)
+    except (IOError, yaml.YAMLError) as e:
+        print(f"Error reading base lockfile {args.input[0]}: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    for subsequent_file in args.input[1:]:
+        try:
+            with open(subsequent_file, 'r', encoding='utf-8') as f:
+                next_lockfile = yaml.safe_load(f)
+            base_lockfile = merge_lockfiles(base_lockfile, next_lockfile)
+        except (IOError, yaml.YAMLError) as e:
+            print(f"Error reading or merging {subsequent_file}: {e}", file=sys.stderr)
+            sys.exit(1)
+
+    if os.path.exists(args.override):
+        try:
+            with open(args.override, 'r', encoding="utf8") as f:
+                override_data = yaml.safe_load(f)
+            print(f"Merging override from {args.override}")
+            base_lockfile = merge_lockfiles(base_lockfile, override_data, override=True)
+        except (IOError, yaml.YAMLError) as e:
+            print(f"Error reading or parsing override file '{args.override}': {e}", file=sys.stderr)
+            sys.exit(1)
+
+    try:
+        with open(args.output, 'w', encoding='utf-8') as f:
+            yaml.safe_dump(base_lockfile, f, default_flow_style=False)
+        print(f"Successfully merged lockfiles to {args.output}")
+    except IOError as e:
+        print(f"Error writing to output file '{args.output}': {e}", file=sys.stderr)
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description="Generate and merge hermeto lock files."
+    )
+    subparsers = parser.add_subparsers(dest='command', required=True)
+
+    # GENERATE command
+    parser_generate = subparsers.add_parser(
+        'generate',
+        help='Resolve RPMs and generate a lockfile for one or more architectures.'
+    )
+    parser_generate.add_argument(
+        'manifest',
+        help='Path to the flattened rpm-ostree manifest (e.g., tmp/manifest.json)'
+    )
+    parser_generate.add_argument(
+        '--context',
+        default='.',
+        help="Path to the directory containing repofiles and lockfiles. (default: '.')"
+    )
+    parser_generate.add_argument(
+        '--output',
+        default='./rpms.lock.yaml',
+        help="Path for the hermeto lockfile. (default: './rpms.lock.yaml')"
+    )
+    parser_generate.add_argument(
+        '--arch',
+        action='append',
+        choices=['x86_64', 'aarch64', 's390x', 'ppc64le', 'all'],
+        help="The architecture to resolve. Can be specified multiple times. 'all' resolves all architectures."
+    )
+    parser_generate.set_defaults(func=generate_main)
+
+    # MERGE command
+    parser_merge = subparsers.add_parser(
+        'merge',
+        help='Merge multiple architecture-specific lockfiles into a single file.'
+    )
+    parser_merge.add_argument(
+        '--input',
+        nargs='+',
+        required=True,
+        help='One or more input lockfiles to merge.'
+    )
+    parser_merge.add_argument(
+        '--output',
+        default='./rpms.lock.yaml',
+        help="Path for the merged lockfile. (default: './rpms.lock.yaml')"
+    )
+    parser_merge.add_argument(
+        '--override',
+        default='konflux-lockfile-override.yaml',
+        help="Path to an override file. (default: 'konflux-lockfile-override.yaml')"
+    )
+    parser_merge.set_defaults(func=merge_main)
+
+    args = parser.parse_args()
+    args.func(args)

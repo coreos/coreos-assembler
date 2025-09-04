@@ -39,7 +39,8 @@ Usage: coreos-assembler fetch --help
   --write-lockfile-to=FILE Write updated base lockfile to separate file
   --with-cosa-overrides    Don't ignore cosa overrides in `overrides/rpm`
   --autolock=VERSION       If no base lockfile used, create one from any arch build of `VERSION`
-
+  --konflux                Generate hermeto lockfile for Konflux derived from the rpm-ostree lockfiles.
+                           Auto enabled if `rpms.lock.yaml` is found in the config directory.
 EOF
 }
 
@@ -50,8 +51,9 @@ IGNORE_COSA_OVERRIDES_ARG=--ignore-cosa-overrides
 DRY_RUN=
 FORCE_ARG=
 STRICT=
+KONFLUX=
 rc=0
-options=$(getopt --options h --longoptions help,update-lockfile,dry-run,with-cosa-overrides,write-lockfile-to:,strict,force,autolock: -- "$@") || rc=$?
+options=$(getopt --options h --longoptions help,update-lockfile,dry-run,with-cosa-overrides,write-lockfile-to:,strict,force,autolock:,konflux -- "$@") || rc=$?
 [ $rc -eq 0 ] || {
     print_help
     exit 1
@@ -87,6 +89,9 @@ while true; do
             shift;
             AUTOLOCK_VERSION=$1
             ;;
+        --konflux)
+            KONFLUX=1
+            ;;
         --)
             shift
             break
@@ -104,6 +109,7 @@ if [ $# -ne 0 ]; then
 fi
 
 prepare_build
+
 
 lock_args=
 extra_args=
@@ -175,4 +181,12 @@ if [ -n "${UPDATE_LOCKFILE}" ]; then
     # cd back to workdir in case OUTPUT_LOCKFILE is relative
     (cd "${workdir}" && mv -f "${tmprepo}/tmp/manifest-lock.json" "${outfile}")
     echo "Wrote out lockfile ${outfile}"
+fi
+
+KONFLUX_LOCKFILE=rpms.lock.yaml
+if [ -n "${KONFLUX}" ] || [ -f "${configdir}/${KONFLUX_LOCKFILE}" ]; then
+   echo "Generating hermeto lockfile..."
+   /usr/lib/coreos-assembler/konflux-rpm-lockfile generate "${flattened_manifest}" --context "${configdir}" --output "${tmprepo}/tmp/${arch}.${KONFLUX_LOCKFILE}"
+   mv -f "${tmprepo}/tmp/${arch}.${KONFLUX_LOCKFILE}" "${configdir}/${arch}.${KONFLUX_LOCKFILE}"
+   echo "Wrote out hermeto (konflux) lockfile: ${configdir}/${arch}.${KONFLUX_LOCKFILE}"
 fi
