@@ -1,0 +1,65 @@
+From bb33a9fbd3d60e807aa8038e5e5e965f827cbcc7 Mon Sep 17 00:00:00 2001
+From: jbtrystram <jbtrystram@redhat.com>
+Date: Mon, 21 Jul 2025 20:33:29 +0200
+Subject: [PATCH 5/6] stages/bootc.install-to-filesystem: parametrize stateroot
+ value
+
+This adds an extra option to make the stateroot name customizable.
+
+Fixes https://github.com/osbuild/osbuild/issues/2151
+---
+ stages/org.osbuild.bootc.install-to-filesystem       |  3 +++
+ ...org.osbuild.bootc.install-to-filesystem.meta.json | 12 ++++++------
+ 2 files changed, 9 insertions(+), 6 deletions(-)
+
+diff --git a/stages/org.osbuild.bootc.install-to-filesystem b/stages/org.osbuild.bootc.install-to-filesystem
+index 6edcbf8f..3d4c67cc 100755
+--- a/stages/org.osbuild.bootc.install-to-filesystem
++++ b/stages/org.osbuild.bootc.install-to-filesystem
+@@ -43,6 +43,9 @@ def main(options, inputs, paths):
+         target_imgref = options.get("target-imgref")
+         if target_imgref:
+             pargs.extend(["--target-imgref", target_imgref])
++        stateroot = options.get("stateroot")
++        if stateroot:
++            pargs.extend(["--stateroot", stateroot])
+         # add target and go
+         pargs.append(dst)
+         subprocess.run(pargs, env=env, check=True)
+diff --git a/stages/org.osbuild.bootc.install-to-filesystem.meta.json b/stages/org.osbuild.bootc.install-to-filesystem.meta.json
+index 02268b27..a5a157c6 100644
+--- a/stages/org.osbuild.bootc.install-to-filesystem.meta.json
++++ b/stages/org.osbuild.bootc.install-to-filesystem.meta.json
+@@ -7,16 +7,12 @@
+     "mounted in the \"mounts\" path.",
+     "Buildhost commands used: bootc"
+   ],
+-  "capabilities": [
+-    "CAP_MAC_ADMIN"
+-  ],
++  "capabilities": ["CAP_MAC_ADMIN"],
+   "schema_2": {
+     "inputs": {
+       "type": "object",
+       "additionalProperties": false,
+-      "required": [
+-        "images"
+-      ],
++      "required": ["images"],
+       "properties": {
+         "images": {
+           "type": "object",
+@@ -44,6 +40,10 @@
+         "target-imgref": {
+           "description": "Specify the image to fetch for subsequent updates",
+           "type": "string"
++        },
++        "stateroot": {
++          "type": "string",
++          "description": "The stateroot name to use. If not specified, defer to bootc's default"
+         }
+       }
+     },
+-- 
+2.50.1
+
