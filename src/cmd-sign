@@ -54,7 +54,7 @@ def parse_args():
 
     robosig = subparsers.add_parser('robosignatory', help='sign with '
                                     'RoboSignatory via fedora-messaging')
-    robosig.add_argument("--s3", metavar='<BUCKET>[/PREFIX]', required=True,
+    robosig.add_argument("--s3", metavar='<BUCKET>[/PREFIX]', required=False,
                          help="bucket and prefix to S3 builds/ dir")
     robosig.add_argument("--aws-config-file", metavar='CONFIG', default="",
                          help="Path to AWS config file")
@@ -82,7 +82,8 @@ def cmd_robosignatory(args):
     if args.aws_config_file:
         os.environ["AWS_CONFIG_FILE"] = args.aws_config_file
     s3 = boto3.client('s3')
-    args.bucket, args.prefix = get_bucket_and_prefix(args.s3)
+    if args.s3:
+        args.bucket, args.prefix = get_bucket_and_prefix(args.s3)
 
     args.extra_keys = {}
     for keyval in args.extra_fedmsg_keys:
@@ -102,9 +103,13 @@ def cmd_robosignatory(args):
     if args.ostree:
         if args.verify_only:
             raise Exception("Cannot use --verify-only with --ostree")
+        if args.s3 is None:
+            raise Exception("Missing --s3 for --ostree")
         robosign_ostree(args, s3, build, gpgkey)
     else:
         assert args.images
+        if args.s3 is None:
+            raise Exception("Missing --s3 for --images")
         robosign_images(args, s3, build, gpgkey)
 
 
