@@ -118,7 +118,9 @@ def main():
     if stream in ['stable', 'testing', 'next']:
         update_graph = get_update_graph(stream)['releases']
         # Keep only the barrier releases
-        barrier_releases = set([release["version"] for release in update_graph if "barrier" in release])
+        barrier_releases = set([release["version"] for release in update_graph if "barrier" in release["metadata"]])
+        # Verify we got some data. Otherwise there was an issue
+        assert len(barrier_releases) > 0
 
     # Iterate through builds from oldest to newest
     for build in reversed(builds):
