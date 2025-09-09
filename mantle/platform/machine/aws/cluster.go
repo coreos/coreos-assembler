@@ -94,7 +94,7 @@ func (ac *cluster) NewMachineWithOptions(userdata *conf.UserData, options platfo
 
 	mach := &machine{
 		cluster: ac,
-		mach:    instances[0],
+		mach:    &instances[0],
 	}
 
 	mach.dir = filepath.Join(ac.RuntimeConf().OutputDir, mach.ID())

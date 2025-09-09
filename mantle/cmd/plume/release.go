@@ -17,6 +17,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	stdErrors "errors"
 	"fmt"
 	"io"
 	"net/url"
@@ -25,7 +26,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws/awserr"
+	"github.com/aws/smithy-go"
 	"github.com/coreos/coreos-assembler/mantle/platform/api/aws"
 	"github.com/coreos/stream-metadata-go/release"
 	"github.com/pkg/errors"
@@ -260,8 +261,10 @@ func modifyReleaseMetadataIndex(api *aws.API, rel release.Release) {
 		data, err = func() ([]byte, error) {
 			f, err := api.DownloadFile(bucket, path)
 			if err != nil {
-				if awsErr, ok := err.(awserr.Error); ok {
-					if awsErr.Code() == "NoSuchKey" {
+				var apiErr smithy.APIError
+				if stdErrors.As(err, &apiErr) {
+					code := apiErr.ErrorCode()
+					if code == "NoSuchKey" || code == "NotFound" {
 						return []byte("{}"), nil
 					}
 				}

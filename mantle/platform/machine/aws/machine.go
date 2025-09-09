@@ -21,7 +21,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aws/aws-sdk-go/service/ec2"
+	ec2types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"golang.org/x/crypto/ssh"
 
 	"github.com/coreos/coreos-assembler/mantle/platform"
@@ -30,7 +30,7 @@ import (
 
 type machine struct {
 	cluster *cluster
-	mach    *ec2.Instance
+	mach    *ec2types.Instance
 	dir     string
 	journal *platform.Journal
 	console string

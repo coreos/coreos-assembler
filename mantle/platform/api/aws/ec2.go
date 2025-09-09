@@ -15,15 +15,18 @@
 package aws
 
 import (
+	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/service/ec2"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/ec2"
+	ec2types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
+	"github.com/aws/smithy-go"
 
 	"github.com/coreos/coreos-assembler/mantle/util"
 )
@@ -43,16 +46,16 @@ func (a *API) ListRegions(kind RegionKind) ([]string, error) {
 	switch kind {
 	case RegionDisabled:
 		input.AllRegions = aws.Bool(true)
-		input.Filters = []*ec2.Filter{
+		input.Filters = []ec2types.Filter{
 			{
 				Name:   aws.String("opt-in-status"),
-				Values: []*string{aws.String("not-opted-in")},
+				Values: []string{"not-opted-in"},
 			},
 		}
 	case RegionAny:
 		input.AllRegions = aws.Bool(true)
 	}
-	output, err := a.ec2.DescribeRegions(&input)
+	output, err := a.ec2.DescribeRegions(context.Background(), &input)
 	if err != nil {
 		return nil, fmt.Errorf("describing regions: %v", err)
 	}
@@ -65,7 +68,7 @@ func (a *API) ListRegions(kind RegionKind) ([]string, error) {
 }
 
 func (a *API) AddKey(name, key string) error {
-	_, err := a.ec2.ImportKeyPair(&ec2.ImportKeyPairInput{
+	_, err := a.ec2.ImportKeyPair(context.Background(), &ec2.ImportKeyPairInput{
 		KeyName:           &name,
 		PublicKeyMaterial: []byte(key),
 	})
@@ -74,7 +77,7 @@ func (a *API) AddKey(name, key string) error {
 }
 
 func (a *API) DeleteKey(name string) error {
-	_, err := a.ec2.DeleteKeyPair(&ec2.DeleteKeyPairInput{
+	_, err := a.ec2.DeleteKeyPair(context.Background(), &ec2.DeleteKeyPairInput{
 		KeyName: &name,
 	})
 
@@ -82,7 +85,7 @@ func (a *API) DeleteKey(name string) error {
 }
 
 // CreateInstances creates EC2 instances with a given name tag, optional ssh key name, user data. The image ID, instance type, and security group set in the API will be used. CreateInstances will block until all instances are running and have an IP address.
-func (a *API) CreateInstances(name, keyname, userdata string, count uint64, minDiskSize int64, useInstanceProfile bool) ([]*ec2.Instance, error) {
+func (a *API) CreateInstances(name, keyname, userdata string, count uint64, minDiskSize int64, useInstanceProfile bool) ([]ec2types.Instance, error) {
 	cnt := int64(count)
 
 	var ud *string
@@ -114,7 +117,7 @@ func (a *API) CreateInstances(name, keyname, userdata string, count uint64, minD
 		return nil, fmt.Errorf("error finding zones for instance type %v", a.opts.InstanceType)
 	}
 
-	var reservations *ec2.Reservation
+	var reservations *ec2.RunInstancesOutput
 
 	// Iterate over other possible zones if capacity for an instance
 	// type is exhausted
@@ -129,29 +132,29 @@ func (a *API) CreateInstances(name, keyname, userdata string, count uint64, minD
 			key = nil
 		}
 
-		var rootBlockDev []*ec2.BlockDeviceMapping
+		var rootBlockDev []ec2types.BlockDeviceMapping
 		if minDiskSize > 0 {
-			rootBlockDev = append(rootBlockDev, &ec2.BlockDeviceMapping{
+			rootBlockDev = append(rootBlockDev, ec2types.BlockDeviceMapping{
 				DeviceName: aws.String("/dev/xvda"),
-				Ebs: &ec2.EbsBlockDevice{
-					VolumeSize: &minDiskSize,
+				Ebs: &ec2types.EbsBlockDevice{
+					VolumeSize: aws.Int32(int32(minDiskSize)),
 				},
 			})
 		}
 		inst := ec2.RunInstancesInput{
 			ImageId:             &a.opts.AMI,
-			MinCount:            &cnt,
-			MaxCount:            &cnt,
+			MinCount:            aws.Int32(int32(cnt)),
+			MaxCount:            aws.Int32(int32(cnt)),
 			KeyName:             key,
-			InstanceType:        &a.opts.InstanceType,
-			SecurityGroupIds:    []*string{&sgId},
+			InstanceType:        ec2types.InstanceType(a.opts.InstanceType),
+			SecurityGroupIds:    []string{sgId},
 			SubnetId:            &subnetId,
 			UserData:            ud,
 			BlockDeviceMappings: rootBlockDev,
-			TagSpecifications: []*ec2.TagSpecification{
+			TagSpecifications: []ec2types.TagSpecification{
 				{
-					ResourceType: aws.String(ec2.ResourceTypeInstance),
-					Tags: []*ec2.Tag{
+					ResourceType: ec2types.ResourceTypeInstance,
+					Tags: []ec2types.Tag{
 						{
 							Key:   aws.String("Name"),
 							Value: aws.String(name),
@@ -165,7 +168,7 @@ func (a *API) CreateInstances(name, keyname, userdata string, count uint64, minD
 			},
 		}
 		if useInstanceProfile {
-			inst.IamInstanceProfile = &ec2.IamInstanceProfileSpecification{
+			inst.IamInstanceProfile = &ec2types.IamInstanceProfileSpecification{
 				Name: &a.opts.IAMInstanceProfile,
 			}
 		}
@@ -173,22 +176,23 @@ func (a *API) CreateInstances(name, keyname, userdata string, count uint64, minD
 		err = util.RetryConditional(5, 5*time.Second, func(err error) bool {
 			// due to AWS' eventual consistency despite ensuring that the IAM Instance
 			// Profile has been created it may not be available to ec2 yet.
-			if awsErr, ok := err.(awserr.Error); ok && (awsErr.Code() == "InvalidParameterValue" && strings.Contains(awsErr.Message(), "iamInstanceProfile.name")) {
+			var ae smithy.APIError
+			if errors.As(err, &ae) && (ae.ErrorCode() == "InvalidParameterValue" && strings.Contains(ae.ErrorMessage(), "iamInstanceProfile.name")) {
 				return true
 			}
 			return false
 		}, func() error {
 			var ierr error
-			reservations, ierr = a.ec2.RunInstances(&inst)
+			reservations, ierr = a.ec2.RunInstances(context.Background(), &inst)
 			return ierr
 		})
 		if err == nil {
 			// Successfully started our instance in the requested zone. Break out of the loop
 			break
-		}
-		if err != nil {
+		} else {
 			// Handle InsufficientInstanceCapacity error specifically
-			if awsErr, ok := err.(awserr.Error); ok && awsErr.Code() == "InsufficientInstanceCapacity" {
+			var ae smithy.APIError
+			if errors.As(err, &ae) && ae.ErrorCode() == "InsufficientInstanceCapacity" {
 				// If we iterate over all possible zones and none of them have sufficient instance(s)
 				// available we will return the InsufficientInstanceCapacity error
 				if zoneKey == len(zones)-1 {
@@ -207,19 +211,20 @@ func (a *API) CreateInstances(name, keyname, userdata string, count uint64, minD
 	}
 
 	// loop until all machines are online
-	var insts []*ec2.Instance
+	var insts []ec2types.Instance
 
 	// 10 minutes is a pretty reasonable timeframe for AWS instances to work.
 	timeout := 10 * time.Minute
 	// don't make api calls too quickly, or we will hit the rate limit
 	delay := 10 * time.Second
 	err = util.WaitUntilReady(timeout, delay, func() (bool, error) {
-		desc, err := a.ec2.DescribeInstances(&ec2.DescribeInstancesInput{
-			InstanceIds: aws.StringSlice(ids),
+		desc, err := a.ec2.DescribeInstances(context.Background(), &ec2.DescribeInstancesInput{
+			InstanceIds: ids,
 		})
 		if err != nil {
 			// Keep retrying if the InstanceID disappears momentarily
-			if awsErr, ok := err.(awserr.Error); ok && awsErr.Code() == "InvalidInstanceID.NotFound" {
+			var ae smithy.APIError
+			if errors.As(err, &ae) && ae.ErrorCode() == "InvalidInstanceID.NotFound" {
 				plog.Debugf("instance ID not found, retrying: %v", err)
 				return false, nil
 			}
@@ -228,7 +233,7 @@ func (a *API) CreateInstances(name, keyname, userdata string, count uint64, minD
 		insts = desc.Reservations[0].Instances
 
 		for _, i := range insts {
-			if *i.State.Name != ec2.InstanceStateNameRunning || i.PublicIpAddress == nil {
+			if i.State.Name != ec2types.InstanceStateNameRunning || i.PublicIpAddress == nil {
 				return false, nil
 			}
 		}
@@ -269,11 +274,11 @@ func (a *API) CreateInstances(name, keyname, userdata string, count uint64, minD
 func (a *API) gcEC2(gracePeriod time.Duration) error {
 	durationAgo := time.Now().Add(-1 * gracePeriod)
 
-	instances, err := a.ec2.DescribeInstances(&ec2.DescribeInstancesInput{
-		Filters: []*ec2.Filter{
+	instances, err := a.ec2.DescribeInstances(context.Background(), &ec2.DescribeInstancesInput{
+		Filters: []ec2types.Filter{
 			{
 				Name:   aws.String("tag:CreatedBy"),
-				Values: aws.StringSlice([]string{"mantle"}),
+				Values: []string{"mantle"},
 			},
 		},
 	})
@@ -292,12 +297,12 @@ func (a *API) gcEC2(gracePeriod time.Duration) error {
 			}
 
 			if instance.State != nil {
-				switch *instance.State.Name {
-				case ec2.InstanceStateNamePending, ec2.InstanceStateNameRunning, ec2.InstanceStateNameStopped:
+				switch instance.State.Name {
+				case ec2types.InstanceStateNamePending, ec2types.InstanceStateNameRunning, ec2types.InstanceStateNameStopped:
 					toTerminate = append(toTerminate, *instance.InstanceId)
-				case ec2.InstanceStateNameTerminated, ec2.InstanceStateNameShuttingDown:
+				case ec2types.InstanceStateNameTerminated, ec2types.InstanceStateNameShuttingDown:
 				default:
-					plog.Infof("ec2: skipping instance in state %s", *instance.State.Name)
+					plog.Infof("ec2: skipping instance in state %s", string(instance.State.Name))
 				}
 			} else {
 				plog.Warningf("ec2 instance had no state: %s", *instance.InstanceId)
@@ -314,10 +319,10 @@ func (a *API) TerminateInstances(ids []string) error {
 		return nil
 	}
 	input := &ec2.TerminateInstancesInput{
-		InstanceIds: aws.StringSlice(ids),
+		InstanceIds: ids,
 	}
 
-	if _, err := a.ec2.TerminateInstances(input); err != nil {
+	if _, err := a.ec2.TerminateInstances(context.Background(), input); err != nil {
 		return err
 	}
 
@@ -329,15 +334,15 @@ func (a *API) CreateTags(resources []string, tags map[string]string) error {
 		return nil
 	}
 
-	tagObjs := make([]*ec2.Tag, 0, len(tags))
+	tagObjs := make([]ec2types.Tag, 0, len(tags))
 	for key, value := range tags {
-		tagObjs = append(tagObjs, &ec2.Tag{
+		tagObjs = append(tagObjs, ec2types.Tag{
 			Key:   aws.String(key),
 			Value: aws.String(value),
 		})
 	}
-	_, err := a.ec2.CreateTags(&ec2.CreateTagsInput{
-		Resources: aws.StringSlice(resources),
+	_, err := a.ec2.CreateTags(context.Background(), &ec2.CreateTagsInput{
+		Resources: resources,
 		Tags:      tagObjs,
 	})
 	if err != nil {
@@ -349,7 +354,7 @@ func (a *API) CreateTags(resources []string, tags map[string]string) error {
 // GetConsoleOutput returns the console output. Returns "", nil if no logs
 // are available.
 func (a *API) GetConsoleOutput(instanceID string) (string, error) {
-	res, err := a.ec2.GetConsoleOutput(&ec2.GetConsoleOutputInput{
+	res, err := a.ec2.GetConsoleOutput(context.Background(), &ec2.GetConsoleOutputInput{
 		InstanceId: aws.String(instanceID),
 	})
 	if err != nil {
@@ -374,15 +379,15 @@ func (a *API) GetConsoleOutput(instanceID string) (string, error) {
 func (a *API) GetZonesForInstanceType(instanceType string) ([]string, error) {
 
 	input := ec2.DescribeInstanceTypeOfferingsInput{
-		LocationType: aws.String(ec2.LocationTypeAvailabilityZone),
-		Filters: []*ec2.Filter{
+		LocationType: ec2types.LocationTypeAvailabilityZone,
+		Filters: []ec2types.Filter{
 			{
 				Name:   aws.String("instance-type"),
-				Values: []*string{aws.String(instanceType)},
+				Values: []string{instanceType},
 			},
 		},
 	}
-	output, err := a.ec2.DescribeInstanceTypeOfferings(&input)
+	output, err := a.ec2.DescribeInstanceTypeOfferings(context.Background(), &input)
 	if err != nil {
 		return nil, fmt.Errorf("error describing instance offerings: %v", err)
 	}
