@@ -1,4 +1,5 @@
 import json
+import tempfile
 
 from cosalib.cmdlib import runcmd
 
@@ -53,7 +54,7 @@ def delete_local_container_imgref(repo, tag):
     runcmd(cmd)
 
 
-def push_container_manifest(repo, tags, write_digest_to_file, v2s2=False):
+def push_container_manifest(repo, tags, write_digest_to_file, v2s2=False) -> str:
     '''
     Push manifest to registry
     @param repo str registry repository
@@ -66,14 +67,21 @@ def push_container_manifest(repo, tags, write_digest_to_file, v2s2=False):
         # to create a manifest with 2 different mediaType. It seems to be
         # a Quay issue.
         base_cmd.extend(["--remove-signatures", "-f", "v2s2"])
-    if write_digest_to_file:
-        base_cmd.extend(["--digestfile", write_digest_to_file])
-    runcmd(base_cmd + [f"{repo}:{tags[0]}"])
+
+    with tempfile.NamedTemporaryFile(mode='r+', encoding='utf-8') as f:
+        runcmd(base_cmd + [f"{repo}:{tags[0]}", "--digestfile", f.name])
+        digest = f.read()
+        if write_digest_to_file:
+            with open(write_digest_to_file, mode='w', encoding='utf-8') as g:
+                g.write(digest)
+
     for tag in tags[1:]:
         runcmd(base_cmd + [f"{repo}:{tag}"])
 
+    return digest
 
-def create_and_push_container_manifest(repo, tags, images, write_digest_to_file, v2s2) -> dict:
+
+def create_and_push_container_manifest(repo, tags, images, write_digest_to_file, v2s2) -> tuple[str, dict]:
     '''
     Do it all! Create, push, cleanup, and return the final manifest JSON.
     @param repo str registry repository
@@ -85,6 +93,6 @@ def create_and_push_container_manifest(repo, tags, images, write_digest_to_file,
         # perhaps left over from a previous failed run -> delete
         delete_local_container_imgref(repo, tags[0])
     manifest_info = create_local_container_manifest(repo, tags[0], images)
-    push_container_manifest(repo, tags, write_digest_to_file, v2s2)
+    manifest_digest = push_container_manifest(repo, tags, write_digest_to_file, v2s2)
     delete_local_container_imgref(repo, tags[0])
-    return manifest_info
+    return (manifest_digest, manifest_info)

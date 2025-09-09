@@ -103,7 +103,7 @@ def main():
             return
 
         # Create/Upload the manifest list to the container registry
-        manifest_info = create_and_push_container_manifest(
+        manifest_digest, manifest_info = create_and_push_container_manifest(
             args.repo, args.tags, images, args.write_digest_to_file, args.v2s2)
         # if we pushed in v2s2 mode, we need to reload from the repo the actual
         # final digests: https://github.com/containers/podman/issues/16603
@@ -125,6 +125,7 @@ def main():
             image = {
                 'image': args.repo,
                 'digest': manifest['digest'],
+                'manifest-list-digest': manifest_digest,
                 'tags': args.tags
             }
             if buildmetas[arch].get(args.metajsonname):
