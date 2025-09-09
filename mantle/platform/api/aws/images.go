@@ -15,6 +15,8 @@
 package aws
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"net/url"
 	"runtime"
@@ -22,12 +24,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/aws/endpoints"
-	"github.com/aws/aws-sdk-go/aws/request"
-	"github.com/aws/aws-sdk-go/service/ec2"
-	"github.com/aws/aws-sdk-go/service/iam"
+	"github.com/IBM/ibm-cos-sdk-go/aws/endpoints"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/ec2"
+	ec2types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
+	"github.com/aws/aws-sdk-go-v2/service/iam"
+	"github.com/aws/smithy-go"
 
 	"github.com/coreos/coreos-assembler/mantle/util"
 )
@@ -39,8 +41,8 @@ const ContainerLinuxDiskSizeGiB = 8
 type EC2ImageFormat string
 
 const (
-	EC2ImageFormatRaw  EC2ImageFormat = ec2.DiskImageFormatRaw
-	EC2ImageFormatVmdk EC2ImageFormat = ec2.DiskImageFormatVmdk
+	EC2ImageFormatRaw  EC2ImageFormat = "RAW"
+	EC2ImageFormatVmdk EC2ImageFormat = "VMDK"
 )
 
 func (e *EC2ImageFormat) Set(s string) error {
@@ -77,18 +79,18 @@ type ImageData struct {
 // Look up a Snapshot by name. Return nil if not found.
 func (a *API) FindSnapshot(imageName string) (*Snapshot, error) {
 	// Look for an existing snapshot with this image name.
-	snapshotRes, err := a.ec2.DescribeSnapshots(&ec2.DescribeSnapshotsInput{
-		Filters: []*ec2.Filter{
+	snapshotRes, err := a.ec2.DescribeSnapshots(context.Background(), &ec2.DescribeSnapshotsInput{
+		Filters: []ec2types.Filter{
 			{
 				Name:   aws.String("status"),
-				Values: aws.StringSlice([]string{"completed"}),
+				Values: []string{"completed"},
 			},
 			{
 				Name:   aws.String("tag:Name"),
-				Values: aws.StringSlice([]string{imageName}),
+				Values: []string{imageName},
 			},
 		},
-		OwnerIds: aws.StringSlice([]string{"self"}),
+		OwnerIds: []string{"self"},
 	})
 	if err != nil {
 		return nil, fmt.Errorf("unable to describe snapshots: %v", err)
@@ -107,7 +109,7 @@ func (a *API) FindSnapshot(imageName string) (*Snapshot, error) {
 	// Look for an existing import task with this image name. We have
 	// to fetch all of them and walk the list ourselves.
 	var snapshotTaskID string
-	taskRes, err := a.ec2.DescribeImportSnapshotTasks(&ec2.DescribeImportSnapshotTasksInput{})
+	taskRes, err := a.ec2.DescribeImportSnapshotTasks(context.Background(), &ec2.DescribeImportSnapshotTasksInput{})
 	if err != nil {
 		return nil, fmt.Errorf("unable to describe import tasks: %v", err)
 	}
@@ -122,11 +124,12 @@ func (a *API) FindSnapshot(imageName string) (*Snapshot, error) {
 			// Either we lost the race with a snapshot that just
 			// completed or this is an old import task for a
 			// snapshot that's been deleted. Check it.
-			_, err := a.ec2.DescribeSnapshots(&ec2.DescribeSnapshotsInput{
-				SnapshotIds: []*string{task.SnapshotTaskDetail.SnapshotId},
+			_, err := a.ec2.DescribeSnapshots(context.Background(), &ec2.DescribeSnapshotsInput{
+				SnapshotIds: []string{*task.SnapshotTaskDetail.SnapshotId},
 			})
 			if err != nil {
-				if awserr, ok := err.(awserr.Error); ok && awserr.Code() == "InvalidSnapshot.NotFound" {
+				var ae smithy.APIError
+				if errors.As(err, &ae) && ae.ErrorCode() == "InvalidSnapshot.NotFound" {
 					continue
 				} else {
 					return nil, fmt.Errorf("couldn't describe snapshot from import task: %v", err)
@@ -160,12 +163,12 @@ func (a *API) CreateSnapshot(imageName, sourceURL string, format EC2ImageFormat)
 	}
 	s3key := strings.TrimPrefix(s3url.Path, "/")
 
-	importRes, err := a.ec2.ImportSnapshot(&ec2.ImportSnapshotInput{
+	importRes, err := a.ec2.ImportSnapshot(context.Background(), &ec2.ImportSnapshotInput{
 		RoleName:    aws.String(vmImportRole),
 		Description: aws.String(imageName),
-		DiskContainer: &ec2.SnapshotDiskContainer{
+		DiskContainer: &ec2types.SnapshotDiskContainer{
 			// TODO(euank): allow s3 source / local file -> s3 source
-			UserBucket: &ec2.UserBucket{
+			UserBucket: &ec2types.UserBucket{
 				S3Bucket: aws.String(s3url.Host),
 				S3Key:    aws.String(s3key),
 			},
@@ -185,8 +188,8 @@ func (a *API) CreateSnapshot(imageName, sourceURL string, format EC2ImageFormat)
 // finishImportImageTask.
 func (a *API) finishSnapshotTask(snapshotTaskID, imageName string) (*Snapshot, error) {
 	snapshotDone := func(snapshotTaskID string) (bool, string, error) {
-		taskRes, err := a.ec2.DescribeImportSnapshotTasks(&ec2.DescribeImportSnapshotTasksInput{
-			ImportTaskIds: []*string{aws.String(snapshotTaskID)},
+		taskRes, err := a.ec2.DescribeImportSnapshotTasks(context.Background(), &ec2.DescribeImportSnapshotTasksInput{
+			ImportTaskIds: []string{snapshotTaskID},
 		})
 		if err != nil {
 			return false, "", err
@@ -252,14 +255,14 @@ func (a *API) finishSnapshotTask(snapshotTaskID, imageName string) (*Snapshot, e
 }
 
 func (a *API) CreateImportRole(bucket string) error {
-	iamc := iam.New(a.session)
-	_, err := iamc.GetRole(&iam.GetRoleInput{
+	_, err := a.iam.GetRole(context.Background(), &iam.GetRoleInput{
 		RoleName: &vmImportRole,
 	})
 	if err != nil {
-		if awserr, ok := err.(awserr.Error); ok && awserr.Code() == "NoSuchEntity" {
+		var ae smithy.APIError
+		if errors.As(err, &ae) && ae.ErrorCode() == "NoSuchEntity" {
 			// Role does not exist, let's try to create it
-			_, err := iamc.CreateRole(&iam.CreateRoleInput{
+			_, err := a.iam.CreateRole(context.Background(), &iam.CreateRoleInput{
 				RoleName: &vmImportRole,
 				AssumeRolePolicyDocument: aws.String(`{
 					"Version": "2012-10-17",
@@ -287,18 +290,19 @@ func (a *API) CreateImportRole(bucket string) error {
 	// whether a regional bucket is covered by a policy without parsing the
 	// policy-doc json
 	policyName := bucket
-	_, err = iamc.GetRolePolicy(&iam.GetRolePolicyInput{
+	_, err = a.iam.GetRolePolicy(context.Background(), &iam.GetRolePolicyInput{
 		RoleName:   &vmImportRole,
 		PolicyName: &policyName,
 	})
 	if err != nil {
-		if awserr, ok := err.(awserr.Error); ok && awserr.Code() == "NoSuchEntity" {
+		var ae smithy.APIError
+		if errors.As(err, &ae) && ae.ErrorCode() == "NoSuchEntity" {
 			// Policy does not exist, let's try to create it
 			partition, ok := endpoints.PartitionForRegion(endpoints.DefaultPartitions(), a.opts.Region)
 			if !ok {
 				return fmt.Errorf("could not find partition for %v out of partitions %v", a.opts.Region, endpoints.DefaultPartitions())
 			}
-			_, err := iamc.PutRolePolicy(&iam.PutRolePolicyInput{
+			_, err := a.iam.PutRolePolicy(context.Background(), &iam.PutRolePolicyInput{
 				RoleName:   &vmImportRole,
 				PolicyName: &policyName,
 				PolicyDocument: aws.String((`{
@@ -346,10 +350,10 @@ func (a *API) CreateHVMImage(snapshotID string, diskSizeGiB uint, name string, d
 	}
 	switch architecture {
 	case "amd64", "x86_64":
-		awsArch = ec2.ArchitectureTypeX8664
+		awsArch = string(ec2types.ArchitectureTypeX8664)
 		bootmode = X86BootMode
 	case "arm64", "aarch64":
-		awsArch = ec2.ArchitectureTypeArm64
+		awsArch = string(ec2types.ArchitectureTypeArm64)
 		bootmode = "uefi"
 	default:
 		return "", fmt.Errorf("unsupported ec2 architecture %q", architecture)
@@ -362,17 +366,17 @@ func (a *API) CreateHVMImage(snapshotID string, diskSizeGiB uint, name string, d
 	params := &ec2.RegisterImageInput{
 		Name:               aws.String(name),
 		Description:        aws.String(description),
-		Architecture:       aws.String(awsArch),
+		Architecture:       ec2types.ArchitectureValues(awsArch),
 		VirtualizationType: aws.String("hvm"),
 		RootDeviceName:     aws.String("/dev/xvda"),
-		BlockDeviceMappings: []*ec2.BlockDeviceMapping{
+		BlockDeviceMappings: []ec2types.BlockDeviceMapping{
 			{
 				DeviceName: aws.String("/dev/xvda"),
-				Ebs: &ec2.EbsBlockDevice{
+				Ebs: &ec2types.EbsBlockDevice{
 					SnapshotId:          aws.String(snapshotID),
 					DeleteOnTermination: aws.Bool(true),
-					VolumeSize:          aws.Int64(int64(diskSizeGiB)),
-					VolumeType:          aws.String(volumetype),
+					VolumeSize:          aws.Int32(int32(diskSizeGiB)),
+					VolumeType:          ec2types.VolumeType(volumetype),
 				},
 			},
 			{
@@ -382,17 +386,17 @@ func (a *API) CreateHVMImage(snapshotID string, diskSizeGiB uint, name string, d
 		},
 		EnaSupport:      aws.Bool(true),
 		SriovNetSupport: aws.String("simple"),
-		BootMode:        aws.String(bootmode),
+		BootMode:        ec2types.BootModeValues(bootmode),
 	}
 	if imdsv2Only {
-		params.ImdsSupport = aws.String("v2.0")
+		params.ImdsSupport = ec2types.ImdsSupportValues("v2.0")
 	}
 	// Set the billing product code for this AMI, if provided. The account must be
 	// authorized by AWS to specify billing product codes. This is used by the
 	// Windows License Included creation workflow to set the Windows LI billing
 	// product code on an AMI.
 	if billingCode != "" {
-		params.BillingProducts = []*string{aws.String(billingCode)}
+		params.BillingProducts = []string{billingCode}
 	}
 
 	return a.createImage(params)
@@ -404,7 +408,7 @@ func (a *API) deregisterImageIfExists(name string) error {
 		return err
 	}
 	if imageID != "" {
-		_, err := a.ec2.DeregisterImage(&ec2.DeregisterImageInput{ImageId: &imageID})
+		_, err := a.ec2.DeregisterImage(context.Background(), &ec2.DeregisterImageInput{ImageId: &imageID})
 		if err != nil {
 			return err
 		}
@@ -433,7 +437,7 @@ func (a *API) RemoveImage(name string) error {
 	if snapshot != nil {
 		// We explicitly ignore errors here in case somehow another AMI was based
 		// on that snapshot
-		_, err := a.ec2.DeleteSnapshot(&ec2.DeleteSnapshotInput{SnapshotId: &snapshot.SnapshotID})
+		_, err := a.ec2.DeleteSnapshot(context.Background(), &ec2.DeleteSnapshotInput{SnapshotId: &snapshot.SnapshotID})
 		if err != nil {
 			plog.Warningf("deleting snapshot %s: %v", snapshot.SnapshotID, err)
 		} else {
@@ -445,39 +449,43 @@ func (a *API) RemoveImage(name string) error {
 }
 
 func (a *API) createImage(params *ec2.RegisterImageInput) (string, error) {
-	res, err := a.ec2.RegisterImage(params)
+	res, err := a.ec2.RegisterImage(context.Background(), params)
 
 	var imageID string
 	if err == nil {
 		imageID = *res.ImageId
 		plog.Infof("created image %v", imageID)
-	} else if awserr, ok := err.(awserr.Error); ok && awserr.Code() == "InvalidAMIName.Duplicate" {
-		// The AMI already exists. Get its ID. Due to races, this
-		// may take several attempts.
-		timeout := 5 * time.Minute
-		delay := 10 * time.Second
-		err = util.RetryUntilTimeout(timeout, delay, func() error {
-			imageID, err = a.FindImage(*params.Name)
-			if err != nil {
-				return err
-			}
-			if imageID != "" {
-				plog.Infof("found existing image %v, reusing", imageID)
-				return nil
-			}
-			return fmt.Errorf("failed to locate image %q", *params.Name)
-		})
-		if err != nil {
-			return "", fmt.Errorf("error finding duplicate image id: %v", err)
-		}
 	} else {
-		return "", fmt.Errorf("error creating AMI: %v", err)
+		var ae smithy.APIError
+		if errors.As(err, &ae) && ae.ErrorCode() == "InvalidAMIName.Duplicate" {
+			// The AMI already exists. Get its ID. Due to races, this
+			// may take several attempts.
+			timeout := 5 * time.Minute
+			delay := 10 * time.Second
+			err = util.RetryUntilTimeout(timeout, delay, func() error {
+				imageID, err = a.FindImage(*params.Name)
+				if err != nil {
+					return err
+				}
+				if imageID != "" {
+					plog.Infof("found existing image %v, reusing", imageID)
+					return nil
+				}
+				return fmt.Errorf("failed to locate image %q", *params.Name)
+			})
+			if err != nil {
+				return "", fmt.Errorf("error finding duplicate image id: %v", err)
+			}
+		} else {
+			return "", fmt.Errorf("error creating AMI: %v", err)
+		}
 	}
 
 	// Attempt to tag inside of a retry loop; AWS eventual consistency means that just because
 	// the FindImage call found the AMI it might not be found by the CreateTags call
 	err = util.RetryConditional(6, 5*time.Second, func(err error) bool {
-		if awserr, ok := err.(awserr.Error); ok && awserr.Code() == "InvalidAMIID.NotFound" {
+		var ae smithy.APIError
+		if errors.As(err, &ae) && ae.ErrorCode() == "InvalidAMIID.NotFound" {
 			return true
 		}
 		return false
@@ -499,16 +507,16 @@ func (a *API) createImage(params *ec2.RegisterImageInput) (string, error) {
 // to a list of AWS users (referenced by their 12-digit numerical user IDs).
 func (a *API) GrantVolumePermission(snapshotID string, userIDs []string) error {
 	arg := &ec2.ModifySnapshotAttributeInput{
-		Attribute:              aws.String("createVolumePermission"),
+		Attribute:              ec2types.SnapshotAttributeNameCreateVolumePermission,
 		SnapshotId:             aws.String(snapshotID),
-		CreateVolumePermission: &ec2.CreateVolumePermissionModifications{},
+		CreateVolumePermission: &ec2types.CreateVolumePermissionModifications{},
 	}
 	for _, userID := range userIDs {
-		arg.CreateVolumePermission.Add = append(arg.CreateVolumePermission.Add, &ec2.CreateVolumePermission{
+		arg.CreateVolumePermission.Add = append(arg.CreateVolumePermission.Add, ec2types.CreateVolumePermission{
 			UserId: aws.String(userID),
 		})
 	}
-	_, err := a.ec2.ModifySnapshotAttribute(arg)
+	_, err := a.ec2.ModifySnapshotAttribute(context.Background(), arg)
 	if err != nil {
 		return fmt.Errorf("couldn't grant snapshot volume permission: %v", err)
 	}
@@ -519,14 +527,14 @@ func (a *API) GrantLaunchPermission(imageID string, userIDs []string) error {
 	arg := &ec2.ModifyImageAttributeInput{
 		Attribute:        aws.String("launchPermission"),
 		ImageId:          aws.String(imageID),
-		LaunchPermission: &ec2.LaunchPermissionModifications{},
+		LaunchPermission: &ec2types.LaunchPermissionModifications{},
 	}
 	for _, userID := range userIDs {
-		arg.LaunchPermission.Add = append(arg.LaunchPermission.Add, &ec2.LaunchPermission{
+		arg.LaunchPermission.Add = append(arg.LaunchPermission.Add, ec2types.LaunchPermission{
 			UserId: aws.String(userID),
 		})
 	}
-	_, err := a.ec2.ModifyImageAttribute(arg)
+	_, err := a.ec2.ModifyImageAttribute(context.Background(), arg)
 	if err != nil {
 		return fmt.Errorf("couldn't grant launch permission: %v", err)
 	}
@@ -549,16 +557,16 @@ func (a *API) CopyImage(sourceImageID string, regions []string, cb func(string, 
 	if err != nil {
 		return err
 	}
-	describeSnapshotRes, err := a.ec2.DescribeSnapshots(&ec2.DescribeSnapshotsInput{
-		SnapshotIds: []*string{&snapshotID},
+	describeSnapshotRes, err := a.ec2.DescribeSnapshots(context.Background(), &ec2.DescribeSnapshotsInput{
+		SnapshotIds: []string{snapshotID},
 	})
 	if err != nil {
 		return fmt.Errorf("couldn't describe snapshot: %v", err)
 	}
 	snapshot := describeSnapshotRes.Snapshots[0]
 
-	describeSnapshotAttributeRes, err := a.ec2.DescribeSnapshotAttribute(&ec2.DescribeSnapshotAttributeInput{
-		Attribute:  aws.String("createVolumePermission"),
+	describeSnapshotAttributeRes, err := a.ec2.DescribeSnapshotAttribute(context.Background(), &ec2.DescribeSnapshotAttributeInput{
+		Attribute:  ec2types.SnapshotAttributeNameCreateVolumePermission,
 		SnapshotId: aws.String(snapshotID),
 	})
 	if err != nil {
@@ -566,8 +574,8 @@ func (a *API) CopyImage(sourceImageID string, regions []string, cb func(string, 
 	}
 	createVolumePermissions := describeSnapshotAttributeRes.CreateVolumePermissions
 
-	describeAttributeRes, err := a.ec2.DescribeImageAttribute(&ec2.DescribeImageAttributeInput{
-		Attribute: aws.String("launchPermission"),
+	describeAttributeRes, err := a.ec2.DescribeImageAttribute(context.Background(), &ec2.DescribeImageAttributeInput{
+		Attribute: ec2types.ImageAttributeNameLaunchPermission,
 		ImageId:   aws.String(sourceImageID),
 	})
 	if err != nil {
@@ -612,14 +620,14 @@ func (a *API) CopyImage(sourceImageID string, regions []string, cb func(string, 
 	return err
 }
 
-func (a *API) copyImageIn(sourceRegion, sourceImageID, name, description string, imageTags, snapshotTags []*ec2.Tag, launchPermissions []*ec2.LaunchPermission, createVolumePermissions []*ec2.CreateVolumePermission) (ImageData, error) {
+func (a *API) copyImageIn(sourceRegion, sourceImageID, name, description string, imageTags, snapshotTags []ec2types.Tag, launchPermissions []ec2types.LaunchPermission, createVolumePermissions []ec2types.CreateVolumePermission) (ImageData, error) {
 	imageID, err := a.FindImage(name)
 	if err != nil {
 		return ImageData{}, err
 	}
 
 	if imageID == "" {
-		copyRes, err := a.ec2.CopyImage(&ec2.CopyImageInput{
+		copyRes, err := a.ec2.CopyImage(context.Background(), &ec2.CopyImageInput{
 			SourceRegion:  aws.String(sourceRegion),
 			SourceImageId: aws.String(sourceImageID),
 			Name:          aws.String(name),
@@ -632,19 +640,17 @@ func (a *API) copyImageIn(sourceRegion, sourceImageID, name, description string,
 	}
 
 	// The 10-minute default timeout is not enough. Wait up to 30 minutes.
-	err = a.ec2.WaitUntilImageAvailableWithContext(aws.BackgroundContext(), &ec2.DescribeImagesInput{
-		ImageIds: aws.StringSlice([]string{imageID}),
-	}, func(w *request.Waiter) {
-		w.MaxAttempts = 60
-		w.Delay = request.ConstantWaiterDelay(30 * time.Second)
-	})
+	waiter := ec2.NewImageAvailableWaiter(a.ec2)
+	err = waiter.Wait(context.Background(), &ec2.DescribeImagesInput{
+		ImageIds: []string{imageID},
+	}, 30*time.Minute)
 	if err != nil {
 		return ImageData{}, fmt.Errorf("couldn't copy image to %v: %v", a.opts.Region, err)
 	}
 
 	if len(imageTags) > 0 {
-		_, err = a.ec2.CreateTags(&ec2.CreateTagsInput{
-			Resources: aws.StringSlice([]string{imageID}),
+		_, err = a.ec2.CreateTags(context.Background(), &ec2.CreateTagsInput{
+			Resources: []string{imageID},
 			Tags:      imageTags,
 		})
 		if err != nil {
@@ -663,8 +669,8 @@ func (a *API) copyImageIn(sourceRegion, sourceImageID, name, description string,
 	}
 
 	if len(snapshotTags) > 0 {
-		_, err = a.ec2.CreateTags(&ec2.CreateTagsInput{
-			Resources: []*string{&snapshotID},
+		_, err = a.ec2.CreateTags(context.Background(), &ec2.CreateTagsInput{
+			Resources: []string{snapshotID},
 			Tags:      snapshotTags,
 		})
 		if err != nil {
@@ -673,10 +679,10 @@ func (a *API) copyImageIn(sourceRegion, sourceImageID, name, description string,
 	}
 
 	if len(createVolumePermissions) > 0 {
-		_, err = a.ec2.ModifySnapshotAttribute(&ec2.ModifySnapshotAttributeInput{
-			Attribute:  aws.String("createVolumePermission"),
+		_, err = a.ec2.ModifySnapshotAttribute(context.Background(), &ec2.ModifySnapshotAttributeInput{
+			Attribute:  ec2types.SnapshotAttributeNameCreateVolumePermission,
 			SnapshotId: &snapshotID,
-			CreateVolumePermission: &ec2.CreateVolumePermissionModifications{
+			CreateVolumePermission: &ec2types.CreateVolumePermissionModifications{
 				Add: createVolumePermissions,
 			},
 		})
@@ -686,10 +692,10 @@ func (a *API) copyImageIn(sourceRegion, sourceImageID, name, description string,
 	}
 
 	if len(launchPermissions) > 0 {
-		_, err = a.ec2.ModifyImageAttribute(&ec2.ModifyImageAttributeInput{
+		_, err = a.ec2.ModifyImageAttribute(context.Background(), &ec2.ModifyImageAttributeInput{
 			Attribute: aws.String("launchPermission"),
 			ImageId:   aws.String(imageID),
-			LaunchPermission: &ec2.LaunchPermissionModifications{
+			LaunchPermission: &ec2types.LaunchPermissionModifications{
 				Add: launchPermissions,
 			},
 		})
@@ -719,14 +725,14 @@ func (a *API) copyImageIn(sourceRegion, sourceImageID, name, description string,
 
 // Find an image we own with the specified name. Return ID or "".
 func (a *API) FindImage(name string) (string, error) {
-	describeRes, err := a.ec2.DescribeImages(&ec2.DescribeImagesInput{
-		Filters: []*ec2.Filter{
+	describeRes, err := a.ec2.DescribeImages(context.Background(), &ec2.DescribeImagesInput{
+		Filters: []ec2types.Filter{
 			{
 				Name:   aws.String("name"),
-				Values: aws.StringSlice([]string{name}),
+				Values: []string{name},
 			},
 		},
-		Owners: aws.StringSlice([]string{"self"}),
+		Owners: []string{"self"},
 	})
 	if err != nil {
 		return "", fmt.Errorf("couldn't describe images: %v", err)
@@ -742,15 +748,16 @@ func (a *API) FindImage(name string) (string, error) {
 
 // Deregisters the ami.
 func (a *API) RemoveByAmiTag(imageID string, allowMissing bool) error {
-	_, err := a.ec2.DeregisterImage(&ec2.DeregisterImageInput{ImageId: &imageID})
+	_, err := a.ec2.DeregisterImage(context.Background(), &ec2.DeregisterImageInput{ImageId: &imageID})
 	if err != nil {
 		if allowMissing {
-			if awsErr, ok := err.(awserr.Error); ok {
-				if awsErr.Code() == "InvalidAMIID.NotFound" {
+			var ae smithy.APIError
+			if errors.As(err, &ae) {
+				if ae.ErrorCode() == "InvalidAMIID.NotFound" {
 					plog.Infof("%s does not exist.", imageID)
 					return nil
 				}
-				if awsErr.Code() == "InvalidAMIID.Unavailable" {
+				if ae.ErrorCode() == "InvalidAMIID.Unavailable" {
 					plog.Infof("%s is no longer available.", imageID)
 					return nil
 				}
@@ -763,15 +770,16 @@ func (a *API) RemoveByAmiTag(imageID string, allowMissing bool) error {
 }
 
 func (a *API) RemoveBySnapshotTag(snapshotID string, allowMissing bool) error {
-	_, err := a.ec2.DeleteSnapshot(&ec2.DeleteSnapshotInput{SnapshotId: &snapshotID})
+	_, err := a.ec2.DeleteSnapshot(context.Background(), &ec2.DeleteSnapshotInput{SnapshotId: &snapshotID})
 	if err != nil {
 		if allowMissing {
-			if awsErr, ok := err.(awserr.Error); ok {
-				if awsErr.Code() == "InvalidSnapshot.NotFound" {
+			var ae smithy.APIError
+			if errors.As(err, &ae) {
+				if ae.ErrorCode() == "InvalidSnapshot.NotFound" {
 					plog.Infof("%s does not exist.", snapshotID)
 					return nil
 				}
-				if awsErr.Code() == "InvalidSnapshot.Unavailable" {
+				if ae.ErrorCode() == "InvalidSnapshot.Unavailable" {
 					plog.Infof("%s is no longer available.", snapshotID)
 					return nil
 				}
@@ -783,14 +791,14 @@ func (a *API) RemoveBySnapshotTag(snapshotID string, allowMissing bool) error {
 	return nil
 }
 
-func (a *API) DescribeImage(imageID string) (*ec2.Image, error) {
-	describeRes, err := a.ec2.DescribeImages(&ec2.DescribeImagesInput{
-		ImageIds: aws.StringSlice([]string{imageID}),
+func (a *API) DescribeImage(imageID string) (*ec2types.Image, error) {
+	describeRes, err := a.ec2.DescribeImages(context.Background(), &ec2.DescribeImagesInput{
+		ImageIds: []string{imageID},
 	})
 	if err != nil {
 		return nil, fmt.Errorf("couldn't describe image: %v", err)
 	}
-	return describeRes.Images[0], nil
+	return &describeRes.Images[0], nil
 }
 
 // Grant everyone launch permission on the specified image and create-volume
@@ -805,13 +813,13 @@ func (a *API) PublishImage(imageID string) error {
 	if err != nil {
 		return err
 	}
-	_, err = a.ec2.ModifySnapshotAttribute(&ec2.ModifySnapshotAttributeInput{
-		Attribute:  aws.String("createVolumePermission"),
+	_, err = a.ec2.ModifySnapshotAttribute(context.Background(), &ec2.ModifySnapshotAttributeInput{
+		Attribute:  ec2types.SnapshotAttributeNameCreateVolumePermission,
 		SnapshotId: &snapshotID,
-		CreateVolumePermission: &ec2.CreateVolumePermissionModifications{
-			Add: []*ec2.CreateVolumePermission{
+		CreateVolumePermission: &ec2types.CreateVolumePermissionModifications{
+			Add: []ec2types.CreateVolumePermission{
 				{
-					Group: aws.String("all"),
+					Group: ec2types.PermissionGroupAll,
 				},
 			},
 		},
@@ -821,13 +829,13 @@ func (a *API) PublishImage(imageID string) error {
 	}
 
 	// image launch permission
-	_, err = a.ec2.ModifyImageAttribute(&ec2.ModifyImageAttributeInput{
+	_, err = a.ec2.ModifyImageAttribute(context.Background(), &ec2.ModifyImageAttributeInput{
 		Attribute: aws.String("launchPermission"),
 		ImageId:   aws.String(imageID),
-		LaunchPermission: &ec2.LaunchPermissionModifications{
-			Add: []*ec2.LaunchPermission{
+		LaunchPermission: &ec2types.LaunchPermissionModifications{
+			Add: []ec2types.LaunchPermission{
 				{
-					Group: aws.String("all"),
+					Group: ec2types.PermissionGroupAll,
 				},
 			},
 		},
@@ -839,7 +847,7 @@ func (a *API) PublishImage(imageID string) error {
 	return nil
 }
 
-func getImageSnapshotID(image *ec2.Image) (string, error) {
+func getImageSnapshotID(image *ec2types.Image) (string, error) {
 	// The EBS volume is usually listed before the ephemeral volume, but
 	// not always, e.g. ami-fddb0490 or ami-8cd40ce1 in cn-north-1
 	for _, mapping := range image.BlockDeviceMappings {
@@ -854,8 +862,8 @@ func getImageSnapshotID(image *ec2.Image) (string, error) {
 }
 
 func (a *API) FindSnapshotDiskSizeGiB(snapshotID string) (uint, error) {
-	result, err := a.ec2.DescribeSnapshots(&ec2.DescribeSnapshotsInput{
-		SnapshotIds: []*string{&snapshotID},
+	result, err := a.ec2.DescribeSnapshots(context.Background(), &ec2.DescribeSnapshotsInput{
+		SnapshotIds: []string{snapshotID},
 	})
 	if err != nil {
 		return 0, fmt.Errorf("failed to describe snapshot: %v", err)
@@ -865,5 +873,5 @@ func (a *API) FindSnapshotDiskSizeGiB(snapshotID string) (uint, error) {
 		return 0, fmt.Errorf("no snapshot found with ID %s", snapshotID)
 	}
 
-	return uint(aws.Int64Value(result.Snapshots[0].VolumeSize)), nil
+	return uint(aws.ToInt32(result.Snapshots[0].VolumeSize)), nil
 }
