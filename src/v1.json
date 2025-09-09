@@ -92,6 +92,7 @@
       ],
       "optional": [
         "digest",
+        "manifest-list-digest",
         "tags",
         "comment",
         "additional-images"
@@ -101,6 +102,11 @@
           "$id": "#/image/digest",
           "type": "string",
           "title": "Digest"
+        },
+        "manifest-list-digest": {
+          "$id": "#/image/manifest-list-digest",
+          "type": "string",
+          "title": "Manifest List Digest"
         },
         "comment": {
           "$id": "#/image/comment",

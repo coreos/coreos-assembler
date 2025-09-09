@@ -55,7 +55,7 @@ Build = collections.namedtuple("Build", ["id", "images", "arch", "meta_json"])
 # set metadata caching to 5m
 CACHE_MAX_AGE_METADATA = 60 * 5
 # These lists are up to date as of schema hash
-# 4289a52f5ee4665caa5432d9caa653b74605117632ac045955912e624d149524. If changing
+# 11704f512a9b6e0c5ac178a9917e03a05ea10a7878ef9b5c0a6695d52c9cd7f5. If changing
 # this hash, ensure that the list of SUPPORTED and UNSUPPORTED artifacts below
 # is up to date.
 SUPPORTED = ["amis", "aws-winli", "gcp"]
