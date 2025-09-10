@@ -7,7 +7,7 @@ it into a `cosa build`, as if one did `cosa build ostree`. One can then e.g.
 '''
 
 import argparse
-import datetime
+from dateutil import (parser, tz)
 import json
 import os
 import subprocess
@@ -233,13 +233,8 @@ def skopeo_inspect(image):
 
 
 def parse_timestamp(timestamp):
-    # datetime's doesn't support nanoseconds.
-    # So trim it.
-    if len(timestamp) > 26 and timestamp[19] == '.':
-        timestamp = timestamp[:26] + "Z"
-
-    timestamp = datetime.datetime.strptime(timestamp, '%Y-%m-%dT%H:%M:%S.%fZ')
-    return rfc3339_time(timestamp.replace(tzinfo=datetime.timezone.utc))
+    timestamp = parser.parse(timestamp)
+    return rfc3339_time(timestamp.astimezone(tz.UTC))
 
 
 if __name__ == '__main__':
