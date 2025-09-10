@@ -144,8 +144,8 @@ func runUpload(cmd *cobra.Command, args []string) error {
 		fmt.Fprintf(os.Stderr, "--disk-size-inspect cannot be used with --source-object or --source-snapshot.\n")
 		os.Exit(2)
 	}
-	if uploadFile == "" {
-		fmt.Fprintf(os.Stderr, "specify --file\n")
+	if uploadFile == "" && uploadSourceSnapshot == "" {
+		fmt.Fprintf(os.Stderr, "specify --file or --source-snapshot\n")
 		os.Exit(2)
 	}
 	if uploadImageName == "" {
