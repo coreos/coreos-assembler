@@ -43,9 +43,13 @@ def main():
         sys.exit(1)
 
     with tempfile.TemporaryDirectory(prefix='cosa-import-', dir='tmp') as tmpd:
-        # create the OCI archive and manifest
+        # create the OCI archive
         tmp_oci_archive = generate_oci_archive(args, tmpd)
-        tmp_oci_manifest = generate_oci_manifest(args, tmpd)
+        # extract the OCI manifest from it. Note here that we operate
+        # on the ociarchive directly rather than args.srcimg because
+        # otherwise the manifest we fetch with skopeo *could* be a
+        # manifest list.
+        tmp_oci_manifest = generate_oci_manifest(tmp_oci_archive, tmpd)
 
         # import into the tmp/repo to get the ostree-commit but also so it's cached
         ostree_commit = import_oci_archive(tmpd, tmp_oci_archive, buildid)
@@ -87,10 +91,10 @@ def generate_oci_archive(args, tmpd):
     return tmpf
 
 
-def generate_oci_manifest(args, tmpd):
+def generate_oci_manifest(ociarchive, tmpd):
     tmpf = os.path.join(tmpd, 'oci-manifest.json')
     with open(tmpf, 'wb') as f:
-        f.write(subprocess.check_output(["skopeo", "inspect", "--raw", args.srcimg]))
+        f.write(subprocess.check_output(["skopeo", "inspect", "--raw", f"oci-archive:{ociarchive}"]))
         os.fchmod(f.fileno(), S_IREAD | S_IRGRP | S_IROTH)
     return tmpf
 
