@@ -198,8 +198,11 @@ if os.path.exists('tmp/repo'):
         if os.path.exists(oci_manifest):
             with open(oci_manifest) as f:
                 oci_manifest = json.load(f)
+                layers = oci_manifest.get('layers', [])
+                if len(layers) == 0:
+                    continue
                 referenced_blobs.update([prefix + layer['digest'].replace(':', '_3A_')
-                                         for layer in oci_manifest['layers']])
+                                         for layer in layers])
     blobs = set(subprocess.check_output(['ostree', 'refs', '--repo=tmp/repo',
                                          '--list', 'ostree/container/blob'],
                                         encoding='utf-8').splitlines())
