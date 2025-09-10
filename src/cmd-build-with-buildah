@@ -179,8 +179,7 @@ build_with_buildah() {
         set -- "$@" --layers=true
         # output to a tag since it's more convenient for development;
         # buildah doesn't support doing both at once
-        # shellcheck disable=SC1090
-        osname=$(source "src/config/${argsfile}"; echo "${NAME}")
+        osname=$(eval "$(grep 'NAME=' "src/config/${argsfile}")"; echo "${NAME}")
         final_ref="containers-storage:localhost/${osname}:${VERSION}"
     else
         # In the supermin path ensure the ociarchive gets compressed
