@@ -10,6 +10,7 @@ import sys
 from cosalib.container_manifest import create_and_push_container_manifest
 from cosalib.builds import Builds
 from cosalib.meta import GenericBuildMeta
+from cosalib.cmdlib import goarch_to_rpmarch
 from cosalib.cmdlib import runcmd
 from cosalib.cmdlib import sha256sum_file
 
@@ -18,9 +19,6 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 def main():
     args = parse_args()
-    map_arch = {}
-    map_arch['arm64'] = 'aarch64'
-    map_arch['amd64'] = 'x86_64'
     allow_missing_arches = False
 
     if args.authfile:
@@ -57,9 +55,7 @@ def main():
         if inspect.returncode == 0:
             manifests = json.loads(inspect.stdout)
             for manifest in manifests['manifests']:
-                arch = manifest['platform']['architecture']
-                if arch in map_arch:
-                    arch = map_arch[arch]
+                arch = goarch_to_rpmarch(manifest['platform']['architecture'])
                 registry_digests[arch] = manifest['digest']
 
         for arch in args.arches:
@@ -119,9 +115,7 @@ def main():
         # digest. See: https://github.com/coreos/coreos-assembler/issues/3122.
         assert len(manifest_info['manifests']) == len(buildmetas)
         for manifest in manifest_info['manifests']:
-            arch = manifest['platform']['architecture']
-            if arch in map_arch:
-                arch = map_arch[arch]
+            arch = goarch_to_rpmarch(manifest['platform']['architecture'])
             image = {
                 'image': args.repo,
                 'digest': manifest['digest'],

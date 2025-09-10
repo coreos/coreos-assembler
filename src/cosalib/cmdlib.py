@@ -413,6 +413,13 @@ def get_basearch():
         return get_basearch.saved
 
 
+def goarch_to_rpmarch(goarch):
+    map_arch = {'arm64': 'aarch64', 'amd64': 'x86_64'}
+    if goarch in map_arch:
+        return map_arch[goarch]
+    return goarch
+
+
 def parse_fcos_version_to_timestamp(version):
     '''
     Parses an FCOS build ID and verifies the versioning is accurate. Then
