@@ -75,8 +75,6 @@ def parse_args():
                          "public keys to use for signature verification",
                          default="/etc/pki/rpm-gpg")
     robosig.add_argument("--s3-sigstore", help="bucket and prefix to S3 sigstore")
-    robosig.add_argument("--manifest-list-digest", metavar="ALGO:DIGEST",
-                         help="digest to manifest list to also sign")
     robosig.add_argument("--verify-only", action='store_true',
                          help="verify only that the sigs are valid and make public")
     robosig.set_defaults(func=cmd_robosignatory)
@@ -313,6 +311,7 @@ def robosign_oci(args, s3, build, gpgkey):
     # in containers-signature(5) to refer to how users will actually be pulling
     # the image (which is usually by tag).
     identities = {}
+    manifest_list_digest = None
     for arch in builds.get_build_arches(args.build):
         build = builds.get_build_meta(args.build, arch)
         image = build.get('base-oscontainer')
@@ -325,15 +324,19 @@ def robosign_oci(args, s3, build, gpgkey):
         for tag in image['tags']:
             identity = f"{image['image']}:{tag}"
             identities.setdefault(identity, []).append(image['digest'])
+            print(f"Signing for {identity} with digest {image['digest']} ({arch})")
+            if manifest_list_digest is None:
+                manifest_list_digest = image.get('manifest-list-digest')
 
     # For the manifest list digest, reuse the tags from the x86_64 build. As
     # mentioned above, it's the same tags on all arches.
-    if args.manifest_list_digest:
+    if manifest_list_digest:
         build = builds.get_build_meta(args.build, 'x86_64')
         image = build.get('base-oscontainer')
         for tag in image['tags']:
             identity = f"{image['image']}:{tag}"
-            identities[identity].append(args.manifest_list_digest)
+            identities[identity].append(manifest_list_digest)
+            print(f"Signing for {identity} with digest {manifest_list_digest} (manifest list)")
 
     # add the git commit of ourselves in the signatures for bookkeeping
     creator = 'coreos-assembler'
