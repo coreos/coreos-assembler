@@ -22,6 +22,7 @@ from cosalib.builds import Builds
 from cosalib.cmdlib import (
     rfc3339_time,
     get_basearch,
+    goarch_to_rpmarch,
     sha256sum_file,
     import_oci_archive)
 
@@ -88,11 +89,40 @@ def generate_oci_archive(args, tmpd):
 
 
 def generate_oci_manifest(args, tmpd):
+    raw_inspect = skopeo_inspect_raw_resolve_manifest_list(args.srcimg)
     tmpf = os.path.join(tmpd, 'oci-manifest.json')
-    with open(tmpf, 'wb') as f:
-        f.write(subprocess.check_output(["skopeo", "inspect", "--raw", args.srcimg]))
+    with open(tmpf, 'w', encoding='utf-8') as f:
+        f.write(raw_inspect)
         os.fchmod(f.fileno(), S_IREAD | S_IRGRP | S_IROTH)
     return tmpf
+
+
+def skopeo_inspect_raw_resolve_manifest_list(image: str):
+    raw_inspect = subprocess.check_output(["skopeo", "inspect", "--raw", image], encoding='utf-8')
+    inspect = json.loads(raw_inspect)
+
+    # check if it's a manifest list; this implicitly handles both docker v2s2 and oci formats
+    if 'manifests' not in inspect:
+        return raw_inspect  # we're done!
+
+    arch = get_basearch()
+    for manifest in inspect['manifests']:
+        if goarch_to_rpmarch(manifest['platform']['architecture']) == arch:
+            arch_digest = manifest['digest']
+            break
+    else:
+        raise Exception(f"no manifest found for architecture {arch}")
+
+    base, repo = image.rsplit('/', 1)
+    adjusted_image = base + '/'
+    if ':' in repo:  # e.g. quay.io/org/image:tag
+        adjusted_image += repo[:repo.index(':')] + '@' + arch_digest
+    elif '@' in repo:  # e.g. quay.io/org/image@sha256:...
+        adjusted_image += repo[:repo.index('@')] + '@' + arch_digest
+    else:  # e.g. quay.io/org/image
+        adjusted_image += '@' + arch_digest
+
+    return subprocess.check_output(["skopeo", "inspect", "--raw", adjusted_image], encoding='utf-8')
 
 
 def generate_lockfile_and_commitmeta(tmpd, ostree_commit, build_meta):
