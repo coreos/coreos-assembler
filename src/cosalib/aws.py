@@ -110,6 +110,11 @@ def aws_run_ore_replicate(build, args):
 
 @retry(reraise=True, stop=stop_after_attempt(3))
 def aws_run_ore(build, args):
+    # Skip the artifact check for AWS Windows License Included (WinLI) builds.
+    # The build artifact is not required for WinLI.
+    if (not build.have_artifact) and (not args.winli):
+        raise Exception(f"Missing build artifact {build.image_path}")
+
     # First add the ore command to run before any options
     ore_args = ['ore', 'aws', 'upload']
 
@@ -157,7 +162,10 @@ def aws_run_ore(build, args):
             '--billing-product-code', f"{args.winli_billing_product}"
         ])
     else:
-        ore_args.extend(['--disk-size-inspect'])
+        ore_args.extend([
+            '--disk-size-inspect',
+            '--file', f"{build.image_path}",
+        ])
         winli_name = ""
         winli_description = ""
         buildmeta_key = "amis"
@@ -171,7 +179,6 @@ def aws_run_ore(build, args):
         '--name', f"{build.build_name}{winli_name}-{build.build_id}-{build.basearch}",
         '--ami-description', f"{build.summary} {build.build_id} {build.basearch}{winli_description}",
         '--arch', f"{build.basearch}",
-        '--file', f"{build.image_path}",
         '--delete-object'
     ])
     for user in args.grant_user:
