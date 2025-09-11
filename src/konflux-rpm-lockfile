@@ -1,0 +1,198 @@
+#!/usr/bin/python
+
+import argparse
+import json
+import os
+import re
+import sys
+import yaml
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from cosalib.cmdlib import get_treefile, get_locked_nevras, get_basearch
+
+
+ARCH = get_basearch()
+
+
+def locks_mismatch(rpm_ostree_lock, hermeto_lock):
+    """
+    Compares a JSON manifest lock with a YAML RPM lock for x86_64.
+
+    Args:
+        rpm_ostree_lock (str): Path to the rpm-ostree JSON manifest lock file.
+        hermeto_lock (str): Path to the hermeto YAML lock file.
+
+    Returns:
+        bool: True if there are differences, False otherwise.
+    """
+    with open(rpm_ostree_lock, 'r') as f:
+        manifest_data = {name: details['evra'] for name, details in json.load(f).get('packages', {}).items()}
+
+    with open(hermeto_lock, 'r') as f:
+        yaml_data = {pkg['name']: str(pkg['evr']) for arch in yaml.safe_load(f).get('arches', []) if arch.get('arch') == 'x86_64' for pkg in arch.get('packages', [])}
+
+    rpm_ostree_lock_set = set(manifest_data.keys())
+    hermeto_lock_set = set(yaml_data.keys())
+
+    differences_found = False
+
+    if only_in_manifest := sorted(list(rpm_ostree_lock_set - hermeto_lock_set)):
+        differences_found = True
+        print("Packages only in rpm-ostree lockfile:")
+        for pkg in only_in_manifest:
+            print(f"- {pkg} ({manifest_data[pkg]})")
+
+    if only_in_yaml := sorted(list(hermeto_lock_set - rpm_ostree_lock_set)):
+        differences_found = True
+        print("\nPackages only in hermeto lockfile:")
+        for pkg in only_in_yaml:
+            print(f"- {pkg} ({yaml_data[pkg]})")
+
+    mismatches = []
+    for pkg in sorted(list(rpm_ostree_lock_set.intersection(hermeto_lock_set))):
+        manifest_evr = manifest_data[pkg].rsplit('.', 1)[0]
+        if manifest_evr != yaml_data[pkg]:
+            mismatches.append(f"- {pkg}:\n  - rpm-ostree: {manifest_data[pkg]}\n  - hermeto: {yaml_data[pkg]}")
+
+    if mismatches:
+        differences_found = True
+        print("\nVersion mismatches:")
+        for mismatch in mismatches:
+            print(mismatch)
+    else:
+        print(f"\u2705 No mismatches founds between {rpm_ostree_lock} and {hermeto_lock}")
+
+    return differences_found
+
+
+def filter_repofile(repos, locked_nevras, repo_path, output_dir):
+    if not os.path.exists(repo_path):
+        print(f"Error: {repo_path} not found. Cannot inject includepkg filter.")
+        return
+
+    include_str = ','.join(locked_nevras)
+
+    with open(repo_path, 'r') as f:
+        repofile = f.read()
+
+    # We use a regex that looks for [reo_name] on a line by itself,
+    # possibly with whitespace.
+    sections = re.split(r'^\s*(\[.+\])\s*', repofile, flags=re.MULTILINE)
+
+    new_content = sections[0]  # part before any section
+    keep = False
+
+    # sections will be [before, section1_name, section1_content, section2_name, section2_content, ...]
+    for i in range(1, len(sections), 2):
+        name = sections[i]
+        # ignore repos that don't match the repos we want to use
+        if name.strip("[]") in repos:
+            repodef = sections[i+1]
+            if 'includepkgs=' not in repodef:
+                # We only keep the repo definition that we edited
+                # to avoid accidentaly taking in other packages
+                # from a repofile already having an includepkgs
+                # directive.
+                keep = True
+                new_content += name + '\n'
+                repodef += f"includepkgs={include_str}\n"
+                new_content += repodef
+
+    filename = None
+    if keep:
+        filename = os.path.basename(repo_path.removesuffix(".repo"))
+        filename = os.path.join(output_dir, f"{filename}-hermeto.repo")
+        with open(filename, 'w') as f:
+            f.write(new_content)
+        print(f"Wrote filtered repo to: {filename}")
+
+    return keep, filename
+
+
+def build_rpm_lockfile_config(packages, repo_files):
+    """
+    Augments package names in rpm_in_data with version numbers from locks.
+    Populates contentOrigin and repofiles.
+    """
+    # Initialize the structure for rpm_lockfile_input, similar to write_rpms_input_file
+    # This ensures consistency whether it comes from a manifest or directly
+    rpm_lockfile_config = {
+        'contentOrigin': {
+            'repofiles': repo_files
+        },
+        'installWeakDeps': False,
+        'context': {
+            'bare': True,
+        },
+        'packages': packages
+    }
+
+    return rpm_lockfile_config
+
+def generate_lockfile(contextdir, manifest, output_path):
+    """
+    Generates the rpm-lockfile-prototype input file.
+    """
+    manifest_data = get_treefile(manifest, deriving=False)
+    repos = manifest_data.get('repos', [])
+    repos += manifest_data.get('lockfile-repos', [])
+    packages = manifest_data.get('packages', [])
+    locks = get_locked_nevras(contextdir)
+    repofiles = [file for file in os.listdir(contextdir) if file.endswith('.repo')]
+    relevant_repofiles = []
+    output_dir = os.path.dirname(output_path)
+
+    if locks:
+        locked_nevras = [f'{k}-{v}' for (k, v) in locks.items()]
+        for repofile in repofiles:
+            keep, newrepo = filter_repofile(repos, locked_nevras, os.path.join(contextdir, repofile), output_dir)
+            if keep:
+                relevant_repofiles.append(newrepo)
+
+    augmented_rpm_in = build_rpm_lockfile_config(packages, relevant_repofiles)
+
+    try:
+        with open(output_path, 'w') as f:
+            yaml.safe_dump(augmented_rpm_in, f, default_flow_style=False)
+        print(f"rpm-lockfile-prototype input config wrote to: {output_path}")
+    except IOError as e:
+        print(f"\u274c Error: Could not write to final output file '{output_path}'. Reason: {e}")
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description="Generate and compare rpm-lockfile-prototype input files."
+    )
+    subparsers = parser.add_subparsers(dest='command', required=True)
+
+    parser_generate = subparsers.add_parser('generate', help='Generate rpm-lockfile-prototype input file.')
+    parser_generate.add_argument(
+        'manifest',
+        help='Path to the rpm-ostree manifest (e.g., fedora-coreos-config/manifest.yaml)'
+    )
+
+    parser_generate.add_argument(
+        '--context',
+        default='.',
+        help="Path to the directory containing repofiles and lockfiles. (default: '.')"
+    )
+
+    parser_generate.add_argument(
+        '--output',
+        default='./rpms.in.yaml',
+        help="Path for the final rpm-lockfile-protoype config file. (default: './rpms.in.yaml')"
+    )
+
+    parser_compare = subparsers.add_parser('compare', help='Compare rpm-ostree JSON lockfile with hermeto RPM lock.')
+    parser_compare.add_argument('rpmostree_lockfile', help='Path to the rpm-ostree manifest lock file (JSON).')
+    parser_compare.add_argument('hermeto_lockfile', help='Path to the hermeto RPM lock file (YAML).')
+
+    args = parser.parse_args()
+
+    if args.command == 'generate':
+        manifest_abs_path = os.path.abspath(args.manifest)
+        generate_lockfile(args.context, manifest_abs_path, args.output)
+    elif args.command == 'compare':
+        if locks_mismatch(args.rpmostree_lockfile, args.hermeto_lockfile):
+            sys.exit(1)
