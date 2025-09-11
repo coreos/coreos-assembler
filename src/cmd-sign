@@ -385,14 +385,14 @@ def robosign_oci(args, s3, build, gpgkey):
         # Upload them to S3. We upload to `staging/` first, and then will move
         # them to their final location once they're verified.
         sigstore_bucket, sigstore_prefix = get_bucket_and_prefix(args.s3_sigstore)
-        sigstore_prefix = os.path.join(sigstore_prefix, 'staging')
+        sigstore_staging = os.path.join(sigstore_prefix, 'staging')
 
         # First, empty out staging/ so we don't accumulate cruft over time
         # https://stackoverflow.com/a/59026702
         # Note this assumes we don't run in parallel on the same sigstore
         # target, which is the case for us since only one release job can run at
         # a time per-stream and the S3 target location is stream-based.
-        staging_objects = s3.list_objects_v2(Bucket=sigstore_bucket, Prefix=sigstore_prefix)
+        staging_objects = s3.list_objects_v2(Bucket=sigstore_bucket, Prefix=sigstore_staging)
         objects_to_delete = [{'Key': obj['Key']} for obj in staging_objects.get('Contents', [])]
         if len(objects_to_delete) > 0:
             print(f'Deleting {len(objects_to_delete)} stale files')
@@ -401,7 +401,7 @@ def robosign_oci(args, s3, build, gpgkey):
         # now, upload the ones we want
         artifacts = []
         for f in files_to_upload:
-            s3_key = os.path.join(sigstore_prefix, f['filename'])
+            s3_key = os.path.join(sigstore_staging, f['filename'])
             print(f"Uploading s3://{sigstore_bucket}/{s3_key}")
             s3.upload_file(f['path'], sigstore_bucket, s3_key)
             artifacts.append({
@@ -435,10 +435,8 @@ def robosign_oci(args, s3, build, gpgkey):
         gpg('--quiet', '--import', gpgkey)
 
         sig_counter = {}
-        # peel off the '/staging' bit
-        final_sigstore_prefix = os.path.dirname(sigstore_prefix)
         for f in files_to_upload:
-            stg_s3_key = os.path.join(sigstore_prefix, f['filename'])
+            stg_s3_key = os.path.join(sigstore_staging, f['filename'])
             stg_sig_s3_key = stg_s3_key + '.sig'
 
             tmp_sig_path = os.path.join(d, f['filename'] + '.sig')
@@ -511,7 +509,7 @@ def robosign_oci(args, s3, build, gpgkey):
             sig_counter[sig_prefix] = sig_number
 
             # upload to final location and make public
-            final_s3_key = os.path.join(final_sigstore_prefix, sig_prefix, f"signature-{sig_number}")
+            final_s3_key = os.path.join(sigstore_prefix, sig_prefix, f"signature-{sig_number}")
             print(f"Uploading {f['path']} to s3://{sigstore_bucket}/{final_s3_key}")
             s3.upload_file(f['path'], sigstore_bucket, final_s3_key, ExtraArgs={'ACL': 'public-read'})
 
