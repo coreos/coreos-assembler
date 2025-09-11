@@ -382,20 +382,25 @@ def robosign_oci(args, s3, build, gpgkey):
                 files_to_upload.append({'path': path, 'filename': filename,
                                         'identity': identity, 'digest': digest})
 
-        # Upload them to S3. We upload to `staging/` first, and then will move
-        # them to their final location once they're verified.
+        # work with older releases; we may want to sign some of them
+        if 'ref' in build:
+            _, stream = build['ref'].rsplit('/', 1)
+        else:  # let fail if this is somehow missing
+            stream = build["coreos-assembler.oci-imported-labels"]["fedora-coreos.stream"]
+
+        # Upload them to S3. We upload to `staging/$stream` first, and then will
+        # move them to their final location once they're verified.
         sigstore_bucket, sigstore_prefix = get_bucket_and_prefix(args.s3_sigstore)
-        sigstore_staging = os.path.join(sigstore_prefix, 'staging')
+        sigstore_staging = os.path.join(sigstore_prefix, 'staging', stream)
 
         # First, empty out staging/ so we don't accumulate cruft over time
         # https://stackoverflow.com/a/59026702
-        # Note this assumes we don't run in parallel on the same sigstore
-        # target, which is the case for us since only one release job can run at
-        # a time per-stream and the S3 target location is stream-based.
+        # Note the staging directory is per-stream so that we can handle
+        # running in parallel across different streams.
         staging_objects = s3.list_objects_v2(Bucket=sigstore_bucket, Prefix=sigstore_staging)
         objects_to_delete = [{'Key': obj['Key']} for obj in staging_objects.get('Contents', [])]
         if len(objects_to_delete) > 0:
-            print(f'Deleting {len(objects_to_delete)} stale files')
+            print(f'Deleting {len(objects_to_delete)} stale files in staging')
             s3.delete_objects(Bucket=sigstore_bucket, Delete={'Objects': objects_to_delete})
 
         # now, upload the ones we want
