@@ -72,6 +72,14 @@ container_repo=$(getconfig_def "container-repo" "")
 container_tag=$(getconfig_def "container-tag" "")
 extra_kargs=$(getconfig "extra-kargs-string" "")
 
+# Since the underlying osbuild manifests will prefer the ociarchive
+# if it exists then let's check here to see if the container exists
+# in local container storage. If it does then we'll just pass that
+# and not pass any ociarchive info into the build.
+if podman image exists "${container_repo}:${container_tag}"; then
+    ostree_container=""
+fi
+
 # Since it doesn't exist create loop-control
 [ ! -e /dev/loop-control ] && mknod /dev/loop-control c 10 237
 

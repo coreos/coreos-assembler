@@ -229,6 +229,9 @@ cloud-image-size: "${cloud_image_size_mb}"
 # Note: this is only used in the secex case; there, the rootfs is
 # not the last partition on the disk so we need to explicitly size it
 rootfs-size: "${rootfs_size_mb}"
+# "localhost/${name}:${build}" was the default name:tag used by cmd-build-with-buildah
+container-repo: "localhost/${name}"
+container-tag: "${build}"
 EOF
 }
 
