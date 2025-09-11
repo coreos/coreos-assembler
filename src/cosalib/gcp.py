@@ -37,6 +37,9 @@ def gcp_run_ore(build, args):
     """
     Execute ore to upload the tarball and register the image
     """
+    if not build.have_artifact:
+        raise Exception(f"Missing build artifact {build.image_path}")
+
     arg_exp_str = "parameter '--{}' or envVar '{}' must be defined"
     if args.bucket is None:
         raise Exception(arg_exp_str.format("bucket", "GCP_BUCKET"))

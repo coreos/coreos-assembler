@@ -137,6 +137,9 @@ def make_public(build, args):
 
 @retry(reraise=True, stop=stop_after_attempt(3))
 def aliyun_run_ore(build, args):
+    if not build.have_artifact:
+        raise Exception(f"Missing build artifact {build.image_path}")
+
     build.refresh_meta()
     ore_args = ['ore']
     if args.log_level:

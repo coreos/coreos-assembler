@@ -34,6 +34,9 @@ def azure_run_ore(build, args):
     :param build: Build instance to use
     :type build: Build
     """
+    if not build.have_artifact:
+        raise Exception(f"Missing build artifact {build.image_path}")
+
     azure_vhd_name = f"{build.image_name_base}.vhd"
     ore_args = [
         'ore',

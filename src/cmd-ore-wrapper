@@ -121,8 +121,6 @@ Each target has its own sub options. To access them us:
             build.ensure_built()
 
     if args.upload:
-        if not build.have_artifact:
-            raise Exception(f"Missing build artifact {build.image_path}")
         log.info("executing upload commands for ore")
         cmd, _ = get_cloud_ore_cmds(target)
         cmd(build, args)

@@ -102,6 +102,9 @@ class IBMCloudImage(QemuVariantImage):
 
 @retry(reraise=True, stop=stop_after_attempt(3))
 def ibmcloud_run_ore(build, args):
+    if not build.have_artifact:
+        raise Exception(f"Missing build artifact {build.image_path}")
+
     ore_args = ['ore']
     if args.log_level:
         ore_args.extend(['--log-level', args.log_level])
