@@ -146,7 +146,8 @@ def append_build(out, input_):
     print(f"  {arch} images:")
     # build the architectures dict
     arch_dict = {"media": {}}
-    ensure_dup(input_, arch_dict, "ostree-commit", "commit")
+    if not input_.get('coreos-assembler.oci-imported'):
+        ensure_dup(input_, arch_dict, "ostree-commit", "commit")
 
     # within the CoreOS pipelines, we always expect base-oscontainer to be set,
     # but this script is also currently used by OKD but they only care about
