@@ -15,16 +15,17 @@
 package aws
 
 import (
+	"context"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/client"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/ec2"
-	"github.com/aws/aws-sdk-go/service/iam"
-	"github.com/aws/aws-sdk-go/service/s3"
-	"github.com/aws/aws-sdk-go/service/sts"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/service/ec2"
+	ec2types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
+	"github.com/aws/aws-sdk-go-v2/service/iam"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/coreos/pkg/capnslog"
 
 	"github.com/coreos/coreos-assembler/mantle/platform"
@@ -57,11 +58,12 @@ type Options struct {
 }
 
 type API struct {
-	session client.ConfigProvider
-	ec2     *ec2.EC2
-	iam     *iam.IAM
-	s3      *s3.S3
-	opts    *Options
+	config aws.Config
+	ec2    *ec2.Client
+	iam    *iam.Client
+	s3     *s3.Client
+	sts    *sts.Client
+	opts   *Options
 }
 
 // New creates a new AWS API wrapper. It uses credentials from any of the
@@ -71,28 +73,38 @@ type API struct {
 // preflight check is recommended via api.PreflightCheck
 // Note that this method may modify Options to update the AMI ID
 func New(opts *Options) (*API, error) {
-	awsCfg := aws.Config{Region: aws.String(opts.Region)}
-	if opts.AccessKeyID != "" {
-		awsCfg.Credentials = credentials.NewStaticCredentials(opts.AccessKeyID, opts.SecretKey, "")
-	} else if opts.CredentialsFile != "" {
-		awsCfg.Credentials = credentials.NewSharedCredentials(opts.CredentialsFile, opts.Profile)
+	ctx := context.Background()
+
+	// Build configuration options
+	configOpts := []func(*config.LoadOptions) error{
+		config.WithRegion(opts.Region),
 	}
 
-	sess, err := session.NewSessionWithOptions(session.Options{
-		SharedConfigState: session.SharedConfigEnable,
-		Profile:           opts.Profile,
-		Config:            awsCfg,
-	})
+	if opts.AccessKeyID != "" {
+		configOpts = append(configOpts, config.WithCredentialsProvider(
+			credentials.NewStaticCredentialsProvider(opts.AccessKeyID, opts.SecretKey, ""),
+		))
+	} else if opts.CredentialsFile != "" {
+		configOpts = append(configOpts, config.WithSharedCredentialsFiles([]string{opts.CredentialsFile}))
+		if opts.Profile != "" {
+			configOpts = append(configOpts, config.WithSharedConfigProfile(opts.Profile))
+		}
+	} else if opts.Profile != "" {
+		configOpts = append(configOpts, config.WithSharedConfigProfile(opts.Profile))
+	}
+
+	awsCfg, err := config.LoadDefaultConfig(ctx, configOpts...)
 	if err != nil {
 		return nil, err
 	}
 
 	api := &API{
-		session: sess,
-		ec2:     ec2.New(sess),
-		iam:     iam.New(sess),
-		s3:      s3.New(sess),
-		opts:    opts,
+		config: awsCfg,
+		ec2:    ec2.NewFromConfig(awsCfg),
+		iam:    iam.NewFromConfig(awsCfg),
+		s3:     s3.NewFromConfig(awsCfg),
+		sts:    sts.NewFromConfig(awsCfg),
+		opts:   opts,
 	}
 
 	return api, nil
@@ -107,17 +119,17 @@ func (a *API) GC(gracePeriod time.Duration) error {
 // PreflightCheck validates that the aws configuration provided has valid
 // credentials
 func (a *API) PreflightCheck() error {
-	stsClient := sts.New(a.session)
-	_, err := stsClient.GetCallerIdentity(&sts.GetCallerIdentityInput{})
+	ctx := context.Background()
+	_, err := a.sts.GetCallerIdentity(ctx, &sts.GetCallerIdentityInput{})
 
 	return err
 }
 
-func tagSpecCreatedByMantle(name, resourceType string) []*ec2.TagSpecification {
-	return []*ec2.TagSpecification{
+func tagSpecCreatedByMantle(name string, resourceType ec2types.ResourceType) []ec2types.TagSpecification {
+	return []ec2types.TagSpecification{
 		{
-			ResourceType: aws.String(resourceType),
-			Tags: []*ec2.Tag{
+			ResourceType: resourceType,
+			Tags: []ec2types.Tag{
 				{
 					Key:   aws.String("CreatedBy"),
 					Value: aws.String("mantle"),
