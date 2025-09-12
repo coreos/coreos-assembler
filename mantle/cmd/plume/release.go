@@ -299,10 +299,12 @@ func modifyReleaseMetadataIndex(api *aws.API, rel release.Release) {
 	var commits []release.IndexReleaseCommit
 	var pullspecs []release.IndexReleaseOciImage
 	for arch, vals := range rel.Architectures {
-		commits = append(commits, release.IndexReleaseCommit{
-			Architecture: arch,
-			Checksum:     vals.Commit,
-		})
+		if vals.Commit != "" {
+			commits = append(commits, release.IndexReleaseCommit{
+				Architecture: arch,
+				Checksum:     vals.Commit,
+			})
+		}
 		pullspecs = append(pullspecs, release.IndexReleaseOciImage{
 			Architecture:   arch,
 			ContainerImage: *vals.OciImage,
