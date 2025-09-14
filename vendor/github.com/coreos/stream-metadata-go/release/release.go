@@ -19,7 +19,7 @@ type Index struct {
 
 // IndexRelease is a "release pointer" from a release index
 type IndexRelease struct {
-	Commits     []IndexReleaseCommit   `json:"commits"`
+	Commits     []IndexReleaseCommit   `json:"commits,omitempty"`
 	OciImages   []IndexReleaseOciImage `json:"oci-images,omitempty"`
 	Version     string                 `json:"version"`
 	MetadataURL string                 `json:"metadata"`
@@ -52,7 +52,7 @@ type Metadata struct {
 
 // Arch release details
 type Arch struct {
-	Commit               string               `json:"commit"`
+	Commit               string               `json:"commit,omitempty"`
 	OciImage             *ContainerImage      `json:"oci-image,omitempty"`
 	Media                Media                `json:"media"`
 	RHELCoreOSExtensions *relrhcos.Extensions `json:"rhel-coreos-extensions,omitempty"`
