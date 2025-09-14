@@ -367,7 +367,7 @@ github.com/coreos/pkg/multierror
 ## explicit; go 1.17
 github.com/coreos/rpmostree-client-go/pkg/client
 github.com/coreos/rpmostree-client-go/pkg/imgref
-# github.com/coreos/stream-metadata-go v0.4.9
+# github.com/coreos/stream-metadata-go v0.4.10
 ## explicit; go 1.18
 github.com/coreos/stream-metadata-go/arch
 github.com/coreos/stream-metadata-go/fedoracoreos

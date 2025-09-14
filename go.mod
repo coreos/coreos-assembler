@@ -24,7 +24,7 @@ require (
 	github.com/coreos/ignition/v2 v2.22.0
 	github.com/coreos/pkg v0.0.0-20240122114842-bbd7aa9bf6fb
 	github.com/coreos/rpmostree-client-go v0.0.0-20240514234259-72a33e8554b6
-	github.com/coreos/stream-metadata-go v0.4.9
+	github.com/coreos/stream-metadata-go v0.4.10
 	github.com/coreos/vcontext v0.0.0-20231102161604-685dc7299dc5
 	github.com/digitalocean/go-qemu v0.0.0-20250212194115-ee9b0668d242
 	github.com/digitalocean/godo v1.163.0
