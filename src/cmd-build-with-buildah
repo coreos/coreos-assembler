@@ -170,7 +170,7 @@ build_with_buildah() {
                 (cd overrides/rpm && createrepo_c .)
             fi
         fi
-        set -- "$@" -v "$(realpath overrides)":/run/src/overrides
+        set -- "$@" -v "$(realpath overrides)":/src/overrides
     fi
 
     if [ -n "$DIRECT" ]; then
