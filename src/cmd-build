@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [ -n "${COSA_BUILD_WITH_BUILDAH:-}" ]; then
-    exec /usr/lib/coreos-assembler/cmd-build-with-buildah "$@"
-fi
-
 dn=$(dirname "$0")
 # shellcheck source=src/cmdlib.sh
 . "${dn}"/cmdlib.sh
+
+if should_build_with_buildah; then
+    info 'redirecting to build-with-buildah'
+    exec /usr/lib/coreos-assembler/cmd-build-with-buildah "$@"
+fi
 
 print_help() {
     cat 1>&2 <<'EOF'
