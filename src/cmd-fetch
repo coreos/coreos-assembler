@@ -5,6 +5,13 @@ dn=$(dirname "$0")
 # shellcheck source=src/cmdlib.sh
 . "${dn}"/cmdlib.sh
 
+if should_build_with_buildah; then
+    # shellcheck disable=SC2016
+    info 'fetch is not useful when building with buildah'
+    info 'skipping fetch'
+    exit 0
+fi
+
 FILE=cache/pkgcache-repo
 if [ -d "${FILE}" ]
 then
@@ -94,13 +101,6 @@ done
 if [ $# -ne 0 ]; then
     print_help
     fatal "ERROR: Too many arguments"
-fi
-
-if [ -n "${COSA_BUILD_WITH_BUILDAH:-}" ]; then
-    # shellcheck disable=SC2016
-    info 'fetch is not useful when using $COSA_BUILD_WITH_BUILDAH'
-    info 'Skipping fetch'
-    exit 0
 fi
 
 prepare_build

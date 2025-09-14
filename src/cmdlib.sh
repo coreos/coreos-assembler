@@ -148,6 +148,17 @@ yaml2json() {
     python3 -c 'import sys, json, yaml; json.dump(yaml.safe_load(sys.stdin), sys.stdout, sort_keys=True)' < "$1" > "$2"
 }
 
+should_build_with_buildah() {
+    if [ -n "${COSA_BUILD_WITH_BUILDAH:-}" ]; then
+        if [ "${COSA_BUILD_WITH_BUILDAH:-}" = 1 ]; then
+            return 0
+        else
+            return 1
+        fi
+    fi
+    return 1
+}
+
 prepare_build() {
     preflight
     preflight_kvm
