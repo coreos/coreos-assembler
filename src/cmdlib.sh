@@ -149,12 +149,23 @@ yaml2json() {
 }
 
 should_build_with_buildah() {
+    local variant manifest
     if [ -n "${COSA_BUILD_WITH_BUILDAH:-}" ]; then
         if [ "${COSA_BUILD_WITH_BUILDAH:-}" = 1 ]; then
             return 0
         else
             return 1
         fi
+    fi
+    # this slightly duplicates some logic in `prepare_build`, but meh...
+    if [[ -f "src/config.json" ]]; then
+        variant="$(jq --raw-output '."coreos-assembler.config-variant"' src/config.json)"
+        manifest="src/config/manifest-${variant}.yaml"
+    else
+        manifest="src/config/manifest.yaml"
+    fi
+    if [ "$(yq .metadata.build_with_buildah "${manifest}")" = true ]; then
+        return 0
     fi
     return 1
 }
