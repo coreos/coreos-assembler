@@ -144,9 +144,9 @@ def diff_source_control(diff_from, diff_to):
 
 
 def diff_rpms(diff_from, diff_to):
-    commit_from = diff_from.meta['ostree-commit']
-    commit_to = diff_to.meta['ostree-commit']
-    runcmd(['rpm-ostree', 'db', 'diff', '--repo', TMP_REPO, commit_from, commit_to])
+    ref_from = diff_from.id
+    ref_to = diff_to.id
+    runcmd(['rpm-ostree', 'db', 'diff', '--repo', TMP_REPO, ref_from, ref_to])
 
 
 def diff_ostree_ls(diff_from, diff_to):
@@ -428,7 +428,7 @@ def cache_dir(dir):
 
 # unfortunately, this has to come at the end to resolve functions
 DIFFERS = [
-    Differ("rpms", "Diff RPMs", needs_ostree=OSTreeImport.PARTIAL, function=diff_rpms),
+    Differ("rpms", "Diff RPMs", needs_ostree=OSTreeImport.FULL, function=diff_rpms),
     Differ("source-control", "Diff config and COSA input commits",
            needs_ostree=OSTreeImport.NO, function=diff_source_control),
     Differ("ostree-ls", "Diff OSTree contents using 'ostree diff'",
