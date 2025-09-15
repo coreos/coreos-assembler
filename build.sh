@@ -96,6 +96,10 @@ install_rpms() {
     fi
     # Similarly for kernel data and SELinux policy, which we want to inject into supermin
     chmod -R a+rX /usr/lib/modules /usr/share/selinux/targeted
+    # And a few more from the containers stack we want to inject into supermin too.
+    # Remove when https://github.com/containers/common/pull/2507 has merged
+    chmod 755 /usr/lib/containers/storage/overlay-images
+    chmod 755 /usr/lib/containers/storage/overlay-layers
 
     # Symlink the CentOS Stream GPG keys to /etc to make it easier to build
     # CentOS-based artifacts.
@@ -177,11 +181,6 @@ configure_user(){
     # Lifted from: https://github.com/containers/podman/blob/6e382d9ec2e6eb79a72537544341e496368b6c63/contrib/podmanimage/stable/Containerfile#L25-L26
     echo -e "builder:1:999\nbuilder:1001:64535" > /etc/subuid
     echo -e "builder:1:999\nbuilder:1001:64535" > /etc/subgid
-
-    # Allow a few directories to be accessed by unprivileged users.
-    # Remove when https://github.com/containers/common/pull/2507 has merged
-    chmod 755 /usr/lib/containers/storage/overlay-images
-    chmod 755 /usr/lib/containers/storage/overlay-layers
 }
 
 write_archive_info() {
