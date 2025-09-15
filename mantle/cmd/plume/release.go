@@ -368,7 +368,7 @@ func modifyReleaseMetadataIndex(api *aws.API, rel release.Release) {
 }
 
 func compareStaticReleaseInfo(a, b release.IndexRelease) bool {
-	if a.Version != b.Version || a.MetadataURL != b.MetadataURL {
+	if a.Version != b.Version {
 		return false
 	}
 	return true
