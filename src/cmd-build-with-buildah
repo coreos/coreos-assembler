@@ -20,7 +20,8 @@ Usage: coreos-assembler build-with-buildah
   --autolock=VERSION     If no base lockfile used, create one from any arch build of `VERSION`.
                          Note this is automatically enabled when adding to an existing multi-arch
                          non-strict build.
-  --skip-prune           Skip prunning previous builds
+  --skip-prune           Skip prunning previous builds.
+  --strict               Only allow installing locked packages when using lockfiles.
   --parent-build=VERSION This option does nothing and is provided for backwards compatibility.
   --force                This option does nothing and is provided for backwards compatibility.
 EOF
@@ -31,8 +32,9 @@ VERSIONARY=
 DIRECT=
 AUTOLOCK_VERSION=
 SKIP_PRUNE=
+STRICT=
 rc=0
-options=$(getopt --options h,d --longoptions help,version:,versionary,direct,autolock:,skip-prune,parent-build:,force -- "$@") || rc=$?
+options=$(getopt --options h,d --longoptions help,version:,versionary,direct,autolock:,skip-prune,parent-build:,force,strict -- "$@") || rc=$?
 [ $rc -eq 0 ] || {
     print_help
     exit 1
@@ -60,6 +62,9 @@ while true; do
             ;;
         --skip-prune)
             SKIP_PRUNE=1
+            ;;
+        --strict)
+            STRICT=1
             ;;
         --parent-build)
             shift
@@ -159,6 +164,10 @@ build_with_buildah() {
         set -- "$@" --secret id=yumrepos,src="$(realpath "src/yumrepos/$variant.repo")" \
                     --secret id=contentsets,src="$(realpath src/yumrepos/content_sets.yaml)" \
                     -v /etc/pki/ca-trust:/etc/pki/ca-trust:ro
+    fi
+
+    if [ -n "${STRICT}" ]; then
+        set -- "$@" --build-arg STRICT_MODE=1
     fi
 
     if [ -d overrides ]; then
