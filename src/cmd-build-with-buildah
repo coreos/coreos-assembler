@@ -20,7 +20,7 @@ Usage: coreos-assembler build-with-buildah
   --autolock=VERSION     If no base lockfile used, create one from any arch build of `VERSION`.
                          Note this is automatically enabled when adding to an existing multi-arch
                          non-strict build.
-  --skip-prune           Skip prunning previous builds.
+  --skip-prune           Skip pruning previous builds.
   --strict               Only allow installing locked packages when using lockfiles.
   --parent-build=VERSION This option does nothing and is provided for backwards compatibility.
   --force                This option does nothing and is provided for backwards compatibility.
