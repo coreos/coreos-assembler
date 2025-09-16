@@ -22,10 +22,11 @@ Usage: coreos-assembler build-with-buildah
                          non-strict build.
   --skip-prune           Skip prunning previous builds
   --parent-build=VERSION This option does nothing and is provided for backwards compatibility.
-  --force                This option does nothing and is provided for backwards compatibility.
+  --force                Import a new build even if inputhash has not changed.
 EOF
 }
 
+FORCE=
 VERSION=
 VERSIONARY=
 DIRECT=
@@ -65,6 +66,7 @@ while true; do
             shift
             ;;
         --force)
+            FORCE=1
             ;;
         --)
             shift
@@ -116,6 +118,15 @@ build_with_buildah() {
     if [ -e "builds/$VERSION/${arch}" ]; then
         echo "Build ${VERSION} ($arch) already exists"
         exit 0
+    fi
+
+    previous_inputhash=
+    if [ -f "builds/latest/${arch}/meta.json" ]; then
+        previous_inputhash=$(jq -r '.["coreos-assembler.oci-imported-labels"]["com.coreos.inputhash"] // ""' \
+                                 "builds/latest/${arch}/meta.json")
+        if [ -n "${previous_inputhash}" ]; then
+            echo "Previous input hash: ${previous_inputhash}"
+        fi
     fi
 
     # Apply autolock from another build for this version (or for another version if
@@ -198,7 +209,19 @@ build_with_buildah() {
             env -C "${tempdir}/src" TMPDIR="$(realpath cache)" buildah "$@"
     fi
 
-    /usr/lib/coreos-assembler/cmd-import "${final_ref}" ${SKIP_PRUNE:+--skip-prune}
+    new_inputhash=$(skopeo inspect "${final_ref}" | jq -r '.Labels."com.coreos.inputhash"')
+    if [ -n "${previous_inputhash}" ] && [ "$previous_inputhash" = "$new_inputhash" ]; then
+        echo "Input hash unchanged ($new_inputhash)"
+        if [ -z "$FORCE" ]; then
+            skip_import=1
+        else
+            echo "Importing new build anyway (--force)"
+        fi
+    fi
+
+    if [ -z "${skip_import:-}" ]; then
+        /usr/lib/coreos-assembler/cmd-import "${final_ref}" ${SKIP_PRUNE:+--skip-prune}
+    fi
 
     rm -rf "${tempdir}"
 }
