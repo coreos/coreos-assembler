@@ -58,7 +58,7 @@ while true; do
             DIRECT=1
             ;;
         --autolock)
-            shift;
+            shift
             AUTOLOCK_VERSION=$1
             ;;
         --skip-prune)
