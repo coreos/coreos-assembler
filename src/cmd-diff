@@ -158,10 +158,21 @@ def diff_source_control(diff_from, diff_to):
                 print(f"    --> {origin_url}/compare/{config_from['commit'][:7]}...{config_to['commit'][:7]}")
 
 
-def diff_rpms(diff_from, diff_to):
+def diff_rpms_json(diff_from, diff_to):
+    diff_rpms(diff_from, diff_to, json=True)
+
+
+def diff_rpms_no_json(diff_from, diff_to):
+    diff_rpms(diff_from, diff_to, json=False)
+
+
+def diff_rpms(diff_from, diff_to, json):
     ref_from = diff_from.id
     ref_to = diff_to.id
-    runcmd(['rpm-ostree', 'db', 'diff', '--repo', TMP_REPO, ref_from, ref_to])
+    cmd = ['rpm-ostree', 'db', 'diff', '--repo', TMP_REPO, ref_from, ref_to]
+    if json:
+        cmd.append('--format=json')
+    runcmd(cmd)
 
 
 def diff_ostree_ls(diff_from, diff_to):
@@ -468,7 +479,10 @@ def cache_dir(dir):
 
 # unfortunately, this has to come at the end to resolve functions
 DIFFERS = [
-    Differ("rpms", "Diff RPMs", needs_ostree=OSTreeImport.FULL, function=diff_rpms),
+    Differ("rpms", "Diff RPMs",
+           needs_ostree=OSTreeImport.FULL, function=diff_rpms_no_json),
+    Differ("rpms-json", "Diff RPMs, output JSON",
+           needs_ostree=OSTreeImport.FULL, function=diff_rpms_json),
     Differ("source-control", "Diff config and COSA input commits",
            needs_ostree=OSTreeImport.NO, function=diff_source_control),
     Differ("ostree-ls", "Diff OSTree contents using 'ostree diff'",
