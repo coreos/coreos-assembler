@@ -22,7 +22,8 @@ Usage: coreos-assembler build-with-buildah
                          non-strict build.
   --skip-prune           Skip pruning previous builds.
   --strict               Only allow installing locked packages when using lockfiles.
-  --parent-build=VERSION This option does nothing and is provided for backwards compatibility.
+  --parent-build=VERSION The version that represents the parent to this build. Used for RPM diffs
+                         that get added to the meta.json
   --force                Import a new build even if inputhash has not changed.
 EOF
 }
@@ -69,6 +70,7 @@ while true; do
             ;;
         --parent-build)
             shift
+            PARENT_BUILD=$1
             ;;
         --force)
             FORCE=1
@@ -231,6 +233,19 @@ build_with_buildah() {
     if [ -z "${skip_import:-}" ]; then
         /usr/lib/coreos-assembler/cmd-import "${final_ref}" ${SKIP_PRUNE:+--skip-prune}
     fi
+
+    # For the logs, print the RPM diff
+    /usr/lib/coreos-assembler/cmd-diff \
+        --rpms ${PARENT_BUILD:+--from=$PARENT_BUILD}
+
+    # For meta.json let's record the RPM diff and advisory diff information
+    /usr/lib/coreos-assembler/cmd-diff \
+        --rpms-json ${PARENT_BUILD:+--from=$PARENT_BUILD} |
+        jq '{"pkgdiff": .pkgdiff, "advisories-diff": .advisories}' > "${tempdir}/diff.json"
+    /usr/lib/coreos-assembler/cmd-meta --build="${VERSION}" \
+        --skip-validation --artifact-json "${tempdir}/diff.json"
+    # Run a 'dump' now to perform schema validation since we skipped it above.
+    /usr/lib/coreos-assembler/cmd-meta --dump --build="${VERSION}" > /dev/null
 
     rm -rf "${tempdir}"
 }
