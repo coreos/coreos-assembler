@@ -56,6 +56,10 @@ install_rpms() {
     local builddeps
     local frozendeps=""
 
+    # Freeze rpm-ostree on v2025.10 until we have new enough libselinux. See
+    # https://github.com/coreos/fedora-coreos-tracker/issues/2030.
+    frozendeps=$(echo rpm-ostree-{,libs-}2025.10-2.fc42)
+
     # First, a general update; this is best practice.  We also hit an issue recently
     # where qemu implicitly depended on an updated libusbx but didn't have a versioned
     # requires https://bugzilla.redhat.com/show_bug.cgi?id=1625641
