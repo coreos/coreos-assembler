@@ -150,13 +150,13 @@ func ostreeSyncTest(c cluster.TestCluster) {
 version: 1.5.0
 storage:
   directories:
-  - path: /var/tmp/data1
+  - path: /var/mnt/data1
     mode: 0777
-  - path: /var/tmp/data2
+  - path: /var/mnt/data2
     mode: 0777
-  - path: /var/tmp/data3
+  - path: /var/mnt/data3
     mode: 0777
-  - path: /var/tmp/data4
+  - path: /var/mnt/data4
     mode: 0777
   files:
     - path: /etc/systemd/system.conf
@@ -173,10 +173,27 @@ storage:
           #!/bin/bash
           i=$1
           while true; do
-            sudo dd if=/dev/urandom of=/var/tmp/data$i/test bs=4096 count=2048 conv=notrunc oflag=append &> /dev/null
-            sleep 0.1
-            sudo rm -f /var/tmp/data$i/test
-          done`)
+            dd if=/dev/urandom of=/var/mnt/data$i/test bs=4096 count=2048 conv=notrunc oflag=append &> /dev/null
+            sleep 0.5
+            rm -f /var/mnt/data$i/test
+          done
+systemd:
+  units:
+    - name: nfs-random-write@.service
+      enabled: false
+      contents: |
+        [Unit]
+        Description=Run NFS Random Write Test %I
+        Before=umount.target
+        After=remote-fs.target
+        [Service]
+        ExecStart=/usr/local/bin/nfs-random-write.sh %I
+        # Add this because of hang at reboot on EL10
+        # See https://github.com/openshift/os/issues/1751
+        ExecStopPost=/bin/umount -lf /var/mnt/data%I || true
+        Type=simple
+        [Install]
+        WantedBy=multi-user.target`)
 	opts := platform.MachineOptions{
 		MinMemory: 2048,
 	}
@@ -198,7 +215,7 @@ storage:
 		// entry point /var/nfs with fsid=0 will be root for clients
 		// refer to https://access.redhat.com/solutions/107793
 		_ = c.MustSSHf(nfs_client, `for i in $(seq 4); do
-			sudo mount -t nfs4 %s:/share$i /var/tmp/data$i
+			sudo mount -t nfs4 %s:/share$i /var/mnt/data$i
 			done`, nfs_server.MachineAddress)
 
 		mounts := c.MustSSH(nfs_client, "sudo df -Th | grep nfs | wc -l")
@@ -217,15 +234,12 @@ storage:
 
 func doSyncTest(c cluster.TestCluster, client platform.Machine, m platform.Machine) {
 	// Do simple touch to make sure nfs server works
-	c.RunCmdSync(client, "sudo touch /var/tmp/data3/test")
+	c.RunCmdSync(client, "sudo touch /var/mnt/data3/test")
 	// Continue writing while doing test
 	// gets run using systemd unit
-	for i := 1; i <= 4; i++ {
-		cmd := fmt.Sprintf("sudo systemd-run --unit=nfs%d --no-block sh -c '/usr/local/bin/nfs-random-write.sh %d'", i, i)
-		_, err := c.SSH(client, cmd)
-		if err != nil {
-			c.Fatalf("failed to run nfs-random-write: %v", err)
-		}
+	_, err := c.SSH(client, "sudo systemctl start --no-block nfs-random-write@{1..4}.service")
+	if err != nil {
+		c.Fatalf("failed to run nfs-random-write@.service: %v", err)
 	}
 
 	// block NFS traffic on nfs server
@@ -233,7 +247,7 @@ func doSyncTest(c cluster.TestCluster, client platform.Machine, m platform.Machi
 	// Create a stage deploy using kargs while writing
 	c.RunCmdSync(client, "sudo rpm-ostree kargs --append=test=1")
 
-	err := client.Reboot()
+	err = client.Reboot()
 	if err != nil {
 		c.Fatalf("Couldn't reboot machine: %v", err)
 	}
