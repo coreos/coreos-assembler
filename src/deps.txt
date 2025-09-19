@@ -111,3 +111,6 @@ python3-libguestfs
 
 # For generating kubernetes YAML files (e.g Konflux resources)
 kustomize
+
+# For vimdiff
+vim-enhanced
