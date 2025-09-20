@@ -49,10 +49,16 @@ TMP_REPO = 'tmp/repo'
 
 DIFF_CACHE = 'tmp/diff-cache'
 
+USE_DIFFTOOL = False
+
 
 def main():
     args = parse_args()
     builds = Builds()
+
+    # Modify the USE_DIFFTOOL global based on the --difftool argument
+    global USE_DIFFTOOL
+    USE_DIFFTOOL = args.difftool
 
     latest_build = builds.get_latest()
 
@@ -64,7 +70,7 @@ def main():
         args.diff_from = builds.get_previous()
         args.diff_to = latest_build
     elif args.diff_from is None:
-        args.diff_from = latest_build
+        args.diff_from = builds.get_previous()
     elif args.diff_to is None:
         args.diff_to = latest_build
 
@@ -109,6 +115,7 @@ def parse_args():
     parser.add_argument("--to", dest='diff_to', help="Second build ID")
     parser.add_argument("--gc", action='store_true', help="Delete cached diff content")
     parser.add_argument("--arch", dest='arch', help="Architecture of builds")
+    parser.add_argument("--difftool", action='store_true', help="Use git difftool")
 
     for differ in DIFFERS:
         parser.add_argument("--" + differ.name, action='store_true', default=False,
@@ -143,10 +150,21 @@ def diff_source_control(diff_from, diff_to):
                 print(f"    --> {origin_url}/compare/{config_from['commit'][:7]}...{config_to['commit'][:7]}")
 
 
-def diff_rpms(diff_from, diff_to):
+def diff_rpms_json(diff_from, diff_to):
+    diff_rpms(diff_from, diff_to, json=True)
+
+
+def diff_rpms_no_json(diff_from, diff_to):
+    diff_rpms(diff_from, diff_to, json=False)
+
+
+def diff_rpms(diff_from, diff_to, json):
     ref_from = diff_from.id
     ref_to = diff_to.id
-    runcmd(['rpm-ostree', 'db', 'diff', '--repo', TMP_REPO, ref_from, ref_to])
+    cmd = ['rpm-ostree', 'db', 'diff', '--repo', TMP_REPO, ref_from, ref_to]
+    if json:
+        cmd.append('--format=json')
+    runcmd(cmd)
 
 
 def diff_ostree_ls(diff_from, diff_to):
@@ -349,7 +367,10 @@ def run_guestfs_mount(image_path, mount_target):
             g.close()
 
 
-def diff_metal(diff_from, diff_to):
+# Generator that will mount up metal image filesystems and yield
+# the paths to be used for analysis and then clean up once given back
+# control.
+def diff_metal_helper(diff_from, diff_to):
     metal_from = get_metal_path(diff_from)
     metal_to = get_metal_path(diff_to)
 
@@ -382,8 +403,8 @@ def diff_metal(diff_from, diff_to):
                 if not p.is_alive():
                     raise Exception(f"A guestfs process for {os.path.basename(d)} died unexpectedly.")
 
-        # Now that the mounts are live, we can diff them
-        git_diff(mount_dir_from, mount_dir_to)
+        # Allow the caller to operate on these values
+        yield mount_dir_from, mount_dir_to
 
     finally:
         # Unmount the FUSE binds, this will make the guestfs mount calls return
@@ -401,23 +422,46 @@ def diff_metal(diff_from, diff_to):
         shutdown_process(p_to)
 
 
-def diff_cmd_outputs(cmd, file_from, file_to):
-    with tempfile.NamedTemporaryFile(prefix=cmd[0] + '-') as f_from, \
-         tempfile.NamedTemporaryFile(prefix=cmd[0] + '-') as f_to:
-        if '{}' not in cmd:
-            cmd += ['{}']
-        idx = cmd.index('{}')
-        cmd_from = list(cmd)
-        cmd_from[idx] = file_from
-        subprocess.run(cmd_from, check=True, stdout=f_from).stdout
-        cmd_to = list(cmd)
-        cmd_to[idx] = file_to
-        subprocess.run(cmd_to, check=True, stdout=f_to).stdout
-        git_diff(f_from.name, f_to.name)
+def diff_metal(diff_from, diff_to):
+    for mount_dir_from, mount_dir_to in diff_metal_helper(diff_from, diff_to):
+        git_diff(mount_dir_from, mount_dir_to)
+
+
+def diff_metal_du(diff_from, diff_to):
+    for mount_dir_from, mount_dir_to in diff_metal_helper(diff_from, diff_to):
+        cmd = ['find', '.', '-type', 'd', '-exec', 'du', '-sh', '{}', ';']
+        diff_cmd_outputs(cmd, mount_dir_from, mount_dir_to, strategy='cd')
+
+
+def diff_metal_ls(diff_from, diff_to):
+    for mount_dir_from, mount_dir_to in diff_metal_helper(diff_from, diff_to):
+        cmd = ['find', '.']
+        diff_cmd_outputs(cmd, mount_dir_from, mount_dir_to, strategy='cd')
+
+
+def diff_cmd_outputs(cmd, path_from, path_to, strategy='template'):
+    workingdir = os.getcwd()
+    with tempfile.NamedTemporaryFile(prefix=cmd[0] + '-') as from_output, \
+         tempfile.NamedTemporaryFile(prefix=cmd[0] + '-') as to_output:
+        for path, output in (path_from, from_output), (path_to, to_output):
+            c = list(cmd)
+            if strategy == 'template':
+                if '{}' not in c:
+                    c += ['{}']
+                idx = c.index('{}')
+                c[idx] = path
+            else:
+                assert strategy == 'cd'
+                workingdir = path
+            subprocess.run(c, cwd=workingdir, check=True, stdout=output)
+        git_diff(from_output.name, to_output.name)
 
 
 def git_diff(arg_from, arg_to):
-    runcmd(['git', 'diff', '--no-index', arg_from, arg_to], check=False)
+    subcmd = 'diff'
+    if USE_DIFFTOOL:
+        subcmd = 'difftool'
+    runcmd(['git', subcmd, '--no-index', arg_from, arg_to], check=False)
 
 
 def cache_dir(dir):
@@ -428,7 +472,10 @@ def cache_dir(dir):
 
 # unfortunately, this has to come at the end to resolve functions
 DIFFERS = [
-    Differ("rpms", "Diff RPMs", needs_ostree=OSTreeImport.FULL, function=diff_rpms),
+    Differ("rpms", "Diff RPMs",
+           needs_ostree=OSTreeImport.FULL, function=diff_rpms_no_json),
+    Differ("rpms-json", "Diff RPMs, output JSON",
+           needs_ostree=OSTreeImport.FULL, function=diff_rpms_json),
     Differ("source-control", "Diff config and COSA input commits",
            needs_ostree=OSTreeImport.NO, function=diff_source_control),
     Differ("ostree-ls", "Diff OSTree contents using 'ostree diff'",
@@ -457,6 +504,10 @@ DIFFERS = [
            needs_ostree=OSTreeImport.NO, function=diff_metal_partitions),
     Differ("metal", "Diff metal disk image content",
            needs_ostree=OSTreeImport.NO, function=diff_metal),
+    Differ("metal-du", "Compare directory usage of metal disk image content",
+           needs_ostree=OSTreeImport.NO, function=diff_metal_du),
+    Differ("metal-ls", "Compare directory listing of metal disk image content",
+           needs_ostree=OSTreeImport.NO, function=diff_metal_ls),
 ]
 
 if __name__ == '__main__':
