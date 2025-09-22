@@ -78,7 +78,8 @@ var crioPodTemplate = `{
 			"cgroup_parent": "Burstable-pod-123.slice",
 			"security_context": {
 					"namespace_options": {
-							"pid": 1
+							"pid": 1,
+							"network": 2
 					},
 					"capabilities": {
 							"add_capabilities": [
