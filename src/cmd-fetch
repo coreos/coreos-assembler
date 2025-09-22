@@ -183,14 +183,9 @@ if [ -n "${UPDATE_LOCKFILE}" ]; then
     echo "Wrote out lockfile ${outfile}"
 
    if [ -n "${KONFLUX}" ]; then
-       echo "Generating hermeto input file..."
-       /usr/lib/coreos-assembler/konflux-rpm-lockfile generate "${manifest}" --context "${configdir}" --output "${tmprepo}/tmp/rpm.in.${arch}.yaml"
-       rpm-lockfile-prototype "${tmprepo}/tmp/rpm.in.${arch}.yaml" --outfile "${tmprepo}/tmp/rpms.lock.${arch}.yaml"
-       # Sanity check the generated hermeto lockfile
-       echo "Sanity check consistency between konflux and rpm-ostree lockfiles..."
-       /usr/lib/coreos-assembler/konflux-rpm-lockfile compare "${configdir}/manifest-lock.${arch}.json" "${tmprepo}/tmp/rpms.lock.${arch}.yaml"
+       echo "Generating hermeto lockfile..."
+       /usr/lib/coreos-assembler/konflux-rpm-lockfile "${manifest}" --context "${configdir}" --output "${tmprepo}/tmp/rpms.lock.${arch}.yaml"
        (cd "${workdir}" && mv -f "${tmprepo}/tmp/rpms.lock.${arch}.yaml" "konflux-rpms-lock.${arch}.yaml")
-       echo "Wrote out hermeto lockfile: /tmp/rpms.lock.${arch}.yaml
-
+       echo "Wrote out hermeto lockfile: konflux-rpms-lock.${arch}.yaml"
    fi
 fi
