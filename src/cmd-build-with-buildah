@@ -102,7 +102,10 @@ fi
 build_with_buildah() {
     echo "Building with container runtime (buildah) with VERSION=${VERSION}..."
 
-    tempdir=$(mktemp -d --tmpdir=tmp "build-with-buildah.XXXXXXXX")
+    # Allocate temporary space for this build
+    tempdir="$(pwd)/tmp/build-with-buildah"
+    rm "${tempdir}" -rf
+    mkdir "${tempdir}"
 
     # the config dir virtiofs mount is mounted ro; copy it to the tempdir
     cp -r src/config/ "${tempdir}/src"
