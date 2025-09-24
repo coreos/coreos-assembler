@@ -34,11 +34,19 @@ def get_repo_url(repo_path, repoid):
                         return line.split('=', 1)[1].strip()
 
 
-def write_hermeto_lockfile(pkgs):
+def write_hermeto_lockfile(pkgs, repos):
 
+    # TODO make sure to have the matching repo for
+    # repo-packages entries.
     packages = []
+    # trick to make sure we have at least an entry for each repoid
+    # this way hermeto will create all the matching repo definitions
+    # and rpm-ostree will find all the expected repos.
+    repo_numbers = len(repos)
+    i = 0
     for pkg in pkgs:
-        packages.append({"url": pkg})
+        packages.append({"url": pkg, "repoid": repos[i % repo_numbers]})
+        i = i+1
 
     lockfile = {
         'lockfileVersion': 1,
@@ -95,7 +103,7 @@ def generate_lockfile(contextdir, manifest, output_path):
             print(f"Error running dnf repoquery:\n{result.stderr}", file=sys.stderr)
             sys.exit(1)
 
-    lockfile = write_hermeto_lockfile(pkg_urls)
+    lockfile = write_hermeto_lockfile(pkg_urls, repos)
 
     try:
         with open(output_path, 'w', encoding="utf8") as f:
