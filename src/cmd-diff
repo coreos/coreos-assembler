@@ -631,13 +631,13 @@ def cache_dir(dir):
 
 # unfortunately, this has to come at the end to resolve functions
 DIFFERS = [
-    Differ("rpms", "Diff RPMs",
+    Differ("rpms-rpm-ostree", "Diff RPMs using rpm-ostree",
            needs_ostree=OSTreeImport.FULL, function=diff_rpms_rpm_ostree_no_json),
-    Differ("rpms-json", "Diff RPMs, output JSON",
+    Differ("rpms-rpm-ostree-json", "Diff RPMs & Advisories using rpm-ostree, output JSON",
            needs_ostree=OSTreeImport.FULL, function=diff_rpms_rpm_ostree_json),
-    Differ("rpms-commitmeta", "Diff rpms from commitmeta.json",
+    Differ("rpms", "Diff rpms from commitmeta.json",
            needs_ostree=OSTreeImport.NO, function=diff_rpms_commitmeta_no_json),
-    Differ("rpms-json-commitmeta", "Diff RPMS & Advisories from commitmeta.json, output JSON",
+    Differ("rpms-json", "Diff RPMS & Advisories from commitmeta.json, output JSON",
            needs_ostree=OSTreeImport.NO, function=diff_rpms_commitmeta_json),
     Differ("source-control", "Diff config and COSA input commits",
            needs_ostree=OSTreeImport.NO, function=diff_source_control),
