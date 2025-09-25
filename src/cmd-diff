@@ -3,10 +3,12 @@
 import argparse
 import os
 import shutil
+import json
 import subprocess
 import sys
 import tempfile
 import time
+import rpm
 from multiprocessing import Process
 
 from dataclasses import dataclass
@@ -24,11 +26,78 @@ class DiffBuildTarget:
     id: str
     dir: str
     meta: dict
+    commitmeta: dict
 
     @staticmethod
     def from_build(builds, build, arch):
         return DiffBuildTarget(build, builds.get_build_dir(build, arch),
-                               builds.get_build_meta(build, arch))
+                               builds.get_build_meta(build, arch),
+                               builds.get_build_commitmeta(build, arch))
+
+
+class PackageDiffType(IntEnum):
+    ADD = 0
+    REMOVE = 1
+    UPGRADE = 2
+    DOWNGRADE = 3
+
+
+@dataclass
+class Package:
+    name: str
+    epoch: int
+    v: str  # Version
+    r: str  # Release
+    a: str  # Architecture
+
+    def evr(self):
+        epoch_string = "" if self.epoch == "0" else f"{self.epoch}:"
+        return f"{epoch_string}{self.v}-{self.r}"
+
+    # Compare versions
+    # rc > 0 -> Newer; rc == 0 -> Same; rc < 0 -> Older
+    @staticmethod
+    def vercmp(from_pkg, to_pkg):
+        # pylint: disable=E1101
+        return rpm.labelCompare((to_pkg.epoch, to_pkg.v, to_pkg.r),
+                                (from_pkg.epoch, from_pkg.v, from_pkg.r))
+
+    # Return a data sctructure representing a diff entry from the
+    # rpm-ostree db diff --json output.
+    # "pkgdiff" : [
+    #   [
+    #     "NetworkManager",
+    #     2,
+    #     {
+    #       "PreviousPackage" : [
+    #         "NetworkManager",
+    #         "1:1.52.0-5.el9_6",
+    #         "x86_64"
+    #       ],
+    #       "NewPackage" : [
+    #         "NetworkManager",
+    #         "1:1.52.0-7.el9_6",
+    #         "x86_64"
+    #       ]
+    #     }
+    #   ],
+    @staticmethod
+    def to_json_diff_entry(difftype: PackageDiffType, from_pkg, to_pkg):
+        name = from_pkg.name if from_pkg else to_pkg.name
+        change = ""
+        match difftype:
+            case PackageDiffType.ADD:
+                change = {"NewPackage": [to_pkg.name, to_pkg.evr(), to_pkg.a]}
+            case PackageDiffType.REMOVE:
+                change = {"PreviousPackage": [from_pkg.name, from_pkg.evr(), from_pkg.a]}
+            case PackageDiffType.UPGRADE | PackageDiffType.DOWNGRADE:
+                change = {
+                    "PreviousPackage": [from_pkg.name, from_pkg.evr(), from_pkg.a],
+                    "NewPackage": [to_pkg.name, to_pkg.evr(), to_pkg.a]
+                }
+            case _:
+                raise Exception(f"Invalid PackageDiffType: {difftype}")
+        return [name, difftype, change]
 
 
 class OSTreeImport(IntEnum):
@@ -173,6 +242,89 @@ def diff_rpms_rpm_ostree(diff_from, diff_to, json):
     if json:
         cmd.append('--format=json')
     runcmd(cmd)
+
+
+def diff_rpms_commitmeta_json(diff_from, diff_to):
+    diff_rpms_commitmeta(diff_from, diff_to, json_output=True)
+
+
+def diff_rpms_commitmeta_no_json(diff_from, diff_to):
+    diff_rpms_commitmeta(diff_from, diff_to, json_output=False)
+
+
+def diff_rpms_commitmeta(diff_from, diff_to, json_output=False):
+    """
+    Diff the commitmeta.json files between two builds.
+    """
+    from_meta = diff_from.meta
+    to_meta = diff_to.meta
+    from_commitmeta = diff_from.commitmeta
+    to_commitmeta = diff_to.commitmeta
+
+    # Gather info about upgraded, downgraded, added, removed RPMS
+    from_rpms = {pkg[0]: Package(*pkg) for pkg in from_commitmeta.get('rpmostree.rpmdb.pkglist', [])}
+    to_rpms = {pkg[0]: Package(*pkg) for pkg in to_commitmeta.get('rpmostree.rpmdb.pkglist', [])}
+
+    added_rpms = set(to_rpms.keys()) - set(from_rpms.keys())
+    removed_rpms = set(from_rpms.keys()) - set(to_rpms.keys())
+    common_rpms = set(from_rpms.keys()) & set(to_rpms.keys())
+
+    upgraded_rpms = []
+    downgraded_rpms = []
+    for name in common_rpms:
+        from_pkg = from_rpms[name]
+        to_pkg = to_rpms[name]
+        rc = Package.vercmp(from_pkg, to_pkg)
+        if rc > 0:
+            upgraded_rpms.append((name, from_pkg, to_pkg))
+        elif rc == 0:
+            pass  # They are equal versions
+        elif rc < 0:
+            downgraded_rpms.append((name, from_pkg, to_pkg))
+
+    if json_output:
+        diff = {
+            "ostree-commit-from": from_meta.get('ostree-commit'),
+            "ostree-commit-to": to_meta.get('ostree-commit'),
+            "pkgdiff": [],
+            "advisories": []
+        }
+        for name in sorted(added_rpms):
+            diff['pkgdiff'].append(Package.to_json_diff_entry(PackageDiffType.ADD, from_pkg=None, to_pkg=to_rpms[name]))
+        for name in sorted(removed_rpms):
+            diff['pkgdiff'].append(Package.to_json_diff_entry(PackageDiffType.REMOVE, from_pkg=from_rpms[name], to_pkg=None))
+        for name, from_pkg, to_pkg in sorted(upgraded_rpms):
+            diff['pkgdiff'].append(Package.to_json_diff_entry(PackageDiffType.UPGRADE, from_pkg=from_pkg, to_pkg=to_pkg))
+        for name, from_pkg, to_pkg in sorted(downgraded_rpms):
+            diff['pkgdiff'].append(Package.to_json_diff_entry(PackageDiffType.DOWNGRADE, from_pkg=from_pkg, to_pkg=to_pkg))
+
+        # Only add advisory info for the JSON output
+        from_advisories = {adv[0]: adv for adv in from_commitmeta.get('rpmostree.advisories', [])}
+        to_advisories = {adv[0]: adv for adv in to_commitmeta.get('rpmostree.advisories', [])}
+        added_advisories = set(to_advisories.keys()) - set(from_advisories.keys())
+        for name in added_advisories:
+            diff['advisories'].append(to_advisories[name])
+        # Dump the JSON to stdout
+        print(json.dumps(diff, indent=2))
+    else:
+        print(f"ostree diff commit from: {diff_from.id} ({from_meta.get('ostree-commit')})")
+        print(f"ostree diff commit to:   {diff_to.id} ({to_meta.get('ostree-commit')})")
+        if upgraded_rpms:
+            print("Upgraded:")
+            for name, from_pkg, to_pkg in sorted(upgraded_rpms):
+                print(f"  {name} {from_pkg.evr()} -> {to_pkg.evr()}")
+        if downgraded_rpms:
+            print("Downgraded:")
+            for name, from_pkg, to_pkg in sorted(downgraded_rpms):
+                print(f"  {name} {from_pkg.evr()} -> {to_pkg.evr()}")
+        if removed_rpms:
+            print("Removed:")
+            for name in sorted(removed_rpms):
+                print(f"  {name}-{from_rpms[name].evr()}")
+        if added_rpms:
+            print("Added:")
+            for name in sorted(added_rpms):
+                print(f"  {name}-{to_rpms[name].evr()}")
 
 
 def diff_ostree_ls(diff_from, diff_to):
@@ -483,6 +635,10 @@ DIFFERS = [
            needs_ostree=OSTreeImport.FULL, function=diff_rpms_rpm_ostree_no_json),
     Differ("rpms-json", "Diff RPMs, output JSON",
            needs_ostree=OSTreeImport.FULL, function=diff_rpms_rpm_ostree_json),
+    Differ("rpms-commitmeta", "Diff rpms from commitmeta.json",
+           needs_ostree=OSTreeImport.NO, function=diff_rpms_commitmeta_no_json),
+    Differ("rpms-json-commitmeta", "Diff RPMS & Advisories from commitmeta.json, output JSON",
+           needs_ostree=OSTreeImport.NO, function=diff_rpms_commitmeta_json),
     Differ("source-control", "Diff config and COSA input commits",
            needs_ostree=OSTreeImport.NO, function=diff_source_control),
     Differ("ostree-ls", "Diff OSTree contents using 'ostree diff'",
