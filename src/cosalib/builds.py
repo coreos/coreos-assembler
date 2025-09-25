@@ -94,6 +94,11 @@ class Builds:  # pragma: nocover
         with open(os.path.join(d, 'meta.json')) as f:
             return json.load(f)
 
+    def get_build_commitmeta(self, build_id, basearch=None):
+        d = self.get_build_dir(build_id, basearch)
+        with open(os.path.join(d, 'commitmeta.json')) as f:
+            return json.load(f)
+
     def get_tags(self):
         return self._data.get('tags', [])
 
