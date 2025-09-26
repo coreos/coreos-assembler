@@ -371,10 +371,7 @@ func modifyReleaseMetadataIndex(api *aws.API, rel release.Release) {
 }
 
 func compareStaticReleaseInfo(a, b release.IndexRelease) bool {
-	if a.Version != b.Version {
-		return false
-	}
-	return true
+	return a.Version == b.Version
 }
 
 // returns -1 if a is a subset of b, 0 if equal, 1 if a is not a subset of b
