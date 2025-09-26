@@ -1,6 +1,8 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "baseBranches": ["main"],
+  "baseBranchPatterns": [
+    "main"
+  ],
   "branchPrefix": "renovate/",
   "prHourlyLimit": 0,
   "ignorePaths": [
@@ -12,13 +14,21 @@
   },
   "packageRules": [
     {
-      "matchDatasources": ["docker"],
-      "matchDepNames": ["quay.io/fedora/fedora"],
+      "matchDatasources": [
+        "docker"
+      ],
+      "matchDepNames": [
+        "quay.io/fedora/fedora"
+      ],
       "enabled": false
     },
     {
-      "matchManagers": ["rpm"],
-      "matchBaseBranches": ["main"],
+      "matchManagers": [
+        "rpm"
+      ],
+      "matchBaseBranches": [
+        "main"
+      ],
       "groupName": "RPM Updates",
       "commitMessageTopic": "RPM updates",
       "enabled": true,
@@ -31,7 +41,9 @@
       "automergeType": "branch"
     },
     {
-      "matchDatasources": ["custom.oc"],
+      "matchDatasources": [
+        "custom.oc"
+      ],
       "extractVersion": "openshift-client-linux-(?<version>.+)\\.tar\\.gz"
     }
   ],
@@ -39,8 +51,8 @@
     {
       "customType": "regex",
       "description": "Update Fedora base image based on endoflife-date",
-      "fileMatch": [
-        "Dockerfile|Containerfile"
+      "managerFilePatterns": [
+        "/Dockerfile|Containerfile/"
       ],
       "matchStrings": [
         "quay.io/fedora/fedora:(?<currentValue>.*)"
@@ -52,7 +64,9 @@
     {
       "customType": "regex",
       "datasourceTemplate": "custom.oc",
-      "fileMatch": ["artifacts.lock.yaml"],
+      "managerFilePatterns": [
+        "/artifacts.lock.yaml/"
+      ],
       "depNameTemplate": "openshift-client",
       "versioningTemplate": "semver",
       "matchStrings": [
