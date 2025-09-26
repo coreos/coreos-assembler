@@ -58,6 +58,7 @@ func init() {
 		Name:          `luks.cex`,
 		Description:   "Verify that CEX-based rootfs encryption works.",
 		Flags:         []register.Flag{},
+		Distros:       []string{"rhcos"},
 		Platforms:     []string{"qemu"},
 		Architectures: []string{"s390x"},
 		Tags:          []string{"luks", "cex", "reprovision"},
