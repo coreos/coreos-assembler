@@ -202,7 +202,7 @@ func (ts TranslationSet) DebugVerifyCoverage(v interface{}) error {
 		}
 	}
 	if len(missingPaths) > 0 {
-		return fmt.Errorf("Missing paths in TranslationSet:\n%v\n", strings.Join(missingPaths, "\n"))
+		return fmt.Errorf("missing paths in TranslationSet:\n%v", strings.Join(missingPaths, "\n"))
 	}
 	return nil
 }
