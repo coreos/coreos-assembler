@@ -147,7 +147,7 @@ def main():
         args.diff_from = builds.get_previous()
         args.diff_to = latest_build
     elif args.diff_from is None:
-        args.diff_from = builds.get_previous()
+        args.diff_from = latest_build
     elif args.diff_to is None:
         args.diff_to = latest_build
 
