@@ -90,7 +90,7 @@ func init() {
 		ClusterSize: 0,
 		Platforms:   []string{"qemu"},
 		Tags:        []string{"ignition"},
-		Distros:     []string{"rhcos"},
+		Distros:     []string{"rhcos", "scos"},
 	})
 }
 

@@ -77,7 +77,7 @@ func init() {
 		ClusterSize: 0,
 		Name:        "ostree.sync",
 		Description: "Verify ostree can sync the filesystem with disconnected the NFS volume.",
-		Distros:     []string{"rhcos"},
+		Distros:     []string{"rhcos", "scos"},
 		Tags:        []string{"ostree", kola.SkipBaseChecksTag, kola.NeedsInternetTag},
 	})
 }

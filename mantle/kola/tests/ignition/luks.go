@@ -27,7 +27,7 @@ func init() {
 		Name:        `luks.tang`,
 		Description: "Verify that the rootfs is encrypted with Tang.",
 		Flags:       []register.Flag{},
-		Distros:     []string{"rhcos"},
+		Distros:     []string{"rhcos", "scos"},
 		Tags:        []string{"luks", "tang", kola.NeedsInternetTag, "reprovision"},
 	})
 	register.RegisterTest(&register.Test{
@@ -36,7 +36,7 @@ func init() {
 		Name:                 `luks.sss.t1`,
 		Description:          "Verify that the rootfs is encrypted with SSS with t=1.",
 		Flags:                []register.Flag{},
-		Distros:              []string{"rhcos"},
+		Distros:              []string{"rhcos", "scos"},
 		Platforms:            []string{"qemu"},
 		ExcludeArchitectures: []string{"s390x"}, // no TPM backend support for s390x
 		Tags:                 []string{"luks", "tpm", "tang", "sss", kola.NeedsInternetTag, "reprovision"},
@@ -47,7 +47,7 @@ func init() {
 		Name:                 `luks.sss.t2`,
 		Description:          "Verify that the rootfs is encrypted with SSS with t=2.",
 		Flags:                []register.Flag{},
-		Distros:              []string{"rhcos"},
+		Distros:              []string{"rhcos", "scos"},
 		Platforms:            []string{"qemu"},
 		ExcludeArchitectures: []string{"s390x"}, // no TPM backend support for s390x
 		Tags:                 []string{"luks", "tpm", "tang", "sss", kola.NeedsInternetTag, "reprovision"},

@@ -26,7 +26,7 @@ func init() {
 		Platforms:   []string{"aws"},
 		Run:         awsVerifyDiskFriendlyName,
 		ClusterSize: 1,
-		Distros:     []string{"rhcos"},
+		Distros:     []string{"rhcos", "scos"},
 	})
 }
 

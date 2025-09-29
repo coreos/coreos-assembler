@@ -109,7 +109,7 @@ func init() {
 		NativeFuncs: map[string]register.NativeFuncWrap{
 			"ServicesDisabled": register.CreateNativeFuncWrap(TestServicesDisabledRHCOS),
 		},
-		Distros: []string{"rhcos"},
+		Distros: []string{"rhcos", "scos"},
 	})
 }
 
