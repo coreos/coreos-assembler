@@ -41,7 +41,7 @@ func init() {
 		Run:         SelinuxManage,
 		ClusterSize: 1,
 		Name:        "rhcos.selinux.manage",
-		Distros:     []string{"rhcos"},
+		Distros:     []string{"rhcos", "scos"},
 		Description: "Verify modifying an selinux file context persists through reboots.",
 	})
 }

@@ -54,10 +54,6 @@ ExecStart=grep FIPS etc/crypto-policies/config
 RequiredBy=fips-signal-ok.service`
 
 func testLiveFIPS(c cluster.TestCluster, opts IsoTestOpts) {
-	if kola.CosaBuild.Meta.Name != "rhcos" {
-		c.Skip("Skipping fips test on non-rhcos streams")
-	}
-
 	EnsureLiveArtifactsExist(c)
 
 	qc, ok := c.Cluster.(*qemu.Cluster)

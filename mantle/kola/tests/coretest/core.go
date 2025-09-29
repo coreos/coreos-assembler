@@ -47,7 +47,7 @@ var nativeFuncs = map[string]register.NativeFuncWrap{
 	"Useradd":        register.CreateNativeFuncWrap(TestUseradd),
 	"MachineID":      register.CreateNativeFuncWrap(TestMachineID),
 	"RHCOSGrowpart":  register.CreateNativeFuncWrap(TestRHCOSGrowfs, []string{"fcos"}...),
-	"FCOSGrowpart":   register.CreateNativeFuncWrap(TestFCOSGrowfs, []string{"rhcos"}...),
+	"FCOSGrowpart":   register.CreateNativeFuncWrap(TestFCOSGrowfs, []string{"rhcos", "scos"}...),
 }
 
 func init() {
@@ -115,7 +115,7 @@ func init() {
 		NativeFuncs: map[string]register.NativeFuncWrap{
 			"ServicesDisabled": register.CreateNativeFuncWrap(TestServicesDisabledRHCOS),
 		},
-		Distros: []string{"rhcos"},
+		Distros: []string{"rhcos", "scos"},
 	})
 }
 
