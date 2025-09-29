@@ -1,5 +1,20 @@
 # Change Log
 
+## [1.165.1] - 2025-09-24
+
+- #906 - @do-joe - Fix Database Logsink API Response Parsing and TLS Field Marshaling
+- #904 - @SSharma-10 - Godo automate release
+- #900 - @fumblehool - APPS-12013: Add APIs for cron job
+- #905 - @harshmaru7 - new release test
+- #902 - @SSharma-10 - added comment for ListAgentVersions
+
+## [1.164.0] - 2025-09-10
+
+- #897 - @DO-rrao - List remote route | removed id field from remote route
+- #894 - @DO-rrao - GenAI : Implement Indexing Jobs Operations
+- #893 - @DO-rrao - GenAI - added changes for ListIndexingJobs for a Knowledge Base
+- #891 - @imaskm - Added prefix update method
+
 ## [1.163.0] - 2025-08-14
 
 - #889 - @bhardwajRahul - Enable Support for Kafka Schema Registry in Godo
