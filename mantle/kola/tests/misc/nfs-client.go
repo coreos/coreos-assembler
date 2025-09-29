@@ -100,7 +100,7 @@ func init() {
 		Platforms:   []string{"qemu"},
 
 		// RHCOS has a separate test for NFS v4 server and client
-		ExcludeDistros: []string{"rhcos"},
+		ExcludeDistros: []string{"rhcos", "scos"},
 	})
 }
 

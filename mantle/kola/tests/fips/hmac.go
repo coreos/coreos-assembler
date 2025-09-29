@@ -48,7 +48,7 @@ func init() {
 		UserData:    fipsConfig,
 		Platforms:   []string{"qemu"},
 		Tags:        []string{"fips"},
-		Distros:     []string{"rhcos"},
+		Distros:     []string{"rhcos", "scos"},
 		Flags:       []register.Flag{register.NoDracutFatalCheck},
 	})
 }
