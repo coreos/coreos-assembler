@@ -23,10 +23,8 @@ import (
 // TargetDistro returns the distribution of a cosa build
 func TargetDistro(build *builds.Build) (string, error) {
 	switch build.Name {
-	case "rhcos":
-		return "rhcos", nil
-	case "scos":
-		return "rhcos", nil
+	case "rhcos", "scos":
+		return build.Name, nil
 	case "fedora-coreos":
 		return "fcos", nil
 	default:
