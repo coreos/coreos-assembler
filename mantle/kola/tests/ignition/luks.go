@@ -242,6 +242,9 @@ func runCexTest(c cluster.TestCluster) {
 	switch pc := c.Cluster.(type) {
 	case *qemu.Cluster:
 		m, err = pc.NewMachineWithQemuOptions(ignition, opts)
+		if err != nil {
+			c.Fatalf("Unable to create test machine: %v", err)
+		}
 	default:
 		panic("Unsupported cluster type")
 	}
@@ -251,12 +254,7 @@ func runCexTest(c cluster.TestCluster) {
 		c.Fatal(err)
 	}
 	coretest.LocalTests(c)
-
-	if err != nil {
-		c.Fatalf("Unable to create test machine: %v", err)
-	}
 	rootPart := "/dev/disk/by-partlabel/root"
-
 	ut.LUKSSanityCEXTest(c, m, rootPart)
 }
 
