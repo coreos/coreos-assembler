@@ -109,6 +109,7 @@ fi
 
 prepare_build
 
+
 lock_args=
 extra_args=
 
@@ -181,9 +182,10 @@ if [ -n "${UPDATE_LOCKFILE}" ]; then
     echo "Wrote out lockfile ${outfile}"
 fi
 
-if [ -n "${KONFLUX}" ]; then
+KONFLUX_LOCKFILE=rpms.lock.yaml
+if [ -n "${KONFLUX}" ] || [ -f "${configdir}/${KONFLUX_LOCKFILE}" ]; then
    echo "Generating hermeto lockfile..."
-   /usr/lib/coreos-assembler/konflux-rpm-lockfile "${flattened_manifest}" --context "${configdir}" --output "${tmprepo}/tmp/rpms.lock.yaml" --arch all
-   (cd "${workdir}" && mv -f "${tmprepo}/tmp/rpms.lock.yaml" "konflux-rpms-lock.yaml")
-   echo "Wrote out hermeto lockfile: konflux-rpms-lock.yaml"
+   /usr/lib/coreos-assembler/konflux-rpm-lockfile generate "${flattened_manifest}" --context "${configdir}" --output "${tmprepo}/tmp/${arch}.${KONFLUX_LOCKFILE}"
+   mv -f "${tmprepo}/tmp/${arch}.${KONFLUX_LOCKFILE}" "${configdir}/${arch}.${KONFLUX_LOCKFILE}"
+   echo "Wrote out hermeto (konflux) lockfile: ${configdir}/${arch}.${KONFLUX_LOCKFILE}"
 fi
