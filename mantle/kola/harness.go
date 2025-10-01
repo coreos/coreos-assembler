@@ -1306,7 +1306,7 @@ ExecStart=%s
 						plog.Errorf("failed to get terminal via ssh: %v", err)
 					}
 				}
-				c.Fatalf(errors.Wrapf(err, "kolet failed: %s", stderr).Error())
+				c.Fatalf("kolet failed: %s: %v", stderr, err)
 			}
 		},
 

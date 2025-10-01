@@ -312,7 +312,7 @@ func (inst *Install) setup(kern *kernelSetup) (*installerRun, error) {
 		pxe.tftpipaddr = "10.0.2.2"
 		pxe.bootindex = "1"
 	default:
-		return nil, fmt.Errorf("Unsupported arch %s" + coreosarch.CurrentRpmArch())
+		return nil, fmt.Errorf("Unsupported arch %s", coreosarch.CurrentRpmArch())
 	}
 
 	mux := http.NewServeMux()
