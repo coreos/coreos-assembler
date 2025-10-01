@@ -169,7 +169,7 @@ func NetworkListeners(c cluster.TestCluster) {
 		return checkListeners(c, expectedListeners)
 	}
 	if err := util.Retry(3, 5*time.Second, checkList); err != nil {
-		c.Errorf(err.Error())
+		c.Errorf("%v", err)
 	}
 }
 
@@ -665,12 +665,12 @@ func getConnectionIpv4Addresses(c cluster.TestCluster, m platform.Machine, conne
 func checkExpectedMACs(c cluster.TestCluster, m platform.Machine, expectedMacsList []string) {
 	macConnectionMap, err := getMacConnectionMap(c, m)
 	if err != nil {
-		c.Fatalf(fmt.Sprintf("failed to get macConnectionMap: %v", err))
+		c.Fatalf("failed to get macConnectionMap: %v", err)
 	}
 
 	for _, expectedMac := range expectedMacsList {
 		if _, exists := macConnectionMap[expectedMac]; !exists {
-			c.Fatalf(fmt.Sprintf("expected Mac %s does not appear in macConnectionMap %v", expectedMac, macConnectionMap))
+			c.Fatalf("expected Mac %s does not appear in macConnectionMap %v", expectedMac, macConnectionMap)
 		}
 	}
 }
