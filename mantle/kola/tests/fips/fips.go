@@ -14,7 +14,7 @@ func init() {
 		Name:        `fips.enable`,
 		Description: "Verify that fips enabled works.",
 		Flags:       []register.Flag{},
-		Distros:     []string{"rhcos"},
+		Distros:     []string{"rhcos", "scos"},
 		UserData: conf.Ignition(`{
 			"ignition": {
 				"config": {
@@ -62,7 +62,7 @@ func init() {
 		Name:        `fips.enable.partitions`,
 		Description: "Verify that fips enabled works if custom partitions are present.",
 		Flags:       []register.Flag{},
-		Distros:     []string{"rhcos"},
+		Distros:     []string{"rhcos", "scos"},
 		Platforms:   []string{"qemu"},
 		UserData: conf.Ignition(`{
 			"ignition": {

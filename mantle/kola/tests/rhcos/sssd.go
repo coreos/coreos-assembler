@@ -28,7 +28,7 @@ func init() {
 		Name:        `rhcos.sssd`,
 		Description: "Verify nss-altfiles and pam configs are expected.",
 		Flags:       []register.Flag{},
-		Distros:     []string{"rhcos"},
+		Distros:     []string{"rhcos", "scos"},
 		Platforms:   []string{"qemu"},
 		UserData: conf.Ignition(`{
 			"ignition": {

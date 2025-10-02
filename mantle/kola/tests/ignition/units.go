@@ -56,7 +56,7 @@ func init() {
 		// in a given system if the version of systemd is older than
 		// 240. RHCOS deosn't support this feature currently because
 		// its running an older version (v239) of systemd.
-		ExcludeDistros: []string{"rhcos"},
+		ExcludeDistros: []string{"rhcos", "scos"},
 	})
 }
 

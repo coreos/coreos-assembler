@@ -48,7 +48,7 @@ func init() {
 		Description:          "Verify that rhcos supports upgrading with LUKS.",
 		FailFast:             true,
 		Tags:                 []string{"upgrade"},
-		Distros:              []string{"rhcos"},
+		Distros:              []string{"rhcos", "scos"},
 		ExcludeArchitectures: []string{"s390x", "aarch64"}, // no TPM backend support for s390x and upgrade test not valid for aarch64
 		UserData: conf.Ignition(`{
 			"ignition": {
@@ -76,7 +76,7 @@ func init() {
 		Description:          "Verify that rhcos supports upgrading.",
 		FailFast:             true,
 		Tags:                 []string{"upgrade"},
-		Distros:              []string{"rhcos"},
+		Distros:              []string{"rhcos", "scos"},
 		ExcludeArchitectures: []string{"aarch64"}, //upgrade test not valid for aarch64
 		UserData: conf.Ignition(`{
                         "ignition": {
@@ -92,7 +92,7 @@ func init() {
 		Description:          "Verify upgrading from the latest RHCOS released for OCP works.",
 		FailFast:             true,
 		Tags:                 []string{"upgrade", kola.NeedsInternetTag},
-		Distros:              []string{"rhcos"},
+		Distros:              []string{"rhcos", "scos"},
 		Platforms:            []string{"qemu"},
 		ExcludeArchitectures: []string{"s390x", "ppc64le", "aarch64"},
 		UserData: conf.Ignition(`{

@@ -54,7 +54,7 @@ func init() {
   }
 }`),
 		Tags:    []string{kola.NeedsInternetTag}, // fetching etcd requires networking
-		Distros: []string{"rhcos"},
+		Distros: []string{"rhcos", "scos"},
 		// qemu machines cannot communicate between each other
 		ExcludePlatforms: []string{"qemu"},
 	})
@@ -89,7 +89,7 @@ func init() {
   }
 }`),
 		Tags:    []string{kola.NeedsInternetTag}, // fetching etcd requires networking
-		Distros: []string{"rhcos"},
+		Distros: []string{"rhcos", "scos"},
 		// qemu machines cannot communicate between each other
 		ExcludePlatforms: []string{"qemu"},
 	})

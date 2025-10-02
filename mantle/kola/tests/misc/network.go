@@ -56,7 +56,7 @@ func init() {
 		Name:        "rhcos.network.multiple-nics",
 		Description: "Verify configuring networking with multiple NICs work.",
 		Timeout:     20 * time.Minute,
-		Distros:     []string{"rhcos"},
+		Distros:     []string{"rhcos", "scos"},
 		Platforms:   []string{"qemu"},
 	})
 	// This test follows the same network configuration used on https://github.com/RHsyseng/rhcos-slb
@@ -68,7 +68,7 @@ func init() {
 		Name:           "rhcos.network.init-interfaces-test",
 		Description:    "Verify init-interfaces script works in both fresh setup and reboot.",
 		Timeout:        40 * time.Minute,
-		Distros:        []string{"rhcos"},
+		Distros:        []string{"rhcos", "scos"},
 		Platforms:      []string{"qemu"},
 		RequiredTag:    "openshift",
 		AdditionalNics: 2,

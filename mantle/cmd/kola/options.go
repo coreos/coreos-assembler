@@ -370,9 +370,6 @@ func syncOptionsImpl(useCosa bool) error {
 
 	if kola.Options.Distribution == "" {
 		kola.Options.Distribution = kolaDistros[0]
-	} else if kola.Options.Distribution == "scos" {
-		// Consider SCOS the same as RHCOS for now
-		kola.Options.Distribution = "rhcos"
 	} else if err := validateOption("distro", kola.Options.Distribution, kolaDistros); err != nil {
 		return err
 	}
