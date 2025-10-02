@@ -575,3 +575,29 @@ def ensure_glob(pathname, **kwargs):
 def ncpu():
     '''Return the number of usable CPUs we have for parallelism.'''
     return int(subprocess.check_output(['kola', 'ncpu']))
+
+
+def get_locked_nevras(srcdir, arch=None):
+    """
+    Gathers all locked packages from the manifest-lock files.
+    The return format can be a dictionary of {pkgname: evr}
+    """
+    if not arch:
+        arch = get_basearch()
+    lockfile_path = os.path.join(srcdir, f"manifest-lock.{arch}.json")
+    overrides_path = os.path.join(srcdir, "manifest-lock.overrides.yaml")
+    overrides_arch_path = os.path.join(srcdir, f"manifest-lock.overrides.{arch}.json")
+
+    locks = {}
+    for path in [lockfile_path, overrides_path, overrides_arch_path]:
+        if os.path.exists(path):
+            with open(path, encoding='utf-8') as f:
+                if path.endswith('.yaml'):
+                    data = yaml.safe_load(f)
+                else:
+                    data = json.load(f)
+                # this essentially re-implements the merge semantics of rpm-ostree
+                locks.update({pkgname: v.get('evra') or v.get('evr')
+                              for (pkgname, v) in data['packages'].items()})
+
+    return locks
