@@ -24,6 +24,7 @@ from cosalib.cmdlib import (
     get_basearch,
     sha256sum_file,
     import_oci_archive)
+from cosalib.meta import GenericBuildMeta
 
 
 def main():
@@ -63,6 +64,14 @@ def main():
         # move into official location
         finalize_build(builds, build_meta, tmp_oci_archive, tmp_oci_manifest, tmp_lockfile, tmp_commitmeta)
 
+    # Now that the build has been created (i.e. files put into the
+    # right places) let's use `cosa diff` to insert package and
+    # advisory diffs into the meta.json and log the RPM diff, but
+    # only if we have something to diff against.
+    if args.parent_build or len(builds.get_builds()) > 1:
+        starting_buildid = args.parent_build if args.parent_build else builds.get_previous()
+        calculate_and_log_diffs(builds, buildid, arch, starting_buildid)
+
     if not args.skip_prune:
         subprocess.check_call(['/usr/lib/coreos-assembler/cmd-prune'])
 
@@ -73,6 +82,8 @@ def parse_args():
                         help="image to import (containers-transports(5) format)")
     parser.add_argument("--skip-prune", action='store_true',
                         help="Skip prunning previous builds")
+    parser.add_argument("--parent-build",
+                        help="The parent build to diff against")
     return parser.parse_args()
 
 
@@ -226,6 +237,28 @@ def finalize_build(builds, build_meta, tmp_oci_archive, tmp_oci_manifest, tmp_lo
     os.symlink(f'{buildid}', 'builds/latest', target_is_directory=True)
 
     print(f'Imported OCI image as build {buildid}')
+
+
+def calculate_and_log_diffs(builds, buildid, arch, starting_buildid):
+    # Get the RPM/Advisory diff info
+    diff_cmd_json = ['/usr/lib/coreos-assembler/cmd-diff', '--rpms-json',
+                     '--from', starting_buildid, '--to', buildid]
+    diff_json_str = subprocess.check_output(diff_cmd_json)
+    diff_data = json.loads(diff_json_str)
+
+    # Update the meta.json file with the RPM/Advisory diff info. Yes we
+    # just created this file, but let's use the library now for access.
+    meta = GenericBuildMeta(workdir=os.getcwd(), build=buildid, basearch=arch)
+    meta.update({
+        'pkgdiff': diff_data.get('pkgdiff'),
+        'advisories-diff': diff_data.get('advisories')
+    })
+    meta.write()
+
+    # For the logs let's output the RPM diff
+    diff_cmd_log = ['/usr/lib/coreos-assembler/cmd-diff', '--rpms',
+                    '--from', starting_buildid, '--to', buildid]
+    subprocess.check_call(diff_cmd_log)
 
 
 def skopeo_inspect(image):
