@@ -35,6 +35,7 @@ DIRECT=
 AUTOLOCK_VERSION=
 SKIP_PRUNE=
 STRICT=
+PARENT_BUILD=
 rc=0
 options=$(getopt --options h,d --longoptions help,version:,versionary,direct,autolock:,skip-prune,parent-build:,force,strict -- "$@") || rc=$?
 [ $rc -eq 0 ] || {
@@ -231,21 +232,9 @@ build_with_buildah() {
     fi
 
     if [ -z "${skip_import:-}" ]; then
-        /usr/lib/coreos-assembler/cmd-import "${final_ref}" ${SKIP_PRUNE:+--skip-prune}
+        /usr/lib/coreos-assembler/cmd-import "${final_ref}" \
+            ${PARENT_BUILD:+--parent-build=${PARENT_BUILD}} ${SKIP_PRUNE:+--skip-prune}
     fi
-
-    # For the logs, print the RPM diff
-    /usr/lib/coreos-assembler/cmd-diff \
-        --rpms ${PARENT_BUILD:+--from=$PARENT_BUILD}
-
-    # For meta.json let's record the RPM diff and advisory diff information
-    /usr/lib/coreos-assembler/cmd-diff \
-        --rpms-json ${PARENT_BUILD:+--from=$PARENT_BUILD} |
-        jq '{"pkgdiff": .pkgdiff, "advisories-diff": .advisories}' > "${tempdir}/diff.json"
-    /usr/lib/coreos-assembler/cmd-meta --build="${VERSION}" \
-        --skip-validation --artifact-json "${tempdir}/diff.json"
-    # Run a 'dump' now to perform schema validation since we skipped it above.
-    /usr/lib/coreos-assembler/cmd-meta --dump --build="${VERSION}" > /dev/null
 
     rm -rf "${tempdir}"
 }
