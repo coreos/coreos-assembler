@@ -39,6 +39,7 @@ def main():
 
     builds = Builds()
     arch = get_basearch()
+    previous_build = builds.get_latest_for_arch(arch)
     if builds.has(buildid) and arch in builds.get_build_arches(buildid):
         print(f"ERROR: Build ID {buildid} ({arch}) already exists!")
         sys.exit(1)
@@ -68,8 +69,8 @@ def main():
     # right places) let's use `cosa diff` to insert package and
     # advisory diffs into the meta.json and log the RPM diff, but
     # only if we have something to diff against.
-    if args.parent_build or len(builds.get_builds()) > 1:
-        starting_buildid = args.parent_build if args.parent_build else builds.get_previous()
+    if args.parent_build or previous_build:
+        starting_buildid = args.parent_build if args.parent_build else previous_build
         calculate_and_log_diffs(builds, buildid, arch, starting_buildid)
 
     if not args.skip_prune:
