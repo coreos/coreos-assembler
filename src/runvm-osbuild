@@ -109,7 +109,9 @@ set -x; osbuild-mpp                                       \
     "${mppyaml}" "${processed_json}"
 set +x
 
-#log_disk_usage
+if [[ -z "${RUNVM_SHELL:-}" ]]; then
+    log_disk_usage
+fi
 
 # Build the image
 set -x
