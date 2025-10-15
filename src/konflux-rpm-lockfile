@@ -174,12 +174,18 @@ def generate_main(args):
         print(f"flattened manifest not found at {manifest}")
         sys.exit(1)
 
+    releasever = manifest_data.get('releasever', None)
     repos = manifest_data.get('repos', [])
     repos += manifest_data.get('lockfile-repos', [])
 
     # Tell dnf to load repos files from $contextdir
     repoquery_args = ["--refresh", "--quiet", f"--setopt=reposdir={contextdir}"]
     repoquery_args.extend([f"--repo={','.join(repos)}"])
+
+    if releasever is None:
+        print("No 'releasever' found in the manifest. Using the host releasever", file=sys.stderr)
+    else:
+        repoquery_args.extend([f"--releasever={releasever}"])
 
     packages = []
     for arch in arches_to_resolve:
