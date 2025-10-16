@@ -1,0 +1,40 @@
+From 81b9bd29075c004c48a5de685904328f657f33bd Mon Sep 17 00:00:00 2001
+From: Dusty Mabe <dusty@dustymabe.com>
+Date: Fri, 10 Oct 2025 09:04:21 -0400
+Subject: [PATCH 2/5] osbuild/util/containers.py: rename variable
+
+This is really a name and not a tag (it doesn't include :tag) so let's
+rename the variable to be a little more clear.
+---
+ osbuild/util/containers.py | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/osbuild/util/containers.py b/osbuild/util/containers.py
+index 352c5c8e..9e321315 100644
+--- a/osbuild/util/containers.py
++++ b/osbuild/util/containers.py
+@@ -210,17 +210,17 @@ def container_mount(image, remove_signatures=False):
+     # https://github.com/containers/storage/issues/1779 so instead
+     # just pick a random suffix. This runs inside bwrap which gives a
+     # tmp /var so it does not really matter much.
+-    tmp_image_tag = "tmp-container-mount-" + "".join(random.choices(string.digits, k=14))
++    tmp_image_name = "tmp-container-mount-" + "".join(random.choices(string.digits, k=14))
+     with container_source(image) as (_, source):
+         with ExitStack() as cm:
+-            cm.callback(subprocess.run, ["podman", "rmi", tmp_image_tag], check=True)
++            cm.callback(subprocess.run, ["podman", "rmi", tmp_image_name], check=True)
+             # skopeo needs /var/tmp but the bwrap env is minimal and may not have it
+             os.makedirs("/var/tmp", mode=0o1777, exist_ok=True)
+             cmd = ["skopeo", "copy"]
+             if remove_signatures:
+                 cmd.append("--remove-signatures")
+-            cmd.extend([source, f"containers-storage:{tmp_image_tag}"])
++            cmd.extend([source, f"containers-storage:{tmp_image_name}"])
+             subprocess.run(cmd, check=True)
+ 
+-            with _mount_container(tmp_image_tag) as container_mountpoint:
++            with _mount_container(tmp_image_name) as container_mountpoint:
+                 yield container_mountpoint
+-- 
+2.51.0
+

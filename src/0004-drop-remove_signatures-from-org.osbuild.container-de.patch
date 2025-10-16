@@ -1,0 +1,81 @@
+From 5ff3e403868955cff2bccc0fa7335bda31e47d9e Mon Sep 17 00:00:00 2001
+From: Dusty Mabe <dusty@dustymabe.com>
+Date: Wed, 15 Oct 2025 15:18:43 -0400
+Subject: [PATCH 4/5] drop remove_signatures from org.osbuild.container-deploy
+
+The original reason to implement this for org.osbuild.container-deploy
+was because we were doing `skopeo copy` from one containers-storage
+instance to another and we needed the option if the container was
+signed.
+
+With the most recent commit to container_mount in containers.py we
+don't actually ever skopeo copy from one containers-storage instance
+to another, but rather `podman mount` directly, so we should be able
+to drop this option.
+
+Context in:
+- https://github.com/containers/container-libs/issues/197
+- https://github.com/osbuild/bootc-image-builder/issues/681
+- https://github.com/osbuild/osbuild/pull/1906
+---
+ osbuild/util/containers.py                    | 7 ++-----
+ stages/org.osbuild.container-deploy           | 3 +--
+ stages/org.osbuild.container-deploy.meta.json | 2 +-
+ 3 files changed, 4 insertions(+), 8 deletions(-)
+
+diff --git a/osbuild/util/containers.py b/osbuild/util/containers.py
+index 06a47a0d..e8ac478d 100644
+--- a/osbuild/util/containers.py
++++ b/osbuild/util/containers.py
+@@ -189,7 +189,7 @@ def container_source(image):
+ 
+ 
+ @contextmanager
+-def container_mount(image, remove_signatures=False):
++def container_mount(image):
+     # Helper function for doing the `podman image mount`
+     @contextmanager
+     def _mount_container(img, imagestore=None):
+@@ -225,10 +225,7 @@ def container_mount(image, remove_signatures=False):
+                 cm.callback(subprocess.run, ["podman", "rmi", tmp_image_name], check=True)
+                 # skopeo needs /var/tmp but the bwrap env is minimal and may not have it
+                 os.makedirs("/var/tmp", mode=0o1777, exist_ok=True)
+-                cmd = ["skopeo", "copy"]
+-                if remove_signatures:
+-                    cmd.append("--remove-signatures")
+-                cmd.extend([source, f"containers-storage:{tmp_image_name}"])
++                cmd = ["skopeo", "copy", source, f"containers-storage:{tmp_image_name}"]
+                 subprocess.run(cmd, check=True)
+                 img = tmp_image_name
+ 
+diff --git a/stages/org.osbuild.container-deploy b/stages/org.osbuild.container-deploy
+index f933ac73..317d7280 100755
+--- a/stages/org.osbuild.container-deploy
++++ b/stages/org.osbuild.container-deploy
+@@ -10,9 +10,8 @@ def main(inputs, tree, options):
+     images = containers.parse_containers_input(inputs)
+     assert len(images) == 1
+     image = list(images.values())[0]
+-    remove_signatures = options.get("remove-signatures")
+ 
+-    with containers.container_mount(image, remove_signatures) as container_mountpoint:
++    with containers.container_mount(image) as container_mountpoint:
+         subprocess.run(["cp", "-a", f"{container_mountpoint}/.", f"{tree}/"], check=True)
+     # postprocess the tree, would be nicer to filter before already
+     for exclude in options.get("exclude", []):
+diff --git a/stages/org.osbuild.container-deploy.meta.json b/stages/org.osbuild.container-deploy.meta.json
+index 355249b0..597195d3 100644
+--- a/stages/org.osbuild.container-deploy.meta.json
++++ b/stages/org.osbuild.container-deploy.meta.json
+@@ -31,7 +31,7 @@
+         "remove-signatures": {
+           "type": "boolean",
+           "default": false,
+-          "description": "Do not copy signatures, if any, from source-image. Necessary when copying a signed image to a destination which does not support signatures."
++          "description": "Obsolete. Does nothing."
+         }
+       }
+     }
+-- 
+2.51.0
+

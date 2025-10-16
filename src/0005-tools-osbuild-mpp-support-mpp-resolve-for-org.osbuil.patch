@@ -1,0 +1,77 @@
+From ad65cf287f85729bc19b6d8e8e7f53eade379ea7 Mon Sep 17 00:00:00 2001
+From: Dusty Mabe <dusty@dustymabe.com>
+Date: Wed, 15 Oct 2025 15:49:55 -0400
+Subject: [PATCH 5/5] tools/osbuild-mpp: support mpp-resolve for
+ org.osbuild.containers-storage
+
+---
+ tools/osbuild-mpp | 34 +++++++++++++++++++++++-----------
+ 1 file changed, 23 insertions(+), 11 deletions(-)
+
+diff --git a/tools/osbuild-mpp b/tools/osbuild-mpp
+index a4586476..6dd186f4 100755
+--- a/tools/osbuild-mpp
++++ b/tools/osbuild-mpp
+@@ -1672,7 +1672,10 @@ class ManifestFileV2(ManifestFile):
+ 
+         inputs_images = element_enter(inputs, "images", {})
+ 
+-        if inputs_images.get("type", "") != "org.osbuild.containers":
++        inputs_images_type = inputs_images.get("type", "")
++
++        if inputs_images_type not in \
++                ["org.osbuild.containers", "org.osbuild.containers-storage"]:
+             return
+ 
+         if inputs_images.get("origin", "") != "org.osbuild.source":
+@@ -1687,11 +1690,15 @@ class ManifestFileV2(ManifestFile):
+         refs = element_enter(inputs_images, "references", {})
+         manifest_lists = []
+ 
++        default_containers_transport = None
++        if inputs_images_type == "org.osbuild.containers-storage":
++            default_containers_transport = 'containers-storage'
++
+         for image in element_enter(mpp, "images", []):
+             source = image["source"]
+             digest = image.get("digest", None)
+             tag = image.get("tag", None)
+-            transport = image.get("containers-transport", None)
++            transport = image.get("containers-transport", default_containers_transport)
+             index = image.get("index", False)
+             # If not specified by the user the default "name" we use for
+             # the installed container will be source:tag.
+@@ -1711,16 +1718,21 @@ class ManifestFileV2(ManifestFile):
+ 
+             image_id = resolved_manifest.get_config_digest()
+ 
+-            container_image_source = element_enter(self.sources, "org.osbuild.skopeo", {})
+-            items = element_enter(container_image_source, "items", {})
+-            items[image_id] = {
+-                "image": {
+-                    "name": source,
+-                    "digest": resolved_manifest.digest,
++            if transport == 'containers-storage':
++                container_image_source = element_enter(self.sources, "org.osbuild.containers-storage", {})
++                items = element_enter(container_image_source, "items", {})
++                items[image_id] = {}
++            else:
++                container_image_source = element_enter(self.sources, "org.osbuild.skopeo", {})
++                items = element_enter(container_image_source, "items", {})
++                items[image_id] = {
++                    "image": {
++                        "name": source,
++                        "digest": resolved_manifest.digest,
++                    }
+                 }
+-            }
+-            if transport:
+-                items[image_id]["image"]["containers-transport"] = transport
++                if transport:
++                    items[image_id]["image"]["containers-transport"] = transport
+ 
+             refs[image_id] = {
+                 "name": name
+-- 
+2.51.0
+
