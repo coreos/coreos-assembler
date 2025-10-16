@@ -1,0 +1,110 @@
+From dd484a371b04bb384d6d189b038d6c7997a3da44 Mon Sep 17 00:00:00 2001
+From: Dusty Mabe <dusty@dustymabe.com>
+Date: Wed, 15 Oct 2025 15:13:38 -0400
+Subject: [PATCH 3/5] osbuild/util/containers.py: drop copy when using
+ containers-storage input
+
+If we are just mounting the container then there's really no reason
+we can't just `podman mount` it directly rather than copying it from
+one local containers-storage to another.
+---
+ osbuild/util/containers.py | 62 ++++++++++++++++++++++----------------
+ 1 file changed, 36 insertions(+), 26 deletions(-)
+
+diff --git a/osbuild/util/containers.py b/osbuild/util/containers.py
+index 9e321315..06a47a0d 100644
+--- a/osbuild/util/containers.py
++++ b/osbuild/util/containers.py
+@@ -8,6 +8,9 @@ from contextlib import ExitStack, contextmanager
+ 
+ from osbuild.util.mnt import MountGuard, MountPermissions
+ 
++# use `/run/osbuild/containers/storage` for the host's containers-storage bind mount
++HOST_CONTAINERS_STORAGE = os.path.join(os.sep, "run", "osbuild", "containers", "storage")
++
+ 
+ def is_manifest_list(data):
+     """Inspect a manifest determine if it's a multi-image manifest-list."""
+@@ -118,10 +121,7 @@ def containers_storage_source(image, image_filepath, container_format):
+     storage_conf = image["data"]["storage"]
+     driver = storage_conf.get("driver", "overlay")
+ 
+-    # use `/run/osbuild/containers/storage` for the containers-storage bind mount
+-    # since this ostree-compatible and the stage that uses this will be run
+-    # inside a ostree-based build-root in `bootc-image-builder`
+-    storage_path = os.path.join(os.sep, "run", "osbuild", "containers", "storage")
++    storage_path = HOST_CONTAINERS_STORAGE
+     os.makedirs(storage_path, exist_ok=True)
+ 
+     with MountGuard() as mg:
+@@ -192,10 +192,10 @@ def container_source(image):
+ def container_mount(image, remove_signatures=False):
+     # Helper function for doing the `podman image mount`
+     @contextmanager
+-    def _mount_container(image_tag):
+-        cmd = ["podman", "image", "mount", image_tag],
+-        result = subprocess.run(cmd, encoding="utf-8", check=False,
+-                                stdout=subprocess.PIPE, stderr=subprocess.PIPE)
++    def _mount_container(img, imagestore=None):
++        cmd = ["podman", f"--imagestore={imagestore}"] if imagestore else ["podman"]
++        result = subprocess.run(cmd + ["image", "mount", img], encoding="utf-8",
++                                check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+         if result.returncode != 0:
+             code = result.returncode
+             msg = result.stderr.strip()
+@@ -203,24 +203,34 @@ def container_mount(image, remove_signatures=False):
+         try:
+             yield result.stdout.strip()
+         finally:
+-            cmd = ["podman", "image", "umount", image_tag],
+-            subprocess.run(cmd, check=True)
+-
+-    # We cannot use a tmpdir as storage here because of
+-    # https://github.com/containers/storage/issues/1779 so instead
+-    # just pick a random suffix. This runs inside bwrap which gives a
+-    # tmp /var so it does not really matter much.
+-    tmp_image_name = "tmp-container-mount-" + "".join(random.choices(string.digits, k=14))
++            subprocess.run(cmd + ["image", "umount", img], check=True)
++
+     with container_source(image) as (_, source):
+         with ExitStack() as cm:
+-            cm.callback(subprocess.run, ["podman", "rmi", tmp_image_name], check=True)
+-            # skopeo needs /var/tmp but the bwrap env is minimal and may not have it
+-            os.makedirs("/var/tmp", mode=0o1777, exist_ok=True)
+-            cmd = ["skopeo", "copy"]
+-            if remove_signatures:
+-                cmd.append("--remove-signatures")
+-            cmd.extend([source, f"containers-storage:{tmp_image_name}"])
+-            subprocess.run(cmd, check=True)
+-
+-            with _mount_container(tmp_image_name) as container_mountpoint:
++            img = ""
++            imagestore = None
++            if image["data"]["format"] == 'containers-storage':
++                # In the case where we are container storage we don't need to
++                # skopeo copy. We already have access to a mounted container storage
++                # that has the image ready to use.
++                image_id = image["checksum"].split(":")[1]
++                img = image_id
++                imagestore = HOST_CONTAINERS_STORAGE
++            else:
++                # We cannot use a tmpdir as storage here because of
++                # https://github.com/containers/storage/issues/1779 so instead
++                # just pick a random suffix. This runs inside bwrap which gives a
++                # tmp /var so it does not really matter much.
++                tmp_image_name = "tmp-container-mount-" + "".join(random.choices(string.digits, k=14))
++                cm.callback(subprocess.run, ["podman", "rmi", tmp_image_name], check=True)
++                # skopeo needs /var/tmp but the bwrap env is minimal and may not have it
++                os.makedirs("/var/tmp", mode=0o1777, exist_ok=True)
++                cmd = ["skopeo", "copy"]
++                if remove_signatures:
++                    cmd.append("--remove-signatures")
++                cmd.extend([source, f"containers-storage:{tmp_image_name}"])
++                subprocess.run(cmd, check=True)
++                img = tmp_image_name
++
++            with _mount_container(img, imagestore) as container_mountpoint:
+                 yield container_mountpoint
+-- 
+2.51.0
+
