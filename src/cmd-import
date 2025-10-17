@@ -93,7 +93,7 @@ def generate_oci_archive(args, tmpd):
 
     if args.srcimg.startswith('oci-archive:'):
         print(f"Copying {args.srcimg.partition(':')[2]} to {tmpf}")
-        shutil.copy(args.srcimg.partition(':')[2], tmpf)
+        subprocess.check_call(['cp-reflink', args.srcimg.partition(':')[2], tmpf])
     else:
         extra_args = []
         # in the containers-storage case, there's no digest to preserve
