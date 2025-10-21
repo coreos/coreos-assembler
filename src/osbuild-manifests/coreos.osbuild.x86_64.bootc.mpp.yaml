@@ -342,6 +342,28 @@ pipelines:
             partition:
               mpp-format-int: '{image.layout[''boot''].partnum}'
             target: /boot
+      - type: org.osbuild.ln
+        options:
+          paths:
+            - target: ".bootc-aleph.json"
+              link_name: "mount://root/.coreos-aleph-version.json"
+              symbolic: true
+            - target: ".bootc-aleph.json"
+              link_name: "mount://root/.aleph-version.json"
+              symbolic: true
+        devices:
+          disk:
+            type: org.osbuild.loopback
+            options:
+              filename: disk.img
+              partscan: true
+        mounts:
+          - name: root
+            type: org.osbuild.xfs
+            source: disk
+            partition:
+              mpp-format-int: '{image.layout[''root''].partnum}'
+            target: /
   - name: raw-4k-image
     build:
       mpp-format-string: '{buildroot}'
@@ -536,6 +558,30 @@ pipelines:
             partition:
               mpp-format-int: '{image4k.layout[''boot''].partnum}'
             target: /boot
+      - type: org.osbuild.ln
+        options:
+          paths:
+            - target: ".bootc-aleph.json"
+              link_name: "mount://root/.coreos-aleph-version.json"
+              symbolic: true
+            - target: ".bootc-aleph.json"
+              link_name: "mount://root/.aleph-version.json"
+              symbolic: true
+        devices:
+          disk:
+            type: org.osbuild.loopback
+            options:
+              filename: disk.img
+              partscan: true
+              sector-size:
+                  mpp-format-int: "{four_k_sector_size}"
+        mounts:
+          - name: root
+            type: org.osbuild.xfs
+            source: disk
+            partition:
+              mpp-format-int: '{image4k.layout[''root''].partnum}'
+            target: /
   - mpp-import-pipelines:
       path: platform.aliyun.ipp.yaml
   - mpp-import-pipelines:
