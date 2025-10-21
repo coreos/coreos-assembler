@@ -273,3 +273,31 @@ pipelines:
             partition:
               mpp-format-int: '{image4k.layout[''boot''].partnum}'
             target: /boot
+      # We historically created an aleph file named .coreos-aleph-version.json
+      # in the sysroot partition, for debugging purposes. bootc create it's
+      # own that is mostly the same content. Let's make a symlink to it
+      # for backward compatibility.
+      - type: org.osbuild.ln
+        options:
+          paths:
+            - target: ".bootc-aleph.json"
+              link_name: "mount://root/.coreos-aleph-version.json"
+              symbolic: true
+            - target: ".bootc-aleph.json"
+              link_name: "mount://root/.aleph-version.json"
+              symbolic: true
+        devices:
+          disk:
+            type: org.osbuild.loopback
+            options:
+              filename: disk.img
+              partscan: true
+              sector-size:
+                  mpp-format-int: "{four_k_sector_size}"
+        mounts:
+          - name: root
+            type: org.osbuild.xfs
+            source: disk
+            partition:
+              mpp-format-int: '{image4k.layout[''root''].partnum}'
+            target: /
