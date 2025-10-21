@@ -208,7 +208,8 @@ patch_osbuild() {
         /usr/lib/coreos-assembler/0002-osbuild-util-containers.py-rename-variable.patch           \
         /usr/lib/coreos-assembler/0003-osbuild-util-containers.py-drop-copy-when-using-cont.patch \
         /usr/lib/coreos-assembler/0004-drop-remove_signatures-from-org.osbuild.container-de.patch \
-        /usr/lib/coreos-assembler/0005-tools-osbuild-mpp-support-mpp-resolve-for-org.osbuil.patch |
+        /usr/lib/coreos-assembler/0005-tools-osbuild-mpp-support-mpp-resolve-for-org.osbuil.patch \
+        /usr/lib/coreos-assembler/0001-stages-add-new-link-stage.patch |
             patch -d /usr/lib/osbuild -p1
 
     # And then move the files back; supermin appliance creation will need it back
