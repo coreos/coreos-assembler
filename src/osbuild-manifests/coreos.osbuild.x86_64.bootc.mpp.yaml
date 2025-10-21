@@ -333,6 +333,26 @@ pipelines:
             partition:
               mpp-format-int: '{image.layout[''boot''].partnum}'
             target: /boot
+      - type: org.osbuild.symlink
+        options:
+          paths:
+            - source: ".bootc-aleph.json"
+              link: "mount://root/.coreos-aleph-version.json"
+            - source: ".bootc-aleph.json"
+              link: "mount://root/.aleph-version.json"
+        devices:
+          disk:
+            type: org.osbuild.loopback
+            options:
+              filename: disk.img
+              partscan: true
+        mounts:
+          - name: root
+            type: org.osbuild.xfs
+            source: disk
+            partition:
+              mpp-format-int: '{image.layout[''root''].partnum}'
+            target: /
   - name: raw-4k-image
     build:
       mpp-format-string: '{buildroot}'
