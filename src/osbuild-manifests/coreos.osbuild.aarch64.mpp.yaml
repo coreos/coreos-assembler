@@ -137,7 +137,7 @@ pipelines:
           type: org.osbuild.container-deploy
           inputs:
             images:
-              type: org.osbuild.containers
+              type: org.osbuild.containers-storage
               origin: org.osbuild.source
               mpp-resolve-images:
                 images:
@@ -225,7 +225,7 @@ pipelines:
               - mpp-format-string: '{extra_kargs}'
           inputs:
             images:
-              type: org.osbuild.containers
+              type: org.osbuild.containers-storage
               origin: org.osbuild.source
               mpp-resolve-images:
                 images:
