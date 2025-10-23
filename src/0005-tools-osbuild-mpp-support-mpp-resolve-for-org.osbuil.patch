@@ -1,4 +1,4 @@
-From ad65cf287f85729bc19b6d8e8e7f53eade379ea7 Mon Sep 17 00:00:00 2001
+From d2562f3720dc03dc52e0e43c921af64f2c8a5341 Mon Sep 17 00:00:00 2001
 From: Dusty Mabe <dusty@dustymabe.com>
 Date: Wed, 15 Oct 2025 15:49:55 -0400
 Subject: [PATCH 5/5] tools/osbuild-mpp: support mpp-resolve for

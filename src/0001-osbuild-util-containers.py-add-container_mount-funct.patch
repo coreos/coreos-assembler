@@ -1,8 +1,7 @@
-From 701fa40dfce9a70c1dafdee32907a154463a1a44 Mon Sep 17 00:00:00 2001
+From 3c7e393f5442808c776c414c4f9e096cf8790901 Mon Sep 17 00:00:00 2001
 From: Dusty Mabe <dusty@dustymabe.com>
 Date: Thu, 9 Oct 2025 22:05:44 -0400
-Subject: [PATCH 1/5] osbuild/util/containers.py: add container_mount()
- functionality
+Subject: [PATCH 1/5] util/containers.py: add container_mount() functionality
 
 As prep for a later patch this moves the container image mounting code
 from stages/org.osbuild.container-deploy into the containers library.

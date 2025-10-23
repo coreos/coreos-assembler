@@ -1,7 +1,7 @@
-From 81b9bd29075c004c48a5de685904328f657f33bd Mon Sep 17 00:00:00 2001
+From dc7d55f20ecc826bcadcb308460687909a6f13e4 Mon Sep 17 00:00:00 2001
 From: Dusty Mabe <dusty@dustymabe.com>
 Date: Fri, 10 Oct 2025 09:04:21 -0400
-Subject: [PATCH 2/5] osbuild/util/containers.py: rename variable
+Subject: [PATCH 2/5] util/containers.py: rename variable
 
 This is really a name and not a tag (it doesn't include :tag) so let's
 rename the variable to be a little more clear.

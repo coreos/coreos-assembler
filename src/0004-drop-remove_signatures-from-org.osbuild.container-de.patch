@@ -1,4 +1,4 @@
-From 5ff3e403868955cff2bccc0fa7335bda31e47d9e Mon Sep 17 00:00:00 2001
+From f54ca54acd3aa910b63f63bd948b3ec2dc715238 Mon Sep 17 00:00:00 2001
 From: Dusty Mabe <dusty@dustymabe.com>
 Date: Wed, 15 Oct 2025 15:18:43 -0400
 Subject: [PATCH 4/5] drop remove_signatures from org.osbuild.container-deploy

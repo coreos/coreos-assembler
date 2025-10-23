@@ -1,7 +1,7 @@
-From dd484a371b04bb384d6d189b038d6c7997a3da44 Mon Sep 17 00:00:00 2001
+From b06025a2e69a5a89d2ef63a2f4e7f463c92b396c Mon Sep 17 00:00:00 2001
 From: Dusty Mabe <dusty@dustymabe.com>
 Date: Wed, 15 Oct 2025 15:13:38 -0400
-Subject: [PATCH 3/5] osbuild/util/containers.py: drop copy when using
+Subject: [PATCH 3/5] util/containers.py: drop copy when using
  containers-storage input
 
 If we are just mounting the container then there's really no reason
