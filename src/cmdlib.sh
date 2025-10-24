@@ -759,8 +759,8 @@ runvm() {
     # include COSA in the image
     find /usr/lib/coreos-assembler/ -type f > "${vmpreparedir}/hostfiles"
     cat <<EOF >> "${vmpreparedir}/hostfiles"
-/usr/lib/osbuild/stages/org.osbuild.coreos.live-artifacts.mono
-/usr/lib/osbuild/stages/org.osbuild.coreos.live-artifacts.mono.meta.json
+/usr/lib/osbuild/stages/org.osbuild.symlink
+/usr/lib/osbuild/stages/org.osbuild.symlink.meta.json
 EOF
 
     # and include all GPG keys
@@ -787,7 +787,7 @@ rc=0
 if [ -z "${RUNVM_SHELL:-}" ]; then
   (cd ${workdir}; bash ${tmp_builddir}/cmd.sh |& tee /dev/virtio-ports/cosa-cmdout) || rc=\$?
 else
-  (cd ${workdir}; bash)
+  (cd ${workdir}; RUNVM_SHELL=${RUNVM_SHELL} bash)
 fi
 echo \$rc > ${rc_file}
 if [ -n "\${cachedev}" ]; then
