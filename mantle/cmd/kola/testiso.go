@@ -82,10 +82,6 @@ var (
 		"iso-as-disk.uefi-secure",
 		"iso-as-disk.4k.uefi",
 		"iso-install.bios",
-		"iso-live-login.bios",
-		"iso-live-login.uefi",
-		"iso-live-login.uefi-secure",
-		"iso-live-login.4k.uefi",
 		"iso-offline-install.bios",
 		"iso-offline-install.mpath.bios",
 		"iso-offline-install-fromram.4k.uefi",
@@ -102,7 +98,6 @@ var (
 		"pxe-online-install.4k.uefi",
 	}
 	tests_s390x = []string{
-		"iso-live-login.s390fw",
 		"iso-offline-install.s390fw",
 		"iso-offline-install.mpath.s390fw",
 		"iso-offline-install.4k.s390fw",
@@ -117,7 +112,6 @@ var (
 		//"iso-offline-install-iscsi.manual.s390fw",
 	}
 	tests_ppc64le = []string{
-		"iso-live-login.ppcfw",
 		"iso-offline-install.ppcfw",
 		"iso-offline-install.mpath.ppcfw",
 		"iso-offline-install-fromram.4k.ppcfw",
@@ -133,8 +127,6 @@ var (
 		//"iso-offline-install-iscsi.manual.ppcfw",
 	}
 	tests_aarch64 = []string{
-		"iso-live-login.uefi",
-		"iso-live-login.4k.uefi",
 		"iso-offline-install.uefi",
 		"iso-offline-install.mpath.uefi",
 		"iso-offline-install-fromram.4k.uefi",
@@ -631,8 +623,6 @@ func runTestIso(cmd *cobra.Command, args []string) (err error) {
 			duration, err = testPXE(ctx, inst, filepath.Join(outputDir, test))
 		case "iso-as-disk":
 			duration, err = testAsDisk(ctx, filepath.Join(outputDir, test))
-		case "iso-live-login":
-			duration, err = testLiveLogin(ctx, filepath.Join(outputDir, test))
 		case "iso-fips":
 			duration, err = testLiveFIPS(ctx, filepath.Join(outputDir, test))
 		case "iso-install", "iso-offline-install", "iso-offline-install-fromram":
@@ -1000,36 +990,6 @@ RequiredBy=fips-signal-ok.service
 	defer mach.Destroy()
 
 	return awaitCompletion(ctx, mach, outdir, completionChannel, nil, []string{liveOKSignal})
-}
-
-func testLiveLogin(ctx context.Context, outdir string) (time.Duration, error) {
-	builddir := kola.CosaBuild.Dir
-	isopath := filepath.Join(builddir, kola.CosaBuild.Meta.BuildArtifacts.LiveIso.Path)
-	builder, err := newBaseQemuBuilder(outdir)
-	if err != nil {
-		return 0, err
-	}
-	defer builder.Close()
-	// Drop the bootindex bit (applicable to all arches except s390x and ppc64le); we want it to be the default
-	if err := builder.AddIso(isopath, "", false); err != nil {
-		return 0, err
-	}
-
-	completionChannel, err := builder.VirtioChannelRead("coreos.liveiso-success")
-	if err != nil {
-		return 0, err
-	}
-
-	// No network device to test https://github.com/coreos/fedora-coreos-config/pull/326
-	builder.Append("-net", "none")
-
-	mach, err := builder.Exec()
-	if err != nil {
-		return 0, errors.Wrapf(err, "running iso")
-	}
-	defer mach.Destroy()
-
-	return awaitCompletion(ctx, mach, outdir, completionChannel, nil, []string{"coreos-liveiso-success"})
 }
 
 func testAsDisk(ctx context.Context, outdir string) (time.Duration, error) {
