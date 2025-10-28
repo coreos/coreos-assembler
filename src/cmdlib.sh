@@ -153,26 +153,47 @@ yaml2json() {
     python3 -c 'import sys, json, yaml; json.dump(yaml.safe_load(sys.stdin), sys.stdout, sort_keys=True)' < "$1" > "$2"
 }
 
-should_build_with_buildah() {
-    local variant manifest
-    if [ -n "${COSA_BUILD_WITH_BUILDAH:-}" ]; then
-        if [ "${COSA_BUILD_WITH_BUILDAH:-}" = 1 ]; then
+# Common helper to check for features that can be enabled via an env var or
+# in the manifest metadata.
+_should_enable_feature() {
+    local env_var_name=$1
+    local metadata_key=$2
+    local env_var_value
+    # Indirect expansion
+    env_var_value=${!env_var_name:-}
+
+    if [ -n "${env_var_value}" ]; then
+        if [ "${env_var_value}" = 1 ]; then
             return 0
         else
             return 1
         fi
     fi
+
+    # Make sure we are in the config directory (e.g. cmd-osbuild set a different working directory).
+    # When called very early (e.g. cmd-fetch), configdir isn't initialized yet so we assume we are in the top
+    # cosa initialized dir and use `src/config`.
+    # We redirect the output to /dev/null to avoid the noisy `dirs` output.
+    set +u
+    pushd "${configdir:-src/config}" > /dev/null
+    set -u
     # this slightly duplicates some logic in `prepare_build`, but meh...
-    if [[ -f "src/config.json" ]]; then
-        variant="$(jq --raw-output '."coreos-assembler.config-variant"' src/config.json)"
-        manifest="src/config/manifest-${variant}.yaml"
+    if [[ -f "../config.json" ]]; then
+        variant="$(jq --raw-output '."coreos-assembler.config-variant"' ../config.json)"
+        manifest="manifest-${variant}.yaml"
     else
-        manifest="src/config/manifest.yaml"
+        manifest="manifest.yaml"
     fi
-    if [ "$(yq .metadata.build_with_buildah "${manifest}")" = true ]; then
+    if [ "$(yq ".metadata.${metadata_key}" "${manifest}")" = true ]; then
+        popd > /dev/null
         return 0
     fi
+    popd > /dev/null
     return 1
+}
+
+should_use_bootc_install() {
+    _should_enable_feature "COSA_OSBUILD_USE_BOOTC_INSTALL" "use_bootc_install"
 }
 
 # Only used by legacy (not via container tools) path. Delete when we
