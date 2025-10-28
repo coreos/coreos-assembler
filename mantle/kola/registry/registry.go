@@ -7,6 +7,7 @@ import (
 	_ "github.com/coreos/coreos-assembler/mantle/kola/tests/etcd"
 	_ "github.com/coreos/coreos-assembler/mantle/kola/tests/fips"
 	_ "github.com/coreos/coreos-assembler/mantle/kola/tests/ignition"
+	_ "github.com/coreos/coreos-assembler/mantle/kola/tests/iso"
 	_ "github.com/coreos/coreos-assembler/mantle/kola/tests/metadata"
 	_ "github.com/coreos/coreos-assembler/mantle/kola/tests/misc"
 	_ "github.com/coreos/coreos-assembler/mantle/kola/tests/ostree"
