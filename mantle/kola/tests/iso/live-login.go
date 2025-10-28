@@ -1,0 +1,143 @@
+package testiso
+
+import (
+	"bufio"
+	"fmt"
+	"io"
+	"path/filepath"
+	"strings"
+	"time"
+
+	"github.com/coreos/coreos-assembler/mantle/kola"
+	"github.com/coreos/coreos-assembler/mantle/platform"
+	coreosarch "github.com/coreos/stream-metadata-go/arch"
+	"github.com/pkg/errors"
+
+	"github.com/coreos/coreos-assembler/mantle/kola/cluster"
+	"github.com/coreos/coreos-assembler/mantle/kola/register"
+	"github.com/coreos/coreos-assembler/mantle/platform/conf"
+	"github.com/coreos/coreos-assembler/mantle/platform/machine/qemu"
+)
+
+var (
+	tests_live_login_x86_64 = []string{
+		"live-login",
+		"live-login.uefi",
+		"live-login.uefi-secure",
+	}
+	tests_live_login_aarch64 = []string{
+		"live-login",
+		"live-login.uefi",
+	}
+	tests_live_login_ppc64le = []string{
+		"live-login",
+	}
+	tests_live_login_s390x = []string{
+		"live-login",
+	}
+)
+
+func getAllLiveLoginTests() []string {
+	arch := coreosarch.CurrentRpmArch()
+	switch arch {
+	case "x86_64":
+		return tests_live_login_x86_64
+	case "aarch64":
+		return tests_live_login_aarch64
+	case "ppc64le":
+		return tests_live_login_ppc64le
+	case "s390x":
+		return tests_live_login_s390x
+	default:
+		return []string{}
+	}
+}
+
+func init() {
+	for _, testName := range getAllLiveLoginTests() {
+		var firmware string
+		if strings.Contains(testName, "uefi-secure") {
+			firmware = "uefi-secure"
+		} else if strings.Contains(testName, "uefi") {
+			firmware = "uefi"
+		}
+
+		register.RegisterTest(&register.Test{
+			Run: func(c cluster.TestCluster) {
+				testLiveLogin(c, firmware)
+			},
+			ClusterSize: 0,
+			Name:        "iso." + testName,
+			Description: "Verify ISO live login works.",
+			Flags:       []register.Flag{},
+			Platforms:   []string{"qemu"},
+		})
+	}
+}
+
+func testLiveLogin(c cluster.TestCluster, firmware string) {
+	if kola.CosaBuild.Meta.BuildArtifacts.LiveIso == nil || kola.CosaBuild.Meta.BuildArtifacts.LiveKernel == nil {
+		c.Fatalf("Build %s is missing live artifacts\n", kola.CosaBuild.Meta.Name)
+	}
+
+	butane := conf.Butane(`
+variant: fcos
+version: 1.1.0`)
+
+	errchan := make(chan error)
+
+	setupDisks := func(_ platform.MachineOptions, builder *platform.QemuBuilder) error {
+		// https://github.com/coreos/fedora-coreos-config/blob/testing-devel/overlay.d/05core/usr/lib/systemd/system/coreos-liveiso-success.service
+		output, err := builder.VirtioChannelRead("coreos.liveiso-success")
+		if err != nil {
+			return errors.Wrap(err, "setting up virtio-serial channel")
+		}
+
+		// Read line in a goroutine and send errors to channel
+		go func() {
+			exp := "coreos-liveiso-success"
+			line, err := bufio.NewReader(output).ReadString('\n')
+			if err != nil {
+				if err == io.EOF {
+					// this may be from QEMU getting killed or exiting; wait a bit
+					// to give a chance for .Wait() above to feed the channel with a
+					// better error
+					time.Sleep(1 * time.Second)
+					errchan <- fmt.Errorf("Got EOF from completion channel, %s expected", exp)
+				} else {
+					errchan <- errors.Wrapf(err, "reading from completion channel")
+				}
+				return
+			}
+			line = strings.TrimSpace(line)
+			if line != exp {
+				errchan <- fmt.Errorf("Unexpected string from completion channel: %q, expected: %q", line, exp)
+				return
+			}
+			// OK!
+			errchan <- nil
+		}()
+
+		isopath := filepath.Join(kola.CosaBuild.Dir, kola.CosaBuild.Meta.BuildArtifacts.LiveIso.Path)
+		return builder.AddIso(isopath, "", false)
+	}
+
+	switch pc := c.Cluster.(type) {
+	case *qemu.Cluster:
+		options := platform.MachineOptions{Firmware: firmware}
+		builder := &qemu.MachineBuilder{
+			SetupDisks: setupDisks,
+		}
+		_, err := pc.NewMachineWithBuilder(butane, options, builder)
+		if err != nil {
+			c.Fatalf("Unable to create test machine: %v", err)
+		}
+	default:
+		c.Fatalf("Unsupported cluster type")
+	}
+
+	err := <-errchan
+	if err != nil {
+		c.Fatal(err)
+	}
+}
