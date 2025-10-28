@@ -191,6 +191,10 @@ should_use_bootc_install() {
     _should_enable_feature "COSA_OSBUILD_USE_BOOTC_INSTALL" "use_bootc_install"
 }
 
+should_build_with_buildah() {
+    _should_enable_feature "COSA_BUILD_WITH_BUILDAH" "build_with_buildah"
+}
+
 prepare_build() {
     preflight
     preflight_kvm
