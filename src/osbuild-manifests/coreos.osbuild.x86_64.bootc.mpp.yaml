@@ -262,6 +262,64 @@ pipelines:
             partition:
               mpp-format-int: '{image.layout[''boot''].partnum}'
             target: /boot-mount-point
+      # Set the context of the root of disk so that we avoid unlabeled_t files.
+      # Here we make sure to not mount the boot partition because we want to label
+      # the directory mount point
+      # https://github.com/coreos/fedora-coreos-tracker/issues/1772
+      - type: org.osbuild.selinux
+        options:
+          file_contexts: input://tree/etc/selinux/targeted/contexts/files/file_contexts
+          target: mount://root/
+        inputs:
+          tree:
+            type: org.osbuild.tree
+            origin: org.osbuild.pipeline
+            references:
+              - name:deployed-tree
+        devices:
+          disk:
+            type: org.osbuild.loopback
+            options:
+              filename: disk.img
+              partscan: true
+        mounts:
+          - name: root
+            type: org.osbuild.xfs
+            source: disk
+            partition:
+              mpp-format-int: '{image.layout[''root''].partnum}'
+            target: /
+      # Then we mount le boot parition and label again so the /boot/efi
+      # mount point is labeled properly
+      - type: org.osbuild.selinux
+        options:
+          file_contexts: input://tree/etc/selinux/targeted/contexts/files/file_contexts
+          target: mount://root/boot
+        inputs:
+          tree:
+            type: org.osbuild.tree
+            origin: org.osbuild.pipeline
+            references:
+              - name:deployed-tree
+        devices:
+          disk:
+            type: org.osbuild.loopback
+            options:
+              filename: disk.img
+              partscan: true
+        mounts:
+          - name: root
+            type: org.osbuild.xfs
+            source: disk
+            partition:
+              mpp-format-int: '{image.layout[''root''].partnum}'
+            target: /
+          - name: boot
+            type: org.osbuild.ext4
+            source: disk
+            partition:
+              mpp-format-int: '{image.layout[''boot''].partnum}'
+            target: /boot
       # Use bootc install to-filesystem to install the ostree content from the container image
       # inside our disc image
       - type: org.osbuild.bootc.install-to-filesystem
@@ -474,6 +532,64 @@ pipelines:
             partition:
               mpp-format-int: '{image4k.layout[''boot''].partnum}'
             target: /boot-mount-point
+      # Set the context of the root of disk so that we avoid unlabeled_t files.
+      # Here we make sure to not mount the boot partition because we want to label
+      # the directory mount point
+      # https://github.com/coreos/fedora-coreos-tracker/issues/1772
+      - type: org.osbuild.selinux
+        options:
+          file_contexts: input://tree/etc/selinux/targeted/contexts/files/file_contexts
+          target: mount://root/
+        inputs:
+          tree:
+            type: org.osbuild.tree
+            origin: org.osbuild.pipeline
+            references:
+              - name:deployed-tree
+        devices:
+          disk:
+            type: org.osbuild.loopback
+            options:
+              filename: disk.img
+              partscan: true
+        mounts:
+          - name: root
+            type: org.osbuild.xfs
+            source: disk
+            partition:
+              mpp-format-int: '{image.layout[''root''].partnum}'
+            target: /
+      # Then we mount le boot parition and label again so the /boot/efi
+      # mount point is labeled properly
+      - type: org.osbuild.selinux
+        options:
+          file_contexts: input://tree/etc/selinux/targeted/contexts/files/file_contexts
+          target: mount://root/boot
+        inputs:
+          tree:
+            type: org.osbuild.tree
+            origin: org.osbuild.pipeline
+            references:
+              - name:deployed-tree
+        devices:
+          disk:
+            type: org.osbuild.loopback
+            options:
+              filename: disk.img
+              partscan: true
+        mounts:
+          - name: root
+            type: org.osbuild.xfs
+            source: disk
+            partition:
+              mpp-format-int: '{image.layout[''root''].partnum}'
+            target: /
+          - name: boot
+            type: org.osbuild.ext4
+            source: disk
+            partition:
+              mpp-format-int: '{image.layout[''boot''].partnum}'
+            target: /boot
       # Use bootc install to-filesystem to install the ostree content from the container image
       # inside our disc image
       - type: org.osbuild.bootc.install-to-filesystem
