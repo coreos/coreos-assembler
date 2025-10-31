@@ -408,10 +408,23 @@ main() {
     else
         cmd="runvm_with_cache"
     fi
-    $cmd -- /usr/lib/coreos-assembler/runvm-osbuild                                                     \
-                --config "${runvm_osbuild_config_json}"                                                 \
-                --mpp "/usr/lib/coreos-assembler/osbuild-manifests/coreos.osbuild.${basearch}.mpp.yaml" \
-                --outdir "${outdir}"                                                                    \
+
+    # Use the bootc install to-filesystem manifest if applicable
+    bootc_suffix=""
+    if should_use_bootc_install; then
+        bootc_suffix=".bootc"
+    fi
+
+    manifest_path="/usr/lib/coreos-assembler/osbuild-manifests/coreos.osbuild.${basearch}${bootc_suffix}.mpp.yaml"
+
+    # To get a shell in the osbuild supermin VM uncomment this.
+    # osbuild can then be started with `bash tmp/build.<artifact>/cmd.sh`
+    # See comment about checkpoints in runvm-osbuild
+    # RUNVM_SHELL=1 \
+    $cmd -- /usr/lib/coreos-assembler/runvm-osbuild                                                                          \
+                --config "${runvm_osbuild_config_json}"                                                                      \
+                --mpp "${manifest_path}"                                                                                     \
+                --outdir "${outdir}"                                                                                         \
                 --platforms "$(IFS=,; echo "${platforms[*]}")"
 
     for platform in "${platforms[@]}"; do
