@@ -15,7 +15,9 @@
 package misc
 
 import (
+	"fmt"
 	"strings"
+	"time"
 
 	coreosarch "github.com/coreos/stream-metadata-go/arch"
 
@@ -23,6 +25,7 @@ import (
 	"github.com/coreos/coreos-assembler/mantle/kola/register"
 	"github.com/coreos/coreos-assembler/mantle/platform"
 	"github.com/coreos/coreos-assembler/mantle/platform/conf"
+	"github.com/coreos/coreos-assembler/mantle/util"
 )
 
 var (
@@ -168,6 +171,8 @@ func verifyMultipath(c cluster.TestCluster, m platform.Machine, path string) {
 func runMultipathDay1(c cluster.TestCluster) {
 	m := c.Machines()[0]
 	verifyMultipathBoot(c, m)
+	// wait until first-boot-complete.target is reached
+	waitForCompleteFirstboot(c)
 	if err := m.Reboot(); err != nil {
 		c.Fatalf("Failed to reboot the machine: %v", err)
 	}
@@ -188,8 +193,33 @@ func runMultipathDay2(c cluster.TestCluster) {
 func runMultipathPartition(c cluster.TestCluster) {
 	m := c.Machines()[0]
 	verifyMultipath(c, m, "/var/lib/containers")
+	// wait until first-boot-complete.target is reached
+	waitForCompleteFirstboot(c)
 	if err := m.Reboot(); err != nil {
 		c.Fatalf("Failed to reboot the machine: %v", err)
 	}
 	verifyMultipath(c, m, "/var/lib/containers")
+}
+
+func waitForCompleteFirstboot(c cluster.TestCluster) {
+	m := c.Machines()[0]
+	err := util.WaitUntilReady(2*time.Minute, 10*time.Second, func() (bool, error) {
+
+		_, err := c.SSH(m, "sudo systemd-run --wait --quiet --property='After=first-boot-complete.target' echo 'firstboot complete'")
+		if err != nil {
+			return false, err
+		}
+		// get the actual target state to double check
+		firstbootTargetState, err := c.SSH(m, "systemctl is-active first-boot-complete.target")
+
+		if err != nil {
+			return false, err
+		} else if string(firstbootTargetState) != "active" {
+			return false, fmt.Errorf("first-boot-complete.target state: %s.", string(firstbootTargetState))
+		}
+		return true, nil
+	})
+	if err != nil {
+		c.Fatalf("Timed out while waiting for first-boot-complete.target to be ready: %v", err)
+	}
 }
