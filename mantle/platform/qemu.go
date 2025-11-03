@@ -85,6 +85,8 @@ type QEMUMachine interface {
 	// RemovePrimaryBlockDevice removes the primary device from a given qemu
 	// instance and sets the secondary device as primary.
 	RemovePrimaryBlockDevice() error
+	// RemoveBlockDeviceForMultipath removes the specified device on multipath.
+	RemoveBlockDeviceForMultipath(device string) error
 }
 
 // Disk holds the details of a virtual disk.
@@ -442,6 +444,30 @@ func (inst *QemuInstance) RemovePrimaryBlockDevice() (err2 error) {
 		return errors.Wrapf(err, "Could not set bootindex for  %v", secondaryDevicePath)
 	}
 
+	return nil
+}
+
+// RemoveBlockDeviceForMultipath remove the specified device on multipath.
+func (inst *QemuInstance) RemoveBlockDeviceForMultipath(device string) error {
+	blkdevs, err := inst.listBlkDevices()
+	if err != nil {
+		return errors.Wrapf(err, "Could not list block devices through qmp")
+	}
+
+	var devicePath string
+	for _, dev := range blkdevs.Return {
+		if dev.Device == device {
+			devicePath = dev.DevicePath
+			break
+		}
+	}
+	if devicePath == "" {
+		return fmt.Errorf("Target device %q not found in block device list", device)
+	}
+
+	if err = inst.deleteBlockDevice(devicePath); err != nil {
+		return errors.Wrapf(err, "Could not delete device %v", devicePath)
+	}
 	return nil
 }
 

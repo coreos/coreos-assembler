@@ -124,3 +124,7 @@ func (m *machine) JournalOutput() string {
 func (m *machine) RemovePrimaryBlockDevice() error {
 	return m.inst.RemovePrimaryBlockDevice()
 }
+
+func (m *machine) RemoveBlockDeviceForMultipath(device string) error {
+	return m.inst.RemoveBlockDeviceForMultipath(device)
+}
