@@ -16,6 +16,7 @@ package misc
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -103,6 +104,13 @@ systemd:
 
         [Install]
         WantedBy=multi-user.target`)
+
+	mpath_single_disk = conf.Butane(`
+variant: fcos
+version: 1.6.0
+kernel_arguments:
+  should_exist:
+    - rd.multipath=default`)
 )
 
 func init() {
@@ -131,6 +139,16 @@ func init() {
 		Platforms:       []string{"qemu"},
 		UserData:        mpath_on_var_lib_containers,
 		AdditionalDisks: []string{"1G:mpath,wwn=1"},
+	})
+	// See https://issues.redhat.com/browse/OCPBUGS-56597
+	register.RegisterTest(&register.Test{
+		Name:          "multipath.single-disk",
+		Description:   "Verify that multipath can be reduced to one path",
+		Run:           runMultipathReduceDisk,
+		ClusterSize:   1,
+		Platforms:     []string{"qemu"},
+		UserData:      mpath_single_disk,
+		MultiPathDisk: true,
 	})
 }
 
@@ -222,4 +240,42 @@ func waitForCompleteFirstboot(c cluster.TestCluster) {
 	if err != nil {
 		c.Fatalf("Timed out while waiting for first-boot-complete.target to be ready: %v", err)
 	}
+}
+
+func verifyMultipathDisks(c cluster.TestCluster, m platform.Machine, expect int) {
+	device := strings.TrimSpace(string(c.MustSSH(m, "sudo multipath -l -v 1")))
+	if device == "" {
+		c.Fatalf("Failed to find multipath device")
+	}
+	output := string(c.MustSSHf(m, "lsblk --pairs --paths --inverse --output NAME /dev/mapper/%s | grep -v /dev/mapper | wc -l", device))
+	count, err := strconv.Atoi(strings.TrimSpace(output))
+	if err != nil {
+		c.Fatalf("Failed to parse device count: %v", err)
+	}
+
+	if count != expect {
+		c.Fatalf("Expected %d multipath devices, but found %d", expect, count)
+	}
+}
+
+func runMultipathReduceDisk(c cluster.TestCluster) {
+	m := c.Machines()[0]
+	verifyMultipathBoot(c, m)
+	// wait until first-boot-complete.target is reached
+	waitForCompleteFirstboot(c)
+	verifyMultipathDisks(c, m, 2)
+
+	if err := m.(platform.QEMUMachine).RemoveBlockDeviceForMultipath("mpath11"); err != nil {
+		c.Fatalf("Failed to remove multipath disk: %v", err)
+	}
+
+	if err := m.Reboot(); err != nil {
+		c.Fatalf(
+			"Reboot failed: %v. This is likely caused by multipath not being able to boot with only one remaining path. "+
+				"Verify that the kernel cmdline includes 'mpath.wwid=' and that dracut has support for WWID.",
+			err,
+		)
+	}
+	verifyMultipathDisks(c, m, 1)
+	c.RunCmdSync(m, "grep mpath.wwid= /proc/cmdline")
 }
