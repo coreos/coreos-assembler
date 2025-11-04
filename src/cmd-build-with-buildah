@@ -167,15 +167,6 @@ build_with_buildah() {
             --label org.opencontainers.image.source="${source}" \
             --label org.opencontainers.image.revision="${commit}"
 
-    # XXX: Temporary hack until we have https://github.com/coreos/rpm-ostree/pull/5454
-    # which would allow us to fold this back into the build process.
-    # shellcheck source=/dev/null
-    stream=$(yaml2json "$manifest" /dev/stdout | jq -r '.variables.stream')
-    if [ "${stream}" != null ]; then
-        set -- "$@" --label fedora-coreos.stream="$stream" \
-                    --annotation fedora-coreos.stream="$stream"
-    fi
-
     if [ -d "src/yumrepos" ] && [ -e "src/yumrepos/${variant:-}.repo" ]; then
         set -- "$@" --secret id=yumrepos,src="$(realpath "src/yumrepos/$variant.repo")" \
                     --secret id=contentsets,src="$(realpath src/yumrepos/content_sets.yaml)" \
