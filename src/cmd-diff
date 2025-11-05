@@ -561,9 +561,14 @@ def diff_metal_helper(diff_from, diff_to):
             g.mount_ro(efi, "/boot/efi")
 
             with tempfile.NamedTemporaryFile(suffix=".tar", delete=True) as tmp_tar:
+                # Exclude ostree/repo/objects. It just adds noise to the diff
+                excludes = ['*ostree/repo/objects/*']
                 g.tar_out("/", tmp_tar.name, xattrs=True, selinux=True, excludes=excludes)
-                # Extract the tarball.
-                runcmd(['tar', '-xf', tmp_tar.name, '-C', diff_dir])
+                # Extract the tarball. Normalize the output by replacing sha256sum hashes
+                # in filenames with XXXXXXXXXXXXXXXX so that we can get a real diff between
+                # two of the same files in different builds.
+                runcmd(['tar', '-xf', tmp_tar.name, '-C', diff_dir,
+                        '--transform', 's|[[:xdigit:]]{64}|XXXXXXXXXXXXXXXX|gx'])
 
         except Exception as e:
             print(f"Error in guestfs process for {image_path}: {e}", file=sys.stderr)
@@ -571,6 +576,13 @@ def diff_metal_helper(diff_from, diff_to):
         finally:
             if g:
                 g.close()
+
+        # Some files like /etc/shadow and sudo have no read permissions so let's
+        # open it up so the difftool can access it.
+        runcmd(['find', diff_dir, '-type', 'f', '-perm', '000',
+               '-exec', 'chmod', '--verbose', '444', '{}', ';'])
+        runcmd(['find', diff_dir, '-type', 'f', '-perm', '111',
+               '-exec', 'chmod', '--verbose', '555', '{}', ';'])
 
     # Allow the caller to operate on these values
     return diff_dir_from, diff_dir_to
