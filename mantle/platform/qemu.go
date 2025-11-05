@@ -645,11 +645,24 @@ func (builder *QemuBuilder) setupNetworking() error {
 		address := fmt.Sprintf(":%d", builder.requestedHostForwardPorts[i].HostPort)
 		// Possible race condition between getting the port here and using it
 		// with qemu -- trade off for simpler port management
-		l, err := net.Listen("tcp", address)
+		var l net.Listener
+		var err error
+		const maxRetries = 12
+		const retryDelay = 5 * time.Second
+		for attempt := 1; attempt <= maxRetries; attempt++ {
+			l, err = net.Listen("tcp", address)
+			if err == nil {
+				l.Close()
+				break
+			}
+
+			fmt.Printf("Failed to listen on %s: %v, retrying (%d/%d)...\n",
+				address, err, attempt, maxRetries)
+			time.Sleep(retryDelay)
+		}
 		if err != nil {
 			return err
 		}
-		l.Close()
 		builder.requestedHostForwardPorts[i].HostPort = l.Addr().(*net.TCPAddr).Port
 		netdev += fmt.Sprintf(",hostfwd=tcp:127.0.0.1:%d-:%d",
 			builder.requestedHostForwardPorts[i].HostPort,
