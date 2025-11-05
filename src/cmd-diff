@@ -7,9 +7,7 @@ import json
 import subprocess
 import sys
 import tempfile
-import time
 import rpm
-from multiprocessing import Process
 
 from dataclasses import dataclass
 from enum import IntEnum
@@ -531,72 +529,68 @@ def run_guestfs_mount(image_path, mount_target):
 # the paths to be used for analysis and then clean up once given back
 # control.
 def diff_metal_helper(diff_from, diff_to):
-    metal_from = get_metal_path(diff_from)
-    metal_to = get_metal_path(diff_to)
+    metal_image_from = get_metal_path(diff_from)
+    metal_image_to = get_metal_path(diff_to)
 
-    mount_dir_from = os.path.join(cache_dir("metal"), diff_from.id)
-    mount_dir_to = os.path.join(cache_dir("metal"), diff_to.id)
+    diff_dir_from = os.path.join(cache_dir("metal"), diff_from.id)
+    diff_dir_to = os.path.join(cache_dir("metal"), diff_to.id)
 
-    for d in [mount_dir_from, mount_dir_to]:
-        if os.path.exists(d):
-            shutil.rmtree(d)
-        os.makedirs(d)
+    for image_path, diff_dir in [(metal_image_from, diff_dir_from),
+                                 (metal_image_to, diff_dir_to)]:
+        if os.path.exists(diff_dir):
+            # If it exists assume it's cached already and we don't
+            # need to do anything. If it's stale for whatever reason
+            # the user can `cosa diff --gc`.
+            continue
 
-    # As the libreguest mount call is blocking until unmounted, let's
-    # do that in a separate thread
-    p_from = Process(target=run_guestfs_mount, args=(metal_from, mount_dir_from))
-    p_to = Process(target=run_guestfs_mount, args=(metal_to, mount_dir_to))
+        os.makedirs(diff_dir)
 
-    try:
-        p_from.start()
-        p_to.start()
-        # Wait for the FUSE mounts to be ready. We'll check for a known file.
-        for i, d in enumerate([mount_dir_from, mount_dir_to]):
-            p = p_from if i == 0 else p_to
-            timeout = 60  # seconds
-            start_time = time.time()
-            check_file = os.path.join(d, 'ostree')
-            while not os.path.exists(check_file):
-                time.sleep(1)
-                if time.time() - start_time > timeout:
-                    raise Exception(f"Timeout waiting for mount in {d}")
-                if not p.is_alive():
-                    raise Exception(f"A guestfs process for {os.path.basename(d)} died unexpectedly.")
+        g = None
+        try:
+            g = guestfs.GuestFS(python_return_dict=True)
+            g.set_backend("direct")
+            g.add_drive_opts(image_path, readonly=1)
+            g.launch()
 
-        # Allow the caller to operate on these values
-        yield mount_dir_from, mount_dir_to
+            # Mount the disks in the guestfs VM
+            root = g.findfs_label("root")
+            g.mount_ro(root, "/")
+            boot = g.findfs_label("boot")
+            g.mount_ro(boot, "/boot")
+            efi = g.findfs_label("EFI-SYSTEM")
+            g.mount_ro(efi, "/boot/efi")
 
-    finally:
-        # Unmount the FUSE binds, this will make the guestfs mount calls return
-        runcmd(['fusermount', '-u', mount_dir_from], check=False)
-        runcmd(['fusermount', '-u', mount_dir_to], check=False)
+            with tempfile.NamedTemporaryFile(suffix=".tar", delete=True) as tmp_tar:
+                g.tar_out("/", tmp_tar.name, xattrs=True, selinux=True, excludes=excludes)
+                # Extract the tarball.
+                runcmd(['tar', '-xf', tmp_tar.name, '-C', diff_dir])
 
-        # Ensure the background processes are terminated
-        def shutdown_process(process):
-            process.join(timeout=5)
-            if process.is_alive():
-                process.terminate()
-                process.join()
+        except Exception as e:
+            print(f"Error in guestfs process for {image_path}: {e}", file=sys.stderr)
+            raise
+        finally:
+            if g:
+                g.close()
 
-        shutdown_process(p_from)
-        shutdown_process(p_to)
+    # Allow the caller to operate on these values
+    return diff_dir_from, diff_dir_to
 
 
 def diff_metal(diff_from, diff_to):
-    for mount_dir_from, mount_dir_to in diff_metal_helper(diff_from, diff_to):
-        git_diff(mount_dir_from, mount_dir_to)
+    mount_dir_from, mount_dir_to = diff_metal_helper(diff_from, diff_to)
+    git_diff(mount_dir_from, mount_dir_to)
 
 
 def diff_metal_du(diff_from, diff_to):
-    for mount_dir_from, mount_dir_to in diff_metal_helper(diff_from, diff_to):
-        cmd = ['find', '.', '-type', 'd', '-exec', 'du', '-sh', '{}', ';']
-        diff_cmd_outputs(cmd, mount_dir_from, mount_dir_to, strategy=DiffCmdOutputStrategy.CD)
+    mount_dir_from, mount_dir_to = diff_metal_helper(diff_from, diff_to)
+    cmd = ['find', '.', '-type', 'd', '-exec', 'du', '-sh', '{}', ';']
+    diff_cmd_outputs(cmd, mount_dir_from, mount_dir_to, strategy=DiffCmdOutputStrategy.CD)
 
 
 def diff_metal_ls(diff_from, diff_to):
-    for mount_dir_from, mount_dir_to in diff_metal_helper(diff_from, diff_to):
-        cmd = ['find', '.']
-        diff_cmd_outputs(cmd, mount_dir_from, mount_dir_to, strategy=DiffCmdOutputStrategy.CD)
+    mount_dir_from, mount_dir_to = diff_metal_helper(diff_from, diff_to)
+    cmd = ['find', '.']
+    diff_cmd_outputs(cmd, mount_dir_from, mount_dir_to, strategy=DiffCmdOutputStrategy.CD)
 
 
 def diff_cmd_outputs(cmd, path_from, path_to, strategy: DiffCmdOutputStrategy = DiffCmdOutputStrategy.TEMPLATE):
