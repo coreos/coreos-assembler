@@ -162,27 +162,27 @@ def main():
     diff_from = DiffBuildTarget.from_build(builds, args.diff_from, args.arch)
     diff_to = DiffBuildTarget.from_build(builds, args.diff_to, args.arch)
 
+    if args.gc:
+        # some of the dirs in the rootfs are dumb and have "private" bits
+        runcmd(['find', DIFF_CACHE, '-type', 'd', '-exec', 'chmod', 'u+rwx', '{}', '+'])
+        shutil.rmtree(DIFF_CACHE)
+
     # get activated differs
     active_differs = []
     for differ in DIFFERS:
         if getattr(args, differ.name.replace('-', '_')):
             active_differs += [differ]
 
-    # ensure commits are imported if we know we'll need them
-    ostree_import = max([d.needs_ostree for d in active_differs])
-    if ostree_import > OSTreeImport.NO:
-        for target in [diff_from, diff_to]:
-            import_ostree_commit('.', target.dir, target.meta, extract_json=False,
-                                 partial_import=(ostree_import == OSTreeImport.PARTIAL))
-
-    # start diff'ing
-    for differ in active_differs:
-        differ.function(diff_from, diff_to)
-
-    if args.gc:
-        # some of the dirs in the rootfs are dumb and have "private" bits
-        runcmd(['find', DIFF_CACHE, '-type', 'd', '-exec', 'chmod', 'u+rwx', '{}', '+'])
-        shutil.rmtree(DIFF_CACHE)
+    if active_differs:
+        # ensure commits are imported if we know we'll need them
+        ostree_import = max([d.needs_ostree for d in active_differs])
+        if ostree_import > OSTreeImport.NO:
+            for target in [diff_from, diff_to]:
+                import_ostree_commit('.', target.dir, target.meta, extract_json=False,
+                                     partial_import=(ostree_import == OSTreeImport.PARTIAL))
+        # start diff'ing
+        for differ in active_differs:
+            differ.function(diff_from, diff_to)
 
 
 def parse_args():
