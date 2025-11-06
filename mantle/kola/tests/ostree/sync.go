@@ -71,14 +71,17 @@ systemd:
       enabled: true`)
 
 func init() {
+	// See https://github.com/ostreedev/ostree/pull/2968
+	// Add tag "reprovision" to run serially to avoid NFS port conflicts.
+	// This is hack until a better solution exists.
+	// See https://github.com/coreos/coreos-assembler/issues/4117#issuecomment-3495048106
 	register.RegisterTest(&register.Test{
-		// See https://github.com/ostreedev/ostree/pull/2968
 		Run:         ostreeSyncTest,
 		ClusterSize: 0,
 		Name:        "ostree.sync",
 		Description: "Verify ostree can sync the filesystem with disconnected the NFS volume.",
 		Distros:     []string{"rhcos"},
-		Tags:        []string{"ostree", kola.SkipBaseChecksTag, kola.NeedsInternetTag},
+		Tags:        []string{"ostree", kola.SkipBaseChecksTag, kola.NeedsInternetTag, "reprovision"},
 	})
 }
 
