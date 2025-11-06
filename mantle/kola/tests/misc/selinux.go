@@ -180,9 +180,9 @@ func SelinuxBooleanPersist(c cluster.TestCluster) {
 // have it persist across reboots
 func SelinuxManage(c cluster.TestCluster) {
 	cmdList := []cmdCheckOutput{
-		{"sudo semanage fcontext -l | grep vasd", true, ".*system_u:object_r:var_auth_t:s0"},
-		{"sudo semanage fcontext -m -t httpd_log_t \"/var/opt/quest/vas/vasd(/.*)?\"", false, ""},
-		{"sudo semanage fcontext -l | grep vasd", true, ".*system_u:object_r:httpd_log_t:s0"},
+		{"sudo semanage fcontext -l | grep pam_shield", true, ".*system_u:object_r:var_auth_t:s0"},
+		{"sudo semanage fcontext -m -t httpd_log_t \"/var/lib/pam_shield(/.*)?\"", false, ""},
+		{"sudo semanage fcontext -l | grep pam_shield", true, ".*system_u:object_r:httpd_log_t:s0"},
 	}
 
 	m := c.Machines()[0]
@@ -190,5 +190,5 @@ func SelinuxManage(c cluster.TestCluster) {
 	testSelinuxCmds(c, m, cmdList)
 
 	// the change should be persisted after a reboot
-	c.AssertCmdOutputMatches(m, "sudo semanage fcontext -l | grep vasd", regexp.MustCompile(".*system_u:object_r:httpd_log_t:s0"))
+	c.AssertCmdOutputMatches(m, "sudo semanage fcontext -l | grep pam_shield", regexp.MustCompile(".*system_u:object_r:httpd_log_t:s0"))
 }
