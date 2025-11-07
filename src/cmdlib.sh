@@ -551,6 +551,7 @@ for (repo, spec) in fast_tracks.items():
                         break
                 if passthrough:
                     f.write(line + '\n')
+        f.write('excludepkgs=*\n')
         f.write('includepkgs=' + ','.join(spec['packages']) + '\n')
 "
         rm "${tmp_overridesdir}/all.repo"
