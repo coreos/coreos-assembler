@@ -25,6 +25,7 @@ Usage: coreos-assembler build-with-buildah
   --parent-build=VERSION The version that represents the parent to this build. Used for RPM diffs
                          that get added to the meta.json
   --force                Import a new build even if inputhash has not changed.
+  --authfile             A registry pull secret to use when doing the build.
 EOF
 }
 
@@ -37,7 +38,7 @@ SKIP_PRUNE=
 STRICT=
 PARENT_BUILD=
 rc=0
-options=$(getopt --options h,d --longoptions help,version:,versionary,direct,autolock:,skip-prune,parent-build:,force,strict -- "$@") || rc=$?
+options=$(getopt --options h,d --longoptions help,version:,versionary,direct,autolock:,skip-prune,parent-build:,force,strict,authfile: -- "$@") || rc=$?
 [ $rc -eq 0 ] || {
     print_help
     exit 1
@@ -75,6 +76,10 @@ while true; do
             ;;
         --force)
             FORCE=1
+            ;;
+        --authfile)
+            shift
+            REGISTRY_AUTH_FILE=$1
             ;;
         --)
             shift
@@ -216,6 +221,10 @@ build_with_buildah() {
     fi
     cat <<EOF > "${tempdir}/build-with-buildah-script.sh"
         set -euxo pipefail
+        if [ -n "${REGISTRY_AUTH_FILE:-}" ]; then
+            # Since we are changing dirs below let's make it an absolute path
+            export REGISTRY_AUTH_FILE=\$(readlink -f "${REGISTRY_AUTH_FILE}")
+        fi
         env -C ${tempdir}/src TMPDIR=$(realpath cache) buildah $@
         skopeo copy --quiet "${final_ref}" "${tmp_oci_archive}"
 EOF
