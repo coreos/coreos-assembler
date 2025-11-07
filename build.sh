@@ -198,7 +198,8 @@ patch_osbuild() {
     # To make it easier to apply patches we'll move around the osbuild
     # code on the system first:
     rmdir /usr/lib/osbuild/osbuild
-    mv /usr/lib/python3.13/site-packages/osbuild /usr/lib/osbuild/
+    python_lib_dir=$(ls -d /usr/lib/python*)
+    mv ${python_lib_dir}/site-packages/osbuild /usr/lib/osbuild/
     mkdir -p /usr/lib/osbuild/tools
     mv /usr/bin/osbuild-mpp /usr/lib/osbuild/tools/
 
@@ -214,7 +215,7 @@ patch_osbuild() {
     # And then move the files back; supermin appliance creation will need it back
     # in the places delivered by the RPM.
     mv /usr/lib/osbuild/tools/osbuild-mpp /usr/bin/osbuild-mpp
-    mv /usr/lib/osbuild/osbuild /usr/lib/python3.13/site-packages/osbuild
+    mv /usr/lib/osbuild/osbuild ${python_lib_dir}/site-packages/osbuild
     mkdir -p /usr/lib/osbuild/osbuild
 }
 
