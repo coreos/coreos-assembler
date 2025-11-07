@@ -159,7 +159,7 @@ def generate_lockfile_and_commitmeta(tmpd, ostree_commit, build_meta):
 
 
 def generate_build_meta(tmp_oci_archive, tmp_oci_manifest, metadata, ostree_commit):
-    name = metadata['Labels']['com.coreos.osname']
+    name = metadata['Labels'].get('com.coreos.osname', 'custom')
     buildid = metadata['Labels']['org.opencontainers.image.version']
     created_timestamp = parse_timestamp(metadata['Created'])
     arch = get_basearch()
