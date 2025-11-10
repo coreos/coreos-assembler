@@ -223,7 +223,7 @@ build_with_buildah() {
         set -euxo pipefail
         if [ -n "${REGISTRY_AUTH_FILE:-}" ]; then
             # Since we are changing dirs below let's make it an absolute path
-            export REGISTRY_AUTH_FILE=\$(readlink -f "${REGISTRY_AUTH_FILE}")
+            export REGISTRY_AUTH_FILE=\$(readlink -f "${REGISTRY_AUTH_FILE:-}")
         fi
         env -C ${tempdir}/src TMPDIR=$(realpath cache) buildah $@
         skopeo copy --quiet "${final_ref}" "${tmp_oci_archive}"
