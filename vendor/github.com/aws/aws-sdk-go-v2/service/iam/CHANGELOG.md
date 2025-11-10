@@ -1,3 +1,16 @@
+# v1.49.2 (2025-11-04)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+* **Dependency Update**: Upgrade to smithy-go v1.23.2 which should convey some passive reduction of overall allocations, especially when not using the metrics system.
+
+# v1.49.1 (2025-10-30)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.49.0 (2025-10-27)
+
+* **Feature**: Fixed missing SummaryMap keys in GetAccountSummary response that were being filtered out during deserialization in AWS Java SDK v2
+
 # v1.48.1 (2025-10-23)
 
 * **Dependency Update**: Updated to the latest SDK module versions
