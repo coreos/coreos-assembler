@@ -4822,6 +4822,19 @@ const (
 	InstanceTypeM8a48xlarge        InstanceType = "m8a.48xlarge"
 	InstanceTypeM8aMetal24xl       InstanceType = "m8a.metal-24xl"
 	InstanceTypeM8aMetal48xl       InstanceType = "m8a.metal-48xl"
+	InstanceTypeTrn23xlarge        InstanceType = "trn2.3xlarge"
+	InstanceTypeR8aMedium          InstanceType = "r8a.medium"
+	InstanceTypeR8aLarge           InstanceType = "r8a.large"
+	InstanceTypeR8aXlarge          InstanceType = "r8a.xlarge"
+	InstanceTypeR8a2xlarge         InstanceType = "r8a.2xlarge"
+	InstanceTypeR8a4xlarge         InstanceType = "r8a.4xlarge"
+	InstanceTypeR8a8xlarge         InstanceType = "r8a.8xlarge"
+	InstanceTypeR8a12xlarge        InstanceType = "r8a.12xlarge"
+	InstanceTypeR8a16xlarge        InstanceType = "r8a.16xlarge"
+	InstanceTypeR8a24xlarge        InstanceType = "r8a.24xlarge"
+	InstanceTypeR8a48xlarge        InstanceType = "r8a.48xlarge"
+	InstanceTypeR8aMetal24xl       InstanceType = "r8a.metal-24xl"
+	InstanceTypeR8aMetal48xl       InstanceType = "r8a.metal-48xl"
 )
 
 // Values returns all known values for InstanceType. Note that this can be
@@ -5902,6 +5915,19 @@ func (InstanceType) Values() []InstanceType {
 		"m8a.48xlarge",
 		"m8a.metal-24xl",
 		"m8a.metal-48xl",
+		"trn2.3xlarge",
+		"r8a.medium",
+		"r8a.large",
+		"r8a.xlarge",
+		"r8a.2xlarge",
+		"r8a.4xlarge",
+		"r8a.8xlarge",
+		"r8a.12xlarge",
+		"r8a.16xlarge",
+		"r8a.24xlarge",
+		"r8a.48xlarge",
+		"r8a.metal-24xl",
+		"r8a.metal-48xl",
 	}
 }
 
@@ -6393,6 +6419,157 @@ func (IpamPoolState) Values() []IpamPoolState {
 	}
 }
 
+type IpamPrefixListResolverRuleConditionOperation string
+
+// Enum values for IpamPrefixListResolverRuleConditionOperation
+const (
+	IpamPrefixListResolverRuleConditionOperationEquals    IpamPrefixListResolverRuleConditionOperation = "equals"
+	IpamPrefixListResolverRuleConditionOperationNotEquals IpamPrefixListResolverRuleConditionOperation = "not-equals"
+	IpamPrefixListResolverRuleConditionOperationSubnetOf  IpamPrefixListResolverRuleConditionOperation = "subnet-of"
+)
+
+// Values returns all known values for
+// IpamPrefixListResolverRuleConditionOperation. Note that this can be expanded in
+// the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
+func (IpamPrefixListResolverRuleConditionOperation) Values() []IpamPrefixListResolverRuleConditionOperation {
+	return []IpamPrefixListResolverRuleConditionOperation{
+		"equals",
+		"not-equals",
+		"subnet-of",
+	}
+}
+
+type IpamPrefixListResolverRuleType string
+
+// Enum values for IpamPrefixListResolverRuleType
+const (
+	IpamPrefixListResolverRuleTypeStaticCidr       IpamPrefixListResolverRuleType = "static-cidr"
+	IpamPrefixListResolverRuleTypeIpamResourceCidr IpamPrefixListResolverRuleType = "ipam-resource-cidr"
+	IpamPrefixListResolverRuleTypeIpamPoolCidr     IpamPrefixListResolverRuleType = "ipam-pool-cidr"
+)
+
+// Values returns all known values for IpamPrefixListResolverRuleType. Note that
+// this can be expanded in the future, and so it is only as up to date as the
+// client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
+func (IpamPrefixListResolverRuleType) Values() []IpamPrefixListResolverRuleType {
+	return []IpamPrefixListResolverRuleType{
+		"static-cidr",
+		"ipam-resource-cidr",
+		"ipam-pool-cidr",
+	}
+}
+
+type IpamPrefixListResolverState string
+
+// Enum values for IpamPrefixListResolverState
+const (
+	IpamPrefixListResolverStateCreateInProgress  IpamPrefixListResolverState = "create-in-progress"
+	IpamPrefixListResolverStateCreateComplete    IpamPrefixListResolverState = "create-complete"
+	IpamPrefixListResolverStateCreateFailed      IpamPrefixListResolverState = "create-failed"
+	IpamPrefixListResolverStateModifyInProgress  IpamPrefixListResolverState = "modify-in-progress"
+	IpamPrefixListResolverStateModifyComplete    IpamPrefixListResolverState = "modify-complete"
+	IpamPrefixListResolverStateModifyFailed      IpamPrefixListResolverState = "modify-failed"
+	IpamPrefixListResolverStateDeleteInProgress  IpamPrefixListResolverState = "delete-in-progress"
+	IpamPrefixListResolverStateDeleteComplete    IpamPrefixListResolverState = "delete-complete"
+	IpamPrefixListResolverStateDeleteFailed      IpamPrefixListResolverState = "delete-failed"
+	IpamPrefixListResolverStateIsolateInProgress IpamPrefixListResolverState = "isolate-in-progress"
+	IpamPrefixListResolverStateIsolateComplete   IpamPrefixListResolverState = "isolate-complete"
+	IpamPrefixListResolverStateRestoreInProgress IpamPrefixListResolverState = "restore-in-progress"
+)
+
+// Values returns all known values for IpamPrefixListResolverState. Note that this
+// can be expanded in the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
+func (IpamPrefixListResolverState) Values() []IpamPrefixListResolverState {
+	return []IpamPrefixListResolverState{
+		"create-in-progress",
+		"create-complete",
+		"create-failed",
+		"modify-in-progress",
+		"modify-complete",
+		"modify-failed",
+		"delete-in-progress",
+		"delete-complete",
+		"delete-failed",
+		"isolate-in-progress",
+		"isolate-complete",
+		"restore-in-progress",
+	}
+}
+
+type IpamPrefixListResolverTargetState string
+
+// Enum values for IpamPrefixListResolverTargetState
+const (
+	IpamPrefixListResolverTargetStateCreateInProgress  IpamPrefixListResolverTargetState = "create-in-progress"
+	IpamPrefixListResolverTargetStateCreateComplete    IpamPrefixListResolverTargetState = "create-complete"
+	IpamPrefixListResolverTargetStateCreateFailed      IpamPrefixListResolverTargetState = "create-failed"
+	IpamPrefixListResolverTargetStateModifyInProgress  IpamPrefixListResolverTargetState = "modify-in-progress"
+	IpamPrefixListResolverTargetStateModifyComplete    IpamPrefixListResolverTargetState = "modify-complete"
+	IpamPrefixListResolverTargetStateModifyFailed      IpamPrefixListResolverTargetState = "modify-failed"
+	IpamPrefixListResolverTargetStateSyncInProgress    IpamPrefixListResolverTargetState = "sync-in-progress"
+	IpamPrefixListResolverTargetStateSyncComplete      IpamPrefixListResolverTargetState = "sync-complete"
+	IpamPrefixListResolverTargetStateSyncFailed        IpamPrefixListResolverTargetState = "sync-failed"
+	IpamPrefixListResolverTargetStateDeleteInProgress  IpamPrefixListResolverTargetState = "delete-in-progress"
+	IpamPrefixListResolverTargetStateDeleteComplete    IpamPrefixListResolverTargetState = "delete-complete"
+	IpamPrefixListResolverTargetStateDeleteFailed      IpamPrefixListResolverTargetState = "delete-failed"
+	IpamPrefixListResolverTargetStateIsolateInProgress IpamPrefixListResolverTargetState = "isolate-in-progress"
+	IpamPrefixListResolverTargetStateIsolateComplete   IpamPrefixListResolverTargetState = "isolate-complete"
+	IpamPrefixListResolverTargetStateRestoreInProgress IpamPrefixListResolverTargetState = "restore-in-progress"
+)
+
+// Values returns all known values for IpamPrefixListResolverTargetState. Note
+// that this can be expanded in the future, and so it is only as up to date as the
+// client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
+func (IpamPrefixListResolverTargetState) Values() []IpamPrefixListResolverTargetState {
+	return []IpamPrefixListResolverTargetState{
+		"create-in-progress",
+		"create-complete",
+		"create-failed",
+		"modify-in-progress",
+		"modify-complete",
+		"modify-failed",
+		"sync-in-progress",
+		"sync-complete",
+		"sync-failed",
+		"delete-in-progress",
+		"delete-complete",
+		"delete-failed",
+		"isolate-in-progress",
+		"isolate-complete",
+		"restore-in-progress",
+	}
+}
+
+type IpamPrefixListResolverVersionCreationStatus string
+
+// Enum values for IpamPrefixListResolverVersionCreationStatus
+const (
+	IpamPrefixListResolverVersionCreationStatusPending IpamPrefixListResolverVersionCreationStatus = "pending"
+	IpamPrefixListResolverVersionCreationStatusSuccess IpamPrefixListResolverVersionCreationStatus = "success"
+	IpamPrefixListResolverVersionCreationStatusFailure IpamPrefixListResolverVersionCreationStatus = "failure"
+)
+
+// Values returns all known values for
+// IpamPrefixListResolverVersionCreationStatus. Note that this can be expanded in
+// the future, and so it is only as up to date as the client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
+func (IpamPrefixListResolverVersionCreationStatus) Values() []IpamPrefixListResolverVersionCreationStatus {
+	return []IpamPrefixListResolverVersionCreationStatus{
+		"pending",
+		"success",
+		"failure",
+	}
+}
+
 type IpamPublicAddressAssociationStatus string
 
 // Enum values for IpamPublicAddressAssociationStatus
@@ -6591,6 +6768,24 @@ func (IpamResourceType) Values() []IpamResourceType {
 		"public-ipv4-pool",
 		"ipv6-pool",
 		"eni",
+	}
+}
+
+type IpamScopeExternalAuthorityType string
+
+// Enum values for IpamScopeExternalAuthorityType
+const (
+	IpamScopeExternalAuthorityTypeInfoblox IpamScopeExternalAuthorityType = "infoblox"
+)
+
+// Values returns all known values for IpamScopeExternalAuthorityType. Note that
+// this can be expanded in the future, and so it is only as up to date as the
+// client.
+//
+// The ordering of this slice is not guaranteed to be stable across updates.
+func (IpamScopeExternalAuthorityType) Values() []IpamScopeExternalAuthorityType {
+	return []IpamScopeExternalAuthorityType{
+		"infoblox",
 	}
 }
 
@@ -8663,6 +8858,8 @@ const (
 	ResourceTypeIpamExternalResourceVerificationToken                  ResourceType = "ipam-external-resource-verification-token"
 	ResourceTypeCapacityBlock                                          ResourceType = "capacity-block"
 	ResourceTypeMacModificationTask                                    ResourceType = "mac-modification-task"
+	ResourceTypeIpamPrefixListResolver                                 ResourceType = "ipam-prefix-list-resolver"
+	ResourceTypeIpamPrefixListResolverTarget                           ResourceType = "ipam-prefix-list-resolver-target"
 	ResourceTypeCapacityManagerDataExport                              ResourceType = "capacity-manager-data-export"
 )
 
@@ -8769,6 +8966,8 @@ func (ResourceType) Values() []ResourceType {
 		"ipam-external-resource-verification-token",
 		"capacity-block",
 		"mac-modification-task",
+		"ipam-prefix-list-resolver",
+		"ipam-prefix-list-resolver-target",
 		"capacity-manager-data-export",
 	}
 }
