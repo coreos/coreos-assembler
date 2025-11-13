@@ -199,17 +199,18 @@ patch_osbuild() {
     # code on the system first:
     rmdir /usr/lib/osbuild/osbuild
     python_lib_dir=$(ls -d /usr/lib/python*)
-    mv ${python_lib_dir}/site-packages/osbuild /usr/lib/osbuild/
+    mv "${python_lib_dir}/site-packages/osbuild" /usr/lib/osbuild/
     mkdir -p /usr/lib/osbuild/tools
     mv /usr/bin/osbuild-mpp /usr/lib/osbuild/tools/
     # Now all the software is under the /usr/lib/osbuild dir and we can patch
+    # shellcheck disable=SC2002
     cat \
         /usr/lib/coreos-assembler/0001-stages-mkfs.xfs-support-setting-agcount.patch \
             | patch -d /usr/lib/osbuild -p1
     # And then move the files back; supermin appliance creation will need it back
     # in the places delivered by the RPM.
     mv /usr/lib/osbuild/tools/osbuild-mpp /usr/bin/osbuild-mpp
-    mv /usr/lib/osbuild/osbuild ${python_lib_dir}/site-packages/osbuild
+    mv /usr/lib/osbuild/osbuild "${python_lib_dir}/site-packages/osbuild"
     mkdir -p /usr/lib/osbuild/osbuild
 }
 
