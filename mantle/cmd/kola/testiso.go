@@ -35,6 +35,7 @@ import (
 	"github.com/coreos/coreos-assembler/mantle/harness/reporters"
 	"github.com/coreos/coreos-assembler/mantle/harness/testresult"
 	"github.com/coreos/coreos-assembler/mantle/platform/conf"
+	"github.com/coreos/coreos-assembler/mantle/platform/machine/qemu"
 	"github.com/coreos/coreos-assembler/mantle/util"
 	coreosarch "github.com/coreos/stream-metadata-go/arch"
 	"github.com/pkg/errors"
@@ -381,7 +382,7 @@ func getAllTests(build *util.LocalBuild) []string {
 }
 
 func newBaseQemuBuilder(outdir string) (*platform.QemuBuilder, error) {
-	builder := platform.NewMetalQemuBuilderDefault()
+	builder := qemu.NewMetalQemuBuilderDefault()
 	if enableUefiSecure {
 		builder.Firmware = "uefi-secure"
 	} else if enableUefi {
@@ -548,7 +549,7 @@ func runTestIso(cmd *cobra.Command, args []string) (err error) {
 		}
 	}()
 
-	baseInst := platform.Install{
+	baseInst := qemu.Install{
 		CosaBuild:  kola.CosaBuild,
 		NmKeyfiles: make(map[string]string),
 	}
@@ -798,7 +799,7 @@ func printResult(test string, duration time.Duration, err error) bool {
 	return false
 }
 
-func testPXE(ctx context.Context, inst platform.Install, outdir string) (time.Duration, error) {
+func testPXE(ctx context.Context, inst qemu.Install, outdir string) (time.Duration, error) {
 	if addNmKeyfile {
 		return 0, errors.New("--add-nm-keyfile not yet supported for PXE")
 	}
@@ -862,7 +863,7 @@ func testPXE(ctx context.Context, inst platform.Install, outdir string) (time.Du
 	return awaitCompletion(ctx, mach.QemuInst, outdir, completionChannel, mach.BootStartedErrorChannel, []string{liveOKSignal, signalCompleteString})
 }
 
-func testLiveIso(ctx context.Context, inst platform.Install, outdir string, minimal bool) (time.Duration, error) {
+func testLiveIso(ctx context.Context, inst qemu.Install, outdir string, minimal bool) (time.Duration, error) {
 	tmpd, err := os.MkdirTemp("", "kola-testiso")
 	if err != nil {
 		return 0, err
@@ -1047,7 +1048,7 @@ func testAsDisk(ctx context.Context, outdir string) (time.Duration, error) {
 // 6 - /var/nested-ign.json contains an ignition config:
 //   - when the system is booted, write a success string to /dev/virtio-ports/testisocompletion
 //   - as this serial device is mapped to the host serial device, the test concludes
-func testLiveInstalliscsi(ctx context.Context, inst platform.Install, outdir string, butane string) (time.Duration, error) {
+func testLiveInstalliscsi(ctx context.Context, inst qemu.Install, outdir string, butane string) (time.Duration, error) {
 
 	builddir := kola.CosaBuild.Dir
 	isopath := filepath.Join(builddir, kola.CosaBuild.Meta.BuildArtifacts.LiveIso.Path)
