@@ -85,12 +85,6 @@ type Install struct {
 	liveIgnition conf.Conf
 }
 
-type InstalledMachine struct {
-	Tempdir                 string
-	QemuInst                *platform.QemuInstance
-	BootStartedErrorChannel chan error
-}
-
 // Check that artifact has been built and locally exists
 func (inst *Install) checkArtifactsExist(artifacts []string) error {
 	version := inst.CosaBuild.Meta.OstreeVersion
@@ -109,7 +103,7 @@ func (inst *Install) checkArtifactsExist(artifacts []string) error {
 	return nil
 }
 
-func (inst *Install) PXE(kargs []string, liveIgnition, ignition conf.Conf, offline bool) (*InstalledMachine, error) {
+func (inst *Install) PXE(kargs []string, liveIgnition, ignition conf.Conf, offline bool) (*machine, error) {
 	artifacts := []string{"live-kernel", "live-rootfs"}
 	if err := inst.checkArtifactsExist(artifacts); err != nil {
 		return nil, err
@@ -144,17 +138,6 @@ func (inst *Install) PXE(kargs []string, liveIgnition, ignition conf.Conf, offli
 	}
 
 	return mach, nil
-}
-
-func (inst *InstalledMachine) Destroy() error {
-	if inst.QemuInst != nil {
-		inst.QemuInst.Destroy()
-		inst.QemuInst = nil
-	}
-	if inst.Tempdir != "" {
-		return os.RemoveAll(inst.Tempdir)
-	}
-	return nil
 }
 
 type kernelSetup struct {
@@ -544,7 +527,7 @@ func (t *installerRun) run() (*platform.QemuInstance, error) {
 	return inst, nil
 }
 
-func (inst *Install) runPXE(kern *kernelSetup, offline bool) (*InstalledMachine, error) {
+func (inst *Install) runPXE(kern *kernelSetup, offline bool) (*machine, error) {
 	t, err := inst.setup(kern)
 	if err != nil {
 		return nil, errors.Wrapf(err, "setting up install")
@@ -572,11 +555,11 @@ func (inst *Install) runPXE(kern *kernelSetup, offline bool) (*InstalledMachine,
 	}
 	tempdir := t.tempdir
 	t.tempdir = "" // Transfer ownership
-	instmachine := InstalledMachine{
-		QemuInst: qinst,
-		Tempdir:  tempdir,
+	instmachine := machine{
+		inst:    qinst,
+		tempdir: tempdir,
 	}
-	switchBootOrderSignal(qinst, bootStartedChan, &instmachine.BootStartedErrorChannel)
+	switchBootOrderSignal(qinst, bootStartedChan, &instmachine.bootStartedErrorChannel)
 	return &instmachine, nil
 }
 
@@ -592,7 +575,7 @@ type installerConfig struct {
 	Console      []string `yaml:"console,omitempty"`
 }
 
-func (inst *Install) InstallViaISOEmbed(kargs []string, liveIgnition, targetIgnition conf.Conf, outdir string, offline, minimal bool) (*InstalledMachine, error) {
+func (inst *Install) InstallViaISOEmbed(kargs []string, liveIgnition, targetIgnition conf.Conf, outdir string, offline, minimal bool) (*machine, error) {
 	artifacts := []string{"live-iso"}
 	if !offline {
 		if inst.Native4k {
@@ -845,10 +828,10 @@ After=dev-mapper-mpatha.device`)
 		return nil, err
 	}
 	cleanupTempdir = false // Transfer ownership
-	instmachine := InstalledMachine{
-		QemuInst: qinst,
-		Tempdir:  tempdir,
+	instmachine := machine{
+		inst:    qinst,
+		tempdir: tempdir,
 	}
-	switchBootOrderSignal(qinst, bootStartedChan, &instmachine.BootStartedErrorChannel)
+	switchBootOrderSignal(qinst, bootStartedChan, &instmachine.bootStartedErrorChannel)
 	return &instmachine, nil
 }
