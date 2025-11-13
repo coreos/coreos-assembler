@@ -192,31 +192,26 @@ write_archive_info() {
 }
 
 patch_osbuild() {
-    # Add a few patches that either haven't made it into a release or
-    # that will be obsoleted with other work that will be done soon.
-
-    # To make it easier to apply patches we'll move around the osbuild
-    # code on the system first:
-    rmdir /usr/lib/osbuild/osbuild
-    python_lib_dir=$(ls -d /usr/lib/python*)
-    mv ${python_lib_dir}/site-packages/osbuild /usr/lib/osbuild/
-    mkdir -p /usr/lib/osbuild/tools
-    mv /usr/bin/osbuild-mpp /usr/lib/osbuild/tools/
-
-    # Now all the software is under the /usr/lib/osbuild dir and we can patch
-    cat \
-        /usr/lib/coreos-assembler/0001-osbuild-util-containers.py-add-container_mount-funct.patch \
-        /usr/lib/coreos-assembler/0002-osbuild-util-containers.py-rename-variable.patch           \
-        /usr/lib/coreos-assembler/0003-osbuild-util-containers.py-drop-copy-when-using-cont.patch \
-        /usr/lib/coreos-assembler/0004-drop-remove_signatures-from-org.osbuild.container-de.patch \
-        /usr/lib/coreos-assembler/0005-tools-osbuild-mpp-support-mpp-resolve-for-org.osbuil.patch |
-            patch -d /usr/lib/osbuild -p1
-
-    # And then move the files back; supermin appliance creation will need it back
-    # in the places delivered by the RPM.
-    mv /usr/lib/osbuild/tools/osbuild-mpp /usr/bin/osbuild-mpp
-    mv /usr/lib/osbuild/osbuild ${python_lib_dir}/site-packages/osbuild
-    mkdir -p /usr/lib/osbuild/osbuild
+    return # No patches at this time
+  # # Add a few patches that either haven't made it into a release or
+  # # that will be obsoleted with other work that will be done soon.
+  # #
+  # # To make it easier to apply patches we'll move around the osbuild
+  # # code on the system first:
+  # rmdir /usr/lib/osbuild/osbuild
+  # python_lib_dir=$(ls -d /usr/lib/python*)
+  # mv ${python_lib_dir}/site-packages/osbuild /usr/lib/osbuild/
+  # mkdir -p /usr/lib/osbuild/tools
+  # mv /usr/bin/osbuild-mpp /usr/lib/osbuild/tools/
+  # # Now all the software is under the /usr/lib/osbuild dir and we can patch
+  # cat \
+  #     /usr/lib/coreos-assembler/0001.patch \
+  #         | patch -d /usr/lib/osbuild -p1
+  # # And then move the files back; supermin appliance creation will need it back
+  # # in the places delivered by the RPM.
+  # mv /usr/lib/osbuild/tools/osbuild-mpp /usr/bin/osbuild-mpp
+  # mv /usr/lib/osbuild/osbuild ${python_lib_dir}/site-packages/osbuild
+  # mkdir -p /usr/lib/osbuild/osbuild
 }
 
 if [ $# -ne 0 ]; then
