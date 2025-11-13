@@ -27,6 +27,11 @@ mpp-vars:
   boot_fs_label: boot
   root_fs_uuid: 910678ff-f77e-4a7d-8d53-86f2ac47a823
   root_fs_label: root
+  # The agcount of the XFS root filesystem. Set this to a smaller value
+  # than the default (4) so we grown filesystems (most of our user
+  # base) will have a lower overall agcount for their grown filesystem.
+  # See https://github.com/coreos/fedora-coreos-tracker/issues/1993
+  root_fs_agcount: 2
   # For some stages (i.e. the qemu stages) we'll use the host as
   # the buildroot (i.e. COSA in most cases but sometimes just
   # the actual HOST filesystem like in coreos/custom-coreos-disk-images).
@@ -300,6 +305,8 @@ pipelines:
                 mpp-format-int: '{image.layout[''root''].size}'
               lock: true
         options:
+          agcount:
+            mpp-format-int: '{root_fs_agcount}'
           uuid:
             mpp-format-string: '{root_fs_uuid}'
           label:
@@ -490,6 +497,8 @@ pipelines:
               sector-size:
                   mpp-format-int: "{four_k_sector_size}"
         options:
+          agcount:
+            mpp-format-int: '{root_fs_agcount}'
           uuid:
             mpp-format-string: '{root_fs_uuid}'
           label:
