@@ -854,13 +854,9 @@ func testPXE(ctx context.Context, inst qemu.Install, outdir string) (time.Durati
 	if err != nil {
 		return 0, errors.Wrapf(err, "running PXE")
 	}
-	defer func() {
-		if err := mach.Destroy(); err != nil {
-			plog.Errorf("Failed to destroy PXE: %v", err)
-		}
-	}()
+	defer mach.Destroy()
 
-	return awaitCompletion(ctx, mach.QemuInst, outdir, completionChannel, mach.BootStartedErrorChannel, []string{liveOKSignal, signalCompleteString})
+	return awaitCompletion(ctx, mach.Instance(), outdir, completionChannel, mach.BootStartedErrorChannel(), []string{liveOKSignal, signalCompleteString})
 }
 
 func testLiveIso(ctx context.Context, inst qemu.Install, outdir string, minimal bool) (time.Duration, error) {
@@ -925,12 +921,14 @@ func testLiveIso(ctx context.Context, inst qemu.Install, outdir string, minimal 
 		return 0, errors.Wrapf(err, "running iso install")
 	}
 	defer func() {
-		if err := mach.Destroy(); err != nil {
+		err := mach.DeleteTempdir()
+		mach.Destroy()
+		if err != nil {
 			plog.Errorf("Failed to destroy iso: %v", err)
 		}
 	}()
 
-	return awaitCompletion(ctx, mach.QemuInst, outdir, completionChannel, mach.BootStartedErrorChannel, []string{liveOKSignal, signalCompleteString})
+	return awaitCompletion(ctx, mach.Instance(), outdir, completionChannel, mach.BootStartedErrorChannel(), []string{liveOKSignal, signalCompleteString})
 }
 
 // testLiveFIPS verifies that adding fips=1 to the ISO results in a FIPS mode system

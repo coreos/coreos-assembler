@@ -26,17 +26,33 @@ import (
 )
 
 type machine struct {
-	qc          *Cluster
-	id          string
-	inst        *platform.QemuInstance
-	journal     *platform.Journal
-	consolePath string
-	console     string
-	ip          string
+	qc                      *Cluster
+	id                      string
+	inst                    *platform.QemuInstance
+	journal                 *platform.Journal
+	consolePath             string
+	console                 string
+	ip                      string
+	tempdir                 string
+	bootStartedErrorChannel chan error
 }
 
 func (m *machine) ID() string {
 	return m.id
+}
+
+// Instance returns the underlying QemuInstance for this machine.
+// This is primarily used for ISO installation tests that need direct access
+// to the QEMU instance.
+func (m *machine) Instance() *platform.QemuInstance {
+	return m.inst
+}
+
+// BootStartedErrorChannel returns the channel used to signal boot completion
+// or errors during the boot process. This is used by ISO installation tests
+// to coordinate boot order changes.
+func (m *machine) BootStartedErrorChannel() chan error {
+	return m.bootStartedErrorChannel
 }
 
 func (m *machine) IP() string {
@@ -91,18 +107,48 @@ func (m *machine) WaitForSoftReboot(timeout time.Duration, oldSoftRebootsCount s
 	return platform.WaitForMachineSoftReboot(m, m.journal, timeout, oldSoftRebootsCount)
 }
 
+// DeleteTempdir removes the temporary directory associated with this machine.
+// It's safe to call multiple times. This is automatically called by Destroy(),
+// but can be called earlier if needed to free disk space.
+func (m *machine) DeleteTempdir() error {
+	if m.tempdir == "" {
+		return nil
+	}
+	err := os.RemoveAll(m.tempdir)
+	m.tempdir = ""
+	return err
+}
+
 func (m *machine) Destroy() {
-	m.inst.Destroy()
-
-	m.journal.Destroy()
-
-	if buf, err := os.ReadFile(m.consolePath); err == nil {
-		m.console = string(buf)
-	} else {
-		plog.Errorf("Error reading console for instance %v: %v", m.ID(), err)
+	if m == nil {
+		return
 	}
 
-	m.qc.DelMach(m)
+	if m.inst != nil {
+		m.inst.Destroy()
+		m.inst = nil
+	}
+
+	if m.journal != nil {
+		m.journal.Destroy()
+		m.journal = nil
+	}
+
+	if m.consolePath != "" {
+		if buf, err := os.ReadFile(m.consolePath); err == nil {
+			m.console = string(buf)
+		} else {
+			plog.Errorf("Error reading console for instance %v: %v", m.ID(), err)
+		}
+	}
+
+	if m.qc != nil {
+		m.qc.DelMach(m)
+	}
+
+	if err := m.DeleteTempdir(); err != nil {
+		plog.Errorf("Error removing tempdir for instance %v: %v", m.ID(), err)
+	}
 }
 
 func (m *machine) ConsoleOutput() string {
