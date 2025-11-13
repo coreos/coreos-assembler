@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package platform
+package qemu
 
 import (
 	"bufio"
@@ -25,6 +25,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/coreos/coreos-assembler/mantle/platform"
 	coreosarch "github.com/coreos/stream-metadata-go/arch"
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
@@ -45,14 +46,6 @@ const (
 var baseKargs = []string{"rd.neednet=1", "ip=dhcp", "ignition.firstboot", "ignition.platform.id=metal"}
 
 var (
-	// TODO expose this as an API that can be used by cosa too
-	consoleKernelArgument = map[string]string{
-		"x86_64":  "ttyS0,115200n8",
-		"ppc64le": "hvc0",
-		"aarch64": "ttyAMA0",
-		"s390x":   "ttysclp0",
-	}
-
 	bootStartedUnit = fmt.Sprintf(`[Unit]
 	Description=TestISO Boot Started
 	Requires=dev-virtio\\x2dports-bootstarted.device
@@ -69,8 +62,8 @@ var (
 
 // NewMetalQemuBuilderDefault returns a QEMU builder instance with some
 // defaults set up for bare metal.
-func NewMetalQemuBuilderDefault() *QemuBuilder {
-	builder := NewQemuBuilder()
+func NewMetalQemuBuilderDefault() *platform.QemuBuilder {
+	builder := platform.NewQemuBuilder()
 	// https://github.com/coreos/fedora-coreos-tracker/issues/388
 	// https://github.com/coreos/fedora-coreos-docs/pull/46
 	builder.MemoryMiB = 4096
@@ -79,7 +72,7 @@ func NewMetalQemuBuilderDefault() *QemuBuilder {
 
 type Install struct {
 	CosaBuild       *util.LocalBuild
-	Builder         *QemuBuilder
+	Builder         *platform.QemuBuilder
 	Insecure        bool
 	Native4k        bool
 	MultiPathDisk   bool
@@ -94,7 +87,7 @@ type Install struct {
 
 type InstalledMachine struct {
 	Tempdir                 string
-	QemuInst                *QemuInstance
+	QemuInst                *platform.QemuInstance
 	BootStartedErrorChannel chan error
 }
 
@@ -123,7 +116,7 @@ func (inst *Install) PXE(kargs []string, liveIgnition, ignition conf.Conf, offli
 	}
 
 	installerConfig := installerConfig{
-		Console:     []string{consoleKernelArgument[coreosarch.CurrentRpmArch()]},
+		Console:     []string{platform.ConsoleKernelArgument[coreosarch.CurrentRpmArch()]},
 		AppendKargs: renderCosaTestIsoDebugKargs(),
 	}
 	installerConfigData, err := yaml.Marshal(installerConfig)
@@ -181,7 +174,7 @@ type pxeSetup struct {
 
 type installerRun struct {
 	inst    *Install
-	builder *QemuBuilder
+	builder *platform.QemuBuilder
 
 	builddir string
 	tempdir  string
@@ -348,7 +341,7 @@ func (inst *Install) setup(kern *kernelSetup) (*installerRun, error) {
 }
 
 func renderBaseKargs() []string {
-	return append(baseKargs, fmt.Sprintf("console=%s", consoleKernelArgument[coreosarch.CurrentRpmArch()]))
+	return append(baseKargs, fmt.Sprintf("console=%s", platform.ConsoleKernelArgument[coreosarch.CurrentRpmArch()]))
 }
 
 func renderInstallKargs(t *installerRun, offline bool) []string {
@@ -469,7 +462,7 @@ func (t *installerRun) completePxeSetup(kargs []string) error {
 	return nil
 }
 
-func switchBootOrderSignal(qinst *QemuInstance, bootstartedchan *os.File, booterrchan *chan error) {
+func switchBootOrderSignal(qinst *platform.QemuInstance, bootstartedchan *os.File, booterrchan *chan error) {
 	*booterrchan = make(chan error)
 	go func() {
 		err := qinst.Wait()
@@ -529,7 +522,7 @@ func cat(outfile string, infiles ...string) error {
 	return nil
 }
 
-func (t *installerRun) run() (*QemuInstance, error) {
+func (t *installerRun) run() (*platform.QemuInstance, error) {
 	builder := t.builder
 	netdev := fmt.Sprintf("%s,netdev=mynet0,mac=52:54:00:12:34:56", t.pxe.networkdevice)
 	if t.pxe.bootindex == "" {
@@ -626,7 +619,7 @@ func (inst *Install) InstallViaISOEmbed(kargs []string, liveIgnition, targetIgni
 
 	// XXX: https://github.com/coreos/coreos-installer/issues/1171
 	if coreosarch.CurrentRpmArch() != "s390x" {
-		installerConfig.Console = []string{consoleKernelArgument[coreosarch.CurrentRpmArch()]}
+		installerConfig.Console = []string{platform.ConsoleKernelArgument[coreosarch.CurrentRpmArch()]}
 	}
 
 	if inst.MultiPathDisk {
