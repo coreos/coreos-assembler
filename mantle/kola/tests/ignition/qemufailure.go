@@ -207,7 +207,6 @@ func dualBootfsFailure(c cluster.TestCluster) error {
 	}
 
 	cmd := exec.Command("mkfs.ext4", "-L", "boot", fakeBootFile.Name())
-	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
 		c.Fatal(err)
 	}
