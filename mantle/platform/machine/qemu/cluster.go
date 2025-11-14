@@ -65,7 +65,7 @@ func (qc *Cluster) NewMachineWithQemuOptions(userdata *conf.UserData, options pl
 		return nil, err
 	}
 
-	conf, err := qc.RenderUserData(userdata, map[string]string{})
+	config, configPath, err := qc.RenderUserDataAndWriteIgnitionFileToDir(userdata, dir)
 	if err != nil {
 		return nil, err
 	}
@@ -88,23 +88,12 @@ func (qc *Cluster) NewMachineWithQemuOptions(userdata *conf.UserData, options pl
 	}
 
 	if qc.flight.opts.SecureExecution {
-		if err := builder.SetSecureExecution(qc.flight.opts.SecureExecutionIgnitionPubKey, qc.flight.opts.SecureExecutionHostKey, conf); err != nil {
+		if err := builder.SetSecureExecution(qc.flight.opts.SecureExecutionIgnitionPubKey, qc.flight.opts.SecureExecutionHostKey, config); err != nil {
 			return nil, err
 		}
 	}
 
-	var confPath string
-	if conf.IsIgnition() {
-		confPath = filepath.Join(dir, "ignition.json")
-		if err := conf.WriteFile(confPath); err != nil {
-			return nil, err
-		}
-	} else if conf.IsEmpty() {
-	} else {
-		return nil, fmt.Errorf("qemu only supports Ignition or empty configs")
-	}
-
-	builder.ConfigFile = confPath
+	builder.ConfigFile = configPath
 	defer builder.Close()
 	builder.UUID = qm.id
 	if qc.flight.opts.Arch != "" {
@@ -254,4 +243,25 @@ func (qc *Cluster) Destroy() {
 	qc.tearingDown.Store(true)
 	qc.BaseCluster.Destroy()
 	qc.flight.DelCluster(qc)
+}
+
+func (qc *Cluster) RenderUserDataAndWriteIgnitionFileToDir(userdata *conf.UserData, dir string) (*conf.Conf, string, error) {
+	var config *conf.Conf
+	var configPath string
+	var err error
+	config, err = qc.RenderUserData(userdata, map[string]string{})
+	if err != nil {
+		return nil, "", err
+	}
+	if config != nil {
+		if config.IsIgnition() {
+			configPath = filepath.Join(dir, "ignition.json")
+			if err = config.WriteFile(configPath); err != nil {
+				return nil, "", err
+			}
+		} else if !config.IsEmpty() {
+			return nil, "", fmt.Errorf("qemu only supports Ignition or empty configs")
+		}
+	}
+	return config, configPath, nil
 }
