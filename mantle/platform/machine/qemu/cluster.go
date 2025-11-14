@@ -74,7 +74,7 @@ func (qc *Cluster) NewMachineWithQemuOptions(userdata *conf.UserData, options pl
 	})
 }
 
-func (qc *Cluster) NewMachineWithQemuOptionsAndBuilderCallbacks(userdata *conf.UserData, options platform.QemuMachineOptions, callbacks BuilderCallbacks) (platform.Machine, error) {
+func (qc *Cluster) NewMachineWithQemuOptionsAndBuilderCallbacks(userdata any, options platform.QemuMachineOptions, callbacks BuilderCallbacks) (platform.Machine, error) {
 	if callbacks.BuilderInit == nil {
 		callbacks.BuilderInit = qc.InitDefaultBuilder
 	}
@@ -92,12 +92,7 @@ func (qc *Cluster) NewMachineWithQemuOptionsAndBuilderCallbacks(userdata *conf.U
 		return nil, err
 	}
 
-	conf, err := qc.RenderUserDataForCloudIpSubstitution(userdata)
-	if err != nil {
-		return nil, err
-	}
-
-	confPath, err := qc.WriteIgnitionConfigToDir(conf, dir)
+	conf, confPath, err := qc.ProcessIgnitionConfig(userdata, dir)
 	if err != nil {
 		return nil, err
 	}
@@ -199,6 +194,30 @@ func (qc *Cluster) Destroy() {
 	qc.tearingDown = true
 	qc.BaseCluster.Destroy()
 	qc.flight.DelCluster(qc)
+}
+
+func (qc *Cluster) ProcessIgnitionConfig(cfg any, dir string) (*conf.Conf, string, error) {
+	var config *conf.Conf
+	var confPath string
+	var err error
+	switch p := cfg.(type) {
+	case *conf.UserData:
+		config, err = qc.RenderUserDataForCloudIpSubstitution(p)
+		if err != nil {
+			return nil, "", err
+		}
+	case *conf.Conf:
+		config = p
+	default:
+		return nil, "", fmt.Errorf("unknown config pointer type: %T", p)
+	}
+	if config != nil {
+		confPath, err = qc.WriteIgnitionConfigToDir(config, dir)
+		if err != nil {
+			return nil, "", err
+		}
+	}
+	return config, confPath, nil
 }
 
 // hacky solution for cloud config ip substitution
