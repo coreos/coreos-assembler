@@ -25,7 +25,7 @@ commitmeta = commit.get_child_value(0)
 if sys.byteorder != 'big':
     commitmeta = commitmeta.byteswap()
 
-g = Json.Generator.new()
+g = Json.Generator.new()  # pylint: disable=E1120
 g.set_root(Json.gvariant_serialize(commitmeta))
 stdout = Gio.UnixOutputStream.new(sys.stdout.fileno(), False)
 g.set_pretty(True)
