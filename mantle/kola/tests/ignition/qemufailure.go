@@ -31,6 +31,11 @@ import (
 	"github.com/coreos/coreos-assembler/mantle/platform/conf"
 	"github.com/coreos/coreos-assembler/mantle/util"
 	"github.com/coreos/ignition/v2/config/v3_2/types"
+	"github.com/coreos/pkg/capnslog"
+)
+
+var (
+	plog = capnslog.NewPackageLogger("github.com/coreos/coreos-assembler/mantle", "kola/tests/ignition/qemufailure")
 )
 
 func init() {
@@ -105,23 +110,25 @@ func verifyError(builder *platform.QemuBuilder, searchPattern string) error {
 
 	defer cancel()
 
+	checkConsole := func(path string, searchPattern string) error {
+		// Expected initramfs failure, checking the console file to ensure
+		// that it failed the expected way
+		found, err := fileContainsPattern(path, searchPattern)
+		if err != nil {
+			return errors.Wrapf(err, "looking for pattern '%s' in file '%s' failed", searchPattern, path)
+		} else if !found {
+			return fmt.Errorf("pattern '%s' in file '%s' not found", searchPattern, path)
+		}
+		return nil
+	}
+
 	errchan := make(chan error)
 	go func() {
 		resultingError := inst.WaitAll(ctx)
 		if resultingError == nil {
 			resultingError = fmt.Errorf("ignition unexpectedly succeeded")
 		} else if resultingError == platform.ErrInitramfsEmergency {
-			// Expected initramfs failure, checking the console file to ensure
-			// that it failed the expected way
-			found, err := fileContainsPattern(builder.ConsoleFile, searchPattern)
-			if err != nil {
-				resultingError = errors.Wrapf(err, "looking for pattern '%s' in file '%s' failed", searchPattern, builder.ConsoleFile)
-			} else if !found {
-				resultingError = fmt.Errorf("pattern '%s' in file '%s' not found", searchPattern, builder.ConsoleFile)
-			} else {
-				// The expected case
-				resultingError = nil
-			}
+			resultingError = checkConsole(builder.ConsoleFile, searchPattern)
 		} else {
 			resultingError = errors.Wrapf(resultingError, "expected initramfs emergency.target error")
 		}
@@ -133,17 +140,28 @@ func verifyError(builder *platform.QemuBuilder, searchPattern string) error {
 		if err := inst.Kill(); err != nil {
 			return errors.Wrapf(err, "failed to kill the vm instance")
 		}
-		// If somehow the journal dumping failed let's flag that. We
-		// just ignore errors here. This effort is only trying to help
+		// The journal dumping can fail if the `com.coreos.ignition.journal`
+		// device doesn't show up for some reason (race condition) [1].
+		// Let's try to detect that case and check the console anyway for
+		// the original failure we were looking for.
+		//
+		// We just ignore errors here. This effort is only trying to help
 		// be more informative about why things failed. This "string"
 		// we are searching for comes from ignition-virtio-dump-journal
-		searchPattern = "Didn't find virtio port /dev/virtio-ports/com.coreos.ignition.journal"
-		found, _ := fileContainsPattern(builder.ConsoleFile, searchPattern)
+		// [1] https://github.com/coreos/fedora-coreos-tracker/issues/2019
+		virtioPortSearchPattern := "Didn't find virtio port /dev/virtio-ports/com.coreos.ignition.journal"
+		found, _ := fileContainsPattern(builder.ConsoleFile, virtioPortSearchPattern)
 		if found {
-			return errors.Wrapf(ctx.Err(), "Journal dumping during emergency.target failed")
-		} else {
-			return errors.Wrapf(ctx.Err(), "timed out waiting for initramfs error")
+			plog.Warning("Journal dumping during emergency.target failed. Continuing best effort.")
+			// Check the log even though there was a timeout
+			if err := checkConsole(builder.ConsoleFile, searchPattern); err == nil {
+				// Even though there was a timeout we found the string
+				// we wanted in the console log anyway. Let's just
+				// take the win.
+				return nil
+			}
 		}
+		return errors.Wrapf(ctx.Err(), "timed out waiting for initramfs error")
 	case err := <-errchan:
 		if err != nil {
 			return err
