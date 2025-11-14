@@ -409,7 +409,7 @@ def get_basearch():
     try:
         return get_basearch.saved
     except AttributeError:
-        get_basearch.saved = RpmOstree.get_basearch()
+        get_basearch.saved = RpmOstree.get_basearch()  # pylint: disable=E1120
         return get_basearch.saved
 
 

@@ -4,4 +4,4 @@
 import gi
 gi.require_version("RpmOstree", "1.0")
 from gi.repository import RpmOstree
-print(RpmOstree.get_basearch())
+print(RpmOstree.get_basearch())  # pylint: disable=E1120

@@ -1,4 +1,4 @@
-FROM quay.io/fedora/fedora:42
+FROM quay.io/fedora/fedora:43
 
 RUN dnf -y install /usr/bin/ps nfs-utils && dnf clean all && rm -rf /var/cache/yum
 
