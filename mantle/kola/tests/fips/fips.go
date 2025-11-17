@@ -1,19 +1,24 @@
 package fips
 
 import (
+	"github.com/coreos/coreos-assembler/mantle/kola"
 	"github.com/coreos/coreos-assembler/mantle/kola/cluster"
 	"github.com/coreos/coreos-assembler/mantle/kola/register"
 	"github.com/coreos/coreos-assembler/mantle/platform/conf"
 )
 
 func init() {
-	// Minimal test case to test FIPS enabling at first boot
+	// Minimal test case to test FIPS enabling at first boot.
+	// Also tests that using TLS works in FIPS mode by having Ignition
+	// fetch a remote resource to make sure [1] doesn't happen again.
+	// [1] https://issues.redhat.com/browse/OCPBUGS-65684
 	register.RegisterTest(&register.Test{
 		Run:         fipsEnableTest,
 		ClusterSize: 1,
 		Name:        `fips.enable`,
 		Description: "Verify that fips enabled works.",
 		Flags:       []register.Flag{},
+		Tags:        []string{kola.NeedsInternetTag},
 		Distros:     []string{"rhcos"},
 		UserData: conf.Ignition(`{
 			"ignition": {
@@ -46,6 +51,12 @@ func init() {
 							"verification": {}
 						},
 						"mode": 420
+					},
+					{
+						"path": "/var/resource/https",
+						"contents": {
+							"source": "https://ignition-test-fixtures.s3.amazonaws.com/resources/anonymous"
+						}
 					}
 				]
 			}
