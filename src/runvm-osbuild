@@ -76,9 +76,14 @@ extra_kargs=$(getconfig "extra-kargs-string" "")
 # if it exists then let's check here to see if the container exists
 # in local container storage. If it does then we'll just pass that
 # and not pass any ociarchive info into the build.
-if podman image exists "${container_repo}:${container_tag}"; then
-    ostree_container=""
-fi
+#
+# XXX: Disabling this for now as it ends up with inconsistent digests
+#      in our deployed bootimages versus what's pushed to the registry
+#      and is causing zincati to not work.
+#      https://github.com/coreos/fedora-coreos-tracker/issues/2066
+#if podman image exists "${container_repo}:${container_tag}"; then
+#    ostree_container=""
+#fi
 
 # Since it doesn't exist create loop-control
 [ ! -e /dev/loop-control ] && mknod /dev/loop-control c 10 237
