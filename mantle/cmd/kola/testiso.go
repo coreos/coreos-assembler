@@ -68,7 +68,6 @@ var (
 	enableUefi       bool
 	enableUefiSecure bool
 	isOffline        bool
-	isISOFromRAM     bool
 
 	// These tests only run on RHCOS
 	tests_RHCOS_uefi = []string{
@@ -82,44 +81,23 @@ var (
 		"iso-as-disk.uefi",
 		"iso-as-disk.uefi-secure",
 		"iso-as-disk.4k.uefi",
-		"iso-install.bios",
-		"iso-offline-install.bios",
-		"iso-offline-install.mpath.bios",
-		"iso-offline-install-fromram.4k.uefi",
 		"iso-offline-install-iscsi.ibft.uefi",
 		"iso-offline-install-iscsi.ibft-with-mpath.bios",
 		"iso-offline-install-iscsi.manual.bios",
-		"miniso-install.bios",
-		"miniso-install.nm.bios",
-		"miniso-install.4k.uefi",
-		"miniso-install.4k.nm.uefi",
 		"pxe-offline-install.rootfs-appended.bios",
 		"pxe-offline-install.4k.uefi",
 		"pxe-online-install.bios",
 		"pxe-online-install.4k.uefi",
 	}
 	tests_s390x = []string{
-		"iso-offline-install.s390fw",
-		"iso-offline-install.mpath.s390fw",
-		"iso-offline-install.4k.s390fw",
 		"pxe-online-install.rootfs-appended.s390fw",
 		"pxe-offline-install.s390fw",
-		"miniso-install.s390fw",
-		"miniso-install.nm.s390fw",
-		"miniso-install.4k.nm.s390fw",
 		// FIXME https://github.com/coreos/fedora-coreos-tracker/issues/1657
 		//"iso-offline-install-iscsi.ibft.s390fw,
 		//"iso-offline-install-iscsi.ibft-with-mpath.s390fw",
 		//"iso-offline-install-iscsi.manual.s390fw",
 	}
 	tests_ppc64le = []string{
-		"iso-offline-install.ppcfw",
-		"iso-offline-install.mpath.ppcfw",
-		"iso-offline-install-fromram.4k.ppcfw",
-		"miniso-install.ppcfw",
-		"miniso-install.nm.ppcfw",
-		"miniso-install.4k.ppcfw",
-		"miniso-install.4k.nm.ppcfw",
 		"pxe-online-install.rootfs-appended.ppcfw",
 		"pxe-offline-install.4k.ppcfw",
 		// FIXME https://github.com/coreos/fedora-coreos-tracker/issues/1657
@@ -128,13 +106,6 @@ var (
 		//"iso-offline-install-iscsi.manual.ppcfw",
 	}
 	tests_aarch64 = []string{
-		"iso-offline-install.uefi",
-		"iso-offline-install.mpath.uefi",
-		"iso-offline-install-fromram.4k.uefi",
-		"miniso-install.uefi",
-		"miniso-install.nm.uefi",
-		"miniso-install.4k.uefi",
-		"miniso-install.4k.nm.uefi",
 		"pxe-offline-install.uefi",
 		"pxe-offline-install.rootfs-appended.4k.uefi",
 		"pxe-online-install.uefi",
@@ -148,8 +119,6 @@ var (
 
 const (
 	installTimeoutMins = 12
-	// https://github.com/coreos/fedora-coreos-config/pull/2544
-	liveISOFromRAMKarg = "coreos.liveiso.fromram"
 )
 
 var liveOKSignal = "live-test-OK"
@@ -227,18 +196,6 @@ ExecStart=/bin/sh -c '[ ! -e /boot/ignition ]'
 [Install]
 RequiredBy=multi-user.target`
 
-var multipathedRoot = `[Unit]
-Description=TestISO Verify Multipathed Root
-OnFailure=emergency.target
-OnFailureJobMode=isolate
-Before=coreos-test-installer.service
-[Service]
-Type=oneshot
-RemainAfterExit=yes
-ExecStart=/bin/bash -c 'lsblk -pno NAME "/dev/mapper/$(multipath -l -v 1)" | grep -qw "$(findmnt -nvr /sysroot -o SOURCE)"'
-[Install]
-RequiredBy=multi-user.target`
-
 // This test is broken. Please fix!
 // https://github.com/coreos/coreos-assembler/issues/3554
 var verifyNoEFIBootEntry = `[Unit]
@@ -256,92 +213,6 @@ ExecStart=/bin/sh -c '! efibootmgr -v | grep -E "(HD|CDROM)\("'
 RequiredBy=coreos-installer.target
 # for iso-as-disk
 RequiredBy=multi-user.target`
-
-// Verify that the volume ID is the OS name. See also
-// https://github.com/openshift/assisted-image-service/pull/477.
-// This is the same as the LABEL of the block device for ISO9660. See
-// https://github.com/util-linux/util-linux/blob/643bdae8e38055e36acf2963c3416de206081507/libblkid/src/superblocks/iso9660.c#L366-L377
-var verifyIsoVolumeId = `[Unit]
-Description=Verify ISO Volume ID
-OnFailure=emergency.target
-OnFailureJobMode=isolate
-# only if we're actually mounting the ISO
-ConditionPathIsMountPoint=/run/media/iso
-[Service]
-Type=oneshot
-RemainAfterExit=yes
-# the backing device name is arch-dependent, but we know it's mounted on /run/media/iso
-ExecStart=bash -c "[[ $(findmnt -no LABEL /run/media/iso) == %s-* ]]"
-[Install]
-RequiredBy=coreos-installer.target`
-
-// Unit to check that /run/media/iso is not mounted when
-// coreos.liveiso.fromram kernel argument is passed
-var isoNotMountedUnit = `[Unit]
-Description=Verify ISO is not mounted when coreos.liveiso.fromram
-OnFailure=emergency.target
-OnFailureJobMode=isolate
-ConditionKernelCommandLine=coreos.liveiso.fromram
-[Service]
-Type=oneshot
-StandardOutput=kmsg+console
-StandardError=kmsg+console
-RemainAfterExit=yes
-# Would like to use SuccessExitStatus but it doesn't support what
-# we want: https://github.com/systemd/systemd/issues/10297#issuecomment-1672002635
-ExecStart=bash -c "if mountpoint /run/media/iso 2>/dev/null; then exit 1; fi"
-[Install]
-RequiredBy=coreos-installer.target`
-
-var nmConnectionId = "CoreOS DHCP"
-var nmConnectionFile = "coreos-dhcp.nmconnection"
-var nmConnection = fmt.Sprintf(`[connection]
-id=%s
-type=ethernet
-# add wait-device-timeout here so we make sure NetworkManager-wait-online.service will
-# wait for a device to be present before exiting. See
-# https://github.com/coreos/fedora-coreos-tracker/issues/1275#issuecomment-1231605438
-wait-device-timeout=20000
-
-[ipv4]
-method=auto
-`, nmConnectionId)
-
-var nmstateConfigFile = "/etc/nmstate/br-ex.yml"
-var nmstateConfig = `interfaces:
- - name: br-ex
-   type: linux-bridge
-   state: up
-   ipv4:
-     enabled: false
-   ipv6:
-     enabled: false
-   bridge:
-     port: []
-`
-
-// This is used to verify *both* the live and the target system in the `--add-nm-keyfile` path.
-var verifyNmKeyfile = fmt.Sprintf(`[Unit]
-Description=TestISO Verify NM Keyfile Propagation
-OnFailure=emergency.target
-OnFailureJobMode=isolate
-Wants=network-online.target
-After=network-online.target
-Before=live-signal-ok.service
-Before=coreos-test-installer.service
-[Service]
-Type=oneshot
-RemainAfterExit=yes
-ExecStart=/usr/bin/journalctl -u nm-initrd --no-pager --grep "policy: set '%[1]s' (.*) as default .* routing and DNS"
-ExecStart=/usr/bin/journalctl -u NetworkManager --no-pager --grep "policy: set '%[1]s' (.*) as default .* routing and DNS"
-ExecStart=/usr/bin/grep "%[1]s" /etc/NetworkManager/system-connections/%[2]s
-# Also verify nmstate config
-ExecStart=/usr/bin/nmcli c show br-ex
-[Install]
-# for live system
-RequiredBy=coreos-installer.target
-# for target system
-RequiredBy=multi-user.target`, nmConnectionId, nmConnectionFile)
 
 //go:embed resources/iscsi_butane_setup.yaml
 var iscsi_butane_config string
@@ -612,12 +483,6 @@ func runTestIso(cmd *cobra.Command, args []string) (err error) {
 		if kola.HasString("offline", strings.Split(components[0], "-")) {
 			isOffline = true
 		}
-		// For fromram it is a part of the first component. i.e. for
-		// iso-offline-install-fromram.uefi we need to search for 'fromram' in
-		// iso-offline-install-fromram, which is currently in components[0].
-		if kola.HasString("fromram", strings.Split(components[0], "-")) {
-			isISOFromRAM = true
-		}
 
 		switch components[0] {
 		case "pxe-offline-install", "pxe-online-install":
@@ -626,10 +491,6 @@ func runTestIso(cmd *cobra.Command, args []string) (err error) {
 			duration, err = testAsDisk(ctx, filepath.Join(outputDir, test))
 		case "iso-fips":
 			duration, err = testLiveFIPS(ctx, filepath.Join(outputDir, test))
-		case "iso-install", "iso-offline-install", "iso-offline-install-fromram":
-			duration, err = testLiveIso(ctx, inst, filepath.Join(outputDir, test), false)
-		case "miniso-install":
-			duration, err = testLiveIso(ctx, inst, filepath.Join(outputDir, test), true)
 		case "iso-offline-install-iscsi":
 			var butane_config string
 			switch components[1] {
@@ -859,78 +720,6 @@ func testPXE(ctx context.Context, inst qemu.Install, outdir string) (time.Durati
 		mach.Destroy()
 		if err != nil {
 			plog.Errorf("Failed to destroy PXE: %v", err)
-		}
-	}()
-
-	return awaitCompletion(ctx, mach.Instance(), outdir, completionChannel, mach.BootStartedErrorChannel(), []string{liveOKSignal, signalCompleteString})
-}
-
-func testLiveIso(ctx context.Context, inst qemu.Install, outdir string, minimal bool) (time.Duration, error) {
-	tmpd, err := os.MkdirTemp("", "kola-testiso")
-	if err != nil {
-		return 0, err
-	}
-	defer os.RemoveAll(tmpd)
-
-	sshPubKeyBuf, _, err := util.CreateSSHAuthorizedKey(tmpd)
-	if err != nil {
-		return 0, err
-	}
-
-	builder, virtioJournalConfig, err := newQemuBuilderWithDisk(outdir)
-	if err != nil {
-		return 0, err
-	}
-	inst.Builder = builder
-	completionChannel, err := inst.Builder.VirtioChannelRead("testisocompletion")
-	if err != nil {
-		return 0, err
-	}
-
-	var isoKernelArgs []string
-	var keys []string
-	keys = append(keys, strings.TrimSpace(string(sshPubKeyBuf)))
-	virtioJournalConfig.AddAuthorizedKeys("core", keys)
-
-	liveConfig := *virtioJournalConfig
-	liveConfig.AddSystemdUnit("live-signal-ok.service", liveSignalOKUnit, conf.Enable)
-	liveConfig.AddSystemdUnit("verify-no-efi-boot-entry.service", verifyNoEFIBootEntry, conf.Enable)
-	liveConfig.AddSystemdUnit("iso-not-mounted-when-fromram.service", isoNotMountedUnit, conf.Enable)
-	liveConfig.AddSystemdUnit("coreos-test-entered-emergency-target.service", signalFailureUnit, conf.Enable)
-	volumeIdUnitContents := fmt.Sprintf(verifyIsoVolumeId, kola.CosaBuild.Meta.Name)
-	liveConfig.AddSystemdUnit("verify-iso-volume-id.service", volumeIdUnitContents, conf.Enable)
-
-	targetConfig := *virtioJournalConfig
-	targetConfig.AddSystemdUnit("coreos-test-installer.service", signalCompletionUnit, conf.Enable)
-	targetConfig.AddSystemdUnit("coreos-test-entered-emergency-target.service", signalFailureUnit, conf.Enable)
-	targetConfig.AddSystemdUnit("coreos-test-installer-no-ignition.service", checkNoIgnition, conf.Enable)
-	if inst.MultiPathDisk {
-		targetConfig.AddSystemdUnit("coreos-test-installer-multipathed.service", multipathedRoot, conf.Enable)
-	}
-
-	if addNmKeyfile {
-		liveConfig.AddSystemdUnit("coreos-test-nm-keyfile.service", verifyNmKeyfile, conf.Enable)
-		targetConfig.AddSystemdUnit("coreos-test-nm-keyfile.service", verifyNmKeyfile, conf.Enable)
-		// NM keyfile via `iso network embed`
-		inst.NmKeyfiles[nmConnectionFile] = nmConnection
-		// nmstate config via live Ignition config, propagated via
-		// --copy-network, which is enabled by inst.NmKeyfiles
-		liveConfig.AddFile(nmstateConfigFile, nmstateConfig, 0644)
-	}
-
-	if isISOFromRAM {
-		isoKernelArgs = append(isoKernelArgs, liveISOFromRAMKarg)
-	}
-
-	mach, err := inst.InstallViaISOEmbed(isoKernelArgs, liveConfig, targetConfig, outdir, isOffline, minimal)
-	if err != nil {
-		return 0, errors.Wrapf(err, "running iso install")
-	}
-	defer func() {
-		err := mach.DeleteTempdir()
-		mach.Destroy()
-		if err != nil {
-			plog.Errorf("Failed to destroy iso: %v", err)
 		}
 	}()
 
