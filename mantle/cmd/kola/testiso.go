@@ -62,7 +62,6 @@ var (
 
 	console bool
 
-	addNmKeyfile     bool
 	enable4k         bool
 	enableMultipath  bool
 	enableUefi       bool
@@ -84,32 +83,20 @@ var (
 		"iso-offline-install-iscsi.ibft.uefi",
 		"iso-offline-install-iscsi.ibft-with-mpath.bios",
 		"iso-offline-install-iscsi.manual.bios",
-		"pxe-offline-install.rootfs-appended.bios",
-		"pxe-offline-install.4k.uefi",
-		"pxe-online-install.bios",
-		"pxe-online-install.4k.uefi",
 	}
 	tests_s390x = []string{
-		"pxe-online-install.rootfs-appended.s390fw",
-		"pxe-offline-install.s390fw",
 		// FIXME https://github.com/coreos/fedora-coreos-tracker/issues/1657
 		//"iso-offline-install-iscsi.ibft.s390fw,
 		//"iso-offline-install-iscsi.ibft-with-mpath.s390fw",
 		//"iso-offline-install-iscsi.manual.s390fw",
 	}
 	tests_ppc64le = []string{
-		"pxe-online-install.rootfs-appended.ppcfw",
-		"pxe-offline-install.4k.ppcfw",
 		// FIXME https://github.com/coreos/fedora-coreos-tracker/issues/1657
 		//"iso-offline-install-iscsi.ibft.ppcfw",
 		//"iso-offline-install-iscsi.ibft-with-mpath.ppcfw",
 		//"iso-offline-install-iscsi.manual.ppcfw",
 	}
 	tests_aarch64 = []string{
-		"pxe-offline-install.uefi",
-		"pxe-offline-install.rootfs-appended.4k.uefi",
-		"pxe-online-install.uefi",
-		"pxe-online-install.4k.uefi",
 		// FIXME https://github.com/coreos/fedora-coreos-tracker/issues/1657
 		//"iso-offline-install-iscsi.ibft.uefi",
 		//"iso-offline-install-iscsi.ibft-with-mpath.uefi",
@@ -139,36 +126,6 @@ RequiredBy=coreos-installer.target
 RequiredBy=multi-user.target
 `, liveOKSignal)
 
-var downloadCheck = `[Unit]
-Description=TestISO Verify CoreOS Installer Download
-After=coreos-installer.service
-Before=coreos-installer.target
-[Service]
-Type=oneshot
-StandardOutput=kmsg+console
-StandardError=kmsg+console
-ExecStart=/bin/sh -c "journalctl -t coreos-installer-service | /usr/bin/awk '/[Dd]ownload/ {exit 1}'"
-ExecStart=/bin/sh -c "/usr/bin/udevadm settle"
-ExecStart=/bin/sh -c "/usr/bin/mount /dev/disk/by-label/root /mnt"
-ExecStart=/bin/sh -c "/usr/bin/jq -er '.[\"build\"]? + .[\"version\"]? == \"%s\"' /mnt/.coreos-aleph-version.json"
-[Install]
-RequiredBy=coreos-installer.target
-`
-
-var signalCompleteString = "coreos-installer-test-OK"
-var signalCompletionUnit = fmt.Sprintf(`[Unit]
-Description=TestISO Signal Completion
-Requires=dev-virtio\\x2dports-testisocompletion.device
-OnFailure=emergency.target
-OnFailureJobMode=isolate
-[Service]
-Type=oneshot
-RemainAfterExit=yes
-ExecStart=/bin/sh -c '/usr/bin/echo %s >/dev/virtio-ports/testisocompletion && systemctl poweroff'
-[Install]
-RequiredBy=multi-user.target
-`, signalCompleteString)
-
 var signalEmergencyString = "coreos-installer-test-entered-emergency-target"
 var signalFailureUnit = fmt.Sprintf(`[Unit]
 Description=TestISO Signal Failure
@@ -181,20 +138,6 @@ ExecStart=/bin/sh -c '/usr/bin/echo %s >/dev/virtio-ports/testisocompletion && s
 [Install]
 RequiredBy=emergency.target
 `, signalEmergencyString)
-
-var checkNoIgnition = `[Unit]
-Description=TestISO Verify No Ignition Config
-OnFailure=emergency.target
-OnFailureJobMode=isolate
-Before=coreos-test-installer.service
-After=coreos-ignition-firstboot-complete.service
-RequiresMountsFor=/boot
-[Service]
-Type=oneshot
-RemainAfterExit=yes
-ExecStart=/bin/sh -c '[ ! -e /boot/ignition ]'
-[Install]
-RequiredBy=multi-user.target`
 
 // This test is broken. Please fix!
 // https://github.com/coreos/coreos-assembler/issues/3554
@@ -319,39 +262,6 @@ func forwardJournal(outdir string, builder *platform.QemuBuilder, config *conf.C
 	return nil
 }
 
-func newQemuBuilderWithDisk(outdir string) (*platform.QemuBuilder, *conf.Conf, error) {
-	builder, config, err := newQemuBuilder(outdir)
-
-	if err != nil {
-		return nil, nil, err
-	}
-
-	sectorSize := 0
-	if enable4k {
-		sectorSize = 4096
-	}
-
-	disk := platform.Disk{
-		Size:          "12G", // Arbitrary
-		SectorSize:    sectorSize,
-		MultiPathDisk: enableMultipath,
-	}
-
-	//TBD: see if we can remove this and just use AddDisk and inject bootindex during startup
-	if coreosarch.CurrentRpmArch() == "s390x" || coreosarch.CurrentRpmArch() == "aarch64" {
-		// s390x and aarch64 need to use bootindex as they don't support boot once
-		if err := builder.AddDisk(&disk); err != nil {
-			return nil, nil, err
-		}
-	} else {
-		if err := builder.AddPrimaryDisk(&disk); err != nil {
-			return nil, nil, err
-		}
-	}
-
-	return builder, config, nil
-}
-
 // See similar semantics in the `filterTests` of `kola.go`.
 func filterTests(tests []string, patterns []string) ([]string, error) {
 	r := []string{}
@@ -448,7 +358,6 @@ func runTestIso(cmd *cobra.Command, args []string) (err error) {
 			return err
 		}
 
-		addNmKeyfile = false
 		enable4k = false
 		enableMultipath = false
 		enableUefi = false
@@ -464,9 +373,6 @@ func runTestIso(cmd *cobra.Command, args []string) (err error) {
 		if kola.HasString("4k", components) {
 			enable4k = true
 			inst.Native4k = true
-		}
-		if kola.HasString("nm", components) {
-			addNmKeyfile = true
 		}
 		if kola.HasString("mpath", components) {
 			enableMultipath = true
@@ -485,8 +391,6 @@ func runTestIso(cmd *cobra.Command, args []string) (err error) {
 		}
 
 		switch components[0] {
-		case "pxe-offline-install", "pxe-online-install":
-			duration, err = testPXE(ctx, inst, filepath.Join(outputDir, test))
 		case "iso-as-disk":
 			duration, err = testAsDisk(ctx, filepath.Join(outputDir, test))
 		case "iso-fips":
@@ -658,72 +562,6 @@ func printResult(test string, duration time.Duration, err error) bool {
 		return true
 	}
 	return false
-}
-
-func testPXE(ctx context.Context, inst qemu.Install, outdir string) (time.Duration, error) {
-	if addNmKeyfile {
-		return 0, errors.New("--add-nm-keyfile not yet supported for PXE")
-	}
-	tmpd, err := os.MkdirTemp("", "kola-testiso")
-	if err != nil {
-		return 0, errors.Wrapf(err, "creating tempdir")
-	}
-	defer os.RemoveAll(tmpd)
-
-	sshPubKeyBuf, _, err := util.CreateSSHAuthorizedKey(tmpd)
-	if err != nil {
-		return 0, errors.Wrapf(err, "creating SSH AuthorizedKey")
-	}
-
-	builder, virtioJournalConfig, err := newQemuBuilderWithDisk(outdir)
-	if err != nil {
-		return 0, errors.Wrapf(err, "creating QemuBuilder")
-	}
-
-	// increase the memory for pxe tests with appended rootfs in the initrd
-	// we were bumping up into the 4GiB limit in RHCOS/c9s
-	// pxe-offline-install.rootfs-appended.bios tests
-	if inst.PxeAppendRootfs && builder.MemoryMiB < 5120 {
-		builder.MemoryMiB = 5120
-	}
-
-	inst.Builder = builder
-	completionChannel, err := inst.Builder.VirtioChannelRead("testisocompletion")
-	if err != nil {
-		return 0, errors.Wrapf(err, "setting up virtio-serial channel")
-	}
-
-	var keys []string
-	keys = append(keys, strings.TrimSpace(string(sshPubKeyBuf)))
-	virtioJournalConfig.AddAuthorizedKeys("core", keys)
-
-	liveConfig := *virtioJournalConfig
-	liveConfig.AddSystemdUnit("live-signal-ok.service", liveSignalOKUnit, conf.Enable)
-	liveConfig.AddSystemdUnit("coreos-test-entered-emergency-target.service", signalFailureUnit, conf.Enable)
-
-	if isOffline {
-		contents := fmt.Sprintf(downloadCheck, kola.CosaBuild.Meta.OstreeVersion)
-		liveConfig.AddSystemdUnit("coreos-installer-offline-check.service", contents, conf.Enable)
-	}
-
-	targetConfig := *virtioJournalConfig
-	targetConfig.AddSystemdUnit("coreos-test-installer.service", signalCompletionUnit, conf.Enable)
-	targetConfig.AddSystemdUnit("coreos-test-entered-emergency-target.service", signalFailureUnit, conf.Enable)
-	targetConfig.AddSystemdUnit("coreos-test-installer-no-ignition.service", checkNoIgnition, conf.Enable)
-
-	mach, err := inst.PXE(pxeKernelArgs, liveConfig, targetConfig, isOffline)
-	if err != nil {
-		return 0, errors.Wrapf(err, "running PXE")
-	}
-	defer func() {
-		err := mach.DeleteTempdir()
-		mach.Destroy()
-		if err != nil {
-			plog.Errorf("Failed to destroy PXE: %v", err)
-		}
-	}()
-
-	return awaitCompletion(ctx, mach.Instance(), outdir, completionChannel, mach.BootStartedErrorChannel(), []string{liveOKSignal, signalCompleteString})
 }
 
 // testLiveFIPS verifies that adding fips=1 to the ISO results in a FIPS mode system
