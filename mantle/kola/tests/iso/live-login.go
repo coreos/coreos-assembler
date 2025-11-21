@@ -1,4 +1,4 @@
-package testiso
+package iso
 
 import (
 	"bufio"
