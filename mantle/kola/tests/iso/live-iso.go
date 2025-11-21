@@ -23,250 +23,56 @@ import (
 	"github.com/coreos/coreos-assembler/mantle/platform/conf"
 )
 
+const (
+	installTimeoutMins = 12
+	// https://github.com/coreos/fedora-coreos-config/pull/2544
+	liveISOFromRAMKarg = "coreos.liveiso.fromram"
+)
+
+func isoTest(name string, run func(c cluster.TestCluster), arch []string) *register.Test {
+	return &register.Test{
+		Run:           run,
+		ClusterSize:   0,
+		Name:          "iso." + name,
+		Timeout:       installTimeoutMins * time.Minute,
+		Platforms:     []string{"qemu"},
+		Architectures: arch,
+	}
+}
+
 func init() {
-	register.RegisterTest(&register.Test{
-		Run:           isoInstall,
-		ClusterSize:   0,
-		Name:          "iso.live-install",
-		Description:   "Verify ISO live login works.",
-		Timeout:       12 * time.Minute,
-		Flags:         []register.Flag{},
-		Platforms:     []string{"qemu"},
-		Architectures: []string{"x86_64"},
-	})
+	register.RegisterTest(isoTest("install", isoInstall, []string{"x86_64"}))
 
-	register.RegisterTest(&register.Test{
-		Run:           isoOfflineInstall,
-		ClusterSize:   0,
-		Name:          "iso.live-offline-install",
-		Description:   "Verify ISO live login works.",
-		Timeout:       12 * time.Minute,
-		Flags:         []register.Flag{},
-		Platforms:     []string{"qemu"},
-		Architectures: []string{},
-	})
+	register.RegisterTest(isoTest("offline-install", isoOfflineInstall, []string{"x86_64", "s390x", "ppc64le"}))
+	register.RegisterTest(isoTest("offline-install.uefi", isoOfflineInstallUefi, []string{"aarch64"}))
+	register.RegisterTest(isoTest("offline-install.4k", isoOfflineInstall4k, []string{"s390x"}))
+	register.RegisterTest(isoTest("offline-install.mpath", isoOfflineInstallMpath, []string{"x86_64", "s390x", "ppc64le"}))
+	register.RegisterTest(isoTest("offline-install.mpath.uefi", isoOfflineInstallMpathUefi, []string{"aarch64"}))
 
-	register.RegisterTest(&register.Test{
-		Run:           isoOfflineInstall4k,
-		ClusterSize:   0,
-		Name:          "iso.live-offline-install.4k",
-		Description:   "Verify ISO live login works.",
-		Timeout:       12 * time.Minute,
-		Flags:         []register.Flag{},
-		Platforms:     []string{"qemu"},
-		Architectures: []string{"s390x"},
-	})
+	register.RegisterTest(isoTest("offline-install-fromram.4k", isoOfflineInstallFromRam4k, []string{"ppc64le"}))
+	register.RegisterTest(isoTest("offline-install-fromram.4k.uefi", isoOfflineInstallFromRam4kUefi, []string{"x86_64", "aarch64"}))
 
-	register.RegisterTest(&register.Test{
-		Run:           isoOfflineInstallMpath,
-		ClusterSize:   0,
-		Name:          "iso.live-offline-install-mpath",
-		Description:   "Verify ISO live login works.",
-		Timeout:       12 * time.Minute,
-		Flags:         []register.Flag{},
-		Platforms:     []string{"qemu"},
-		Architectures: []string{},
-	})
+	register.RegisterTest(isoTest("miniso-install", isoMinisoInstall, []string{"x86_64", "s390x", "ppc64le"}))
+	register.RegisterTest(isoTest("miniso-install.uefi", isoMinisoInstallUefi, []string{"aarch64"}))
+	register.RegisterTest(isoTest("miniso-install.4k", isoMinisoInstall4k, []string{"ppc64le"}))
+	register.RegisterTest(isoTest("miniso-install.4k.uefi", isoMinisoInstall4kUefi, []string{"x86_64", "aarch64"}))
 
-	register.RegisterTest(&register.Test{
-		Run:           isoOfflineInstallFromRam,
-		ClusterSize:   0,
-		Name:          "iso.live-offline-install-fromram",
-		Description:   "Verify ISO live login works.",
-		Timeout:       12 * time.Minute,
-		Flags:         []register.Flag{},
-		Platforms:     []string{"qemu"},
-		Architectures: []string{"x86_64"},
-	})
+	register.RegisterTest(isoTest("miniso-install.nm", isoMinisoInstallNm, []string{"x86_64", "s390x", "ppc64le"}))
+	register.RegisterTest(isoTest("miniso-install.nm.uefi", isoMinisoInstallNmUefi, []string{"aarch64"}))
+	register.RegisterTest(isoTest("miniso-install.4k.nm", isoMinisoInstall4kNm, []string{"ppc64le", "s390x"}))
+	register.RegisterTest(isoTest("miniso-install.4k.nm.uefi", isoMinisoInstall4kNmUefi, []string{"x86_64", "aarch64"}))
 
-	register.RegisterTest(&register.Test{
-		Run:           isoOfflineInstallFromRam4k,
-		ClusterSize:   0,
-		Name:          "iso.live-offline-install-fromram.4k",
-		Description:   "Verify ISO live login works.",
-		Timeout:       12 * time.Minute,
-		Flags:         []register.Flag{},
-		Platforms:     []string{"qemu"},
-		Architectures: []string{"ppc64le"},
-	})
+	register.RegisterTest(isoTest("pxe-online-install", isoPxeOnlineInstall, []string{"x86_64"}))
+	register.RegisterTest(isoTest("pxe-online-install.uefi", isoPxeOnlineInstallUefi, []string{"aarch64"}))
+	register.RegisterTest(isoTest("pxe-online-install.4k.uefi", isoPxeOnlineInstall4kUefi, []string{"x86_64", "aarch64"}))
+	register.RegisterTest(isoTest("pxe-online-install.rootfs-appended", isoPxeOnlineInstallRootfsAppended, []string{"ppc64le", "s390x"}))
 
-	register.RegisterTest(&register.Test{
-		Run:           isoOfflineInstallFromRam4kUefi,
-		ClusterSize:   0,
-		Name:          "iso.live-offline-install-fromram.4k.uefi",
-		Description:   "Verify ISO live login works.",
-		Timeout:       12 * time.Minute,
-		Flags:         []register.Flag{},
-		Platforms:     []string{"qemu"},
-		Architectures: []string{"x86_64", "aarch64"},
-	})
-
-	// Miniso
-	register.RegisterTest(&register.Test{
-		Run:           isoMinisoInstall,
-		ClusterSize:   0,
-		Name:          "iso.miniso-install",
-		Description:   "Verify ISO live login works.",
-		Timeout:       12 * time.Minute,
-		Flags:         []register.Flag{},
-		Platforms:     []string{"qemu"},
-		Architectures: []string{},
-	})
-
-	register.RegisterTest(&register.Test{
-		Run:           isoMinisoInstall4k,
-		ClusterSize:   0,
-		Name:          "iso.miniso-install.4k",
-		Description:   "Verify ISO live login works.",
-		Timeout:       12 * time.Minute,
-		Flags:         []register.Flag{},
-		Platforms:     []string{"qemu"},
-		Architectures: []string{"ppc64le"},
-	})
-
-	register.RegisterTest(&register.Test{
-		Run:           isoMinisoInstall4kUefi,
-		ClusterSize:   0,
-		Name:          "iso.miniso-install.4k.uefi",
-		Description:   "Verify ISO live login works.",
-		Timeout:       12 * time.Minute,
-		Flags:         []register.Flag{},
-		Platforms:     []string{"qemu"},
-		Architectures: []string{"x86_64", "aarch64"},
-	})
-
-	register.RegisterTest(&register.Test{
-		Run:           isoMinisoInstallNm,
-		ClusterSize:   0,
-		Name:          "iso.miniso-install.nm",
-		Description:   "Verify ISO live login works.",
-		Timeout:       12 * time.Minute,
-		Flags:         []register.Flag{},
-		Platforms:     []string{"qemu"},
-		Architectures: []string{},
-	})
-
-	register.RegisterTest(&register.Test{
-		Run:           isoMinisoInstall4kNm,
-		ClusterSize:   0,
-		Name:          "iso.miniso-install.4k.nm",
-		Description:   "Verify ISO live login works.",
-		Timeout:       12 * time.Minute,
-		Flags:         []register.Flag{},
-		Platforms:     []string{"qemu"},
-		Architectures: []string{"ppc64le", "s390x"},
-	})
-
-	register.RegisterTest(&register.Test{
-		Run:           isoMinisoInstall4kNmUefi,
-		ClusterSize:   0,
-		Name:          "iso.miniso-install.4k.nm.uefi",
-		Description:   "Verify ISO live login works.",
-		Timeout:       12 * time.Minute,
-		Flags:         []register.Flag{},
-		Platforms:     []string{"qemu"},
-		Architectures: []string{"ppc64le", "s390x"},
-	})
-
-	// PXE
-	register.RegisterTest(&register.Test{
-		Run:           isoPxeOnlineInstall,
-		ClusterSize:   0,
-		Name:          "iso.pxe-online-install",
-		Description:   "Verify ISO live login works.",
-		Timeout:       12 * time.Minute,
-		Flags:         []register.Flag{},
-		Platforms:     []string{"qemu"},
-		Architectures: []string{"x86_64", "aarch64"},
-	})
-
-	register.RegisterTest(&register.Test{
-		Run:           isoPxeOnlineInstall4kUefi,
-		ClusterSize:   0,
-		Name:          "iso.pxe-online-install.4k.uefi",
-		Description:   "Verify ISO live login works.",
-		Timeout:       12 * time.Minute,
-		Flags:         []register.Flag{},
-		Platforms:     []string{"qemu"},
-		Architectures: []string{"x86_64", "aarch64"},
-	})
-
-	register.RegisterTest(&register.Test{
-		Run:           isoPxeOnlineInstallRootfsAppended,
-		ClusterSize:   0,
-		Name:          "iso.pxe-online-install.rootfs-appended",
-		Description:   "Verify ISO live login works.",
-		Timeout:       12 * time.Minute,
-		Flags:         []register.Flag{},
-		Platforms:     []string{"qemu"},
-		Architectures: []string{"x86_64", "ppc64le", "s390x"},
-	})
-
-	register.RegisterTest(&register.Test{
-		Run:           isoPxeOfflineInstall,
-		ClusterSize:   0,
-		Name:          "iso.pxe-offline-install",
-		Description:   "Verify ISO live login works.",
-		Timeout:       12 * time.Minute,
-		Flags:         []register.Flag{},
-		Platforms:     []string{"qemu"},
-		Architectures: []string{"x86_64"},
-	})
-
-	register.RegisterTest(&register.Test{
-		Run:           isoPxeOfflineInstallUefi,
-		ClusterSize:   0,
-		Name:          "iso.pxe-offline-install.uefi",
-		Description:   "Verify ISO live login works.",
-		Timeout:       12 * time.Minute,
-		Flags:         []register.Flag{},
-		Platforms:     []string{"qemu"},
-		Architectures: []string{"x86_64", "aarch64"},
-	})
-
-	register.RegisterTest(&register.Test{
-		Run:           isoPxeOfflineInstall4k,
-		ClusterSize:   0,
-		Name:          "iso.pxe-offline-install.4k",
-		Description:   "Verify ISO live login works.",
-		Timeout:       12 * time.Minute,
-		Flags:         []register.Flag{},
-		Platforms:     []string{"qemu"},
-		Architectures: []string{"ppc64le", "s390x"},
-	})
-
-	register.RegisterTest(&register.Test{
-		Run:           isoPxeOfflineInstall4kUefi,
-		ClusterSize:   0,
-		Name:          "iso.pxe-offline-install.4k.uefi",
-		Description:   "Verify ISO live login works.",
-		Timeout:       12 * time.Minute,
-		Flags:         []register.Flag{},
-		Platforms:     []string{"qemu"},
-		Architectures: []string{"x86_64", "aarch64"},
-	})
-
-	register.RegisterTest(&register.Test{
-		Run:           isoPxeOfflineInstallRootfsAppended,
-		ClusterSize:   0,
-		Name:          "iso.pxe-offline-install.rootfs-appended",
-		Description:   "Verify ISO live login works.",
-		Timeout:       12 * time.Minute,
-		Flags:         []register.Flag{},
-		Platforms:     []string{"qemu"},
-		Architectures: []string{},
-	})
-
-	register.RegisterTest(&register.Test{
-		Run:           isoPxeOfflineInstallRootfsAppended4k,
-		ClusterSize:   0,
-		Name:          "iso.pxe-offline-install.rootfs-appended.4k",
-		Description:   "Verify ISO live login works.",
-		Timeout:       12 * time.Minute,
-		Flags:         []register.Flag{},
-		Platforms:     []string{"qemu"},
-		Architectures: []string{"aarch64"},
-	})
+	register.RegisterTest(isoTest("pxe-offline-install", isoPxeOfflineInstall, []string{"s390x"}))
+	register.RegisterTest(isoTest("pxe-offline-install.uefi", isoPxeOfflineInstallUefi, []string{"aarch64"}))
+	register.RegisterTest(isoTest("pxe-offline-install.4k", isoPxeOfflineInstall4k, []string{"ppc64le"}))
+	register.RegisterTest(isoTest("pxe-offline-install.4k.uefi", isoPxeOfflineInstall4kUefi, []string{"x86_64", "aarch64"}))
+	register.RegisterTest(isoTest("pxe-offline-install.rootfs-appended", isoPxeOfflineInstallRootfsAppended, []string{"x86_64"}))
+	register.RegisterTest(isoTest("pxe-offline-install.rootfs-appended.4k.uefi", isoPxeOfflineInstallRootfsAppended4kUefi, []string{"aarch64"}))
 }
 
 var liveOKSignal = "live-test-OK"
@@ -475,12 +281,6 @@ func (o *IsoTestOpts) SetInsecureOnDevBuild() {
 	}
 }
 
-const (
-	installTimeoutMins = 12
-	// https://github.com/coreos/fedora-coreos-config/pull/2544
-	liveISOFromRAMKarg = "coreos.liveiso.fromram"
-)
-
 func newBaseQemuBuilder(opts IsoTestOpts, outdir string) (*platform.QemuBuilder, error) {
 	builder := qemu.NewMetalQemuBuilderDefault()
 	if opts.enableUefiSecure {
@@ -589,16 +389,22 @@ func newQemuBuilderWithDisk(opts IsoTestOpts, outdir string) (*platform.QemuBuil
 }
 
 func isoInstall(c cluster.TestCluster) {
-	opts := IsoTestOpts{
-		enableUefi: coreosarch.CurrentRpmArch() == "aarch64",
-	}
+	opts := IsoTestOpts{}
 	opts.SetInsecureOnDevBuild()
 	isoLiveIso(c, opts)
 }
 
 func isoOfflineInstall(c cluster.TestCluster) {
 	opts := IsoTestOpts{
-		enableUefi: coreosarch.CurrentRpmArch() == "aarch64",
+		isOffline: true,
+	}
+	opts.SetInsecureOnDevBuild()
+	isoLiveIso(c, opts)
+}
+
+func isoOfflineInstallUefi(c cluster.TestCluster) {
+	opts := IsoTestOpts{
+		enableUefi: true,
 		isOffline:  true,
 	}
 	opts.SetInsecureOnDevBuild()
@@ -607,9 +413,8 @@ func isoOfflineInstall(c cluster.TestCluster) {
 
 func isoOfflineInstall4k(c cluster.TestCluster) {
 	opts := IsoTestOpts{
-		enable4k:   true,
-		enableUefi: coreosarch.CurrentRpmArch() == "aarch64",
-		isOffline:  true,
+		enable4k:  true,
+		isOffline: true,
 	}
 	opts.SetInsecureOnDevBuild()
 	isoLiveIso(c, opts)
@@ -618,18 +423,17 @@ func isoOfflineInstall4k(c cluster.TestCluster) {
 func isoOfflineInstallMpath(c cluster.TestCluster) {
 	opts := IsoTestOpts{
 		enableMultipath: true,
-		enableUefi:      coreosarch.CurrentRpmArch() == "aarch64",
 		isOffline:       true,
 	}
 	opts.SetInsecureOnDevBuild()
 	isoLiveIso(c, opts)
 }
 
-func isoOfflineInstallFromRam(c cluster.TestCluster) {
+func isoOfflineInstallMpathUefi(c cluster.TestCluster) {
 	opts := IsoTestOpts{
-		enableUefi:   coreosarch.CurrentRpmArch() == "aarch64",
-		isOffline:    true,
-		isISOFromRAM: true,
+		enableMultipath: true,
+		enableUefi:      true,
+		isOffline:       true,
 	}
 	opts.SetInsecureOnDevBuild()
 	isoLiveIso(c, opts)
@@ -638,7 +442,6 @@ func isoOfflineInstallFromRam(c cluster.TestCluster) {
 func isoOfflineInstallFromRam4k(c cluster.TestCluster) {
 	opts := IsoTestOpts{
 		enable4k:     true,
-		enableUefi:   coreosarch.CurrentRpmArch() == "aarch64",
 		isOffline:    true,
 		isISOFromRAM: true,
 	}
@@ -665,11 +468,19 @@ func isoMinisoInstall(c cluster.TestCluster) {
 	isoLiveIso(c, opts)
 }
 
+func isoMinisoInstallUefi(c cluster.TestCluster) {
+	opts := IsoTestOpts{
+		isMiniso:   true,
+		enableUefi: true,
+	}
+	opts.SetInsecureOnDevBuild()
+	isoLiveIso(c, opts)
+}
+
 func isoMinisoInstall4k(c cluster.TestCluster) {
 	opts := IsoTestOpts{
-		enable4k:   true,
-		isMiniso:   true,
-		enableUefi: coreosarch.CurrentRpmArch() == "aarch64",
+		enable4k: true,
+		isMiniso: true,
 	}
 	opts.SetInsecureOnDevBuild()
 	isoLiveIso(c, opts)
@@ -689,6 +500,16 @@ func isoMinisoInstallNm(c cluster.TestCluster) {
 	opts := IsoTestOpts{
 		addNmKeyfile: true,
 		isMiniso:     true,
+	}
+	opts.SetInsecureOnDevBuild()
+	isoLiveIso(c, opts)
+}
+
+func isoMinisoInstallNmUefi(c cluster.TestCluster) {
+	opts := IsoTestOpts{
+		addNmKeyfile: true,
+		isMiniso:     true,
+		enableUefi:   true,
 	}
 	opts.SetInsecureOnDevBuild()
 	isoLiveIso(c, opts)
@@ -716,8 +537,14 @@ func isoMinisoInstall4kNmUefi(c cluster.TestCluster) {
 }
 
 func isoPxeOnlineInstall(c cluster.TestCluster) {
+	opts := IsoTestOpts{}
+	opts.SetInsecureOnDevBuild()
+	testPXE(c, opts)
+}
+
+func isoPxeOnlineInstallUefi(c cluster.TestCluster) {
 	opts := IsoTestOpts{
-		enableUefi: coreosarch.CurrentRpmArch() == "aarch64",
+		enableUefi: true,
 	}
 	opts.SetInsecureOnDevBuild()
 	testPXE(c, opts)
@@ -735,7 +562,6 @@ func isoPxeOnlineInstall4kUefi(c cluster.TestCluster) {
 func isoPxeOnlineInstallRootfsAppended(c cluster.TestCluster) {
 	opts := IsoTestOpts{
 		pxeAppendRootfs: true,
-		enableUefi:      coreosarch.CurrentRpmArch() == "aarch64",
 	}
 	opts.SetInsecureOnDevBuild()
 	testPXE(c, opts)
@@ -781,18 +607,17 @@ func isoPxeOfflineInstallRootfsAppended(c cluster.TestCluster) {
 	opts := IsoTestOpts{
 		isOffline:       true,
 		pxeAppendRootfs: true,
-		enableUefi:      coreosarch.CurrentRpmArch() == "aarch64",
 	}
 	opts.SetInsecureOnDevBuild()
 	testPXE(c, opts)
 }
 
-func isoPxeOfflineInstallRootfsAppended4k(c cluster.TestCluster) {
+func isoPxeOfflineInstallRootfsAppended4kUefi(c cluster.TestCluster) {
 	opts := IsoTestOpts{
 		isOffline:       true,
 		pxeAppendRootfs: true,
 		enable4k:        true,
-		enableUefi:      coreosarch.CurrentRpmArch() == "aarch64",
+		enableUefi:      true,
 	}
 	opts.SetInsecureOnDevBuild()
 	testPXE(c, opts)
