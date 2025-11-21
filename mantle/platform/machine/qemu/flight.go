@@ -55,6 +55,11 @@ type Options struct {
 	SecureExecutionIgnitionPubKey string
 	SecureExecutionHostKey        string
 
+	// kola run iso.* options
+	// Do not verify signature on metal image
+	InstInsecure  bool
+	PxeKernelArgs []string
+
 	// Option to create IBM cex based luks encryption
 	Cex bool
 
