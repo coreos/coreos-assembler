@@ -201,7 +201,7 @@ func testPXE(c cluster.TestCluster, opts IsoTestOpts) {
 	targetConfig.AddSystemdUnit("coreos-test-entered-emergency-target.service", signalFailureUnit, conf.Enable)
 	targetConfig.AddSystemdUnit("coreos-test-installer-no-ignition.service", checkNoIgnition, conf.Enable)
 
-	mach, err := inst.PXE(opts.pxeKernelArgs, liveConfig, targetConfig, opts.isOffline)
+	mach, err := inst.PXE(kola.QEMUOptions.PxeKernelArgs, liveConfig, targetConfig, opts.isOffline)
 	if err != nil {
 		c.Fatal(err)
 	}
