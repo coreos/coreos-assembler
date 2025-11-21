@@ -63,10 +63,8 @@ var (
 	console bool
 
 	enable4k         bool
-	enableMultipath  bool
 	enableUefi       bool
 	enableUefiSecure bool
-	isOffline        bool
 
 	// These tests only run on RHCOS
 	tests_RHCOS_uefi = []string{
@@ -80,27 +78,6 @@ var (
 		"iso-as-disk.uefi",
 		"iso-as-disk.uefi-secure",
 		"iso-as-disk.4k.uefi",
-		"iso-offline-install-iscsi.ibft.uefi",
-		"iso-offline-install-iscsi.ibft-with-mpath.bios",
-		"iso-offline-install-iscsi.manual.bios",
-	}
-	tests_s390x = []string{
-		// FIXME https://github.com/coreos/fedora-coreos-tracker/issues/1657
-		//"iso-offline-install-iscsi.ibft.s390fw,
-		//"iso-offline-install-iscsi.ibft-with-mpath.s390fw",
-		//"iso-offline-install-iscsi.manual.s390fw",
-	}
-	tests_ppc64le = []string{
-		// FIXME https://github.com/coreos/fedora-coreos-tracker/issues/1657
-		//"iso-offline-install-iscsi.ibft.ppcfw",
-		//"iso-offline-install-iscsi.ibft-with-mpath.ppcfw",
-		//"iso-offline-install-iscsi.manual.ppcfw",
-	}
-	tests_aarch64 = []string{
-		// FIXME https://github.com/coreos/fedora-coreos-tracker/issues/1657
-		//"iso-offline-install-iscsi.ibft.uefi",
-		//"iso-offline-install-iscsi.ibft-with-mpath.uefi",
-		//"iso-offline-install-iscsi.manual.uefi",
 	}
 )
 
@@ -157,9 +134,6 @@ RequiredBy=coreos-installer.target
 # for iso-as-disk
 RequiredBy=multi-user.target`
 
-//go:embed resources/iscsi_butane_setup.yaml
-var iscsi_butane_config string
-
 func init() {
 	cmdTestIso.Flags().BoolVarP(&instInsecure, "inst-insecure", "S", false, "Do not verify signature on metal image")
 	cmdTestIso.Flags().BoolVar(&console, "console", false, "Connect qemu console to terminal, turn off automatic initramfs failure checking")
@@ -182,12 +156,8 @@ func getAllTests(build *util.LocalBuild) []string {
 	switch arch {
 	case "x86_64":
 		tests = tests_x86_64
-	case "ppc64le":
-		tests = tests_ppc64le
-	case "s390x":
-		tests = tests_s390x
-	case "aarch64":
-		tests = tests_aarch64
+	default:
+		return []string{}
 	}
 	if kola.CosaBuild.Meta.Name == "rhcos" && arch != "s390x" && arch != "ppc64le" {
 		tests = append(tests, tests_RHCOS_uefi...)
@@ -359,10 +329,8 @@ func runTestIso(cmd *cobra.Command, args []string) (err error) {
 		}
 
 		enable4k = false
-		enableMultipath = false
 		enableUefi = false
 		enableUefiSecure = false
-		isOffline = false
 		inst := baseInst // Pretend this is Rust and I wrote .copy()
 
 		fmt.Printf("Running test: %s\n", test)
@@ -374,20 +342,10 @@ func runTestIso(cmd *cobra.Command, args []string) (err error) {
 			enable4k = true
 			inst.Native4k = true
 		}
-		if kola.HasString("mpath", components) {
-			enableMultipath = true
-			inst.MultiPathDisk = true
-		}
 		if kola.HasString("uefi-secure", components) {
 			enableUefiSecure = true
 		} else if kola.HasString("uefi", components) {
 			enableUefi = true
-		}
-		// For offline it is a part of the first component. i.e. for
-		// iso-offline-install.bios we need to search for 'offline' in
-		// iso-offline-install, which is currently in components[0].
-		if kola.HasString("offline", strings.Split(components[0], "-")) {
-			isOffline = true
 		}
 
 		switch components[0] {
@@ -395,19 +353,6 @@ func runTestIso(cmd *cobra.Command, args []string) (err error) {
 			duration, err = testAsDisk(ctx, filepath.Join(outputDir, test))
 		case "iso-fips":
 			duration, err = testLiveFIPS(ctx, filepath.Join(outputDir, test))
-		case "iso-offline-install-iscsi":
-			var butane_config string
-			switch components[1] {
-			case "ibft":
-				butane_config = strings.ReplaceAll(iscsi_butane_config, "COREOS_INSTALLER_KARGS", "--append-karg rd.iscsi.firmware=1")
-			case "manual":
-				butane_config = strings.ReplaceAll(iscsi_butane_config, "COREOS_INSTALLER_KARGS", "--append-karg netroot=iscsi:10.0.2.15::::iqn.2024-05.com.coreos:0")
-			case "ibft-with-mpath":
-				butane_config = strings.ReplaceAll(iscsi_butane_config, "COREOS_INSTALLER_KARGS", "--append-karg rd.iscsi.firmware=1 --append-karg rd.multipath=default --append-karg root=/dev/disk/by-label/dm-mpath-root --append-karg rw")
-			default:
-				plog.Fatalf("Unknown test name:%s", test)
-			}
-			duration, err = testLiveInstalliscsi(ctx, inst, filepath.Join(outputDir, test), butane_config)
 		default:
 			plog.Fatalf("Unknown test name:%s", test)
 		}
@@ -653,112 +598,4 @@ func testAsDisk(ctx context.Context, outdir string) (time.Duration, error) {
 	defer mach.Destroy()
 
 	return awaitCompletion(ctx, mach, outdir, completionChannel, nil, []string{liveOKSignal})
-}
-
-// iscsi_butane_setup.yaml contains the full butane config but here is an overview of the setup
-// 1 - Boot a live ISO with two extra 10G disks with labels "target" and "var"
-//   - Format and mount `virtio-var` to /var
-//
-// 2 - target.container -> start an iscsi target, using quay.io/coreos-assembler/targetcli
-// 3 - setup-targetcli.service calls /usr/local/bin/targetcli_script:
-//   - instructs targetcli to serve /dev/disk/by-id/virtio-target as an iscsi target
-//   - disables authentication
-//   - verifies the iscsi service is active and reachable
-//
-// 4 - install-coreos-to-iscsi-target.service calls /usr/local/bin/install-coreos-iscsi:
-//   - mount iscsi target
-//   - run coreos-installer on the mounted block device
-//   - unmount iscsi
-//
-// 5 - coreos-iscsi-vm.container -> start a coreos-assembler conainer:
-//   - launch kola qemuexec instructing it to boot from an iPXE script
-//     wich in turns mount the iscsi target and load kernel
-//   - note the virtserial port device: we pass through the serial port
-//     that was created by kola for test completion
-//
-// 6 - /var/nested-ign.json contains an ignition config:
-//   - when the system is booted, write a success string to /dev/virtio-ports/testisocompletion
-//   - as this serial device is mapped to the host serial device, the test concludes
-func testLiveInstalliscsi(ctx context.Context, inst qemu.Install, outdir string, butane string) (time.Duration, error) {
-
-	builddir := kola.CosaBuild.Dir
-	isopath := filepath.Join(builddir, kola.CosaBuild.Meta.BuildArtifacts.LiveIso.Path)
-	builder, err := newBaseQemuBuilder(outdir)
-	if err != nil {
-		return 0, err
-	}
-	defer builder.Close()
-	if err := builder.AddIso(isopath, "", false); err != nil {
-		return 0, err
-	}
-
-	completionChannel, err := builder.VirtioChannelRead("testisocompletion")
-	if err != nil {
-		return 0, err
-	}
-
-	// Create a serial channel to read the logs from the nested VM
-	nestedVmLogsChannel, err := builder.VirtioChannelRead("nestedvmlogs")
-	if err != nil {
-		return 0, err
-	}
-
-	// Create a file to write the contents of the serial channel into
-	nestedVMConsole, err := os.OpenFile(filepath.Join(outdir, "nested_vm_console.txt"), os.O_WRONLY|os.O_CREATE, 0644)
-	if err != nil {
-		return 0, err
-	}
-
-	go func() {
-		_, err := io.Copy(nestedVMConsole, nestedVmLogsChannel)
-		if err != nil && err != io.EOF {
-			panic(err)
-		}
-	}()
-
-	// empty disk to use as an iscsi target to install coreOS on and subseqently boot
-	// Also add a 10G disk that we will mount on /var, to increase space available when pulling containers
-	err = builder.AddDisksFromSpecs([]string{"10G:serial=target", "10G:serial=var"})
-	if err != nil {
-		return 0, err
-	}
-
-	// We need more memory to start another VM within !
-	builder.MemoryMiB = 2048
-
-	var iscsiTargetConfig = conf.Butane(butane)
-
-	config, err := iscsiTargetConfig.Render(conf.FailWarnings)
-	if err != nil {
-		return 0, err
-	}
-	err = forwardJournal(outdir, builder, config)
-	if err != nil {
-		return 0, err
-	}
-
-	// Add a failure target to stop the test if something go wrong rather than waiting for the 10min timeout
-	config.AddSystemdUnit("coreos-test-entered-emergency-target.service", signalFailureUnit, conf.Enable)
-
-	// enable network
-	builder.EnableUsermodeNetworking([]platform.HostForwardPort{}, "")
-
-	// keep auto-login enabled for easier debug when running console
-	config.AddAutoLogin()
-
-	builder.SetConfig(config)
-
-	// Bind mount in the COSA rootfs into the VM so we can use it as a
-	// read-only rootfs for quickly starting the container to kola
-	// qemuexec the nested VM for the test. See resources/iscsi_butane_setup.yaml
-	builder.MountHost("/", "/var/cosaroot", true)
-	config.MountHost("/var/cosaroot", true)
-
-	mach, err := builder.Exec()
-	if err != nil {
-		return 0, errors.Wrapf(err, "running iso")
-	}
-	defer mach.Destroy()
-
-	return awaitCompletion(ctx, mach, outdir, completionChannel, nil, []string{"iscsi-boot-ok"})
 }
