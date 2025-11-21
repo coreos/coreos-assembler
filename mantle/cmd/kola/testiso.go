@@ -22,7 +22,6 @@ package main
 import (
 	"bufio"
 	"context"
-	_ "embed"
 	"fmt"
 	"io"
 	"os"
@@ -36,7 +35,6 @@ import (
 	"github.com/coreos/coreos-assembler/mantle/harness/testresult"
 	"github.com/coreos/coreos-assembler/mantle/platform/conf"
 	"github.com/coreos/coreos-assembler/mantle/platform/machine/qemu"
-	"github.com/coreos/coreos-assembler/mantle/util"
 	coreosarch "github.com/coreos/stream-metadata-go/arch"
 	"github.com/pkg/errors"
 
@@ -56,28 +54,13 @@ var (
 		SilenceUsage: true,
 	}
 
-	instInsecure bool
-
+	instInsecure  bool
 	pxeKernelArgs []string
-
-	console bool
-
-	enable4k         bool
-	enableUefi       bool
-	enableUefiSecure bool
-
+	console       bool
+	enableUefi    bool
 	// These tests only run on RHCOS
 	tests_RHCOS_uefi = []string{
 		"iso-fips.uefi",
-	}
-
-	// The iso-as-disk tests are only supported in x86_64 because other
-	// architectures don't have the required hybrid partition table.
-	tests_x86_64 = []string{
-		"iso-as-disk.bios",
-		"iso-as-disk.uefi",
-		"iso-as-disk.uefi-secure",
-		"iso-as-disk.4k.uefi",
 	}
 )
 
@@ -116,24 +99,6 @@ ExecStart=/bin/sh -c '/usr/bin/echo %s >/dev/virtio-ports/testisocompletion && s
 RequiredBy=emergency.target
 `, signalEmergencyString)
 
-// This test is broken. Please fix!
-// https://github.com/coreos/coreos-assembler/issues/3554
-var verifyNoEFIBootEntry = `[Unit]
-Description=TestISO Verify No EFI Boot Entry
-OnFailure=emergency.target
-OnFailureJobMode=isolate
-ConditionPathExists=/sys/firmware/efi
-Before=live-signal-ok.service
-[Service]
-Type=oneshot
-RemainAfterExit=yes
-ExecStart=/bin/sh -c '! efibootmgr -v | grep -E "(HD|CDROM)\("'
-[Install]
-# for install tests
-RequiredBy=coreos-installer.target
-# for iso-as-disk
-RequiredBy=multi-user.target`
-
 func init() {
 	cmdTestIso.Flags().BoolVarP(&instInsecure, "inst-insecure", "S", false, "Do not verify signature on metal image")
 	cmdTestIso.Flags().BoolVar(&console, "console", false, "Connect qemu console to terminal, turn off automatic initramfs failure checking")
@@ -150,26 +115,17 @@ func liveArtifactExistsInBuild() error {
 	return nil
 }
 
-func getAllTests(build *util.LocalBuild) []string {
+func getAllTests() []string {
 	arch := coreosarch.CurrentRpmArch()
-	var tests []string
-	switch arch {
-	case "x86_64":
-		tests = tests_x86_64
-	default:
-		return []string{}
-	}
 	if kola.CosaBuild.Meta.Name == "rhcos" && arch != "s390x" && arch != "ppc64le" {
-		tests = append(tests, tests_RHCOS_uefi...)
+		return tests_RHCOS_uefi
 	}
-	return tests
+	return []string{}
 }
 
 func newBaseQemuBuilder(outdir string) (*platform.QemuBuilder, error) {
 	builder := qemu.NewMetalQemuBuilderDefault()
-	if enableUefiSecure {
-		builder.Firmware = "uefi-secure"
-	} else if enableUefi {
+	if enableUefi {
 		builder.Firmware = "uefi"
 	}
 
@@ -249,7 +205,7 @@ func runTestIso(cmd *cobra.Command, args []string) (err error) {
 	if kola.CosaBuild == nil {
 		return fmt.Errorf("Must provide --build")
 	}
-	tests := getAllTests(kola.CosaBuild)
+	tests := getAllTests()
 	if len(args) != 0 {
 		if tests, err = filterTests(tests, args); err != nil {
 			return err
@@ -300,23 +256,6 @@ func runTestIso(cmd *cobra.Command, args []string) (err error) {
 		}
 	}()
 
-	baseInst := qemu.Install{
-		CosaBuild:  kola.CosaBuild,
-		NmKeyfiles: make(map[string]string),
-	}
-
-	if instInsecure {
-		baseInst.Insecure = true
-		fmt.Printf("Ignoring verification of signature on metal image\n")
-	}
-
-	// Ignore signing verification by default when running with development build
-	// https://github.com/coreos/fedora-coreos-tracker/issues/908
-	if !baseInst.Insecure && strings.Contains(kola.CosaBuild.Meta.BuildID, ".dev.") {
-		baseInst.Insecure = true
-		fmt.Printf("Detected development build; disabling signature verification\n")
-	}
-
 	var duration time.Duration
 
 	atLeastOneFailed := false
@@ -328,29 +267,16 @@ func runTestIso(cmd *cobra.Command, args []string) (err error) {
 			return err
 		}
 
-		enable4k = false
 		enableUefi = false
-		enableUefiSecure = false
-		inst := baseInst // Pretend this is Rust and I wrote .copy()
 
 		fmt.Printf("Running test: %s\n", test)
 		components := strings.Split(test, ".")
 
-		inst.PxeAppendRootfs = kola.HasString("rootfs-appended", components)
-
-		if kola.HasString("4k", components) {
-			enable4k = true
-			inst.Native4k = true
-		}
-		if kola.HasString("uefi-secure", components) {
-			enableUefiSecure = true
-		} else if kola.HasString("uefi", components) {
+		if kola.HasString("uefi", components) {
 			enableUefi = true
 		}
 
 		switch components[0] {
-		case "iso-as-disk":
-			duration, err = testAsDisk(ctx, filepath.Join(outputDir, test))
 		case "iso-fips":
 			duration, err = testLiveFIPS(ctx, filepath.Join(outputDir, test))
 		default:
@@ -560,37 +486,6 @@ RequiredBy=fips-signal-ok.service
 	builder.Append("-net", "none")
 
 	builder.SetConfig(config)
-	mach, err := builder.Exec()
-	if err != nil {
-		return 0, errors.Wrapf(err, "running iso")
-	}
-	defer mach.Destroy()
-
-	return awaitCompletion(ctx, mach, outdir, completionChannel, nil, []string{liveOKSignal})
-}
-
-func testAsDisk(ctx context.Context, outdir string) (time.Duration, error) {
-	builddir := kola.CosaBuild.Dir
-	isopath := filepath.Join(builddir, kola.CosaBuild.Meta.BuildArtifacts.LiveIso.Path)
-	builder, config, err := newQemuBuilder(outdir)
-	if err != nil {
-		return 0, err
-	}
-	defer builder.Close()
-	// Drop the bootindex bit (applicable to all arches except s390x and ppc64le); we want it to be the default
-	if err := builder.AddIso(isopath, "", true); err != nil {
-		return 0, err
-	}
-
-	completionChannel, err := builder.VirtioChannelRead("testisocompletion")
-	if err != nil {
-		return 0, err
-	}
-
-	config.AddSystemdUnit("live-signal-ok.service", liveSignalOKUnit, conf.Enable)
-	config.AddSystemdUnit("verify-no-efi-boot-entry.service", verifyNoEFIBootEntry, conf.Enable)
-	builder.SetConfig(config)
-
 	mach, err := builder.Exec()
 	if err != nil {
 		return 0, errors.Wrapf(err, "running iso")
