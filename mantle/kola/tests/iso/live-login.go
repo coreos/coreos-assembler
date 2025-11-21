@@ -19,33 +19,9 @@ import (
 )
 
 func init() {
-	register.RegisterTest(&register.Test{
-		Run:                  isoLiveLogin,
-		ClusterSize:          0,
-		Name:                 "iso.live-login",
-		Description:          "Verify ISO live login works.",
-		Flags:                []register.Flag{},
-		Platforms:            []string{"qemu"},
-		ExcludeArchitectures: []string{},
-	})
-	register.RegisterTest(&register.Test{
-		Run:                  isoLiveLoginUefi,
-		ClusterSize:          0,
-		Name:                 "iso.live-login.uefi",
-		Description:          "Verify ISO live login works.",
-		Flags:                []register.Flag{},
-		Platforms:            []string{"qemu"},
-		ExcludeArchitectures: []string{"s390x", "ppcfw"},
-	})
-	register.RegisterTest(&register.Test{
-		Run:                  isoLiveLoginUefiSecure,
-		ClusterSize:          0,
-		Name:                 "iso.live-login.uefi-secure",
-		Description:          "Verify ISO live login works.",
-		Flags:                []register.Flag{},
-		Platforms:            []string{"qemu"},
-		ExcludeArchitectures: []string{"s390x", "ppcfw"},
-	})
+	register.RegisterTest(isoTest("live-login", isoLiveLogin, []string{}))
+	register.RegisterTest(isoTest("live-login.uefi", isoLiveLoginUefi, []string{"x86_64", "aarch64"}))
+	register.RegisterTest(isoTest("live-login.uefi-secure", isoLiveLoginUefiSecure, []string{"x86_64", "aarch64"}))
 }
 
 func testLiveLogin(c cluster.TestCluster, enableUefi bool, enableUefiSecure bool) {
