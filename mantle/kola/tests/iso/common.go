@@ -29,8 +29,6 @@ const (
 type IsoTestOpts struct {
 	// Flags().BoolVarP(&instInsecure, "inst-insecure", "S", false, "Do not verify signature on metal image")
 	instInsecure bool
-	//	Flags().StringSliceVar(&pxeKernelArgs, "pxe-kargs", nil, "Additional kernel arguments for PXE")
-	pxeKernelArgs []string
 	// Flags().BoolVar(&console, "console", false, "Connect qemu console to terminal, turn off automatic initramfs failure checking")
 	console          bool
 	addNmKeyfile     bool
@@ -49,7 +47,7 @@ type IsoTestOpts struct {
 func (o *IsoTestOpts) SetInsecureOnDevBuild() {
 	// Ignore signing verification by default when running with development build
 	// https://github.com/coreos/fedora-coreos-tracker/issues/908
-	if strings.Contains(kola.CosaBuild.Meta.BuildID, ".dev.") {
+	if kola.QEMUOptions.InstInsecure || strings.Contains(kola.CosaBuild.Meta.BuildID, ".dev.") {
 		o.instInsecure = true
 		//fmt.Printf("Detected development build; disabling signature verification\n")
 	}
