@@ -171,6 +171,29 @@ func newQemuBuilderWithDisk(opts IsoTestOpts, outdir string) (*platform.QemuBuil
 	return builder, config, nil
 }
 
+func CheckTestOutput(output *os.File, expected []string) error {
+	reader := bufio.NewReader(output)
+	for _, exp := range expected {
+		line, err := reader.ReadString('\n')
+		if err != nil {
+			if err == io.EOF {
+				// this may be from QEMU getting killed or exiting; wait a bit
+				// to give a chance for .Wait() above to feed the channel with a
+				// better error
+				time.Sleep(1 * time.Second)
+				return fmt.Errorf("got EOF from completion channel, %s expected", exp)
+			} else {
+				return errors.Wrapf(err, "reading from completion channel")
+			}
+		}
+		line = strings.TrimSpace(line)
+		if line != exp {
+			return fmt.Errorf("unexpected string from completion channel: %q, expected: %q", line, exp)
+		}
+	}
+	return nil
+}
+
 func awaitCompletion(c cluster.TestCluster, inst *platform.QemuInstance, console bool, outdir string, qchan *os.File, booterrchan chan error, expected []string) error {
 	ctx := c.Context()
 
@@ -212,29 +235,7 @@ func awaitCompletion(c cluster.TestCluster, inst *platform.QemuInstance, console
 		errchan <- fmt.Errorf("QEMU exited; timed out waiting for completion")
 	}()
 	go func() {
-		r := bufio.NewReader(qchan)
-		for _, exp := range expected {
-			l, err := r.ReadString('\n')
-			if err != nil {
-				if err == io.EOF {
-					// this may be from QEMU getting killed or exiting; wait a bit
-					// to give a chance for .Wait() above to feed the channel with a
-					// better error
-					time.Sleep(1 * time.Second)
-					errchan <- fmt.Errorf("Got EOF from completion channel, %s expected", exp)
-				} else {
-					errchan <- errors.Wrapf(err, "reading from completion channel")
-				}
-				return
-			}
-			line := strings.TrimSpace(l)
-			if line != exp {
-				errchan <- fmt.Errorf("Unexpected string from completion channel: %s expected: %s", line, exp)
-				return
-			}
-		}
-		// OK!
-		errchan <- nil
+		errchan <- CheckTestOutput(qchan, expected)
 	}()
 	go func() {
 		//check for error when switching boot order
