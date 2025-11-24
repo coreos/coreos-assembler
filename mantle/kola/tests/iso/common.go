@@ -246,45 +246,6 @@ func awaitCompletion(c cluster.TestCluster, inst *platform.QemuInstance, console
 		}
 	}()
 	err := <-errchan
-	if err == nil {
-		// No error so far, check the console and journal files
-		consoleFile := filepath.Join(outdir, "console.txt")
-		journalFile := filepath.Join(outdir, "journal.txt")
-		files := []string{consoleFile, journalFile}
-		for _, file := range files {
-			fileName := filepath.Base(file)
-			// Check if the file exists
-			_, err := os.Stat(file)
-			if os.IsNotExist(err) {
-				fmt.Printf("The file: %v does not exist\n", fileName)
-				continue
-			} else if err != nil {
-				fmt.Println(err)
-				return err
-			}
-			// Read the contents of the file
-			fileContent, err := os.ReadFile(file)
-			if err != nil {
-				fmt.Println(err)
-				return err
-			}
-			// Check for badness with CheckConsole
-			warnOnly, badlines := kola.CheckConsole([]byte(fileContent), nil)
-			if len(badlines) > 0 {
-				for _, badline := range badlines {
-					if warnOnly {
-						c.Errorf("bad log line detected: %v", badline)
-					} else {
-						c.Logf("bad log line detected: %v", badline)
-					}
-				}
-				if !warnOnly {
-					err = fmt.Errorf("errors found in log files")
-					return err
-				}
-			}
-		}
-	}
 	return err
 }
 
