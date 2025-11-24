@@ -15,6 +15,7 @@ import (
 	"github.com/coreos/coreos-assembler/mantle/platform/conf"
 	"github.com/coreos/coreos-assembler/mantle/platform/machine/qemu"
 	coreosarch "github.com/coreos/stream-metadata-go/arch"
+	"github.com/pkg/errors"
 )
 
 var (
@@ -69,42 +70,12 @@ func init() {
 			ClusterSize: 0,
 			Name:        "iso." + testName,
 			Description: "Verify iSCSI install works.",
+			Tags:        []string{kola.NeedsInternetTag},
 			Timeout:     installTimeoutMins * time.Minute,
 			Flags:       []register.Flag{},
 			Platforms:   []string{"qemu"},
 		})
 	}
-}
-
-func isoOfflineInstallIscsiIbftUefi(c cluster.TestCluster) {
-	opts := IsoTestOpts{
-		enableUefi: true,
-		isOffline:  true,
-		enableIbft: true,
-	}
-	opts.SetInsecureOnDevBuild()
-	isoInstalliScsi(c, opts)
-}
-
-func isoOfflineInstallIscsiIbftMpath(c cluster.TestCluster) {
-	opts := IsoTestOpts{
-		enableUefi:      true,
-		isOffline:       true,
-		enableMultipath: true,
-		enableIbft:      true,
-	}
-	opts.SetInsecureOnDevBuild()
-	isoInstalliScsi(c, opts)
-}
-
-func isoOfflineInstallIscsiManual(c cluster.TestCluster) {
-	opts := IsoTestOpts{
-		isOffline:  true,
-		manual:     true,
-		enableIbft: true,
-	}
-	opts.SetInsecureOnDevBuild()
-	isoInstalliScsi(c, opts)
 }
 
 //go:embed iscsi_butane_setup.yaml
@@ -135,16 +106,12 @@ var iscsi_butane_config string
 //   - when the system is booted, write a success string to /dev/virtio-ports/testisocompletion
 //   - as this serial device is mapped to the host serial device, the test concludes
 func isoInstalliScsi(c cluster.TestCluster, opts IsoTestOpts) {
-	var outdir string
-	//var qc *qemu.Cluster
-	switch pc := c.Cluster.(type) {
-	case *qemu.Cluster:
-		outdir = pc.RuntimeConf().OutputDir
-		//qc = pc
-	default:
+	qc, ok := c.Cluster.(*qemu.Cluster)
+	if !ok {
 		c.Fatalf("Unsupported cluster type")
 	}
 
+	// Prepare config
 	var butane string
 	if opts.enableIbft && opts.enableMultipath {
 		butane = strings.ReplaceAll(iscsi_butane_config, "COREOS_INSTALLER_KARGS", "--append-karg rd.iscsi.firmware=1 --append-karg rd.multipath=default --append-karg root=/dev/disk/by-label/dm-mpath-root --append-karg rw")
@@ -153,91 +120,78 @@ func isoInstalliScsi(c cluster.TestCluster, opts IsoTestOpts) {
 	} else if opts.manual {
 		butane = strings.ReplaceAll(iscsi_butane_config, "COREOS_INSTALLER_KARGS", "--append-karg netroot=iscsi:10.0.2.15::::iqn.2024-05.com.coreos:0")
 	}
-
-	if kola.CosaBuild.Meta.BuildArtifacts.LiveIso == nil || kola.CosaBuild.Meta.BuildArtifacts.LiveKernel == nil {
-		c.Fatalf("build %s is missing live artifacts", kola.CosaBuild.Meta.Name)
-	}
-	builddir := kola.CosaBuild.Dir
-	isopath := filepath.Join(builddir, kola.CosaBuild.Meta.BuildArtifacts.LiveIso.Path)
-	builder, err := newBaseQemuBuilder(opts, outdir)
-	if err != nil {
-		c.Fatal(err)
-	}
-	defer builder.Close()
-	if err := builder.AddIso(isopath, "", false); err != nil {
-		c.Fatal(err)
-	}
-
-	completionChannel, err := builder.VirtioChannelRead("testisocompletion")
-	if err != nil {
-		c.Fatal(err)
-	}
-
-	// Create a serial channel to read the logs from the nested VM
-	nestedVmLogsChannel, err := builder.VirtioChannelRead("nestedvmlogs")
-	if err != nil {
-		c.Fatal(err)
-	}
-
-	// Create a file to write the contents of the serial channel into
-	nestedVMConsole, err := os.OpenFile(filepath.Join(outdir, "nested_vm_console.txt"), os.O_WRONLY|os.O_CREATE, 0644)
-	if err != nil {
-		c.Fatal(err)
-	}
-
-	go func() {
-		_, err := io.Copy(nestedVMConsole, nestedVmLogsChannel)
-		if err != nil && err != io.EOF {
-			panic(err)
-		}
-	}()
-
-	// empty disk to use as an iscsi target to install coreOS on and subseqently boot
-	// Also add a 10G disk that we will mount on /var, to increase space available when pulling containers
-	err = builder.AddDisksFromSpecs([]string{"10G:serial=target", "10G:serial=var"})
-	if err != nil {
-		c.Fatal(err)
-	}
-
-	// We need more memory to start another VM within !
-	builder.MemoryMiB = 2048
-
 	var iscsiTargetConfig = conf.Butane(butane)
-
 	config, err := iscsiTargetConfig.Render(conf.FailWarnings)
 	if err != nil {
 		c.Fatal(err)
 	}
-	err = forwardJournal(outdir, builder, config)
+	keys, err := qc.Keys()
 	if err != nil {
 		c.Fatal(err)
 	}
-
+	config.CopyKeys(keys)
 	// Add a failure target to stop the test if something go wrong rather than waiting for the 10min timeout
 	config.AddSystemdUnit("coreos-test-entered-emergency-target.service", signalFailureUnit, conf.Enable)
-
-	// enable network
-	builder.EnableUsermodeNetworking([]platform.HostForwardPort{}, "")
-
-	// keep auto-login enabled for easier debug when running console
-	config.AddAutoLogin()
-
-	builder.SetConfig(config)
-
-	// Bind mount in the COSA rootfs into the VM so we can use it as a
-	// read-only rootfs for quickly starting the container to kola
-	// qemuexec the nested VM for the test. See resources/iscsi_butane_setup.yaml
-	builder.MountHost("/", "/var/cosaroot", true)
 	config.MountHost("/var/cosaroot", true)
 
-	mach, err := builder.Exec()
-	if err != nil {
-		c.Fatal(err)
-	}
-	defer mach.Destroy()
+	errchan := make(chan error)
+	setupDisks := func(_ platform.MachineOptions, builder *platform.QemuBuilder) error {
+		isopath := filepath.Join(kola.CosaBuild.Dir, kola.CosaBuild.Meta.BuildArtifacts.LiveIso.Path)
+		if err := builder.AddIso(isopath, "", false); err != nil {
+			return err
+		}
 
-	err = awaitCompletion(c, mach, opts.console, outdir, completionChannel, nil, []string{"iscsi-boot-ok"})
+		completionChannel, err := builder.VirtioChannelRead("testisocompletion")
+		if err != nil {
+			return errors.Wrap(err, "setting up virtio-serial channel")
+		}
+		go func() {
+			errchan <- CheckTestOutput(completionChannel, []string{"iscsi-boot-ok"})
+		}()
+
+		// Create a serial channel to read the logs from the nested VM
+		nestedVmLogsChannel, err := builder.VirtioChannelRead("nestedvmlogs")
+		if err != nil {
+			return err
+		}
+		// Create a file to write the contents of the serial channel into
+		path := filepath.Join(filepath.Dir(builder.ConsoleFile), "nested_vm_console.txt")
+		nestedVMConsole, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE, 0644)
+		if err != nil {
+			return err
+		}
+		go func() {
+			_, err := io.Copy(nestedVMConsole, nestedVmLogsChannel)
+			if err != nil && err != io.EOF {
+				errchan <- errors.Wrap(err, "copying nested VM logs")
+			}
+		}()
+		// empty disk to use as an iscsi target to install coreOS on and subseqently boot
+		// Also add a 10G disk that we will mount on /var, to increase space available when pulling containers
+		if err := builder.AddDisksFromSpecs([]string{"10G:serial=target", "10G:serial=var"}); err != nil {
+			return err
+		}
+		// Bind mount in the COSA rootfs into the VM so we can use it as a
+		// read-only rootfs for quickly starting the container to kola
+		// qemuexec the nested VM for the test. See resources/iscsi_butane_setup.yaml
+		builder.MountHost("/", "/var/cosaroot", true)
+		return nil
+	}
+
+	// We need more memory to start another VM within !
+	options := platform.MachineOptions{MinMemory: 2048}
+	if opts.enableUefi {
+		options.Firmware = "uefi"
+	}
+	machineBuilder := &qemu.MachineBuilder{
+		SetupDisks: setupDisks,
+	}
+	_, err = qc.NewMachineWithBuilder(config, options, machineBuilder)
 	if err != nil {
+		c.Fatalf("Unable to create test machine: %v", err)
+	}
+
+	if err := <-errchan; err != nil {
 		c.Fatal(err)
 	}
 }
