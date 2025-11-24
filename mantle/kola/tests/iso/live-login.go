@@ -1,12 +1,7 @@
 package iso
 
 import (
-	"bufio"
-	"fmt"
-	"io"
 	"path/filepath"
-	"strings"
-	"time"
 
 	"github.com/coreos/coreos-assembler/mantle/kola"
 	"github.com/coreos/coreos-assembler/mantle/platform"
@@ -52,27 +47,7 @@ version: 1.1.0`)
 
 		// Read line in a goroutine and send errors to channel
 		go func() {
-			exp := "coreos-liveiso-success"
-			line, err := bufio.NewReader(output).ReadString('\n')
-			if err != nil {
-				if err == io.EOF {
-					// this may be from QEMU getting killed or exiting; wait a bit
-					// to give a chance for .Wait() above to feed the channel with a
-					// better error
-					time.Sleep(1 * time.Second)
-					errchan <- fmt.Errorf("Got EOF from completion channel, %s expected", exp)
-				} else {
-					errchan <- errors.Wrapf(err, "reading from completion channel")
-				}
-				return
-			}
-			line = strings.TrimSpace(line)
-			if line != exp {
-				errchan <- fmt.Errorf("Unexpected string from completion channel: %q, expected: %q", line, exp)
-				return
-			}
-			// OK!
-			errchan <- nil
+			errchan <- CheckTestOutput(output, []string{"coreos-liveiso-success"})
 		}()
 
 		isopath := filepath.Join(kola.CosaBuild.Dir, kola.CosaBuild.Meta.BuildArtifacts.LiveIso.Path)
