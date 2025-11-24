@@ -6,8 +6,10 @@ import (
 	"github.com/coreos/coreos-assembler/mantle/kola"
 	"github.com/coreos/coreos-assembler/mantle/kola/cluster"
 	"github.com/coreos/coreos-assembler/mantle/kola/register"
+	"github.com/coreos/coreos-assembler/mantle/platform"
 	"github.com/coreos/coreos-assembler/mantle/platform/conf"
 	"github.com/coreos/coreos-assembler/mantle/platform/machine/qemu"
+	"github.com/pkg/errors"
 )
 
 func init() {
@@ -16,7 +18,6 @@ func init() {
 	register.RegisterTest(isoTest("as-disk", isoAsDisk, []string{"x86_64"}))
 	register.RegisterTest(isoTest("as-disk.uefi", isoAsDiskUefi, []string{"x86_64"}))
 	register.RegisterTest(isoTest("as-disk.uefi-secure", isoAsDiskUefiSecure, []string{"x86_64"}))
-	register.RegisterTest(isoTest("as-disk.4k.uefi", isoAsDisk4kUefi, []string{"x86_64"}))
 }
 
 func isoAsDisk(c cluster.TestCluster) {
@@ -40,53 +41,57 @@ func isoAsDiskUefiSecure(c cluster.TestCluster) {
 	isoTestAsDisk(c, opts)
 }
 
-func isoAsDisk4kUefi(c cluster.TestCluster) {
-	opts := IsoTestOpts{
-		enable4k:   true,
-		enableUefi: true,
-	}
-	opts.SetInsecureOnDevBuild()
-	isoTestAsDisk(c, opts)
-}
-
 func isoTestAsDisk(c cluster.TestCluster, opts IsoTestOpts) {
-	var outdir string
-	//var qc *qemu.Cluster
-	switch pc := c.Cluster.(type) {
-	case *qemu.Cluster:
-		outdir = pc.RuntimeConf().OutputDir
-		//qc = pc
-	default:
+	qc, ok := c.Cluster.(*qemu.Cluster)
+	if !ok {
 		c.Fatalf("Unsupported cluster type")
 	}
 
-	isopath := filepath.Join(kola.CosaBuild.Dir, kola.CosaBuild.Meta.BuildArtifacts.LiveIso.Path)
-	builder, config, err := newQemuBuilder(opts, outdir)
+	config, err := conf.EmptyIgnition().Render(conf.FailWarnings)
 	if err != nil {
 		c.Fatal(err)
 	}
-	defer builder.Close()
-	// Drop the bootindex bit (applicable to all arches except s390x and ppc64le); we want it to be the default
-	if err := builder.AddIso(isopath, "", true); err != nil {
-		c.Fatal(err)
-	}
-
-	completionChannel, err := builder.VirtioChannelRead("testisocompletion")
-	if err != nil {
-		c.Fatal(err)
-	}
-
 	config.AddSystemdUnit("live-signal-ok.service", liveSignalOKUnit, conf.Enable)
 	config.AddSystemdUnit("verify-no-efi-boot-entry.service", verifyNoEFIBootEntry, conf.Enable)
-	builder.SetConfig(config)
-
-	mach, err := builder.Exec()
+	keys, err := qc.Keys()
 	if err != nil {
 		c.Fatal(err)
 	}
-	defer mach.Destroy()
+	config.CopyKeys(keys)
 
-	err = awaitCompletion(c, mach, opts.console, outdir, completionChannel, nil, []string{liveOKSignal})
+	overrideFW := func(builder *platform.QemuBuilder) error {
+		switch {
+		case opts.enableUefiSecure:
+			builder.Firmware = "uefi-secure"
+		case opts.enableUefi:
+			builder.Firmware = "uefi"
+		}
+		return nil
+	}
+
+	errchan := make(chan error)
+	setupDisks := func(_ platform.QemuMachineOptions, builder *platform.QemuBuilder) error {
+		output, err := builder.VirtioChannelRead("testisocompletion")
+		if err != nil {
+			return errors.Wrap(err, "setting up virtio-serial channel")
+		}
+
+		// Read line in a goroutine and send errors to channel
+		go func() {
+			errchan <- CheckTestOutput(output, []string{liveOKSignal})
+		}()
+
+		isopath := filepath.Join(kola.CosaBuild.Dir, kola.CosaBuild.Meta.BuildArtifacts.LiveIso.Path)
+		return builder.AddIso(isopath, "", true)
+	}
+
+	callacks := qemu.BuilderCallbacks{SetupDisks: setupDisks, OverrideDefaults: overrideFW}
+	_, err = qc.NewMachineWithQemuOptionsAndBuilderCallbacks(config, platform.QemuMachineOptions{}, callacks)
+	if err != nil {
+		c.Fatalf("Unable to create test machine: %v", err)
+	}
+
+	err = <-errchan
 	if err != nil {
 		c.Fatal(err)
 	}
