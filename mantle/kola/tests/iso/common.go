@@ -4,6 +4,8 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"net"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -21,9 +23,62 @@ import (
 
 const (
 	installTimeoutMins = 12
-	// https://github.com/coreos/fedora-coreos-config/pull/2544
-	liveISOFromRAMKarg = "coreos.liveiso.fromram"
+	// defaultQemuHostIPv4 is documented in `man qemu-kvm`, under the `-netdev` option
+	defaultQemuHostIPv4 = "10.0.2.2"
 )
+
+// This object gets serialized to YAML and fed to coreos-installer:
+// https://coreos.github.io/coreos-installer/customizing-install/#config-file-format
+type coreosInstallerConfig struct {
+	ImageURL     string   `yaml:"image-url,omitempty"`
+	IgnitionFile string   `yaml:"ignition-file,omitempty"`
+	Insecure     bool     `yaml:"insecure,omitempty"`
+	AppendKargs  []string `yaml:"append-karg,omitempty"`
+	CopyNetwork  bool     `yaml:"copy-network,omitempty"`
+	DestDevice   string   `yaml:"dest-device,omitempty"`
+	Console      []string `yaml:"console,omitempty"`
+}
+
+// Sometimes the logs that stream from various virtio streams can be
+// incomplete because they depend on services inside the guest.
+// When you are debugging earlyboot/initramfs issues this can be
+// problematic. Let's add a hook here to enable more debugging.
+func renderCosaTestIsoDebugKargs() []string {
+	if _, ok := os.LookupEnv("COSA_TESTISO_DEBUG"); ok {
+		return []string{"systemd.log_color=0", "systemd.log_level=debug",
+			"systemd.journald.forward_to_console=1",
+			"systemd.journald.max_level_console=debug"}
+	} else {
+		return []string{}
+	}
+}
+
+func absSymlink(src, dest string) error {
+	src, err := filepath.Abs(src)
+	if err != nil {
+		return err
+	}
+	return os.Symlink(src, dest)
+}
+
+func setupMetalImage(builddir, metalimg, destdir string) (string, error) {
+	if err := absSymlink(filepath.Join(builddir, metalimg), filepath.Join(destdir, metalimg)); err != nil {
+		return "", err
+	}
+	return metalimg, nil
+}
+
+// startHTTPServer starts an HTTP file server in a goroutine and returns the server.
+// The caller is responsible for closing the server.
+func startHTTPServer(listener net.Listener, dir string) *http.Server {
+	mux := http.NewServeMux()
+	mux.Handle("/", http.FileServer(http.Dir(dir)))
+	server := &http.Server{Handler: mux}
+	go func() {
+		server.Serve(listener)
+	}()
+	return server
+}
 
 type IsoTestOpts struct {
 	// Flags().BoolVarP(&instInsecure, "inst-insecure", "S", false, "Do not verify signature on metal image")
@@ -310,7 +365,7 @@ OnFailureJobMode=isolate
 [Service]
 Type=oneshot
 RemainAfterExit=yes
-ExecStart=/bin/sh -c '/usr/bin/echo %s >/dev/virtio-ports/testisocompletion && systemctl poweroff'
+ExecStart=/bin/sh -c '/usr/bin/echo %s >/dev/virtio-ports/testisocompletion'
 [Install]
 RequiredBy=multi-user.target`, signalCompleteString)
 
@@ -469,3 +524,31 @@ ExecStart=/usr/bin/nmcli c show br-ex
 RequiredBy=coreos-installer.target
 # for target system
 RequiredBy=multi-user.target`, nmConnectionId, nmConnectionFile)
+
+var bootStartedSignal = "boot-started-OK"
+var bootStartedUnit = fmt.Sprintf(`[Unit]
+Description=TestISO Boot Started
+Requires=dev-virtio\\x2dports-bootstarted.device
+OnFailure=emergency.target
+OnFailureJobMode=isolate
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/sh -c '/usr/bin/echo %s >/dev/virtio-ports/bootstarted'
+[Install]
+RequiredBy=coreos-installer.target`, bootStartedSignal)
+
+var coreosInstallerMultipathUnit = `[Unit]
+Description=TestISO Enable Multipath
+Before=multipathd.service
+DefaultDependencies=no
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/sbin/mpathconf --enable
+[Install]
+WantedBy=coreos-installer.target`
+
+var waitForMpathTargetConf = `[Unit]
+Requires=dev-mapper-mpatha.device
+After=dev-mapper-mpatha.device`
