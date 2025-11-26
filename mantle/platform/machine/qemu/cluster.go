@@ -51,6 +51,14 @@ type BuilderCallbacks struct {
 	OverrideDefaults func(builder *platform.QemuBuilder) error
 }
 
+func (qc *Cluster) EnforeNative4k() {
+	qc.flight.opts.Native4k = true
+}
+
+func (qc *Cluster) EnforeMultipath() {
+	qc.flight.opts.MultiPathDisk = true
+}
+
 func (qc *Cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error) {
 	return qc.NewMachineWithOptions(userdata, platform.MachineOptions{})
 }
@@ -153,18 +161,19 @@ func (qc *Cluster) NewMachineWithQemuOptionsAndBuilderCallbacks(userdata any, op
 	}
 	qm.inst = inst
 
-	err = util.Retry(6, 5*time.Second, func() error {
-		var err error
-		qm.ip, err = inst.SSHAddress()
+	if builder.UsermodeNetworking {
+		err = util.Retry(6, 5*time.Second, func() error {
+			var err error
+			qm.ip, err = inst.SSHAddress()
+			if err != nil {
+				return err
+			}
+			return nil
+		})
 		if err != nil {
-			return err
+			return nil, err
 		}
-		return nil
-	})
-	if err != nil {
-		return nil, err
 	}
-
 	// Run StartMachine, which blocks on the machine being booted up enough
 	// for SSH access, but only if the caller didn't tell us not to.
 	if !options.SkipStartMachine {
@@ -188,6 +197,14 @@ func (qc *Cluster) NewMachineWithQemuOptionsAndBuilderCallbacks(userdata any, op
 	}()
 
 	return qm, nil
+}
+func (qc *Cluster) Instance(m platform.Machine) *platform.QemuInstance {
+	switch pm := m.(type) {
+	case *machine:
+		return pm.inst
+	default:
+		return nil
+	}
 }
 
 func (qc *Cluster) Destroy() {
