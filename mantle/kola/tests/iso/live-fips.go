@@ -1,6 +1,7 @@
 package iso
 
 import (
+	"fmt"
 	"path/filepath"
 
 	"github.com/coreos/coreos-assembler/mantle/kola"
@@ -39,6 +40,11 @@ ExecStart=grep FIPS etc/crypto-policies/config
 RequiredBy=fips-signal-ok.service`
 
 func testLiveFIPS(c cluster.TestCluster) {
+	if err := EnsureLiveArtifactsExist(); err != nil {
+		fmt.Println(err)
+		return
+	}
+
 	qc, ok := c.Cluster.(*qemu.Cluster)
 	if !ok {
 		c.Fatalf("Unsupported cluster type")
