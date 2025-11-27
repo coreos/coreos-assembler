@@ -1,6 +1,7 @@
 package iso
 
 import (
+	"fmt"
 	"path/filepath"
 
 	"github.com/coreos/coreos-assembler/mantle/kola"
@@ -42,6 +43,11 @@ func isoAsDiskUefiSecure(c cluster.TestCluster) {
 }
 
 func isoTestAsDisk(c cluster.TestCluster, opts IsoTestOpts) {
+	if err := EnsureLiveArtifactsExist(); err != nil {
+		fmt.Println(err)
+		return
+	}
+
 	qc, ok := c.Cluster.(*qemu.Cluster)
 	if !ok {
 		c.Fatalf("Unsupported cluster type")

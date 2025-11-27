@@ -1,6 +1,7 @@
 package iso
 
 import (
+	"fmt"
 	"path/filepath"
 
 	"github.com/coreos/coreos-assembler/mantle/kola"
@@ -20,10 +21,10 @@ func init() {
 }
 
 func testLiveLogin(c cluster.TestCluster, enableUefi bool, enableUefiSecure bool) {
-	if kola.CosaBuild.Meta.BuildArtifacts.LiveIso == nil || kola.CosaBuild.Meta.BuildArtifacts.LiveKernel == nil {
-		c.Fatalf("Build %s is missing live artifacts\n", kola.CosaBuild.Meta.Name)
+	if err := EnsureLiveArtifactsExist(); err != nil {
+		fmt.Println(err)
+		return
 	}
-
 	butane := conf.Butane(`
 variant: fcos
 version: 1.1.0`)

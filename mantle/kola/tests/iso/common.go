@@ -192,6 +192,16 @@ func CheckTestOutput(output *os.File, expected []string) error {
 	return nil
 }
 
+func EnsureLiveArtifactsExist() error {
+	if kola.CosaBuild.Meta.BuildArtifacts.LiveIso == nil || kola.CosaBuild.Meta.BuildArtifacts.LiveKernel == nil {
+		return errors.Errorf("Build %s is missing live artifacts\n", kola.CosaBuild.Meta.Name)
+	}
+	if kola.CosaBuild.Meta.BuildArtifacts.Metal == nil || kola.CosaBuild.Meta.BuildArtifacts.Metal4KNative == nil {
+		return errors.Errorf("Build %s is missing live metal artifacts\n", kola.CosaBuild.Meta.Name)
+	}
+	return nil
+}
+
 func awaitCompletion(c cluster.TestCluster, inst *platform.QemuInstance, console bool, outdir string, qchan *os.File, booterrchan chan error, expected []string) error {
 	ctx := c.Context()
 
