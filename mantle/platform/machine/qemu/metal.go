@@ -35,12 +35,7 @@ import (
 	"github.com/coreos/coreos-assembler/mantle/util"
 )
 
-const (
-	// defaultQemuHostIPv4 is documented in `man qemu-kvm`, under the `-netdev` option
-	defaultQemuHostIPv4 = "10.0.2.2"
-
-	bootStartedSignal = "boot-started-OK"
-)
+const bootStartedSignal = "boot-started-OK"
 
 // TODO derive this from docs, or perhaps include kargs in cosa metadata?
 var baseKargs = []string{"rd.neednet=1", "ip=dhcp", "ignition.firstboot", "ignition.platform.id=metal"}
