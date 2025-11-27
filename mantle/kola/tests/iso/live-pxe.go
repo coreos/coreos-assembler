@@ -130,6 +130,11 @@ RequiredBy=coreos-installer.target
 `
 
 func testPXE(c cluster.TestCluster, opts IsoTestOpts) {
+	if err := EnsureLiveArtifactsExist(); err != nil {
+		fmt.Println(err)
+		return
+	}
+
 	var outdir string
 	var qc *qemu.Cluster
 
