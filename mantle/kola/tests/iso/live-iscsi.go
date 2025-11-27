@@ -2,6 +2,7 @@ package iso
 
 import (
 	_ "embed"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -143,7 +144,7 @@ func isoInstalliScsi(c cluster.TestCluster, opts IsoTestOpts) {
 			return err
 		}
 		// Create a file to write the contents of the serial channel into
-		path := strings.Replace(builder.ConsoleFile, "/console.txt", "/nested_vm_console.txt", 1)
+		path := filepath.Join(filepath.Dir(builder.ConsoleFile), "nested_vm_console.txt")
 		nestedVMConsole, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE, 0644)
 		if err != nil {
 			return err
@@ -151,7 +152,7 @@ func isoInstalliScsi(c cluster.TestCluster, opts IsoTestOpts) {
 		go func() {
 			_, err := io.Copy(nestedVMConsole, nestedVmLogsChannel)
 			if err != nil && err != io.EOF {
-				panic(err)
+				fmt.Printf("error copying nested VM logs: %v\n", err)
 			}
 		}()
 

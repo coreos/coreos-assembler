@@ -129,7 +129,7 @@ func forwardJournal(outdir string, builder *platform.QemuBuilder, config *conf.C
 	go func() {
 		_, err := io.Copy(journalOut, journalPipe)
 		if err != nil && err != io.EOF {
-			panic(err)
+			fmt.Printf("error copying journal: %v\n", err)
 		}
 	}()
 
