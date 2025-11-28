@@ -383,19 +383,14 @@ func isoRunTest(qc *qemu.Cluster, opts IsoTestOpts, tempdir string) error {
 		if opts.addNmKeyfile {
 			kargs = append(kargs, "rd.neednet=1")
 		}
-		builder.AppendKernelArgs = strings.Join(kargs, " ")
-		return nil
-	}
-
-	setupNet := func(o platform.QemuMachineOptions, builder *platform.QemuBuilder) error {
 		if !opts.isOffline {
 			// also save pointer config into the output dir for debugging
-			path := filepath.Join(qc.RuntimeConf().OutputDir, builder.UUID, "config-target-pointer.ign")
+			path := filepath.Join(filepath.Dir(builder.ConfigFile), "config-target-pointer.ign")
 			if err := targetConfig.WriteFile(path); err != nil {
 				return err
 			}
-			return qc.SetupDefaultNetwork(o, builder)
 		}
+		builder.AppendKernelArgs = strings.Join(kargs, " ")
 		return nil
 	}
 
@@ -433,10 +428,8 @@ func isoRunTest(qc *qemu.Cluster, opts IsoTestOpts, tempdir string) error {
 		return builder.AddIso(isopath, "bootindex=3", false)
 	}
 
-	extra := platform.QemuMachineOptions{}
-	extra.SkipStartMachine = true
-	callacks := qemu.BuilderCallbacks{SetupDisks: setupDisks, SetupNetwork: setupNet, OverrideDefaults: overrideFW}
-	qm, err := qc.NewMachineWithQemuOptionsAndBuilderCallbacks(liveConfig, extra, callacks)
+	callacks := qemu.BuilderCallbacks{SetupDisks: setupDisks, OverrideDefaults: overrideFW}
+	qm, err := qc.NewMachineWithQemuOptionsAndBuilderCallbacks(liveConfig, platform.QemuMachineOptions{}, callacks)
 	if err != nil {
 		return errors.Wrap(err, "unable to create test machine")
 	}

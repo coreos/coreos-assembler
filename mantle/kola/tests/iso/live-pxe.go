@@ -235,7 +235,7 @@ func testPXE(c cluster.TestCluster, opts IsoTestOpts) {
 		return nil
 	}
 
-	setupNet := func(_ platform.QemuMachineOptions, builder *platform.QemuBuilder) error {
+	setupNet := func(o platform.QemuMachineOptions, builder *platform.QemuBuilder) error {
 		netdev := fmt.Sprintf("%s,netdev=mynet0,mac=52:54:00:12:34:56", pxe.networkdevice)
 		if pxe.bootindex == "" {
 			builder.Append("-boot", "once=n")
@@ -248,7 +248,7 @@ func testPXE(c cluster.TestCluster, opts IsoTestOpts) {
 			usernetdev += ",net=192.168.76.0/24,dhcpstart=192.168.76.9"
 		}
 		builder.Append("-netdev", usernetdev)
-		return nil
+		return qc.SetupDefaultNetwork(o, builder)
 	}
 
 	var isoCompletionOutput *os.File
@@ -285,10 +285,8 @@ func testPXE(c cluster.TestCluster, opts IsoTestOpts) {
 		return nil
 	}
 
-	extra := platform.QemuMachineOptions{}
-	extra.SkipStartMachine = true
 	callacks := qemu.BuilderCallbacks{SetupDisks: setupDisks, SetupNetwork: setupNet, OverrideDefaults: overrideFW}
-	qm, err := qc.NewMachineWithQemuOptionsAndBuilderCallbacks(liveConfig, extra, callacks)
+	qm, err := qc.NewMachineWithQemuOptionsAndBuilderCallbacks(liveConfig, platform.QemuMachineOptions{}, callacks)
 	if err != nil {
 		c.Fatal(errors.Wrap(err, "unable to create test machine"))
 	}
