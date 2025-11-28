@@ -57,6 +57,13 @@ import (
 var (
 	// ErrInitramfsEmergency is the marker error returned upon node blocking in emergency mode in initramfs.
 	ErrInitramfsEmergency = errors.New("entered emergency.target in initramfs")
+
+	ConsoleKernelArgument = map[string]string{
+		"x86_64":  "ttyS0,115200n8",
+		"ppc64le": "hvc0",
+		"aarch64": "ttyAMA0",
+		"s390x":   "ttysclp0",
+	}
 )
 
 // HostForwardPort contains details about port-forwarding for the VM.
@@ -1531,7 +1538,7 @@ func (builder *QemuBuilder) setupIso() error {
 	if kargsSupported, err := coreosInstallerSupportsISOKargs(); err != nil {
 		return err
 	} else if kargsSupported {
-		allargs := fmt.Sprintf("console=%s %s", consoleKernelArgument[coreosarch.CurrentRpmArch()], builder.AppendKernelArgs)
+		allargs := fmt.Sprintf("console=%s %s", ConsoleKernelArgument[coreosarch.CurrentRpmArch()], builder.AppendKernelArgs)
 		instCmdKargs := exec.Command("coreos-installer", "iso", "kargs", "modify", "--append", allargs, isoEmbeddedPath)
 		var stderrb bytes.Buffer
 		instCmdKargs.Stderr = &stderrb
