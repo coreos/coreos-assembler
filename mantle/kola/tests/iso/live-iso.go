@@ -191,37 +191,8 @@ func isoOfflineInstallFromRam4kUefi(c cluster.TestCluster) {
 	isoLiveInstall(c, opts)
 }
 
-// Sometimes the logs that stream from various virtio streams can be
-// incomplete because they depend on services inside the guest.
-// When you are debugging earlyboot/initramfs issues this can be
-// problematic. Let's add a hook here to enable more debugging.
-func renderCosaTestIsoDebugKargs() []string {
-	if _, ok := os.LookupEnv("COSA_TESTISO_DEBUG"); ok {
-		return []string{"systemd.log_color=0", "systemd.log_level=debug",
-			"systemd.journald.forward_to_console=1",
-			"systemd.journald.max_level_console=debug"}
-	} else {
-		return []string{}
-	}
-}
-
-// This object gets serialized to YAML and fed to coreos-installer:
-// https://coreos.github.io/coreos-installer/customizing-install/#config-file-format
-type coreosInstallerConfig struct {
-	ImageURL     string   `yaml:"image-url,omitempty"`
-	IgnitionFile string   `yaml:"ignition-file,omitempty"`
-	Insecure     bool     `yaml:"insecure,omitempty"`
-	AppendKargs  []string `yaml:"append-karg,omitempty"`
-	CopyNetwork  bool     `yaml:"copy-network,omitempty"`
-	DestDevice   string   `yaml:"dest-device,omitempty"`
-	Console      []string `yaml:"console,omitempty"`
-}
-
-// defaultQemuHostIPv4 is documented in `man qemu-kvm`, under the `-netdev` option
-const defaultQemuHostIPv4 = "10.0.2.2"
-
 func isoLiveInstall(c cluster.TestCluster, opts IsoTestOpts) {
-	if err := EnsureLiveArtifactsExist(); err != nil {
+	if err := ensureLiveArtifactsExist(); err != nil {
 		fmt.Println(err)
 		return
 	}
@@ -278,7 +249,7 @@ func isoRunTest(qc *qemu.Cluster, opts IsoTestOpts, tempdir string) error {
 
 	isopath := filepath.Join(kola.CosaBuild.Dir, kola.CosaBuild.Meta.BuildArtifacts.LiveIso.Path)
 
-	installerConfig := coreosInstallerConfig{
+	installerConfig := CoreosInstallerConfig{
 		IgnitionFile: "/var/opt/pointer.ign",
 		DestDevice:   "/dev/vda",
 		AppendKargs:  renderCosaTestIsoDebugKargs(),
@@ -472,12 +443,12 @@ func isoRunTest(qc *qemu.Cluster, opts IsoTestOpts, tempdir string) error {
 
 	errchan := make(chan error)
 	go func() {
-		errchan <- CheckTestOutput(isoCompletionOutput, []string{liveOKSignal, signalCompleteString})
+		errchan <- checkTestOutput(isoCompletionOutput, []string{liveOKSignal, signalCompleteString})
 	}()
 
 	//check for error when switching boot order
 	go func() {
-		if err := CheckTestOutput(bootStartedOutput, []string{bootStartedSignal}); err != nil {
+		if err := checkTestOutput(bootStartedOutput, []string{bootStartedSignal}); err != nil {
 			errchan <- err
 			return
 		}
@@ -489,22 +460,6 @@ func isoRunTest(qc *qemu.Cluster, opts IsoTestOpts, tempdir string) error {
 
 	err = <-errchan
 	return err
-}
-
-func absSymlink(src, dest string) error {
-	src, err := filepath.Abs(src)
-	if err != nil {
-		return err
-	}
-	return os.Symlink(src, dest)
-}
-
-// setupMetalImage creates a symlink to the metal image.
-func setupMetalImage(builddir, metalimg, destdir string) (string, error) {
-	if err := absSymlink(filepath.Join(builddir, metalimg), filepath.Join(destdir, metalimg)); err != nil {
-		return "", err
-	}
-	return metalimg, nil
 }
 
 func createMiniso(tempd string, isopath string, url string) (string, error) {

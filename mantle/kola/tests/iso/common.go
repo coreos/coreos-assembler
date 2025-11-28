@@ -6,23 +6,33 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
 	"github.com/coreos/coreos-assembler/mantle/kola"
 	"github.com/coreos/coreos-assembler/mantle/kola/cluster"
 	"github.com/coreos/coreos-assembler/mantle/kola/register"
-	"github.com/coreos/coreos-assembler/mantle/platform"
-	"github.com/coreos/coreos-assembler/mantle/platform/conf"
-	"github.com/coreos/coreos-assembler/mantle/platform/machine/qemu"
-	coreosarch "github.com/coreos/stream-metadata-go/arch"
 	"github.com/pkg/errors"
 )
 
 const (
 	installTimeoutMins = 12
+
+	// defaultQemuHostIPv4 is documented in `man qemu-kvm`, under the `-netdev` option
+	defaultQemuHostIPv4 = "10.0.2.2"
 )
+
+// This object gets serialized to YAML and fed to coreos-installer:
+// https://coreos.github.io/coreos-installer/customizing-install/#config-file-format
+type CoreosInstallerConfig struct {
+	ImageURL     string   `yaml:"image-url,omitempty"`
+	IgnitionFile string   `yaml:"ignition-file,omitempty"`
+	Insecure     bool     `yaml:"insecure,omitempty"`
+	AppendKargs  []string `yaml:"append-karg,omitempty"`
+	CopyNetwork  bool     `yaml:"copy-network,omitempty"`
+	DestDevice   string   `yaml:"dest-device,omitempty"`
+	Console      []string `yaml:"console,omitempty"`
+}
 
 type IsoTestOpts struct {
 	// Flags().BoolVarP(&instInsecure, "inst-insecure", "S", false, "Do not verify signature on metal image")
@@ -62,114 +72,7 @@ func isoTest(name string, run func(c cluster.TestCluster), arch []string) *regis
 	}
 }
 
-func newBaseQemuBuilder(opts IsoTestOpts, outdir string) (*platform.QemuBuilder, error) {
-	builder := qemu.NewMetalQemuBuilderDefault()
-	if opts.enableUefiSecure {
-		builder.Firmware = "uefi-secure"
-	} else if opts.enableUefi {
-		builder.Firmware = "uefi"
-	}
-
-	if err := os.MkdirAll(outdir, 0755); err != nil {
-		return nil, err
-	}
-
-	builder.InheritConsole = opts.console
-	if !opts.console {
-		builder.ConsoleFile = filepath.Join(outdir, "console.txt")
-	}
-
-	if kola.QEMUOptions.Memory != "" {
-		parsedMem, err := strconv.ParseInt(kola.QEMUOptions.Memory, 10, 32)
-		if err != nil {
-			return nil, err
-		}
-		builder.MemoryMiB = int(parsedMem)
-	}
-
-	// increase the memory for pxe tests with appended rootfs in the initrd
-	// we were bumping up into the 4GiB limit in RHCOS/c9s
-	// pxe-offline-install.rootfs-appended.bios tests
-	if opts.pxeAppendRootfs && builder.MemoryMiB < 5120 {
-		builder.MemoryMiB = 5120
-	}
-
-	return builder, nil
-}
-
-func newQemuBuilder(opts IsoTestOpts, outdir string) (*platform.QemuBuilder, *conf.Conf, error) {
-	builder, err := newBaseQemuBuilder(opts, outdir)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	config, err := conf.EmptyIgnition().Render(conf.FailWarnings)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	err = forwardJournal(outdir, builder, config)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return builder, config, nil
-}
-
-func forwardJournal(outdir string, builder *platform.QemuBuilder, config *conf.Conf) error {
-	journalPipe, err := builder.VirtioJournal(config, "")
-	if err != nil {
-		return err
-	}
-	journalOut, err := os.OpenFile(filepath.Join(outdir, "journal.txt"), os.O_WRONLY|os.O_CREATE, 0644)
-	if err != nil {
-		return err
-	}
-
-	go func() {
-		_, err := io.Copy(journalOut, journalPipe)
-		if err != nil && err != io.EOF {
-			fmt.Printf("error copying journal: %v\n", err)
-		}
-	}()
-
-	return nil
-}
-
-func newQemuBuilderWithDisk(opts IsoTestOpts, outdir string) (*platform.QemuBuilder, *conf.Conf, error) {
-	builder, config, err := newQemuBuilder(opts, outdir)
-
-	if err != nil {
-		return nil, nil, err
-	}
-
-	sectorSize := 0
-	if opts.enable4k {
-		sectorSize = 4096
-	}
-
-	disk := platform.Disk{
-		Size:          "12G", // Arbitrary
-		SectorSize:    sectorSize,
-		MultiPathDisk: opts.enableMultipath,
-	}
-
-	//TBD: see if we can remove this and just use AddDisk and inject bootindex during startup
-	if coreosarch.CurrentRpmArch() == "s390x" || coreosarch.CurrentRpmArch() == "aarch64" {
-		// s390x and aarch64 need to use bootindex as they don't support boot once
-		if err := builder.AddDisk(&disk); err != nil {
-			return nil, nil, err
-		}
-	} else {
-		if err := builder.AddPrimaryDisk(&disk); err != nil {
-			return nil, nil, err
-		}
-	}
-
-	return builder, config, nil
-}
-
-func CheckTestOutput(output *os.File, expected []string) error {
+func checkTestOutput(output *os.File, expected []string) error {
 	reader := bufio.NewReader(output)
 	for _, exp := range expected {
 		line, err := reader.ReadString('\n')
@@ -192,8 +95,11 @@ func CheckTestOutput(output *os.File, expected []string) error {
 	return nil
 }
 
-func EnsureLiveArtifactsExist() error {
-	if kola.CosaBuild.Meta.BuildArtifacts.LiveIso == nil || kola.CosaBuild.Meta.BuildArtifacts.LiveKernel == nil {
+func ensureLiveArtifactsExist() error {
+	if kola.CosaBuild.Meta.BuildArtifacts.LiveIso == nil {
+		return errors.Errorf("Build %s is missing live-iso artifacts\n", kola.CosaBuild.Meta.Name)
+	}
+	if kola.CosaBuild.Meta.BuildArtifacts.LiveRootfs == nil || kola.CosaBuild.Meta.BuildArtifacts.LiveKernel == nil || kola.CosaBuild.Meta.BuildArtifacts.LiveInitramfs == nil {
 		return errors.Errorf("Build %s is missing live artifacts\n", kola.CosaBuild.Meta.Name)
 	}
 	if kola.CosaBuild.Meta.BuildArtifacts.Metal == nil || kola.CosaBuild.Meta.BuildArtifacts.Metal4KNative == nil {
@@ -202,59 +108,54 @@ func EnsureLiveArtifactsExist() error {
 	return nil
 }
 
-func awaitCompletion(c cluster.TestCluster, inst *platform.QemuInstance, console bool, outdir string, qchan *os.File, booterrchan chan error, expected []string) error {
-	ctx := c.Context()
-
-	errchan := make(chan error)
-	go func() {
-		timeout := (time.Duration(installTimeoutMins*(100+kola.Options.ExtendTimeoutPercent)) * time.Minute) / 100
-		time.Sleep(timeout)
-		errchan <- fmt.Errorf("timed out after %v", timeout)
-	}()
-	if !console {
-		go func() {
-			errBuf, err := inst.WaitIgnitionError(ctx)
-			if err == nil {
-				if errBuf != "" {
-					c.Logf("entered emergency.target in initramfs")
-					path := filepath.Join(outdir, "ignition-virtio-dump.txt")
-					if err := os.WriteFile(path, []byte(errBuf), 0644); err != nil {
-						c.Errorf("Failed to write journal: %v", err)
-					}
-					err = platform.ErrInitramfsEmergency
-				}
-			}
-			if err != nil {
-				errchan <- err
-			}
-		}()
+// Sometimes the logs that stream from various virtio streams can be
+// incomplete because they depend on services inside the guest.
+// When you are debugging earlyboot/initramfs issues this can be
+// problematic. Let's add a hook here to enable more debugging.
+func renderCosaTestIsoDebugKargs() []string {
+	if _, ok := os.LookupEnv("COSA_TESTISO_DEBUG"); ok {
+		return []string{"systemd.log_color=0", "systemd.log_level=debug",
+			"systemd.journald.forward_to_console=1",
+			"systemd.journald.max_level_console=debug"}
+	} else {
+		return []string{}
 	}
-	go func() {
-		err := inst.Wait()
-		// only one Wait() gets process data, so also manually check for signal
-		//plog.Debugf("qemu exited err=%v", err)
-		if err == nil && inst.Signaled() {
-			err = errors.New("process killed")
-		}
+}
+
+func absSymlink(src, dest string) error {
+	src, err := filepath.Abs(src)
+	if err != nil {
+		return err
+	}
+	return os.Symlink(src, dest)
+}
+
+// setupMetalImage creates a symlink to the metal image.
+func setupMetalImage(builddir, metalimg, destdir string) (string, error) {
+	if err := absSymlink(filepath.Join(builddir, metalimg), filepath.Join(destdir, metalimg)); err != nil {
+		return "", err
+	}
+	return metalimg, nil
+}
+
+func cat(outfile string, infiles ...string) error {
+	out, err := os.OpenFile(outfile, os.O_WRONLY|os.O_CREATE, 0644)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+	for _, infile := range infiles {
+		in, err := os.Open(infile)
 		if err != nil {
-			errchan <- errors.Wrapf(err, "QEMU unexpectedly exited while awaiting completion")
+			return err
 		}
-		time.Sleep(1 * time.Minute)
-		errchan <- fmt.Errorf("QEMU exited; timed out waiting for completion")
-	}()
-	go func() {
-		errchan <- CheckTestOutput(qchan, expected)
-	}()
-	go func() {
-		//check for error when switching boot order
-		if booterrchan != nil {
-			if err := <-booterrchan; err != nil {
-				errchan <- err
-			}
+		defer in.Close()
+		_, err = io.Copy(out, in)
+		if err != nil {
+			return err
 		}
-	}()
-	err := <-errchan
-	return err
+	}
+	return nil
 }
 
 var liveOKSignal = "live-test-OK"
