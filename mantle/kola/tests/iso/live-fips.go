@@ -40,7 +40,7 @@ ExecStart=grep FIPS etc/crypto-policies/config
 RequiredBy=fips-signal-ok.service`
 
 func testLiveFIPS(c cluster.TestCluster) {
-	if err := EnsureLiveArtifactsExist(); err != nil {
+	if err := ensureLiveArtifactsExist(); err != nil {
 		fmt.Println(err)
 		return
 	}
@@ -81,7 +81,7 @@ func testLiveFIPS(c cluster.TestCluster) {
 
 		// Read line in a goroutine and send errors to channel
 		go func() {
-			errchan <- CheckTestOutput(output, []string{liveOKSignal})
+			errchan <- checkTestOutput(output, []string{liveOKSignal})
 		}()
 
 		isopath := filepath.Join(kola.CosaBuild.Dir, kola.CosaBuild.Meta.BuildArtifacts.LiveIso.Path)

@@ -89,7 +89,7 @@ var iscsi_butane_config string
 //   - when the system is booted, write a success string to /dev/virtio-ports/testisocompletion
 //   - as this serial device is mapped to the host serial device, the test concludes
 func isoInstalliScsi(c cluster.TestCluster, opts IsoTestOpts) {
-	if err := EnsureLiveArtifactsExist(); err != nil {
+	if err := ensureLiveArtifactsExist(); err != nil {
 		fmt.Println(err)
 		return
 	}
@@ -173,7 +173,7 @@ func isoInstalliScsi(c cluster.TestCluster, opts IsoTestOpts) {
 
 		// Read line in a goroutine and send errors to channel
 		go func() {
-			errchan <- CheckTestOutput(output, []string{"iscsi-boot-ok"})
+			errchan <- checkTestOutput(output, []string{"iscsi-boot-ok"})
 		}()
 
 		return nil

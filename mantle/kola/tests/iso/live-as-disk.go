@@ -43,7 +43,7 @@ func isoAsDiskUefiSecure(c cluster.TestCluster) {
 }
 
 func isoTestAsDisk(c cluster.TestCluster, opts IsoTestOpts) {
-	if err := EnsureLiveArtifactsExist(); err != nil {
+	if err := ensureLiveArtifactsExist(); err != nil {
 		fmt.Println(err)
 		return
 	}
@@ -84,7 +84,7 @@ func isoTestAsDisk(c cluster.TestCluster, opts IsoTestOpts) {
 
 		// Read line in a goroutine and send errors to channel
 		go func() {
-			errchan <- CheckTestOutput(output, []string{liveOKSignal})
+			errchan <- checkTestOutput(output, []string{liveOKSignal})
 		}()
 
 		isopath := filepath.Join(kola.CosaBuild.Dir, kola.CosaBuild.Meta.BuildArtifacts.LiveIso.Path)
