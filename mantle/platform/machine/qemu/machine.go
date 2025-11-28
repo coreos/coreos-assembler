@@ -26,27 +26,17 @@ import (
 )
 
 type machine struct {
-	qc                      *Cluster
-	id                      string
-	inst                    *platform.QemuInstance
-	journal                 *platform.Journal
-	consolePath             string
-	console                 string
-	ip                      string
-	tempdir                 string
-	bootStartedErrorChannel chan error
+	qc          *Cluster
+	id          string
+	inst        *platform.QemuInstance
+	journal     *platform.Journal
+	consolePath string
+	console     string
+	ip          string
 }
 
 func (m *machine) ID() string {
 	return m.id
-}
-
-func (m *machine) Instance() *platform.QemuInstance {
-	return m.inst
-}
-
-func (m *machine) BootStartedErrorChannel() chan error {
-	return m.bootStartedErrorChannel
 }
 
 func (m *machine) IP() string {
@@ -101,15 +91,6 @@ func (m *machine) WaitForSoftReboot(timeout time.Duration, oldSoftRebootsCount s
 	return platform.WaitForMachineSoftReboot(m, m.journal, timeout, oldSoftRebootsCount)
 }
 
-func (m *machine) DeleteTempdir() error {
-	var err error = nil
-	if m.tempdir != "" {
-		err = os.RemoveAll(m.tempdir)
-		m.tempdir = ""
-	}
-	return err
-}
-
 func (m *machine) Destroy() {
 	if m.inst != nil {
 		m.inst.Destroy()
@@ -131,10 +112,6 @@ func (m *machine) Destroy() {
 
 	if m.qc != nil {
 		m.qc.DelMach(m)
-	}
-
-	if err := m.DeleteTempdir(); err != nil {
-		plog.Errorf("Error removing tempdir for instance %v: %v", m.ID(), err)
 	}
 }
 
