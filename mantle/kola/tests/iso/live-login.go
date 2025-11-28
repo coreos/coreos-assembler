@@ -21,7 +21,7 @@ func init() {
 }
 
 func testLiveLogin(c cluster.TestCluster, enableUefi bool, enableUefiSecure bool) {
-	if err := EnsureLiveArtifactsExist(); err != nil {
+	if err := ensureLiveArtifactsExist(); err != nil {
 		fmt.Println(err)
 		return
 	}
@@ -48,7 +48,7 @@ version: 1.1.0`)
 
 		// Read line in a goroutine and send errors to channel
 		go func() {
-			errchan <- CheckTestOutput(output, []string{"coreos-liveiso-success"})
+			errchan <- checkTestOutput(output, []string{"coreos-liveiso-success"})
 		}()
 
 		isopath := filepath.Join(kola.CosaBuild.Dir, kola.CosaBuild.Meta.BuildArtifacts.LiveIso.Path)
