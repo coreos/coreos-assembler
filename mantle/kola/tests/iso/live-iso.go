@@ -1,8 +1,10 @@
 package iso
 
 import (
+	"context"
 	_ "embed"
 	"fmt"
+	"log"
 	"net"
 	"net/http"
 	"os"
@@ -203,17 +205,6 @@ func isoLiveInstall(c cluster.TestCluster, opts IsoTestOpts) {
 		c.Fatal("Cannot use `--add-nm-keyfile` with offline mode")
 	}
 
-	qc, ok := c.Cluster.(*qemu.Cluster)
-	if !ok {
-		c.Fatalf("Unsupported cluster type")
-	}
-	if opts.enable4k {
-		qc.EnforceNative4k()
-	}
-	if opts.enableMultipath {
-		qc.EnforceMultipath()
-	}
-
 	tempdir, err := os.MkdirTemp("/var/tmp", "iso")
 	if err != nil {
 		c.Fatal(err)
@@ -222,12 +213,22 @@ func isoLiveInstall(c cluster.TestCluster, opts IsoTestOpts) {
 		os.RemoveAll(tempdir)
 	}()
 
-	if err := isoRunTest(qc, opts, tempdir); err != nil {
+	if err := isoRunTest(c, opts, tempdir); err != nil {
 		c.Fatal(err)
 	}
 }
 
-func isoRunTest(qc *qemu.Cluster, opts IsoTestOpts, tempdir string) error {
+func isoRunTest(c cluster.TestCluster, opts IsoTestOpts, tempdir string) error {
+	qc, ok := c.Cluster.(*qemu.Cluster)
+	if !ok {
+		return errors.Errorf("Unsupported cluster type")
+	}
+	if opts.enable4k {
+		qc.EnforceNative4k()
+	}
+	if opts.enableMultipath {
+		qc.EnforceMultipath()
+	}
 	keys, err := qc.Keys()
 	if err != nil {
 		return err
@@ -320,11 +321,21 @@ func isoRunTest(qc *qemu.Cluster, opts IsoTestOpts, tempdir string) error {
 		targetConfig.AddConfigSource(baseurl + "/target.ign")
 		serializedTargetConfig = targetConfig.String()
 
-		//nolint // Yeah this leaks
+		ctx := c.Context()
+		mux := http.NewServeMux()
+		mux.Handle("/", http.FileServer(http.Dir(tempdir)))
+		srv := &http.Server{Handler: mux}
+
 		go func() {
-			mux := http.NewServeMux()
-			mux.Handle("/", http.FileServer(http.Dir(tempdir)))
-			http.Serve(listener, mux)
+			if err := srv.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
+				log.Printf("http serve: %v", err)
+			}
+		}()
+
+		// stop server when ctx is canceled
+		go func() {
+			<-ctx.Done()
+			_ = srv.Shutdown(context.Background())
 		}()
 	}
 
