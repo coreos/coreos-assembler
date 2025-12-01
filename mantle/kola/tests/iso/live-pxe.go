@@ -1,7 +1,9 @@
 package iso
 
 import (
+	"context"
 	"fmt"
+	"log"
 	"net"
 	"net/http"
 	"os"
@@ -203,7 +205,7 @@ func testPXE(c cluster.TestCluster, opts IsoTestOpts) {
 		os.RemoveAll(tempdir)
 	}()
 
-	pxe, err := createPXE(tempdir, opts)
+	pxe, err := createPXE(c.Context(), tempdir, opts)
 	if err != nil {
 		c.Fatal(errors.Wrapf(err, "setting up install"))
 	}
@@ -326,7 +328,7 @@ type PXE struct {
 	bootfile      string
 }
 
-func createPXE(tempdir string, opts IsoTestOpts) (*PXE, error) {
+func createPXE(ctx context.Context, tempdir string, opts IsoTestOpts) (*PXE, error) {
 	kernel := kola.CosaBuild.Meta.BuildArtifacts.LiveKernel.Path
 	initramfs := kola.CosaBuild.Meta.BuildArtifacts.LiveInitramfs.Path
 	rootfs := kola.CosaBuild.Meta.BuildArtifacts.LiveRootfs.Path
@@ -403,11 +405,20 @@ func createPXE(tempdir string, opts IsoTestOpts) (*PXE, error) {
 		return nil, errors.Errorf("Unhandled boottype %s", pxe.boottype)
 	}
 
-	//nolint // Yeah this leaks
+	mux := http.NewServeMux()
+	mux.Handle("/", http.FileServer(http.Dir(tftpdir)))
+	srv := &http.Server{Handler: mux}
+
 	go func() {
-		mux := http.NewServeMux()
-		mux.Handle("/", http.FileServer(http.Dir(tftpdir)))
-		http.Serve(listener, mux)
+		if err := srv.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log.Printf("http serve: %v", err)
+		}
+	}()
+
+	// stop server when ctx is canceled
+	go func() {
+		<-ctx.Done()
+		_ = srv.Shutdown(context.Background())
 	}()
 
 	return pxe, nil
