@@ -36,9 +36,7 @@ type CoreosInstallerConfig struct {
 
 type IsoTestOpts struct {
 	// Flags().BoolVarP(&instInsecure, "inst-insecure", "S", false, "Do not verify signature on metal image")
-	instInsecure bool
-	// Flags().BoolVar(&console, "console", false, "Connect qemu console to terminal, turn off automatic initramfs failure checking")
-	console          bool
+	instInsecure     bool
 	addNmKeyfile     bool
 	enable4k         bool
 	enableMultipath  bool
