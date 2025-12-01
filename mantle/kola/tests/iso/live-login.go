@@ -57,8 +57,8 @@ version: 1.1.0`)
 
 	switch pc := c.Cluster.(type) {
 	case *qemu.Cluster:
-		callacks := qemu.BuilderCallbacks{SetupDisks: setupDisks, OverrideDefaults: overrideFW}
-		_, err := pc.NewMachineWithQemuOptionsAndBuilderCallbacks(butane, platform.QemuMachineOptions{}, callacks)
+		callbacks := qemu.BuilderCallbacks{SetupDisks: setupDisks, OverrideDefaults: overrideFW}
+		_, err := pc.NewMachineWithQemuOptionsAndBuilderCallbacks(butane, platform.QemuMachineOptions{}, callbacks)
 		if err != nil {
 			c.Fatalf("Unable to create test machine: %v", err)
 		}
