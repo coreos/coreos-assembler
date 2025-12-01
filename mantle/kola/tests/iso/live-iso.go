@@ -208,10 +208,10 @@ func isoLiveInstall(c cluster.TestCluster, opts IsoTestOpts) {
 		c.Fatalf("Unsupported cluster type")
 	}
 	if opts.enable4k {
-		qc.EnforeNative4k()
+		qc.EnforceNative4k()
 	}
 	if opts.enableMultipath {
-		qc.EnforeMultipath()
+		qc.EnforceMultipath()
 	}
 
 	tempdir, err := os.MkdirTemp("/var/tmp", "iso")

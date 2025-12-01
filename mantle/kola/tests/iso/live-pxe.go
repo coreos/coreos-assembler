@@ -150,7 +150,7 @@ func testPXE(c cluster.TestCluster, opts IsoTestOpts) {
 		c.Fatalf("Unsupported cluster type")
 	}
 	if opts.enable4k {
-		qc.EnforeNative4k()
+		qc.EnforceNative4k()
 	}
 
 	installerConfig := CoreosInstallerConfig{
@@ -287,8 +287,8 @@ func testPXE(c cluster.TestCluster, opts IsoTestOpts) {
 
 	extra := platform.QemuMachineOptions{}
 	extra.SkipStartMachine = true
-	callacks := qemu.BuilderCallbacks{SetupDisks: setupDisks, SetupNetwork: setupNet, OverrideDefaults: overrideFW}
-	qm, err := qc.NewMachineWithQemuOptionsAndBuilderCallbacks(liveConfig, extra, callacks)
+	callbacks := qemu.BuilderCallbacks{SetupDisks: setupDisks, SetupNetwork: setupNet, OverrideDefaults: overrideFW}
+	qm, err := qc.NewMachineWithQemuOptionsAndBuilderCallbacks(liveConfig, extra, callbacks)
 	if err != nil {
 		c.Fatal(errors.Wrap(err, "unable to create test machine"))
 	}

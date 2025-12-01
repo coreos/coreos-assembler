@@ -51,11 +51,11 @@ type BuilderCallbacks struct {
 	OverrideDefaults func(builder *platform.QemuBuilder) error
 }
 
-func (qc *Cluster) EnforeNative4k() {
+func (qc *Cluster) EnforceNative4k() {
 	qc.flight.opts.Native4k = true
 }
 
-func (qc *Cluster) EnforeMultipath() {
+func (qc *Cluster) EnforceMultipath() {
 	qc.flight.opts.MultiPathDisk = true
 }
 
