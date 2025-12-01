@@ -88,8 +88,8 @@ func testLiveFIPS(c cluster.TestCluster) {
 		return builder.AddIso(isopath, "", false)
 	}
 
-	callacks := qemu.BuilderCallbacks{SetupDisks: setupDisks, OverrideDefaults: overrideFW}
-	_, err = qc.NewMachineWithQemuOptionsAndBuilderCallbacks(config, platform.QemuMachineOptions{}, callacks)
+	callbacks := qemu.BuilderCallbacks{SetupDisks: setupDisks, OverrideDefaults: overrideFW}
+	_, err = qc.NewMachineWithQemuOptionsAndBuilderCallbacks(config, platform.QemuMachineOptions{}, callbacks)
 	if err != nil {
 		c.Fatalf("Unable to create test machine: %v", err)
 	}
