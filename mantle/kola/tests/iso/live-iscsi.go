@@ -113,11 +113,7 @@ func isoInstalliScsi(c cluster.TestCluster, opts IsoTestOpts) {
 	if err != nil {
 		c.Fatal(err)
 	}
-	keys, err := qc.Keys()
-	if err != nil {
-		c.Fatal(err)
-	}
-	config.CopyKeys(keys)
+
 	// Add a failure target to stop the test if something go wrong rather than waiting for the 10min timeout
 	config.AddSystemdUnit("coreos-test-entered-emergency-target.service", signalFailureUnit, conf.Enable)
 	config.MountHost("/var/cosaroot", true)
@@ -179,8 +175,10 @@ func isoInstalliScsi(c cluster.TestCluster, opts IsoTestOpts) {
 		return nil
 	}
 
+	extra := platform.QemuMachineOptions{}
+	extra.SkipStartMachine = true
 	callbacks := qemu.BuilderCallbacks{SetupDisks: setupDisks, OverrideDefaults: overrideFW}
-	_, err = qc.NewMachineWithQemuOptionsAndBuilderCallbacks(config, platform.QemuMachineOptions{}, callbacks)
+	_, err = qc.NewMachineWithQemuOptionsAndBuilderCallbacks(config, extra, callbacks)
 	if err != nil {
 		c.Fatalf("Unable to create test machine: %v", err)
 	}
