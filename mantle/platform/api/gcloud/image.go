@@ -15,11 +15,11 @@
 package gcloud
 
 import (
+	"context"
 	"fmt"
 	"runtime"
 	"strings"
 
-	"golang.org/x/net/context"
 	"google.golang.org/api/compute/v1"
 )
 

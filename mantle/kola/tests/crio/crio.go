@@ -22,8 +22,9 @@ import (
 	"strings"
 	"time"
 
+	"context"
+
 	"golang.org/x/crypto/ssh"
-	"golang.org/x/net/context"
 
 	"github.com/coreos/coreos-assembler/mantle/kola"
 	"github.com/coreos/coreos-assembler/mantle/kola/cluster"
