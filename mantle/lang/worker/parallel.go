@@ -15,7 +15,7 @@
 package worker
 
 import (
-	"golang.org/x/net/context"
+	"context"
 )
 
 // Parallel executes a set of Workers and waits for them to finish.

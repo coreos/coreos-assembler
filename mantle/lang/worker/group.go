@@ -15,10 +15,10 @@
 package worker
 
 import (
+	"context"
 	"sync"
 
 	"github.com/coreos/pkg/multierror"
-	"golang.org/x/net/context"
 )
 
 // Worker is a function that WorkerGroup will run in a new goroutine.
