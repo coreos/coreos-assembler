@@ -6,9 +6,49 @@ import os
 import sys
 import subprocess
 import yaml
+import re
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from cosalib.cmdlib import get_basearch
+
+
+def use_koji_url_only(url_list):
+    """
+    Returns a list of package URLs to point only to our koji coreos-pool.
+    If a URL is not a coreos-pool one, then we extract the arch and NEVRA from
+    it and we construct the new one into the canonical koji path structure.
+    """
+    koji_url_base = "https://kojipkgs.fedoraproject.org/repos-dist/coreos-pool"
+    updated_list = []
+    for url in url_list:
+        if koji_url_base in url:
+            updated_list.append(url)
+            continue
+        nevra = url.split("/")[-1]
+        arch = extract_arch_from_url(url)
+        koji_url_base_with_arch = koji_url_base + f"/latest/{arch}/Packages"
+        new_url = "/".join([koji_url_base_with_arch,
+                            nevra[0].lower(),
+                            nevra])
+        updated_list.append(new_url)
+    return updated_list
+
+
+def extract_arch_from_url(url):
+    """
+    Extracts the arch value from the URL.
+    """
+    arches = ['x86_64', 'aarch64', 'ppc64le', 's390x']
+    # using word boundaries (\b) to ensure we match a full architecture name.
+    # this means the chars immediately surrounding the arch string must be
+    # non-word characters e.g: "/"
+    architecture_pattern = re.compile(
+        r'\b(' + '|'.join(re.escape(a) for a in arches) + r')\b')
+    match = architecture_pattern.search(url)
+    if match:
+        return match.group(1)
+    else:
+        return None
 
 
 def format_packages_with_repoid(pkgs, repos):
@@ -118,10 +158,6 @@ def query_packages_location(locks, repoquery_args):
             continue
         name, url = line.split(' ')
         # Prioritize the url from fedora-coreos-pool
-        # there is a bug in dnf here where the url returned is incorrect when the
-        # repofile have more than one baseurl, which causes ppc64le and s390x
-        # urls comming from fedora and fedora-updates to be invalid
-        # See https://github.com/rpm-software-management/dnf5/issues/2466
         existing_url = processed_urls.get(name, None)
         if 'coreos-pool' in url or not existing_url:
             processed_urls[name] = url
@@ -201,6 +237,8 @@ def generate_main(args):
             # we have to specify both --arch and --forcearch to get both result for $arch and $noarch
             arch_args = ['--forcearch', arch, '--arch', arch, '--arch', 'noarch']
         pkg_urls = query_packages_location(locks, repoquery_args + arch_args)
+        # we only want coreos-pool URLs
+        pkg_urls = use_koji_url_only(pkg_urls)
         packages.append({'arch': arch, 'packages': pkg_urls})
 
     lockfile = write_hermeto_lockfile(packages, repos)
