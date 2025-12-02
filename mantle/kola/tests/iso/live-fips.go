@@ -57,11 +57,6 @@ func testLiveFIPS(c cluster.TestCluster) {
 	config.AddSystemdUnit("fips-verify.service", fipsVerify, conf.Enable)
 	config.AddSystemdUnit("fips-signal-ok.service", liveSignalOKUnit, conf.Enable)
 	config.AddSystemdUnit("fips-emergency-target.service", signalFailureUnit, conf.Enable)
-	keys, err := qc.Keys()
-	if err != nil {
-		c.Fatal(err)
-	}
-	config.CopyKeys(keys)
 
 	overrideFW := func(builder *platform.QemuBuilder) error {
 		builder.Firmware = "uefi"
@@ -88,8 +83,10 @@ func testLiveFIPS(c cluster.TestCluster) {
 		return builder.AddIso(isopath, "", false)
 	}
 
+	extra := platform.QemuMachineOptions{}
+	extra.SkipStartMachine = true
 	callbacks := qemu.BuilderCallbacks{SetupDisks: setupDisks, OverrideDefaults: overrideFW}
-	_, err = qc.NewMachineWithQemuOptionsAndBuilderCallbacks(config, platform.QemuMachineOptions{}, callbacks)
+	_, err = qc.NewMachineWithQemuOptionsAndBuilderCallbacks(config, extra, callbacks)
 	if err != nil {
 		c.Fatalf("Unable to create test machine: %v", err)
 	}

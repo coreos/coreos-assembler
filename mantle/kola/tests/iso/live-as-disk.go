@@ -59,11 +59,6 @@ func isoTestAsDisk(c cluster.TestCluster, opts IsoTestOpts) {
 	}
 	config.AddSystemdUnit("live-signal-ok.service", liveSignalOKUnit, conf.Enable)
 	config.AddSystemdUnit("verify-no-efi-boot-entry.service", verifyNoEFIBootEntry, conf.Enable)
-	keys, err := qc.Keys()
-	if err != nil {
-		c.Fatal(err)
-	}
-	config.CopyKeys(keys)
 
 	overrideFW := func(builder *platform.QemuBuilder) error {
 		switch {
@@ -91,8 +86,10 @@ func isoTestAsDisk(c cluster.TestCluster, opts IsoTestOpts) {
 		return builder.AddIso(isopath, "", true)
 	}
 
+	extra := platform.QemuMachineOptions{}
+	extra.SkipStartMachine = true
 	callbacks := qemu.BuilderCallbacks{SetupDisks: setupDisks, OverrideDefaults: overrideFW}
-	_, err = qc.NewMachineWithQemuOptionsAndBuilderCallbacks(config, platform.QemuMachineOptions{}, callbacks)
+	_, err = qc.NewMachineWithQemuOptionsAndBuilderCallbacks(config, extra, callbacks)
 	if err != nil {
 		c.Fatalf("Unable to create test machine: %v", err)
 	}

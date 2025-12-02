@@ -160,10 +160,7 @@ func testPXE(c cluster.TestCluster, opts IsoTestOpts) {
 		AppendKargs: renderCosaTestIsoDebugKargs(),
 		Insecure:    opts.instInsecure,
 	}
-	keys, err := qc.Keys()
-	if err != nil {
-		c.Fatal(err)
-	}
+
 	installerConfigData, err := yaml.Marshal(installerConfig)
 	if err != nil {
 		c.Fatal(err)
@@ -174,7 +171,6 @@ func testPXE(c cluster.TestCluster, opts IsoTestOpts) {
 	if err != nil {
 		c.Fatal(err)
 	}
-	liveConfig.CopyKeys(keys)
 	liveConfig.AddSystemdUnit("live-signal-ok.service", liveSignalOKUnit, conf.Enable)
 	liveConfig.AddSystemdUnit("coreos-test-entered-emergency-target.service", signalFailureUnit, conf.Enable)
 	if opts.isOffline {
@@ -192,7 +188,6 @@ func testPXE(c cluster.TestCluster, opts IsoTestOpts) {
 	if err != nil {
 		c.Fatal(err)
 	}
-	targetConfig.CopyKeys(keys)
 	targetConfig.AddSystemdUnit("coreos-test-installer.service", signalCompletionUnit, conf.Enable)
 	targetConfig.AddSystemdUnit("coreos-test-entered-emergency-target.service", signalFailureUnit, conf.Enable)
 	targetConfig.AddSystemdUnit("coreos-test-installer-no-ignition.service", checkNoIgnition, conf.Enable)
