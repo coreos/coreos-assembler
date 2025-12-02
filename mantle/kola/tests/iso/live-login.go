@@ -2,6 +2,7 @@ package iso
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 
 	"github.com/coreos/coreos-assembler/mantle/kola"
@@ -25,11 +26,16 @@ func testLiveLogin(c cluster.TestCluster, enableUefi bool, enableUefiSecure bool
 		fmt.Println(err)
 		return
 	}
+
+	qc, ok := c.Cluster.(*qemu.Cluster)
+	if !ok {
+		c.Fatalf("Unsupported cluster type")
+	}
+
 	butane := conf.Butane(`
 variant: fcos
 version: 1.1.0`)
 
-	errchan := make(chan error)
 	overrideFW := func(builder *platform.QemuBuilder) error {
 		switch {
 		case enableUefiSecure:
@@ -39,34 +45,36 @@ version: 1.1.0`)
 		}
 		return nil
 	}
+
+	var isoCompletionOutput *os.File
 	setupDisks := func(_ platform.QemuMachineOptions, builder *platform.QemuBuilder) error {
+		isopath := filepath.Join(kola.CosaBuild.Dir, kola.CosaBuild.Meta.BuildArtifacts.LiveIso.Path)
+		err := builder.AddIso(isopath, "", false)
+		if err != nil {
+			return err
+		}
+
 		// https://github.com/coreos/fedora-coreos-config/blob/testing-devel/overlay.d/05core/usr/lib/systemd/system/coreos-liveiso-success.service
-		output, err := builder.VirtioChannelRead("coreos.liveiso-success")
+		isoCompletionOutput, err = builder.VirtioChannelRead("coreos.liveiso-success")
 		if err != nil {
 			return errors.Wrap(err, "setting up virtio-serial channel")
 		}
 
-		// Read line in a goroutine and send errors to channel
-		go func() {
-			errchan <- checkTestOutput(output, []string{"coreos-liveiso-success"})
-		}()
-
-		isopath := filepath.Join(kola.CosaBuild.Dir, kola.CosaBuild.Meta.BuildArtifacts.LiveIso.Path)
-		return builder.AddIso(isopath, "", false)
+		return nil
 	}
 
-	switch pc := c.Cluster.(type) {
-	case *qemu.Cluster:
-		callbacks := qemu.BuilderCallbacks{SetupDisks: setupDisks, OverrideDefaults: overrideFW}
-		_, err := pc.NewMachineWithQemuOptionsAndBuilderCallbacks(butane, platform.QemuMachineOptions{}, callbacks)
-		if err != nil {
-			c.Fatalf("Unable to create test machine: %v", err)
-		}
-	default:
-		c.Fatalf("Unsupported cluster type")
+	callbacks := qemu.BuilderCallbacks{SetupDisks: setupDisks, OverrideDefaults: overrideFW}
+	_, err := qc.NewMachineWithQemuOptionsAndBuilderCallbacks(butane, platform.QemuMachineOptions{}, callbacks)
+	if err != nil {
+		c.Fatalf("Unable to create test machine: %v", err)
 	}
 
-	err := <-errchan
+	errchan := make(chan error)
+	go func() {
+		errchan <- checkTestOutput(isoCompletionOutput, []string{"coreos-liveiso-success"})
+	}()
+
+	err = <-errchan
 	if err != nil {
 		c.Fatal(err)
 	}
@@ -79,6 +87,7 @@ func isoLiveLogin(c cluster.TestCluster) {
 func isoLiveLoginUefi(c cluster.TestCluster) {
 	testLiveLogin(c, true, false)
 }
+
 func isoLiveLoginUefiSecure(c cluster.TestCluster) {
 	testLiveLogin(c, false, true)
 }

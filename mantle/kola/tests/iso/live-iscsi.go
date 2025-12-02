@@ -113,11 +113,7 @@ func isoInstalliScsi(c cluster.TestCluster, opts IsoTestOpts) {
 	if err != nil {
 		c.Fatal(err)
 	}
-	keys, err := qc.Keys()
-	if err != nil {
-		c.Fatal(err)
-	}
-	config.CopyKeys(keys)
+
 	// Add a failure target to stop the test if something go wrong rather than waiting for the 10min timeout
 	config.AddSystemdUnit("coreos-test-entered-emergency-target.service", signalFailureUnit, conf.Enable)
 	config.MountHost("/var/cosaroot", true)
@@ -131,14 +127,14 @@ func isoInstalliScsi(c cluster.TestCluster, opts IsoTestOpts) {
 		return nil
 	}
 
-	errchan := make(chan error)
+	var isoCompletionOutput *os.File
 	setupDisks := func(_ platform.QemuMachineOptions, builder *platform.QemuBuilder) error {
 		isopath := filepath.Join(kola.CosaBuild.Dir, kola.CosaBuild.Meta.BuildArtifacts.LiveIso.Path)
 		if err := builder.AddIso(isopath, "", false); err != nil {
 			return err
 		}
 
-		output, err := builder.VirtioChannelRead("testisocompletion")
+		isoCompletionOutput, err = builder.VirtioChannelRead("testisocompletion")
 		if err != nil {
 			return errors.Wrap(err, "setting up virtio-serial channel")
 		}
@@ -171,19 +167,24 @@ func isoInstalliScsi(c cluster.TestCluster, opts IsoTestOpts) {
 		// qemuexec the nested VM for the test. See resources/iscsi_butane_setup.yaml
 		builder.MountHost("/", "/var/cosaroot", true)
 
-		// Read line in a goroutine and send errors to channel
-		go func() {
-			errchan <- checkTestOutput(output, []string{"iscsi-boot-ok"})
-		}()
-
 		return nil
 	}
 
+	extra := platform.QemuMachineOptions{}
+	extra.SkipStartMachine = true
 	callbacks := qemu.BuilderCallbacks{SetupDisks: setupDisks, OverrideDefaults: overrideFW}
-	_, err = qc.NewMachineWithQemuOptionsAndBuilderCallbacks(config, platform.QemuMachineOptions{}, callbacks)
+	qm, err := qc.NewMachineWithQemuOptionsAndBuilderCallbacks(config, extra, callbacks)
 	if err != nil {
 		c.Fatalf("Unable to create test machine: %v", err)
 	}
+
+	errchan := make(chan error)
+	go func() {
+		errchan <- qm.IgnitionError()
+	}()
+	go func() {
+		errchan <- checkTestOutput(isoCompletionOutput, []string{"iscsi-boot-ok"})
+	}()
 
 	err = <-errchan
 	if err != nil {

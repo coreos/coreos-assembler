@@ -2,6 +2,7 @@ package iso
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 
 	"github.com/coreos/coreos-assembler/mantle/kola"
@@ -59,11 +60,6 @@ func isoTestAsDisk(c cluster.TestCluster, opts IsoTestOpts) {
 	}
 	config.AddSystemdUnit("live-signal-ok.service", liveSignalOKUnit, conf.Enable)
 	config.AddSystemdUnit("verify-no-efi-boot-entry.service", verifyNoEFIBootEntry, conf.Enable)
-	keys, err := qc.Keys()
-	if err != nil {
-		c.Fatal(err)
-	}
-	config.CopyKeys(keys)
 
 	overrideFW := func(builder *platform.QemuBuilder) error {
 		switch {
@@ -75,27 +71,36 @@ func isoTestAsDisk(c cluster.TestCluster, opts IsoTestOpts) {
 		return nil
 	}
 
-	errchan := make(chan error)
+	var isoCompletionOutput *os.File
 	setupDisks := func(_ platform.QemuMachineOptions, builder *platform.QemuBuilder) error {
-		output, err := builder.VirtioChannelRead("testisocompletion")
+		isopath := filepath.Join(kola.CosaBuild.Dir, kola.CosaBuild.Meta.BuildArtifacts.LiveIso.Path)
+		if err := builder.AddIso(isopath, "", true); err != nil {
+			return err
+		}
+
+		isoCompletionOutput, err = builder.VirtioChannelRead("testisocompletion")
 		if err != nil {
 			return errors.Wrap(err, "setting up virtio-serial channel")
 		}
 
-		// Read line in a goroutine and send errors to channel
-		go func() {
-			errchan <- checkTestOutput(output, []string{liveOKSignal})
-		}()
-
-		isopath := filepath.Join(kola.CosaBuild.Dir, kola.CosaBuild.Meta.BuildArtifacts.LiveIso.Path)
-		return builder.AddIso(isopath, "", true)
+		return nil
 	}
 
+	extra := platform.QemuMachineOptions{}
+	extra.SkipStartMachine = true
 	callbacks := qemu.BuilderCallbacks{SetupDisks: setupDisks, OverrideDefaults: overrideFW}
-	_, err = qc.NewMachineWithQemuOptionsAndBuilderCallbacks(config, platform.QemuMachineOptions{}, callbacks)
+	qm, err := qc.NewMachineWithQemuOptionsAndBuilderCallbacks(config, extra, callbacks)
 	if err != nil {
 		c.Fatalf("Unable to create test machine: %v", err)
 	}
+
+	errchan := make(chan error)
+	go func() {
+		errchan <- qm.IgnitionError()
+	}()
+	go func() {
+		errchan <- checkTestOutput(isoCompletionOutput, []string{liveOKSignal})
+	}()
 
 	err = <-errchan
 	if err != nil {
