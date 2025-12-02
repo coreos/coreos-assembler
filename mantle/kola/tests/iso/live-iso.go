@@ -229,15 +229,11 @@ func isoRunTest(c cluster.TestCluster, opts IsoTestOpts, tempdir string) error {
 	if opts.enableMultipath {
 		qc.EnforceMultipath()
 	}
-	keys, err := qc.Keys()
-	if err != nil {
-		return err
-	}
+
 	targetConfig, err := conf.EmptyIgnition().Render(conf.FailWarnings)
 	if err != nil {
 		return err
 	}
-	targetConfig.CopyKeys(keys)
 	targetConfig.AddSystemdUnit("coreos-test-installer.service", signalCompletionUnit, conf.Enable)
 	targetConfig.AddSystemdUnit("coreos-test-entered-emergency-target.service", signalFailureUnit, conf.Enable)
 	targetConfig.AddSystemdUnit("coreos-test-installer-no-ignition.service", checkNoIgnition, conf.Enable)
@@ -359,7 +355,6 @@ func isoRunTest(c cluster.TestCluster, opts IsoTestOpts, tempdir string) error {
 	if err != nil {
 		return err
 	}
-	liveConfig.CopyKeys(keys)
 	liveConfig.AddSystemdUnit("live-signal-ok.service", liveSignalOKUnit, conf.Enable)
 	liveConfig.AddSystemdUnit("verify-no-efi-boot-entry.service", verifyNoEFIBootEntry, conf.Enable)
 	liveConfig.AddSystemdUnit("iso-not-mounted-when-fromram.service", isoNotMountedUnit, conf.Enable)
@@ -446,8 +441,8 @@ func isoRunTest(c cluster.TestCluster, opts IsoTestOpts, tempdir string) error {
 
 	extra := platform.QemuMachineOptions{}
 	extra.SkipStartMachine = true
-	callacks := qemu.BuilderCallbacks{SetupDisks: setupDisks, SetupNetwork: setupNet, OverrideDefaults: overrideFW}
-	qm, err := qc.NewMachineWithQemuOptionsAndBuilderCallbacks(liveConfig, extra, callacks)
+	callbacks := qemu.BuilderCallbacks{SetupDisks: setupDisks, SetupNetwork: setupNet, OverrideDefaults: overrideFW}
+	qm, err := qc.NewMachineWithQemuOptionsAndBuilderCallbacks(liveConfig, extra, callbacks)
 	if err != nil {
 		return errors.Wrap(err, "unable to create test machine")
 	}
