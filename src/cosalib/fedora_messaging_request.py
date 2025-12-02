@@ -195,6 +195,6 @@ def watch_finished_messages(cond, registered,
     }
 
     consumers = twisted_consume(callback, bindings=bindings, queues=queues)
-    consumers.addCallback(registered_cb)
+    consumers.addCallback(registered_cb)  # pylint: disable=E1101
     consumers.addErrback(error_cb)  # pylint: disable=E1101
     reactor.run(installSignalHandlers=False)  # pylint: disable=E1101
