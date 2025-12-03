@@ -1,0 +1,77 @@
+From 5f14b208d8d53a700ca8c9ec8055fc93a04db572 Mon Sep 17 00:00:00 2001
+From: Huijing Hei <hhei@redhat.com>
+Date: Wed, 3 Dec 2025 13:24:00 +0800
+Subject: [PATCH] stages: extend to find EFI under `usr/lib/efi`
+
+Because of the change [1], the EFI files will not be copied to
+`usr/lib/bootupd/updates/EFI`, extend support to find EFI files
+from `usr/lib/efi/`.
+See tracker issue [2].
+
+[1] https://github.com/coreos/bootupd/commit/123a0cd364e89e02b52fb51a53e991c15ada02b7
+[2] https://github.com/coreos/bootupd/issues/926
+
+Fixes: https://github.com/osbuild/osbuild/issues/2263
+
+Co-worked-by: Dusty Mabe <dusty@dustymabe.com>
+Signed-off-by: Huijing Hei <hhei@redhat.com>
+---
+ stages/org.osbuild.coreos.live-artifacts.mono | 28 +++++++++++++++++--
+ 1 file changed, 26 insertions(+), 2 deletions(-)
+
+diff --git a/stages/org.osbuild.coreos.live-artifacts.mono b/stages/org.osbuild.coreos.live-artifacts.mono
+index 35ecac4e..5bcf97d8 100755
+--- a/stages/org.osbuild.coreos.live-artifacts.mono
++++ b/stages/org.osbuild.coreos.live-artifacts.mono
+@@ -143,6 +143,25 @@ def ensure_glob(pathname, n="", **kwargs):
+     return ret
+ 
+ 
++# This function finds the source EFI paths to copy from /usr/ to the EFI/
++# directory. Historically this was just the usr/lib/bootupd/updates/EFI/
++# directory (populated by bootupd), but as part of BootLoaderUpdatesPhase1 [1]
++# the shim and grub packages started delivering files in
++# /usr/lib/efi/(grub|shim)/<version>/EFI/ directly. Lets prefer the
++# new paths and fallback to the legacy path if those don't exist.
++#
++# [1] https://fedoraproject.org/wiki/Changes/BootLoaderUpdatesPhase1
++def find_efi_source_paths(tree):
++    if glob.glob(os.path.join(tree, 'usr/lib/efi/*/*/EFI')):
++        # BootLoaderUpdatesPhase1 has been implemented and we should
++        # be able to pick up files from usr/lib/efi/(grub|shim)/<version>/EFI/
++        # Let's ensure there's only 2 dirs that match (i.e. one for grub
++        # one for shim) and return that list.
++        return ensure_glob(os.path.join(tree, 'usr/lib/efi/*/*/EFI'), n=2)
++    # Legacy path. Just return a single entry list with the old path.
++    return [os.path.join(tree, 'usr/lib/bootupd/updates/EFI')]
++
++
+ def find_efi_vendor_dir_name(efidir):
+     # Find name of vendor directory for this distro. i.e. "fedora" or "redhat".
+     dirs = [n for n in os.listdir(efidir) if n != "BOOT"]
+@@ -485,7 +504,9 @@ def mkefiboot(paths, deployed_tree, volid, loop_client):
+         return tarinfo
+ 
+     efidir = paths["efi"]
+-    shutil.copytree(os.path.join(deployed_tree, 'usr/lib/bootupd/updates/EFI'), efidir)
++    for path in find_efi_source_paths(deployed_tree):
++        shutil.copytree(path, efidir, dirs_exist_ok=True)
++
+     vendor_id = find_efi_vendor_dir_name(efidir)
+ 
+     # Delete fallback and its CSV file.  Its purpose is to create
+@@ -711,7 +732,10 @@ def copy_configs_and_init_kargs_json(deployed_tree, paths, blsentry_kargs, volid
+     # [1] https://github.com/coreos/fedora-coreos-config/tree/testing-devel/live/EFI/fedora
+     # [2] https://github.com/openshift/os/tree/master/live/EFI/vendor
+     # [3] https://github.com/openshift/os/issues/954
+-    efidir = os.path.join(deployed_tree, 'usr/lib/bootupd/updates/EFI')
++    #
++    # To find the string for the vendor ID we only need to inspect one
++    # of the source EFI directories. Grab one here.
++    efidir = find_efi_source_paths(deployed_tree)[0]
+     if os.path.exists(efidir):
+         vendor_id = find_efi_vendor_dir_name(efidir)
+         grubfilepath = ensure_glob(os.path.join(paths["iso"], 'EFI/*/grub.cfg'), n=1)[0]
+-- 
+2.51.0
+
