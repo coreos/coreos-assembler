@@ -206,6 +206,7 @@ patch_osbuild() {
     # shellcheck disable=SC2002
     cat \
         /usr/lib/coreos-assembler/0001-stages-mkfs.xfs-support-setting-agcount.patch \
+        /usr/lib/coreos-assembler/0002-stages-extend-to-find-EFI-under-usr-lib-efi.patch \
             | patch -d /usr/lib/osbuild -p1
     # And then move the files back; supermin appliance creation will need it back
     # in the places delivered by the RPM.
