@@ -62,12 +62,12 @@ mpp-define-images:
       label: gpt
       partitions:
         - name: boot
-          type: 0FC63DAF-8483-4772-8E79-3D69D8477DE4
+          type: BC13C2FF-59E6-4262-A352-B275FD6F7172
           size:
             mpp-format-int: "{boot_size_mb * 1024 * 1024 / sector_size}"
           partnum: 3
         - name: root
-          type: 0FC63DAF-8483-4772-8E79-3D69D8477DE4
+          type: 5EEAD9A9-FE09-4A1E-A1D7-520D00531306
           partnum: 4
   - id: image4k
     sector_size:
@@ -79,12 +79,12 @@ mpp-define-images:
       label: gpt
       partitions:
         - name: boot
-          type: 0FC63DAF-8483-4772-8E79-3D69D8477DE4
+          type: BC13C2FF-59E6-4262-A352-B275FD6F7172
           size:
             mpp-format-int: "{boot_size_mb * 1024 * 1024 / four_k_sector_size}"
           partnum: 3
         - name: root
-          type: 0FC63DAF-8483-4772-8E79-3D69D8477DE4
+          type: 5EEAD9A9-FE09-4A1E-A1D7-520D00531306
           partnum: 4
 pipelines:
   # If installing from container then let's pull the container file into a pipeline
