@@ -114,3 +114,6 @@ kustomize
 
 # For vimdiff
 vim-enhanced
+
+# For reading build-args.conf (environment file)
+python3-dotenv
