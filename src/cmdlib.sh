@@ -288,14 +288,6 @@ prepare_build() {
     summary=$(jq -r '.metadata.summary//.rojig.summary' < "${flattened_manifest}")
     ref=$(jq -r '.ref//""' < "${flattened_manifest}")
     export name ref summary
-    # And validate fields coreos-assembler requires, but not rpm-ostree
-    required_fields=("automatic-version-prefix")
-    for field in "${required_fields[@]}"; do
-        if ! jq -re '."'"${field}"'"' < "${flattened_manifest}" >/dev/null; then
-            echo "Missing required field in src/config/manifest.yaml: ${field}" 1>&2
-            exit 1
-        fi
-    done
 
     # This dir is no longer used
     rm builds/work -rf
