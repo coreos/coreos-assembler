@@ -281,14 +281,6 @@ prepare_build() {
     rpm-ostree compose tree --repo="${tmprepo}" --print-only "${manifest}" > "${flattened_manifest}"
     export flattened_manifest
 
-    # Use metadata.name as the name of the VM images
-    # Also grab metadata.summary for image upload descriptions
-    # XXX: delete the rojig fallbacks once we've moved over to metadata
-    name=$(jq -r '.metadata.name//.rojig.name' < "${flattened_manifest}")
-    summary=$(jq -r '.metadata.summary//.rojig.summary' < "${flattened_manifest}")
-    ref=$(jq -r '.ref//""' < "${flattened_manifest}")
-    export name ref summary
-
     # This dir is no longer used
     rm builds/work -rf
 
