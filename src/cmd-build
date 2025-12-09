@@ -148,6 +148,14 @@ done
 
 prepare_build
 
+# Use metadata.name as the name of the VM images
+# Also grab metadata.summary for image upload descriptions
+# XXX: delete the rojig fallbacks once we've moved over to metadata
+name=$(jq -r '.metadata.name//.rojig.name' < "${flattened_manifest}")
+summary=$(jq -r '.metadata.summary//.rojig.summary' < "${flattened_manifest}")
+ref=$(jq -r '.ref//""' < "${flattened_manifest}")
+export name ref summary
+
 ostree --version
 rpm-ostree --version
 
