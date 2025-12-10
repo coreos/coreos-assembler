@@ -167,9 +167,12 @@ func testGroup(c cluster.TestCluster, m platform.Machine, tests []groupTest) {
 		} else if out != t.groupRecord {
 			c.Errorf("%q wasn't correctly created: got %q, expected %q", t.group, out, t.groupRecord)
 		}
-		if out, err := getent(c, m, "gshadow", t.group); err != nil {
+		out, err := getent(c, m, "gshadow", t.group)
+		if err != nil {
 			c.Fatal(err)
-		} else if out != t.gshadowRecord {
+		}
+		// Accept both '*' and '!' as locked passwords
+		if out != t.gshadowRecord && out != strings.Replace(t.gshadowRecord, ":*:", ":!:", 1) {
 			c.Errorf("%q wasn't correctly created: got %q, expected %q", t.group, out, t.gshadowRecord)
 		}
 	}
