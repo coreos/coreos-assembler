@@ -1,0 +1,30 @@
+name: PR Gating Bot
+
+on:
+  issue_comment:
+    types: [created]
+  pull_request:
+    types: [labeled, unlabeled]
+
+jobs:
+  handle-event:
+    if: >-
+      github.event_name == 'pull_request' ||
+      (github.event_name == 'issue_comment' && github.event.issue.pull_request)
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      contents: write
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v6
+
+      - name: Run Owners Action
+        uses: acardace/owners-bot-action@v2.0
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          owners-file: "OWNERS"
+        env:
+          AUTO_MERGE: false
+          MERGE_STRATEGY: merge
