@@ -8,6 +8,7 @@ set -xeuo pipefail
 BRANCH=${OPENSHIFT_BUILD_REFERENCE:-${PULL_BASE_REF:-main}}
 case ${BRANCH} in
     main) REPO=https://github.com/coreos/rhel-coreos-config; RHCOS_BRANCH=main;;
+    rhel-*) REPO=https://github.com/coreos/rhel-coreos-config; RHCOS_BRANCH=${BRANCH};;
     rhcos-*) REPO=https://github.com/openshift/os; RHCOS_BRANCH=release-${BRANCH#rhcos-};;
     *) echo "Unhandled base ref: ${BRANCH}" 1>&2 && exit 1;;
 esac
