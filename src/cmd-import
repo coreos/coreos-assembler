@@ -153,7 +153,8 @@ def generate_lockfile_and_commitmeta(tmpd, ostree_commit, build_meta):
 
     with open(tmp_lockfile, 'w') as f:
         json.dump(fp=f, obj={
-            'packages': rpmdb
+            'packages': rpmdb,
+            'metadata': {'generated': rfc3339_time(set_midnight=True)}
         })
 
     return tmp_lockfile, tmp_commitmeta
