@@ -7,7 +7,6 @@ it into a `cosa build`, as if one did `cosa build ostree`. One can then e.g.
 '''
 
 import argparse
-from dateutil import (parser, tz)
 import json
 import os
 import subprocess
@@ -23,7 +22,9 @@ from cosalib.cmdlib import (
     rfc3339_time,
     get_basearch,
     sha256sum_file,
-    import_oci_archive)
+    import_oci_archive,
+    skopeo_inspect,
+    parse_timestamp)
 from cosalib.meta import GenericBuildMeta
 
 
@@ -260,15 +261,6 @@ def calculate_and_log_diffs(builds, buildid, arch, starting_buildid):
     diff_cmd_log = ['/usr/lib/coreos-assembler/cmd-diff', '--rpms',
                     '--from', starting_buildid, '--to', buildid]
     subprocess.check_call(diff_cmd_log)
-
-
-def skopeo_inspect(image):
-    return json.loads(subprocess.check_output(['skopeo', 'inspect', '-n', image]))
-
-
-def parse_timestamp(timestamp):
-    timestamp = parser.parse(timestamp)
-    return rfc3339_time(timestamp.astimezone(tz.UTC))
 
 
 if __name__ == '__main__':
