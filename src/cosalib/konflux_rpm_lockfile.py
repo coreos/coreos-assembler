@@ -3,13 +3,13 @@
 import argparse
 import json
 import os
-import sys
-import subprocess
-import yaml
 import re
+import subprocess
+import sys
+import yaml
+from cosalib.cmdlib import get_basearch
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from cosalib.cmdlib import get_basearch
 
 
 def use_koji_url_only(url_list):
