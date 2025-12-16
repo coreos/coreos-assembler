@@ -587,3 +587,17 @@ def skopeo_inspect(image):
 def parse_timestamp(timestamp):
     timestamp = parser.parse(timestamp)
     return rfc3339_time(timestamp.astimezone(tz.UTC))
+
+
+def get_file_content_from_ostree(repo_path, file_path, refspec):
+    """
+    Calls ostree and returns the content of the file as a string.
+    """
+    command = ["ostree", "cat", f"--repo={repo_path}", refspec, file_path]
+    result = subprocess.run(
+        command,
+        capture_output=True,
+        text=True,
+        check=True
+    )
+    return result.stdout

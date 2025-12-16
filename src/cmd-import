@@ -1,5 +1,7 @@
 #!/usr/bin/python3
 
+from cosalib.konflux_rpm_lockfile import generate_konflux_lockfile
+
 '''
 This command takes a containers-transports(5) ref to an OCI image and converts
 it into a `cosa build`, as if one did `cosa build ostree`. One can then e.g.
@@ -24,7 +26,8 @@ from cosalib.cmdlib import (
     sha256sum_file,
     import_oci_archive,
     skopeo_inspect,
-    parse_timestamp)
+    parse_timestamp,
+    get_file_content_from_ostree)
 from cosalib.meta import GenericBuildMeta
 
 
@@ -61,10 +64,10 @@ def main():
         build_meta = generate_build_meta(tmp_oci_archive, tmp_oci_manifest, metadata, ostree_commit)
 
         # artificially recreate generated lockfile and commitmeta.json
-        tmp_lockfile, tmp_commitmeta = generate_lockfile_and_commitmeta(tmpd, ostree_commit, build_meta)
+        tmp_lockfile, tmp_commitmeta, tmp_konflux_lockfile = generate_lockfile_and_commitmeta(tmpd, ostree_commit, build_meta, args.konflux_lockfile)
 
         # move into official location
-        finalize_build(builds, build_meta, tmp_oci_archive, tmp_oci_manifest, tmp_lockfile, tmp_commitmeta)
+        finalize_build(builds, build_meta, tmp_oci_archive, tmp_oci_manifest, tmp_lockfile, tmp_commitmeta, tmp_konflux_lockfile)
 
     # Now that the build has been created (i.e. files put into the
     # right places) let's use `cosa diff` to insert package and
@@ -86,6 +89,9 @@ def parse_args():
                         help="Skip prunning previous builds")
     parser.add_argument("--parent-build",
                         help="The parent build to diff against")
+    parser.add_argument("--konflux-lockfile",
+                        help="Generate Konflux RPM lockfile during import.",
+                        action='store_true')
     return parser.parse_args()
 
 
@@ -112,7 +118,7 @@ def generate_oci_manifest(ociarchive, tmpd):
     return tmpf
 
 
-def generate_lockfile_and_commitmeta(tmpd, ostree_commit, build_meta):
+def generate_lockfile_and_commitmeta(tmpd, ostree_commit, build_meta, konflux_lockfile=False):
     tmp_lockfile = os.path.join(tmpd, 'lockfile.json')
     tmp_commitmeta = os.path.join(tmpd, 'commitmeta.json')
     out = subprocess.check_output(['rpm-ostree', 'db', 'list', '--repo', 'tmp/repo', ostree_commit], encoding='utf-8')
@@ -157,7 +163,30 @@ def generate_lockfile_and_commitmeta(tmpd, ostree_commit, build_meta):
             'metadata': {'generated': rfc3339_time(set_midnight=True)}
         })
 
-    return tmp_lockfile, tmp_commitmeta
+    tmp_konflux_lockfile = None
+    if konflux_lockfile:
+        treefile_content = get_file_content_from_ostree('tmp/repo',
+                                                        '/usr/share/rpm-ostree/treefile.json',
+                                                        ostree_commit)
+        treefile_data = json.loads(treefile_content)
+
+        # injecting releasever in the treefile JSON file to avoid adding another
+        # option in generate_konflux_lockfile
+        releasever = build_meta.get('buildid').split('.')[0]
+        treefile_data['releasever'] = releasever
+
+        treefile_path = f"{tmpd}/treefile.json"
+        with open(treefile_path, 'w') as f:
+            json.dump(treefile_data, f, indent=2)
+
+        tmp_konflux_lockfile = f'{tmpd}/rpms.lock.yaml'
+        args = argparse.Namespace(context='src/config',
+                                  manifest=treefile_path,
+                                  output=tmp_konflux_lockfile,
+                                  arch=[])
+        generate_konflux_lockfile(args)
+
+    return tmp_lockfile, tmp_commitmeta, tmp_konflux_lockfile
 
 
 def generate_build_meta(tmp_oci_archive, tmp_oci_manifest, metadata, ostree_commit):
@@ -216,7 +245,7 @@ def generate_build_meta(tmp_oci_archive, tmp_oci_manifest, metadata, ostree_comm
     return meta
 
 
-def finalize_build(builds, build_meta, tmp_oci_archive, tmp_oci_manifest, tmp_lockfile, tmp_commitmeta):
+def finalize_build(builds, build_meta, tmp_oci_archive, tmp_oci_manifest, tmp_lockfile, tmp_commitmeta, tmp_konflux_lockfile):
     buildid = build_meta['buildid']
     arch = build_meta['coreos-assembler.basearch']
 
@@ -226,6 +255,8 @@ def finalize_build(builds, build_meta, tmp_oci_archive, tmp_oci_manifest, tmp_lo
     shutil.move(tmp_oci_archive, f'{destdir}/{build_meta['images']['ostree']['path']}')
     shutil.move(tmp_oci_manifest, f'{destdir}/{build_meta['images']['oci-manifest']['path']}')
     shutil.move(tmp_lockfile, f'{destdir}/manifest-lock.generated.{arch}.json')
+    if tmp_konflux_lockfile:
+        shutil.move(tmp_konflux_lockfile, f'{destdir}/{arch}.rpms.lock.yaml')
     shutil.move(tmp_commitmeta, f'{destdir}/commitmeta.json')
 
     with open(f'{destdir}/meta.json', 'w') as f:
