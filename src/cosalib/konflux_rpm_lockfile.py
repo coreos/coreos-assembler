@@ -187,7 +187,7 @@ def get_locked_nevras(srcdir, arch):
     return data.get('packages', [])
 
 
-def generate_main(args):
+def generate_konflux_lockfile(args):
     """
     Generates the cachi2/hermeto RPM lock file.
     """
@@ -325,7 +325,7 @@ if __name__ == "__main__":
         choices=['x86_64', 'aarch64', 's390x', 'ppc64le', 'all'],
         help="The architecture to resolve. Can be specified multiple times. 'all' resolves all architectures."
     )
-    parser_generate.set_defaults(func=generate_main)
+    parser_generate.set_defaults(func=generate_konflux_lockfile)
 
     # MERGE command
     parser_merge = subparsers.add_parser(
