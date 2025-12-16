@@ -221,12 +221,14 @@ def info(msg):
     sys.stderr.write(f"info: {msg}")
 
 
-def rfc3339_time(t=None):
+def rfc3339_time(t=None, set_midnight=False):
     """
     Produces a rfc3339 compliant time string.
 
     :param t: The full path to the file
     :type: t: datetime.datetime
+    :param set_midnight: set 00:00:00Z as H:M:S
+    :type set_midnight: bool
     :returns: a rfc3339 compliant time string
     :rtype: str
     """
@@ -236,6 +238,8 @@ def rfc3339_time(t=None):
         # if the need arises, we can convert to UTC, but let's just enforce
         # this doesn't slip by for now
         assert t.tzname() == 'UTC', "Timestamp must be in UTC format"
+    if set_midnight:
+        t = t.replace(hour=0, minute=0, second=0)
     return t.strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
