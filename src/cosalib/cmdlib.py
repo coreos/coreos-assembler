@@ -14,6 +14,7 @@ import sys
 import tempfile
 import gi
 import yaml
+from dateutil import (parser, tz)
 
 from botocore.exceptions import (
     ConnectionClosedError,
@@ -575,3 +576,12 @@ def ensure_glob(pathname, **kwargs):
 def ncpu():
     '''Return the number of usable CPUs we have for parallelism.'''
     return int(subprocess.check_output(['kola', 'ncpu']))
+
+
+def skopeo_inspect(image):
+    return json.loads(subprocess.check_output(['skopeo', 'inspect', '-n', image]))
+
+
+def parse_timestamp(timestamp):
+    timestamp = parser.parse(timestamp)
+    return rfc3339_time(timestamp.astimezone(tz.UTC))
