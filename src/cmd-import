@@ -150,12 +150,14 @@ def generate_lockfile_and_commitmeta(tmpd, ostree_commit, build_meta):
 
     with open(tmp_commitmeta, 'w') as f:
         json.dump(commitmeta, f, indent=2)
+        f.write('\n')  # Add newline to the end of the file
 
     with open(tmp_lockfile, 'w') as f:
         json.dump(fp=f, obj={
             'packages': rpmdb,
             'metadata': {'generated': rfc3339_time(set_midnight=True)}
         })
+        f.write('\n')  # Add newline to the end of the file
 
     return tmp_lockfile, tmp_commitmeta
 
