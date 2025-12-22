@@ -17,6 +17,8 @@ package misc
 import (
 	"encoding/json"
 	"fmt"
+	"runtime"
+	"strings"
 
 	"github.com/coreos/coreos-assembler/mantle/kola/cluster"
 	"github.com/coreos/coreos-assembler/mantle/kola/register"
@@ -26,11 +28,43 @@ import (
 	ignv3types "github.com/coreos/ignition/v2/config/v3_0/types"
 )
 
+const (
+	// Extended Boot Loader Partition
+	XBootldr = "BC13C2FF-59E6-4262-A352-B275FD6F7172"
+
+	// EFI System Partition (ESP) for UEFI boot
+	ESP = "C12A7328-F81F-11D2-BA4B-00A0C93EC93B"
+)
+
+var RootPartition = map[string]string{
+	// Root partition for 64-bit x86/AMD64
+	"amd64": "4F68BCE3-E8CD-4DB1-96E7-FBCAF984B709",
+	// Root partition for 64-bit ARM/AArch64 architecture
+	"arm64": "B921B045-1DF0-41C3-AF44-4C6F280D3FAE",
+	// Root partition for 64-bit PowerPC Big Endian
+	"ppc64": "912ADE1D-A839-4913-8964-A10EEE08FBD2",
+	// Root partition for 64-bit PowerPC Little Endian
+	"ppc64le": "C31C45E6-3F39-412E-80FB-4809C4980599",
+	// Root partition for s390x architecture
+	"s390x": "5EEAD9A9-FE09-4A1E-A1D7-520D00531306",
+	// Root partition for 64-bit RISC-V
+	"riscv64": "72EC70A6-CF74-40E6-BD49-4BDA08E8F224",
+}[runtime.GOARCH]
+
 func init() {
 	register.RegisterTest(&register.Test{
 		Run:         varLibContainers,
 		ClusterSize: 0,
 		Name:        `coreos.misc.disk.varlibcontainers`,
+		Flags:       []register.Flag{},
+		Distros:     []string{"rhcos", "fcos"},
+		Platforms:   []string{"qemu"},
+	})
+
+	register.RegisterTest(&register.Test{
+		Run:         dpsUuidTest,
+		ClusterSize: 0,
+		Name:        "coreos.misc.disk.dpsUuid",
 		Flags:       []register.Flag{},
 		Distros:     []string{"rhcos", "fcos"},
 		Platforms:   []string{"qemu"},
@@ -153,4 +187,105 @@ func varLibContainers(c cluster.TestCluster) {
 		c.Fatalf("%s is not mounted on %s", vlc, secondaryDisk)
 	}
 	c.MustSSH(m, "sudo podman build -t test -f Dockerfile .")
+}
+
+type LSBLK struct {
+	Blockdevices []BlockDevice `json:"blockdevices"`
+}
+
+type BlockDevice struct {
+	Name         string        `json:"name"`
+	PartType     *string       `json:"parttype"`
+	UUID         *string       `json:"uuid"`
+	Mountpoint   *string       `json:"mountpoint"`
+	PartTypeName *string       `json:"parttypename"`
+	Label        *string       `json:"label"`
+	Children     []BlockDevice `json:"children,omitempty"`
+}
+
+func dpsFatalFail(c cluster.TestCluster, blockDev *BlockDevice, reqUuid string) {
+	c.Fatalf(
+		"Partition '%s' does not have DPS UUID. Have: %s, Need: %s",
+		blockDev.Name,
+		*blockDev.PartType,
+		reqUuid,
+	)
+}
+
+func dpsUuidTest(c cluster.TestCluster) {
+	c.Platform()
+
+	m, err := c.NewMachine(nil)
+	if err != nil {
+		c.Fatal(err)
+	}
+
+	// find the partition
+	devMajMin := strings.TrimSpace(string(c.MustSSH(m, "findmnt -no MAJ:MIN /sysroot")))
+
+	// find the backing dev
+	cmd := fmt.Sprintf("basename $(dirname $(readlink -f /sys/dev/block/%s))", devMajMin)
+	device := strings.TrimSpace(string(c.MustSSH(m, cmd)))
+
+	cmd = fmt.Sprintf(
+		"lsblk -oname,parttype,uuid,mountpoint,parttypename,label --json /dev/%s",
+		device,
+	)
+	lsblkOut := c.MustSSH(m, cmd)
+
+	lsblk := LSBLK{}
+
+	err = json.Unmarshal(lsblkOut, &lsblk)
+	if err != nil {
+		c.Fatal(err)
+	}
+
+	if len(lsblk.Blockdevices) != 1 {
+		c.Fatalf("More than one block device found for device no '%s'", devMajMin)
+	}
+
+	// NOTE: Not adding a check for whether we found the XBootldr
+	// partition or not as there would be a few cases where it won't be used
+	// Ex. In composefs-native UKI case
+	var (
+		rootFound = false
+		espFound  = false
+	)
+
+	for _, child := range lsblk.Blockdevices[0].Children {
+		if child.Label == nil {
+			continue
+		}
+
+		if child.PartType == nil {
+			c.Fatalf("'%s' has no parttype", child.Name)
+		}
+
+		switch *child.Label {
+		case "boot":
+			if strings.ToUpper(*child.PartType) != XBootldr {
+				dpsFatalFail(c, &child, XBootldr)
+			}
+
+		case "root":
+			rootFound = true
+			if strings.ToUpper(*child.PartType) != RootPartition {
+				dpsFatalFail(c, &child, RootPartition)
+			}
+
+		case "EFI-SYSTEM":
+			espFound = true
+			if strings.ToUpper(*child.PartType) != ESP {
+				dpsFatalFail(c, &child, ESP)
+			}
+		}
+	}
+
+	if !rootFound {
+		c.Fatalf("Root partition not found")
+	}
+
+	if !espFound {
+		c.Fatalf("EFI partition not found")
+	}
 }
