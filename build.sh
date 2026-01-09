@@ -112,6 +112,13 @@ install_rpms() {
         ln -s {/usr/share/distribution-gpg-keys/centos,/etc/pki/rpm-gpg}/RPM-GPG-KEY-CentOS-SIG-Virtualization
     fi
 
+    # Allow group write permissions on /usr/bin because in upstream
+    # project's CI we want to overwrite binaries for testing. The dir is
+    # owned by root:root and CI runs in openshift as a user that is a
+    # member of the `root` (GID: 0) group.
+    # See https://github.com/coreos/coreos-installer/pull/1716
+    chmod g+w /usr/bin
+
     # Further cleanup
     yum clean all
 }
