@@ -112,6 +112,16 @@ install_rpms() {
         ln -s {/usr/share/distribution-gpg-keys/centos,/etc/pki/rpm-gpg}/RPM-GPG-KEY-CentOS-SIG-Virtualization
     fi
 
+    # Allow group write permissions on /usr/ because in upstream project's
+    # CI we want to overwrite software for testing. The directories
+    # are typically owned by root:root and CI runs in openshift as a user
+    # that is a member of the `root` (GID: 0) group.
+    # See https://github.com/coreos/coreos-installer/pull/1716
+    chmod -R g+w /usr/
+    # And also one exception for /etc/grub.d (ostree upstream tries to
+    # put a symlink in this directory).
+    chmod g+rwx /etc/grub.d
+
     # Further cleanup
     yum clean all
 }
