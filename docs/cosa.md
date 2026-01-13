@@ -13,12 +13,13 @@ supported arguments.
 
 | Name | Description |
 | ---- | ----------- |
-| [build](https://github.com/coreos/coreos-assembler/blob/main/src/cmd-build) | Build OSTree and image base artifacts from previously fetched packages
+| [build](https://github.com/coreos/coreos-assembler/blob/main/src/cmd-build) | Build an OCI bootable container
 | [clean](https://github.com/coreos/coreos-assembler/blob/main/src/cmd-clean) | Delete all build artifacts
 | [fetch](https://github.com/coreos/coreos-assembler/blob/main/src/cmd-fetch) | Fetch and import the latest packages
 | [init](https://github.com/coreos/coreos-assembler/blob/main/src/cmd-init) | Setup the current working directory for CoreOS Assembler and clone the given project URL as Git config
 | [kola](https://github.com/coreos/coreos-assembler/blob/main/src/cmd-kola) | Run tests with [kola](kola.md)
 | [list](https://github.com/coreos/coreos-assembler/blob/main/src/cmd-list) | List builds available locally
+| [osbuild](https://github.com/coreos/coreos-assembler/blob/main/src/cmd-osbuild) | Derive the OCI container to a bootable disk image for a given platform
 | [run](https://github.com/coreos/coreos-assembler/blob/main/src/cmd-run) | Run a CoreOS instance in QEMU with access to a root shell
 | [shell](https://github.com/coreos/coreos-assembler/blob/main/src/cmd-shell) | Get an interactive shell or run a command in a CoreOS Assembler container
 | [virt-install](https://github.com/coreos/coreos-assembler/blob/main/src/cmd-virt-install) | "Install" a CoreOS system with libvirt
@@ -33,19 +34,15 @@ not produce an image with your changes):
 | [build-fast](https://github.com/coreos/coreos-assembler/blob/main/src/cmd-build-fast) | Creates a new QCOW2 image from an existing build and updates the ostree commit with local overrides. This will only change files located in the final root (i.e. part of an ostree commit).
 | [buildinitramfs-fast](https://github.com/coreos/coreos-assembler/blob/main/src/cmd-buildinitramfs-fast) | Create a new QCOW2 image from an existing build and updates the initramfs with local overrides. This will not re-run dracut to rebuild the initramfs.
 
-## buildextend commands
-
-By default, the `build` command will build an OSTree and a QEMU image as base
-artifacts. Those commands extend those artifacts to make them functional on
-other platforms or cloud providers:
+# osbuild usage
 
 | Name | Description |
 | ---- | ----------- |
-| [buildextend-live](https://github.com/coreos/coreos-assembler/blob/main/src/cmd-buildextend-live) | Generate the Live ISO
-| [buildextend-{dasd,metal,metal4k,qemu,secex}](https://github.com/coreos/coreos-assembler/blob/main/src/cmd-buildextend-metal) | Generate artifacts for the given platforms
-| [buildextend-{aliyun,aws,azure,digitalocean,exoscale,gcp,vultr}](https://github.com/coreos/coreos-assembler/blob/main/src/cmd-ore-wrapper) | Generate artifacts for the given platforms
-| [buildextend-{azurestack,ibmcloud,openstack,vmware}](https://github.com/coreos/coreos-assembler/blob/main/src/cmd-artifact-disk) | Generate artifacts for the given platforms
-| [{aliyun,aws}-replicate](https://github.com/coreos/coreos-assembler/blob/main/src/cmd-ore-wrapper) | Replicate images on the platforms (AMIs for AWS)
+| `osbuild qemu` | Create a qemu image
+| `osbuild live` | Create a live iso 
+| `osbuild <platform>` | Create an image for the specified platform
+| `osbuils --supported-platforms` | List of all supported platforms
+
 
 ## Misc commands
 
