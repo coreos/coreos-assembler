@@ -185,24 +185,23 @@ repository.
 
 ## Performing a build
 
-First, we fetch all the metadata and packages:
-
-```
-$ cosa fetch
-```
-
-And now we can build from these inputs:
+We will now build the bootable container (ostree) and image base artifacts, which
+can later be used to produce images for specific target platforms. Each build generates
+a new directory in `$PWD/builds/`.
 
 ```
 $ cosa build
 ```
 
-Each build will create a new directory in `$PWD/builds/`, containing the
-generated OSTree commit (as a tarball) and the qemu VM image.
-
 Next, rerun `cosa build` and notice the system correctly
-deduces that nothing changed.  You can run `cosa fetch`
-again to check for updated RPMs.
+deduces that nothing changed.
+
+At this point we can generate a platform-specific image, we will generate a 
+qemu image by running:
+
+```
+$ cosa osbuild qemu
+```
 
 ## Running
 
