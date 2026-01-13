@@ -34,20 +34,6 @@ not produce an image with your changes):
 | [build-fast](https://github.com/coreos/coreos-assembler/blob/main/src/cmd-build-fast) | Creates a new QCOW2 image from an existing build and updates the ostree commit with local overrides. This will only change files located in the final root (i.e. part of an ostree commit).
 | [buildinitramfs-fast](https://github.com/coreos/coreos-assembler/blob/main/src/cmd-buildinitramfs-fast) | Create a new QCOW2 image from an existing build and updates the initramfs with local overrides. This will not re-run dracut to rebuild the initramfs.
 
-## buildextend commands
-
-By default, the `build` command will build an OSTree and a QEMU image as base
-artifacts. Those commands extend those artifacts to make them functional on
-other platforms or cloud providers:
-
-| Name | Description |
-| ---- | ----------- |
-| [buildextend-live](https://github.com/coreos/coreos-assembler/blob/main/src/cmd-buildextend-live) | Generate the Live ISO
-| [buildextend-{dasd,metal,metal4k,qemu,secex}](https://github.com/coreos/coreos-assembler/blob/main/src/cmd-buildextend-metal) | Generate artifacts for the given platforms
-| [buildextend-{aliyun,aws,azure,digitalocean,exoscale,gcp,vultr}](https://github.com/coreos/coreos-assembler/blob/main/src/cmd-ore-wrapper) | Generate artifacts for the given platforms
-| [buildextend-{azurestack,ibmcloud,openstack,vmware}](https://github.com/coreos/coreos-assembler/blob/main/src/cmd-artifact-disk) | Generate artifacts for the given platforms
-| [{aliyun,aws}-replicate](https://github.com/coreos/coreos-assembler/blob/main/src/cmd-ore-wrapper) | Replicate images on the platforms (AMIs for AWS)
-
 ## Misc commands
 
 Those less commonly used commands are listed here:
