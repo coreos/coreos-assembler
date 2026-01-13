@@ -13,12 +13,13 @@ supported arguments.
 
 | Name | Description |
 | ---- | ----------- |
-| [build](https://github.com/coreos/coreos-assembler/blob/main/src/cmd-build) | Build OSTree and image base artifacts from previously fetched packages
+| [build](https://github.com/coreos/coreos-assembler/blob/main/src/cmd-build) | Build OSTree from previously fetched packages
 | [clean](https://github.com/coreos/coreos-assembler/blob/main/src/cmd-clean) | Delete all build artifacts
 | [fetch](https://github.com/coreos/coreos-assembler/blob/main/src/cmd-fetch) | Fetch and import the latest packages
 | [init](https://github.com/coreos/coreos-assembler/blob/main/src/cmd-init) | Setup the current working directory for CoreOS Assembler and clone the given project URL as Git config
 | [kola](https://github.com/coreos/coreos-assembler/blob/main/src/cmd-kola) | Run tests with [kola](kola.md)
 | [list](https://github.com/coreos/coreos-assembler/blob/main/src/cmd-list) | List builds available locally
+| [osbuild](https://github.com/coreos/coreos-assembler/blob/main/src/cmd-osbuild) | Create an image for a given platform
 | [run](https://github.com/coreos/coreos-assembler/blob/main/src/cmd-run) | Run a CoreOS instance in QEMU with access to a root shell
 | [shell](https://github.com/coreos/coreos-assembler/blob/main/src/cmd-shell) | Get an interactive shell or run a command in a CoreOS Assembler container
 | [virt-install](https://github.com/coreos/coreos-assembler/blob/main/src/cmd-virt-install) | "Install" a CoreOS system with libvirt
