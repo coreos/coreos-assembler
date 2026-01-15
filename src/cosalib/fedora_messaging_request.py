@@ -35,7 +35,6 @@ FEDORA_MESSAGING_COREOS_TOPIC_PREFIX = {
 # You can look at examples of recent fedmsgs for particular topics via
 # datagrepper, e.g.:
 #
-# https://apps.fedoraproject.org/datagrepper/raw?topic=org.fedoraproject.prod.coreos.build.request.ostree-sign&delta=100000
 # https://apps.fedoraproject.org/datagrepper/raw?topic=org.fedoraproject.prod.coreos.build.request.artifacts-sign&delta=100000
 
 # Default to timeout after 60 seconds
@@ -45,7 +44,6 @@ DEFAULT_REQUEST_TIMEOUT_SEC = 60
 # This is used for requesting other services to perform specific actions. The
 # function does not return until the service replies (or we time out).
 # Supported request types:
-# - ostree-sign: sent by build pipeline to sign OSTree commits
 # - artifacts-sign: sent by build pipeline to sign images
 # - ostree-import: sent by release pipeline to import OSTree commits into the
 #                  canonical Fedora repos
@@ -56,7 +54,7 @@ def send_request_and_wait_for_response(request_type,
                                        priority=None,
                                        body={}):
     assert environment in ['prod', 'stg']
-    assert request_type in ['ostree-sign', 'artifacts-sign', 'ostree-import']
+    assert request_type in ['artifacts-sign', 'ostree-import']
 
     # Generate a unique id for this request
     request_id = str(uuid.uuid4())
