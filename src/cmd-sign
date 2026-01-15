@@ -6,7 +6,6 @@
 '''
 
 import argparse
-import gi
 import json
 import os
 import shutil
@@ -22,12 +21,8 @@ from cosalib.meta import GenericBuildMeta as Meta
 from cosalib.builds import Builds
 from cosalib.cmdlib import (
     get_basearch,
-    sha256sum_file,
-    import_ostree_commit)
+    sha256sum_file)
 from cosalib.fedora_messaging_request import send_request_and_wait_for_response
-
-gi.require_version('OSTree', '1.0')
-from gi.repository import GLib, Gio, OSTree
 
 # this is really the worst case scenario, it's usually pretty fast otherwise
 ROBOSIGNATORY_REQUEST_TIMEOUT_SEC = 60 * 60
