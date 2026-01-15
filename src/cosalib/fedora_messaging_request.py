@@ -45,8 +45,6 @@ DEFAULT_REQUEST_TIMEOUT_SEC = 60
 # function does not return until the service replies (or we time out).
 # Supported request types:
 # - artifacts-sign: sent by build pipeline to sign images
-# - ostree-import: sent by release pipeline to import OSTree commits into the
-#                  canonical Fedora repos
 def send_request_and_wait_for_response(request_type,
                                        config=None,
                                        environment='prod',
@@ -54,7 +52,7 @@ def send_request_and_wait_for_response(request_type,
                                        priority=None,
                                        body={}):
     assert environment in ['prod', 'stg']
-    assert request_type in ['artifacts-sign', 'ostree-import']
+    assert request_type in ['artifacts-sign']
 
     # Generate a unique id for this request
     request_id = str(uuid.uuid4())
