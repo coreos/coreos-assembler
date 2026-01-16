@@ -23,6 +23,7 @@ if [ $# -gt 1 ]; then
     echo "    install_rpms"
     echo "    make_and_makeinstall"
     echo "    patch_osbuild"
+    echo "    fixup_file_permissions"
     exit 1
 fi
 
@@ -111,16 +112,6 @@ install_rpms() {
         ln -s {/usr/share/distribution-gpg-keys/centos,/etc/pki/rpm-gpg}/RPM-GPG-KEY-CentOS-SIG-NFV
         ln -s {/usr/share/distribution-gpg-keys/centos,/etc/pki/rpm-gpg}/RPM-GPG-KEY-CentOS-SIG-Virtualization
     fi
-
-    # Allow group write permissions on /usr/ because in upstream project's
-    # CI we want to overwrite software for testing. The directories
-    # are typically owned by root:root and CI runs in openshift as a user
-    # that is a member of the `root` (GID: 0) group.
-    # See https://github.com/coreos/coreos-installer/pull/1716
-    chmod -R g+w /usr/
-    # And also one exception for /etc/grub.d (on arches that support
-    # grub) since ostree upstream tries to put a symlink in this directory.
-    [ -d /etc/grub.d ] && chmod g+rwx /etc/grub.d
 
     # Further cleanup
     yum clean all
@@ -225,6 +216,19 @@ patch_osbuild() {
   ##mkdir -p /usr/lib/osbuild/osbuild
 }
 
+fixup_file_permissions() {
+    # Allow group write permissions on /usr/ because in upstream project's
+    # CI we want to overwrite software for testing. The directories
+    # are typically owned by root:root and CI runs in openshift as a user
+    # that is a member of the `root` (GID: 0) group.
+    # See https://github.com/coreos/coreos-installer/pull/1716
+    chmod -R g+w /usr/
+    # And also one exception for /etc/grub.d (on arches that support
+    # grub) since ostree upstream tries to put a symlink in this directory.
+    [ -d /etc/grub.d ] && chmod g+rwx /etc/grub.d
+
+}
+
 if [ $# -ne 0 ]; then
     # Run the function specified by the calling script
     ${1}
@@ -240,4 +244,5 @@ else
     trust_redhat_gpg_keys
     configure_user
     patch_osbuild
+    fixup_file_permissions
 fi
