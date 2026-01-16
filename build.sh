@@ -118,9 +118,9 @@ install_rpms() {
     # that is a member of the `root` (GID: 0) group.
     # See https://github.com/coreos/coreos-installer/pull/1716
     chmod -R g+w /usr/
-    # And also one exception for /etc/grub.d (ostree upstream tries to
-    # put a symlink in this directory).
-    chmod g+rwx /etc/grub.d
+    # And also one exception for /etc/grub.d (on arches that support
+    # grub) since ostree upstream tries to put a symlink in this directory.
+    [ -d /etc/grub.d ] && chmod g+rwx /etc/grub.d
 
     # Further cleanup
     yum clean all
