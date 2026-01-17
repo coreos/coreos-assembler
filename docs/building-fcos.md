@@ -185,24 +185,21 @@ repository.
 
 ## Performing a build
 
-First, we fetch all the metadata and packages:
-
-```
-$ cosa fetch
-```
-
-And now we can build from these inputs:
-
 ```
 $ cosa build
 ```
 
 Each build will create a new directory in `$PWD/builds/`, containing the
-generated OSTree commit (as a tarball) and the qemu VM image.
+generated OSTree commit (as a tarball).
 
 Next, rerun `cosa build` and notice the system correctly
-deduces that nothing changed.  You can run `cosa fetch`
-again to check for updated RPMs.
+deduces that nothing changed.
+
+At this point we can generate an image. To generate a QEMU image, we can run:
+
+```
+$ cosa osbuild qemu
+```
 
 ## Running
 
