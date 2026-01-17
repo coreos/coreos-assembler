@@ -225,8 +225,9 @@ fixup_file_permissions() {
     chmod -R g+w /usr/
     # And also one exception for /etc/grub.d (on arches that support
     # grub) since ostree upstream tries to put a symlink in this directory.
-    [ -d /etc/grub.d ] && chmod g+rwx /etc/grub.d
-
+    if [ -d /etc/grub.d ]; then
+        chmod g+rwx /etc/grub.d
+    fi
 }
 
 if [ $# -ne 0 ]; then
