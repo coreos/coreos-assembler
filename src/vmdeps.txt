@@ -48,3 +48,6 @@ osbuild osbuild-ostree osbuild-selinux osbuild-tools python3-pyrsistent zip
 
 # for cmdlib.py
 python3-dateutil
+
+# To have the locales available for grub to install
+filesystem
