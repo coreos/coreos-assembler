@@ -23,16 +23,6 @@ supported arguments.
 | [shell](https://github.com/coreos/coreos-assembler/blob/main/src/cmd-shell) | Get an interactive shell or run a command in a CoreOS Assembler container
 | [virt-install](https://github.com/coreos/coreos-assembler/blob/main/src/cmd-virt-install) | "Install" a CoreOS system with libvirt
 
-The following commands only do a partial rebuild to make it faster to develop
-on a specific part of the OS. Make sure to use the one corresponding to the
-part that you are working on or you will not benefit from them (i.e. they will
-not produce an image with your changes):
-
-| Name | Description |
-| ---- | ----------- |
-| [build-fast](https://github.com/coreos/coreos-assembler/blob/main/src/cmd-build-fast) | Creates a new QCOW2 image from an existing build and updates the ostree commit with local overrides. This will only change files located in the final root (i.e. part of an ostree commit).
-| [buildinitramfs-fast](https://github.com/coreos/coreos-assembler/blob/main/src/cmd-buildinitramfs-fast) | Create a new QCOW2 image from an existing build and updates the initramfs with local overrides. This will not re-run dracut to rebuild the initramfs.
-
 ## buildextend commands
 
 By default, the `build` command will build an OSTree and a QEMU image as base

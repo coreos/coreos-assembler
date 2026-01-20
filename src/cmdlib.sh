@@ -284,11 +284,6 @@ prepare_build() {
     # This dir is no longer used
     rm builds/work -rf
 
-    # Place for cmd-build-fast
-    mkdir -p tmp/fastbuilds
-    fastbuilddir=$(pwd)/tmp/fastbuild
-    export fastbuilddir
-
     # And everything after this assumes it's in the temp builddir
     # In case `cd` fails:  https://github.com/koalaman/shellcheck/wiki/SC2164
     cd "${tmp_builddir}" || exit
