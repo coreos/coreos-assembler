@@ -34,10 +34,6 @@ Delete all build artifacts.  Use --all to also clean the cache/ directory.
 	if err != nil {
 		return err
 	}
-	// XXX: why do we need to prepare_build here?
-	if _, err := sh.PrepareBuild(""); err != nil {
-		return err
-	}
 
 	if all {
 		priv, err := sh.HasPrivileges()

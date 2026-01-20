@@ -5,6 +5,7 @@ dn=$(dirname "$0")
 # shellcheck source=src/cmdlib.sh
 . "${dn}"/cmdlib.sh
 
-prepare_build
+export workdir="${PWD}"
+preflight_checks
 
 RUNVM_SHELL=1 runvm_with_cache "$@" -- bash
