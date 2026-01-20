@@ -523,16 +523,15 @@ def cmdlib_sh(script):
     '''])
 
 
-def generate_image_json(srcfile, ostree_manifest):
-    manifest_vars = yaml.safe_load(open(ostree_manifest))['variables']
+def generate_image_json(srcfile):
     r = yaml.safe_load(open("/usr/lib/coreos-assembler/image-default.yaml"))
-    for k, v in flatten_image_yaml(srcfile, format_args=manifest_vars).items():
+    for k, v in flatten_image_yaml(srcfile).items():
         r[k] = v
     return r
 
 
-def write_image_json(srcfile, outfile, ostree_manifest):
-    r = generate_image_json(srcfile, ostree_manifest)
+def write_image_json(srcfile, outfile):
+    r = generate_image_json(srcfile)
     with open(outfile, 'w') as f:
         json.dump(r, f, sort_keys=True)
 
