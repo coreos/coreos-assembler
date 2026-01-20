@@ -121,6 +121,11 @@ preflight_kvm() {
     fi
 }
 
+preflight_checks() {
+    preflight
+    preflight_kvm
+}
+
 # Use this for things like disabling fsync.
 # For more information, see the docs of `cosa init --transient`.
 is_transient() {
@@ -170,6 +175,9 @@ should_build_with_buildah() {
     return 1
 }
 
+# Only used by legacy (not via container tools) path. Delete when we
+# have moved away from legacy building (i.e. delete or overwrite cmd-build
+# and delete cmd-fetch)
 prepare_build() {
     preflight
     preflight_kvm
