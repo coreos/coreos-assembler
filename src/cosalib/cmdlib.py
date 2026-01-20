@@ -524,10 +524,7 @@ def cmdlib_sh(script):
 
 
 def generate_image_json(srcfile):
-    r = yaml.safe_load(open("/usr/lib/coreos-assembler/image-default.yaml"))
-    for k, v in flatten_image_yaml(srcfile).items():
-        r[k] = v
-    return r
+    return flatten_image_yaml(srcfile)
 
 
 def write_image_json(srcfile, outfile):
