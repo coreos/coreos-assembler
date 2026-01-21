@@ -7,7 +7,7 @@ import os
 import yaml
 import subprocess
 
-arch = os.uname().machine
+SUPPORTED_ARCHES = ['x86_64', 'aarch64', 'ppc64le', 's390x']
 
 # this was partially copied from coreos-koji-tagger
 
@@ -26,7 +26,7 @@ def get_rpminfo(string: str) -> str:
     return rpminfo
 
 
-def is_override_lockfile(filename: str) -> bool:
+def is_override_lockfile(filename: str, arch: str) -> bool:
     return (filename == "manifest-lock.overrides.yaml" or
             filename == f'manifest-lock.overrides.{arch}.yaml')
 
@@ -47,8 +47,25 @@ parser.add_argument('--downloaddir', default='overrides/rpm',
                     help='Directory to download override RPMs to (default: overrides/rpm).')
 parser.add_argument('--lockfiledir', default='src/config',
                     help='Directory to check lock file (default: src/config).')
+parser.add_argument('--arch', action='append', dest='arches',
+                    help=f'Target architecture(s). Can be specified multiple times. '
+                         f'Supported: {", ".join(SUPPORTED_ARCHES)}, or "all" for all architectures. '
+                         f'(default: {os.uname().machine}).')
 
 args = parser.parse_args()
+
+# Default to current system architecture if none specified
+if args.arches is None:
+    args.arches = [os.uname().machine]
+elif 'all' in args.arches:
+    # 'all' expands to all supported architectures
+    args.arches = SUPPORTED_ARCHES
+else:
+    # Validate all specified architectures
+    for arch in args.arches:
+        if arch not in SUPPORTED_ARCHES:
+            parser.error(f"invalid architecture '{arch}'. "
+                         f"Choose from: {', '.join(SUPPORTED_ARCHES)}, or 'all'")
 
 for path in [args.downloaddir, args.lockfiledir]:
     assert os.path.isdir(path), f"Not found: {path}"
@@ -56,28 +73,32 @@ for path in [args.downloaddir, args.lockfiledir]:
 print(f"Download override rpms to {args.downloaddir}/")
 
 rpms = set()
-for filename in os.listdir(args.lockfiledir):
-    if is_override_lockfile(filename):
-        with open(os.path.join(args.lockfiledir, filename)) as f:
-            lockfile = yaml.safe_load(f)
-        if lockfile is None or 'packages' not in lockfile:
-            continue
-        for pkg, pkgobj in lockfile['packages'].items():
-            if 'evr' in pkgobj:
-                rpminfo = get_rpminfo(f"{pkg}-{pkgobj['evr']}.{arch}")
-            else:
-                rpminfo = get_rpminfo(f"{pkg}-{pkgobj['evra']}")
-            rpmnvra = f"{rpminfo.name}-{rpminfo.version}-{rpminfo.release}.{rpminfo.arch}"
-            rpms.add(rpmnvra)
-            subprocess.check_call(['koji', 'download-build', '--rpm', rpmnvra], cwd=args.downloaddir)
-            # Make sure the epoch matches what was in the overrides file
-            # otherwise we can get errors: https://github.com/coreos/fedora-coreos-config/pull/293
-            cp = subprocess.run(['rpm', '-qp', '--queryformat', '%{E}', f'{rpmnvra}.rpm'],
-                check=True,
-                capture_output=True,
-                cwd=args.downloaddir)
-            rpmfile_epoch = cp.stdout.decode('utf-8')
-            assert_epochs_match(rpminfo.epoch, rpmfile_epoch)
+lockfile_entries = os.listdir(args.lockfiledir)
+for arch in args.arches:
+    for filename in lockfile_entries:
+        if is_override_lockfile(filename, arch):
+            with open(os.path.join(args.lockfiledir, filename)) as f:
+                lockfile = yaml.safe_load(f)
+            if lockfile is None or 'packages' not in lockfile:
+                continue
+            for pkg, pkgobj in lockfile['packages'].items():
+                if 'evr' in pkgobj:
+                    rpminfo = get_rpminfo(f"{pkg}-{pkgobj['evr']}.{arch}")
+                else:
+                    rpminfo = get_rpminfo(f"{pkg}-{pkgobj['evra']}")
+                rpmnvra = f"{rpminfo.name}-{rpminfo.version}-{rpminfo.release}.{rpminfo.arch}"
+                if rpmnvra in rpms:
+                    continue
+                rpms.add(rpmnvra)
+                subprocess.check_call(['koji', 'download-build', '--rpm', rpmnvra], cwd=args.downloaddir)
+                # Make sure the epoch matches what was in the overrides file
+                # otherwise we can get errors: https://github.com/coreos/fedora-coreos-config/pull/293
+                cp = subprocess.run(['rpm', '-qp', '--queryformat', '%{E}', f'{rpmnvra}.rpm'],
+                    check=True,
+                    capture_output=True,
+                    cwd=args.downloaddir)
+                rpmfile_epoch = cp.stdout.decode('utf-8')
+                assert_epochs_match(rpminfo.epoch, rpmfile_epoch)
 
 if not rpms:
     print("No overrides; exiting.")
