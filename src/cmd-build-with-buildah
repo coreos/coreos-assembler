@@ -119,12 +119,17 @@ build_with_buildah() {
     fi
 
     if [ -z "${VERSION}" ]; then
-        # let error out if file does not exist
+        # If we were asked to run versionary then we just run it
+        # and it will give us a production build ID. If we were't
+        # asked to run versionary we still run it, but request a
+        # "development" build ID.
         if [ -z "${VERSIONARY}" ]; then
-            VERSION=$(src/config/versionary --dev)
+            dev_arg='--dev'
         else
-            VERSION=$(src/config/versionary)
+            dev_arg=''
         fi
+        # Call versionary. Let it error out if file does not exist.
+        VERSION=$(src/config/versionary ${dev_arg})
     fi
 
     if [ -e "builds/$VERSION/${arch}" ]; then
