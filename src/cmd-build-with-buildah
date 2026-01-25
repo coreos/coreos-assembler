@@ -129,7 +129,7 @@ build_with_buildah() {
             dev_arg=''
         fi
         # Call versionary. Let it error out if file does not exist.
-        VERSION=$(src/config/versionary ${dev_arg})
+        VERSION=$(src/config/versionary --build-args="src/config/${argsfile}" ${dev_arg})
     fi
 
     if [ -e "builds/$VERSION/${arch}" ]; then
