@@ -95,15 +95,6 @@ while true; do
     shift
 done
 
-if [ -z "${VERSION}" ]; then
-    # let error out if file does not exist
-    if [ -z "${VERSIONARY}" ]; then
-        VERSION=$(src/config/versionary --dev)
-    else
-        VERSION=$(src/config/versionary)
-    fi
-fi
-
 build_with_buildah() {
     echo "Building with container runtime (buildah) with VERSION=${VERSION}"
 
@@ -125,6 +116,15 @@ build_with_buildah() {
         argsfile=build-args-${variant}.conf
     else
         argsfile=build-args.conf
+    fi
+
+    if [ -z "${VERSION}" ]; then
+        # let error out if file does not exist
+        if [ -z "${VERSIONARY}" ]; then
+            VERSION=$(src/config/versionary --dev)
+        else
+            VERSION=$(src/config/versionary)
+        fi
     fi
 
     if [ -e "builds/$VERSION/${arch}" ]; then
