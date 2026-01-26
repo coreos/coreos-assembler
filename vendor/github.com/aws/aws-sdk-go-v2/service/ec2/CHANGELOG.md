@@ -1,3 +1,31 @@
+# v1.282.0 (2026-01-26)
+
+* **Feature**: DescribeInstanceTypes API response now includes an additionalFlexibleNetworkInterfaces field, the number of interfaces attachable to an instance when using flexible Elastic Network Adapter (ENA) queues in addition to the base number specified by maximumNetworkInterfaces.
+
+# v1.281.0 (2026-01-22)
+
+* **Feature**: Add better support for fractional GPU instances in DescribeInstanceTypes API. The new fields, logicalGpuCount, gpuPartitionSize, and workload array enable better GPU resource selection and filtering for both full and fractional GPU instance types.
+
+# v1.280.0 (2026-01-21)
+
+* **Feature**: Added support of multiple EBS cards. New EbsCardIndex parameter enables attaching volumes to specific EBS cards on supported instance types for improved storage performance.
+
+# v1.279.2 (2026-01-15)
+
+* **Documentation**: This release includes documentation updates to support up to four Elastic Volume modifications per Amazon EBS volume within a rolling 24-hour period.
+
+# v1.279.1 (2026-01-09)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.279.0 (2025-12-22)
+
+* **Feature**: Adds support for linkedGroupId on the CreatePlacementGroup and DescribePlacementGroups APIs. The linkedGroupId parameter is reserved for future use.
+
+# v1.278.0 (2025-12-18)
+
+* **Feature**: This release adds AvailabilityZoneId support for CreateFleet, ModifyFleet, DescribeFleets, RequestSpotFleet, ModifySpotFleetRequests and DescribeSpotFleetRequests APIs.
+
 # v1.277.0 (2025-12-15)
 
 * **Feature**: EC2 Capacity Manager now supports SpotTotalCount, SpotTotalInterruptions and SpotInterruptionRate metrics for both vCPU and instance units.
