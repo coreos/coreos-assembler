@@ -23,6 +23,7 @@ if [ $# -gt 1 ]; then
     echo "    install_rpms"
     echo "    make_and_makeinstall"
     echo "    patch_osbuild"
+    echo "    fixup_file_permissions"
     exit 1
 fi
 
@@ -215,6 +216,20 @@ patch_osbuild() {
   ##mkdir -p /usr/lib/osbuild/osbuild
 }
 
+fixup_file_permissions() {
+    # Allow group write perms on directories under /usr/ because in upstream
+    # project's CI we want to overwrite software for testing. The directories
+    # are typically owned by root:root and CI runs in openshift as a user
+    # that is a member of the `root` (GID: 0) group.
+    # See https://github.com/coreos/coreos-installer/pull/1716
+    find /usr -type d -print0 | xargs -0 chmod -c g+w
+    # And also one exception for /etc/grub.d (on arches that support
+    # grub) since ostree upstream tries to put a symlink in this directory.
+    if [ -d /etc/grub.d ]; then
+        chmod -c g+rwx /etc/grub.d
+    fi
+}
+
 if [ $# -ne 0 ]; then
     # Run the function specified by the calling script
     ${1}
@@ -230,4 +245,5 @@ else
     trust_redhat_gpg_keys
     configure_user
     patch_osbuild
+    fixup_file_permissions
 fi

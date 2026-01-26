@@ -14,7 +14,7 @@ import (
 // commands we'd expect to use in the local dev path
 var buildCommands = []string{"init", "fetch", "build", "osbuild", "run", "prune", "clean", "list"}
 var advancedBuildCommands = []string{"import", "buildfetch", "buildupload", "oc-adm-release", "push-container"}
-var buildextendCommands = []string{"aliyun", "applehv", "aws", "azure", "digitalocean", "exoscale", "extensions-container", "gcp", "hyperv", "ibmcloud", "kubevirt", "live", "metal", "metal4k", "nutanix", "openstack", "oraclecloud", "qemu", "secex", "virtualbox", "vmware", "vultr"}
+var buildextendCommands = []string{"aliyun", "applehv", "aws", "azure", "digitalocean", "exoscale", "gcp", "hyperv", "ibmcloud", "kubevirt", "live", "metal", "metal4k", "nutanix", "openstack", "oraclecloud", "qemu", "secex", "virtualbox", "vmware", "vultr"}
 
 var utilityCommands = []string{"aws-replicate", "coreos-prune", "compress", "copy-container", "diff", "koji-upload", "kola", "push-container-manifest", "remote-build-container", "remote-session", "sign", "tag", "update-variant"}
 var otherCommands = []string{"shell", "meta"}
@@ -93,9 +93,6 @@ func run(argv []string) error {
 		return runUpdateVariant(argv)
 	case "remote-session":
 		return runRemoteSession(argv)
-	case "build-extensions-container", // old alias
-		"buildextend-extensions-container":
-		return buildExtensionContainer()
 	}
 
 	target := fmt.Sprintf("/usr/lib/coreos-assembler/cmd-%s", cmd)

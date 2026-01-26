@@ -121,6 +121,11 @@ preflight_kvm() {
     fi
 }
 
+preflight_checks() {
+    preflight
+    preflight_kvm
+}
+
 # Use this for things like disabling fsync.
 # For more information, see the docs of `cosa init --transient`.
 is_transient() {
@@ -170,6 +175,9 @@ should_build_with_buildah() {
     return 1
 }
 
+# Only used by legacy (not via container tools) path. Delete when we
+# have moved away from legacy building (i.e. delete or overwrite cmd-build
+# and delete cmd-fetch)
 prepare_build() {
     preflight
     preflight_kvm
@@ -228,7 +236,7 @@ prepare_build() {
     fi
 
     export image_json="${tmp_builddir}/image.json"
-    write_image_json "${image}" "${image_json}" "${manifest}"
+    write_image_json "${image}" "${image_json}"
     # These need to be absolute paths right now for rpm-ostree
     composejson="$(readlink -f "${workdir}"/tmp/compose.json)"
     export composejson
@@ -283,11 +291,6 @@ prepare_build() {
 
     # This dir is no longer used
     rm builds/work -rf
-
-    # Place for cmd-build-fast
-    mkdir -p tmp/fastbuilds
-    fastbuilddir=$(pwd)/tmp/fastbuild
-    export fastbuilddir
 
     # And everything after this assumes it's in the temp builddir
     # In case `cd` fails:  https://github.com/koalaman/shellcheck/wiki/SC2164
@@ -1084,12 +1087,11 @@ print('Build ${buildid} was inserted ${arch:+for $arch}')")
 write_image_json() {
     local srcfile=$1; shift
     local outfile=$1; shift
-    local ostree_manifest=$1; shift
     (python3 -c "
 import sys
 sys.path.insert(0, '${DIR}')
 from cosalib import cmdlib
-cmdlib.write_image_json('${srcfile}', '${outfile}', ostree_manifest='${ostree_manifest}')")
+cmdlib.write_image_json('${srcfile}', '${outfile}')")
 }
 
 # API to prepare image builds.

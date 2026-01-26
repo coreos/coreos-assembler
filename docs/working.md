@@ -111,34 +111,8 @@ In the future, it's likely coreos-assembler will also support something
 like `overrides/src` which could be a directory of symlinks to local
 git repositories.
 
-## Using cosa build-fast
-
-If you're working on e.g. the kernel or Ignition (things that go into the initramfs),
-then you probably need a `cosa build` workflow (or `cosa buildinitramfs-fast`, see below).
-However, let's say you want to test a change to something that runs purely in the real root,
-such as e.g. `rpm-ostree`, `podman`, or `console-login-helper-messages`.  Rather
-than doing a full image build each time, a fast way to test out changes is to use
-`cosa build-fast`.
-
-This command assumes you have a previous local coreos-assembler build.  From
-the git checkout of the project you want to add:
-
-```
-$ export COSA_DIR=/srv/builds/fcos
-$ cosa build-fast
-$ cosa run
-```
-
-The `cosa build-fast` command will run `make` and inject the resulting binaries
-on a qcow2 overlay file, which will appear in your project working directory.
-The `cosa run` command similarly knows to look for these `qcow2` files.
-
-This will not affect the "real" cosa build in `/srv/builds/fcos`, but will
-use it as a data source.
-
 ## Using cosa run --bind-ro for even faster iteration
 
-This workflow can be used alongside `cosa build-fast`, or separate from it.
 If you invoke e.g.
 
 ```
@@ -184,35 +158,6 @@ $ cosa shell
 $ sudo dnf install ...
 $ cosa run --bind-ro /usr/bin,/run/hostbin
 ```
-
-## Using cosa buildinitramfs-fast
-
-If you're iterating on changes *just* to the initramfs, you can also use
-`cosa buildinitramfs-fast`.  For example, suppose you are working on `ignition`.
-Follow these steps:
-
-```
-$ make
-$ install -D -m 0755 bin/amd64/ignition /path/to/cosadir/overrides/initramfs/usr/bin/ignition
-$ cd /path/to/cosadir
-$ cosa buildinitramfs-fast
-$ cosa run --qemu-image tmp/fastbuild/fastbuildinitrd-fedora-coreos-qemu.qcow2 -i config.ign
-```
-
-(Or instead of `cosa run` use e.g. `cosa kola` to run tests, etc.)
-
-If you're adding new fields to the Ignition experimental spec, `-i` will
-silently remove those fields, since the copy of Ignition that's vendored
-into mantle won't know about them yet.  Instead, you can specify that
-kola should pass the config to the machine unmodified:
-
-```
-$ kola qemuexec --qemu-image tmp/fastbuild/fastbuildinitrd-fedora-coreos-qemu.qcow2 -i config.ign --ignition-direct
-```
-
-You'll need to
-[manually configure autologin](https://docs.fedoraproject.org/en-US/fedora-coreos/tutorial-autologin/)
-in the Ignition config, since kola won't be able to do it for you.
 
 ## Performing an in-place OS update manually
 
@@ -412,7 +357,7 @@ requires access to podman and /dev/kvm.
    # to run the freshly built image
    cosa run
    # to build the live ISO
-   cosa buildextend-metal && cosa buildextend-live --fast
+   cosa buildextend-metal && cosa buildextend-live
    # to run the live ISO
    cosa run -p qemu-iso
    ```
