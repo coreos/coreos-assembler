@@ -54478,6 +54478,11 @@ func awsEc2query_serializeDocumentEbsBlockDevice(v *types.EbsBlockDevice, value 
 		objectKey.Boolean(*v.DeleteOnTermination)
 	}
 
+	if v.EbsCardIndex != nil {
+		objectKey := object.Key("EbsCardIndex")
+		objectKey.Integer(*v.EbsCardIndex)
+	}
+
 	if v.Encrypted != nil {
 		objectKey := object.Key("Encrypted")
 		objectKey.Boolean(*v.Encrypted)
@@ -55103,6 +55108,11 @@ func awsEc2query_serializeDocumentFleetLaunchTemplateOverridesRequest(v *types.F
 	if v.AvailabilityZone != nil {
 		objectKey := object.Key("AvailabilityZone")
 		objectKey.String(*v.AvailabilityZone)
+	}
+
+	if v.AvailabilityZoneId != nil {
+		objectKey := object.Key("AvailabilityZoneId")
+		objectKey.String(*v.AvailabilityZoneId)
 	}
 
 	if v.BlockDeviceMappings != nil {
@@ -57550,6 +57560,11 @@ func awsEc2query_serializeDocumentLaunchTemplateEbsBlockDeviceRequest(v *types.L
 		objectKey.Boolean(*v.DeleteOnTermination)
 	}
 
+	if v.EbsCardIndex != nil {
+		objectKey := object.Key("EbsCardIndex")
+		objectKey.Integer(*v.EbsCardIndex)
+	}
+
 	if v.Encrypted != nil {
 		objectKey := object.Key("Encrypted")
 		objectKey.Boolean(*v.Encrypted)
@@ -57952,6 +57967,11 @@ func awsEc2query_serializeDocumentLaunchTemplateOverrides(v *types.LaunchTemplat
 	if v.AvailabilityZone != nil {
 		objectKey := object.Key("AvailabilityZone")
 		objectKey.String(*v.AvailabilityZone)
+	}
+
+	if v.AvailabilityZoneId != nil {
+		objectKey := object.Key("AvailabilityZoneId")
+		objectKey.String(*v.AvailabilityZoneId)
 	}
 
 	if v.InstanceRequirements != nil {
@@ -62443,6 +62463,11 @@ func awsEc2query_serializeDocumentSpotPlacement(v *types.SpotPlacement, value qu
 		objectKey.String(*v.AvailabilityZone)
 	}
 
+	if v.AvailabilityZoneId != nil {
+		objectKey := object.Key("AvailabilityZoneId")
+		objectKey.String(*v.AvailabilityZoneId)
+	}
+
 	if v.GroupName != nil {
 		objectKey := object.Key("GroupName")
 		objectKey.String(*v.GroupName)
@@ -65195,6 +65220,11 @@ func awsEc2query_serializeOpDocumentAttachVolumeInput(v *AttachVolumeInput, valu
 	if v.DryRun != nil {
 		objectKey := object.Key("DryRun")
 		objectKey.Boolean(*v.DryRun)
+	}
+
+	if v.EbsCardIndex != nil {
+		objectKey := object.Key("EbsCardIndex")
+		objectKey.Integer(*v.EbsCardIndex)
 	}
 
 	if v.InstanceId != nil {
@@ -68284,6 +68314,11 @@ func awsEc2query_serializeOpDocumentCreatePlacementGroupInput(v *CreatePlacement
 	if v.GroupName != nil {
 		objectKey := object.Key("GroupName")
 		objectKey.String(*v.GroupName)
+	}
+
+	if v.LinkedGroupId != nil {
+		objectKey := object.Key("LinkedGroupId")
+		objectKey.String(*v.LinkedGroupId)
 	}
 
 	if v.PartitionCount != nil {
