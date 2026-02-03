@@ -493,6 +493,10 @@ type QemuBuilder struct {
 	architecture string
 	// MemoryMiB defaults to 1024 on most architectures, others it may be 2048
 	MemoryMiB int
+	// If true, two NUMA nodes will be simulated, splitting memory and CPUs between them.
+	// Each node gets half the resources, if there is an odd amount of some resource, node1
+	// will receive the remainder.
+	NumaNodes bool
 	// Processors < 0 means to use host count, unset means 1, values > 1 are directly used
 	Processors int
 	UUID       string
@@ -1389,22 +1393,22 @@ func (builder *QemuBuilder) Append(args ...string) {
 	builder.Argv = append(builder.Argv, args...)
 }
 
-// baseQemuArgs takes a board and returns the basic qemu
-// arguments needed for the current architecture.
-func baseQemuArgs(arch string, memoryMiB int) ([]string, error) {
-	// memoryDevice is the object identifier we use for the backing RAM
-	const memoryDevice = "mem"
-
+// platformQemuArgs returns platform-specific QEMU arguments for the given architecture.
+func platformQemuArgs(arch, machineArg string) ([]string, error) {
 	kvm := true
 	hostArch := coreosarch.CurrentRpmArch()
-	// The machine argument needs to reference our memory device; see below
-	machineArg := "memory-backend=" + memoryDevice
-	accel := "accel=kvm"
+	accelArg := "accel=kvm"
 	if _, ok := os.LookupEnv("COSA_NO_KVM"); ok || hostArch != arch {
-		accel = "accel=tcg"
+		accelArg = "accel=tcg"
 		kvm = false
 	}
-	machineArg += "," + accel
+
+	if machineArg == "" {
+		machineArg = accelArg
+	} else {
+		machineArg += "," + accelArg
+	}
+
 	var ret []string
 	switch arch {
 	case "x86_64":
@@ -1442,6 +1446,56 @@ func baseQemuArgs(arch string, memoryMiB int) ([]string, error) {
 			ret = append(ret, "-cpu", "Nehalem")
 		}
 	}
+
+	return ret, nil
+}
+
+// baseNumaQemuArgs returns QEMU arguments to simulate two NUMA nodes. Node1 and Node0 will try to
+// split the machine's resources evenly between them.
+// See: https://www.qemu.org/docs/master/system/invocation.html#cmdoption-smp
+func baseNumaQemuArgs(arch string, memoryMiB, cpus int) ([]string, error) {
+	if cpus < 2 {
+		return nil, fmt.Errorf("must have at least 2 CPUs to simulate NUMA nodes")
+	}
+
+	ret, err := platformQemuArgs(arch, "")
+	if err != nil {
+		return nil, err
+	}
+
+	// Due to a limitation, all memory must be assigned. Memory is split as evenly as possible between the NUMA nodes; when
+	// the total memory is odd, node1 will receive the remainder.
+	const node0MemoryDevice = "mem0"
+	const node1MemoryDevice = "mem1"
+	node0MemoryMiB := memoryMiB / 2
+	node1MemoryMiB := memoryMiB - node0MemoryMiB
+
+	// Split CPUs evenly between nodes (node1 gets the extra CPU if total is odd)
+	// Node0: 0 to half-1, Node1: half to total-1
+	node0StartCpu, node0EndCpu := 0, cpus/2-1
+	node1StartCpu, node1EndCpu := cpus/2, cpus-1
+
+	ret = append(ret, "-object", fmt.Sprintf("memory-backend-memfd,id=%s,size=%dM,share=on", node0MemoryDevice, node0MemoryMiB))
+	ret = append(ret, "-object", fmt.Sprintf("memory-backend-memfd,id=%s,size=%dM,share=on", node1MemoryDevice, node1MemoryMiB))
+	ret = append(ret, "-numa", fmt.Sprintf("node,memdev=%s,cpus=%d-%d,nodeid=0", node0MemoryDevice, node0StartCpu, node0EndCpu))
+	ret = append(ret, "-numa", fmt.Sprintf("node,memdev=%s,cpus=%d-%d,nodeid=1", node1MemoryDevice, node1StartCpu, node1EndCpu))
+	ret = append(ret, "-m", fmt.Sprintf("%d", memoryMiB))
+	return ret, nil
+}
+
+// baseQemuArgs takes a board and returns the basic qemu
+// arguments needed for the current architecture.
+func baseQemuArgs(arch string, memoryMiB int) ([]string, error) {
+	// memoryDevice is the object identifier we use for the backing RAM
+	const memoryDevice = "mem"
+	// The machine argument needs to reference our memory device; see below
+	machineArg := "memory-backend=" + memoryDevice
+
+	ret, err := platformQemuArgs(arch, machineArg)
+	if err != nil {
+		return nil, err
+	}
+
 	// And define memory using a memfd (in shared mode), which is needed for virtiofs
 	ret = append(ret, "-object", fmt.Sprintf("memory-backend-memfd,id=%s,size=%dM,share=on", memoryDevice, memoryMiB))
 	ret = append(ret, "-m", fmt.Sprintf("%d", memoryMiB))
@@ -1748,11 +1802,6 @@ func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 		}
 	}()
 
-	argv, err := baseQemuArgs(builder.architecture, builder.MemoryMiB)
-	if err != nil {
-		return nil, err
-	}
-
 	if builder.Processors < 0 {
 		nproc, err := system.GetProcessors()
 		if err != nil {
@@ -1769,6 +1818,30 @@ func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 	} else if builder.Processors == 0 {
 		builder.Processors = 1
 	}
+
+	// Ensure that there is at least one CPU for each NUMA node
+	if builder.NumaNodes && builder.Processors < 2 {
+		nproc, err := system.GetProcessors()
+		if err != nil {
+			return nil, errors.Wrapf(err, "qemu estimating processors")
+		}
+		if nproc < 2 {
+			return nil, fmt.Errorf("there are not enough processors for the NUMA nodes")
+		}
+		builder.Processors = 2
+	}
+
+	var argv []string
+	if builder.NumaNodes {
+		argv, err = baseNumaQemuArgs(builder.architecture, builder.MemoryMiB, builder.Processors)
+	} else {
+		argv, err = baseQemuArgs(builder.architecture, builder.MemoryMiB)
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
 	argv = append(argv, "-smp", fmt.Sprintf("%d", builder.Processors))
 
 	switch builder.Firmware {
