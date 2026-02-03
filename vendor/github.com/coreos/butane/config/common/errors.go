@@ -54,14 +54,16 @@ var (
 	ErrMountPointForbidden = errors.New("path must be under /etc or /var if with_mount_unit is true")
 
 	// boot device
-	ErrUnknownBootDeviceLayout = errors.New("layout must be one of: aarch64, ppc64le, s390x-eckd, s390x-virt, s390x-zfcp, x86_64")
-	ErrTooFewMirrorDevices     = errors.New("mirroring requires at least two devices")
-	ErrNoLuksBootDevice        = errors.New("device is required for layouts: s390x-eckd, s390x-zfcp")
-	ErrMirrorNotSupport        = errors.New("mirroring not supported on layouts: s390x-eckd, s390x-zfcp, s390x-virt")
-	ErrLuksBootDeviceBadName   = errors.New("device name must start with /dev/dasd on s390x-eckd layout or /dev/sd on s390x-zfcp layout")
-	ErrCexArchitectureMismatch = errors.New("when using cex the targeted architecture must match s390x")
-	ErrCexNotSupported         = errors.New("cex is not currently supported on the target platform")
-	ErrNoLuksMethodSpecified   = errors.New("no method specified for luks")
+	ErrUnknownBootDeviceLayout       = errors.New("layout must be one of: aarch64, ppc64le, s390x-eckd, s390x-virt, s390x-zfcp, x86_64")
+	ErrUnknownBootDeviceLayoutLegacy = errors.New("layout must be one of: aarch64, ppc64le, x86_64")
+	ErrTooFewMirrorDevices           = errors.New("mirroring requires at least two devices")
+	ErrMirrorRequiresLayout          = errors.New("boot_device.layout should be specified when boot_device.mirror is specified")
+	ErrNoLuksBootDevice              = errors.New("device is required for layouts: s390x-eckd, s390x-zfcp")
+	ErrMirrorNotSupport              = errors.New("mirroring not supported on layouts: s390x-eckd, s390x-zfcp, s390x-virt")
+	ErrLuksBootDeviceBadName         = errors.New("device name must start with /dev/dasd on s390x-eckd layout or /dev/sd on s390x-zfcp layout")
+	ErrCexArchitectureMismatch       = errors.New("when using cex the targeted architecture must match s390x")
+	ErrCexNotSupported               = errors.New("cex is not currently supported on the target platform")
+	ErrNoLuksMethodSpecified         = errors.New("no method specified for luks")
 
 	// partition
 	ErrReuseByLabel         = errors.New("partitions cannot be reused by label; number must be specified except on boot disk (/dev/disk/by-id/coreos-boot-disk) or when wipe_table is true")
