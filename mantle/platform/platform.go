@@ -162,6 +162,7 @@ type MachineOptions struct {
 	AdditionalDisks           []string
 	MinMemory                 int
 	MinDiskSize               int
+	NumaNodes                 bool
 	AdditionalNics            int
 	AppendKernelArgs          string
 	AppendFirstbootKernelArgs string

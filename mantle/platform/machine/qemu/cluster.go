@@ -145,6 +145,7 @@ func (qc *Cluster) NewMachineWithQemuOptions(userdata *conf.UserData, options pl
 		builder.MemoryMiB = 4096 // SE needs at least 4GB
 	}
 
+	builder.NumaNodes = options.NumaNodes
 	var primaryDisk platform.Disk
 	if options.PrimaryDisk != "" {
 		var diskp *platform.Disk
