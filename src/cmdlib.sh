@@ -778,6 +778,15 @@ else
 fi
 echo \$rc > ${rc_file}
 if [ -n "\${cachedev}" ]; then
+    # Sometimes if failures occur the containers storage stack will leave
+    # around some overlayfs mounts so let's recursively unmount here.
+    # I wasn't able to reproduce this outside of our supermin VM setup so
+    # didn't report this issue upstream.
+    if mountpoint -q ${workdir}/cache/cache-containers-storage/storage/overlay; then
+        umount -R ${workdir}/cache/cache-containers-storage/storage/overlay
+    fi
+
+    # Recover any unused space and attempt to safely umount the cache
     /sbin/fstrim -v ${workdir}/cache
     mount -o remount,ro ${workdir}/cache
     fsfreeze -f ${workdir}/cache
