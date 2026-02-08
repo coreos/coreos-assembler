@@ -675,8 +675,8 @@ func getParentFcosBuildBase(stream string) (string, error) {
 		// in that case, releases are searched in reverse order
 		// and the most recent release which has the secondary arch is considered.
 		for _, release := range index.Releases {
-			for _, commit := range release.Commits {
-				if commit.Architecture == (kola.Options.CosaBuildArch) {
+			for _, entry := range release.OciImages {
+				if entry.Architecture == (kola.Options.CosaBuildArch) {
 					parentVersion = release.Version
 					break
 				}
