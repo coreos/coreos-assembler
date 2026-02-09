@@ -674,12 +674,15 @@ func getParentFcosBuildBase(stream string) (string, error) {
 		// when any specific previous release is unavailable for that arch.
 		// in that case, releases are searched in reverse order
 		// and the most recent release which has the secondary arch is considered.
-		for _, release := range index.Releases {
+		for i := len(index.Releases) - 1; i >= 0; i-- {
+			release := index.Releases[i]
 			for _, entry := range release.OciImages {
 				if entry.Architecture == (kola.Options.CosaBuildArch) {
 					parentVersion = release.Version
-					break
 				}
+			}
+			if parentVersion != "" {
+				break
 			}
 		}
 		if parentVersion == "" {
