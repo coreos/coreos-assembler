@@ -770,7 +770,7 @@ runvm() {
 
     # include COSA in the image
     find /usr/lib/coreos-assembler/ -type f > "${vmpreparedir}/hostfiles"
-    # Include arbitrary files from the host  
+# Include arbitrary files from the host  
 #     cat <<EOF >> "${vmpreparedir}/hostfiles"
 # /usr/lib/osbuild/stages/org.osbuild.ln
 # /usr/lib/osbuild/stages/org.osbuild.ln.meta.json

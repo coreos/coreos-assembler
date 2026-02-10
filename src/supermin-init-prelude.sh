@@ -97,3 +97,8 @@ cat > /usr/lib/ostree/prepare-root.conf <<EOF
 [composefs]
 enabled = true
 EOF
+
+cat <<EOF > /usr/lib/bootc/install/10-ostree.toml
+[install.ostree]
+bls-append-except-default = 'grub_users=""'
+EOF

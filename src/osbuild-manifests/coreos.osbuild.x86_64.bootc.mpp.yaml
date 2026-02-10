@@ -351,6 +351,10 @@ pipelines:
           # See github.com/bootc-dev/bootc/issues/1441
           boot-mount-spec: ""
           root-mount-spec: ""
+          # We don't want bootupd to stamp the boot and UEFI paritions
+          # with the boot uuid because these will change at first boot.
+          # See https://github.com/coreos/fedora-coreos-config/pull/3898
+          bootupd-skip-boot-uuid: true
         devices:
           disk:
             type: org.osbuild.loopback
@@ -621,6 +625,10 @@ pipelines:
           # See github.com/bootc-dev/bootc/issues/1441
           boot-mount-spec: ""
           root-mount-spec: ""
+          # We don't want bootupd to stamp the boot and UEFI paritions
+          # with the boot uuid because these will change at first boot.
+          # See https://github.com/coreos/fedora-coreos-config/pull/3898
+          bootupd-skip-boot-uuid: true
         devices:
           disk:
             type: org.osbuild.loopback
