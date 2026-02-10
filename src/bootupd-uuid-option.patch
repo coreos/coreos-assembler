@@ -1,0 +1,42 @@
+commit 06f8da67b94600b5f1c1253d7cb00c707036d540
+Author: jbtrystram <jbtrystram@redhat.com>
+Date:   Tue Feb 10 14:35:49 2026 +0100
+
+    stages/bootc.install-to-filesystem:
+    
+    In [1] bootc made writing the boot UUID stamp optionnal by adding a
+    CLI switch. Wire up the option here to allow creating disk images
+    without that boot stamp. We need them in CoreOS because we randomize
+    the partitions UUIDs at first boot so this flag in unncessary and short-
+    circuits out initramfs services chain.
+    
+    [1] https://github.com/bootc-dev/bootc/pull/1978
+
+diff --git a/stages/org.osbuild.bootc.install-to-filesystem b/stages/org.osbuild.bootc.install-to-filesystem
+index 970655f6..e0cd8451 100755
+--- a/stages/org.osbuild.bootc.install-to-filesystem
++++ b/stages/org.osbuild.bootc.install-to-filesystem
+@@ -62,6 +62,8 @@ def main(options, inputs, paths):
+                 pargs.extend(["--boot-mount-spec="])
+             else:
+                 pargs.extend(["--boot-mount-spec", boot_spec])
++        if "bootupd-skip-boot-uuid" in options:
++            pargs.extend(["--bootupd-skip-boot-uuid"])
+ 
+         # add target and go
+         pargs.append(dst)
+diff --git a/stages/org.osbuild.bootc.install-to-filesystem.meta.json b/stages/org.osbuild.bootc.install-to-filesystem.meta.json
+index 53369218..0b2999ab 100644
+--- a/stages/org.osbuild.bootc.install-to-filesystem.meta.json
++++ b/stages/org.osbuild.bootc.install-to-filesystem.meta.json
+@@ -56,6 +56,10 @@
+         "boot-mount-spec": {
+           "type": "string",
+           "description": "Mount specification for the /boot filesystem. If `/boot` is detected as a mounted partition, then its UUID will be used."
++        },
++        "bootupd-skip-boot-uuid": {
++          "type": "boolean",
++          "description": "Don't pass --write-uuid to bootupd during bootloader installation."
+         }
+       }
+     },
