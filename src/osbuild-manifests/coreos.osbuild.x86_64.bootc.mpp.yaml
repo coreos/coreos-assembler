@@ -62,11 +62,11 @@ mpp-define-images:
           size:
             mpp-format-int: "{efi_system_size_mb * 1024 * 1024 / sector_size}"
         - name: boot
-          type: 0FC63DAF-8483-4772-8E79-3D69D8477DE4
+          type: BC13C2FF-59E6-4262-A352-B275FD6F7172
           size:
             mpp-format-int: "{boot_size_mb * 1024 * 1024 / sector_size}"
         - name: root
-          type: 0FC63DAF-8483-4772-8E79-3D69D8477DE4
+          type: 4F68BCE3-E8CD-4DB1-96E7-FBCAF984B709
   - id: image4k
     sector_size:
         mpp-format-int: "{four_k_sector_size}"
@@ -86,11 +86,11 @@ mpp-define-images:
           size:
             mpp-format-int: "{efi_system_size_mb * 1024 * 1024 / four_k_sector_size}"
         - name: boot
-          type: 0FC63DAF-8483-4772-8E79-3D69D8477DE4
+          type: BC13C2FF-59E6-4262-A352-B275FD6F7172
           size:
             mpp-format-int: "{boot_size_mb * 1024 * 1024 / four_k_sector_size}"
         - name: root
-          type: 0FC63DAF-8483-4772-8E79-3D69D8477DE4
+          type: 4F68BCE3-E8CD-4DB1-96E7-FBCAF984B709
 pipelines:
   # If installing from container then let's pull the container file into a pipeline
   - name: oci-archive
