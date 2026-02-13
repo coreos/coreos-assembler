@@ -23,7 +23,8 @@ import (
 	"os"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
+	"github.com/aws/aws-sdk-go-v2/feature/s3/transfermanager"
+	s3TransferTypes "github.com/aws/aws-sdk-go-v2/feature/s3/transfermanager/types"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/aws/smithy-go"
@@ -58,8 +59,6 @@ func (a *API) UploadObject(r io.Reader, bucket, path string, force bool) error {
 
 // UploadObjectExt uploads an object to S3 with more control over options.
 func (a *API) UploadObjectExt(r io.Reader, bucket, path string, force bool, policy string, contentType string, max_age int) error {
-	s3uploader := manager.NewUploader(a.s3)
-
 	if !force {
 		_, err := a.s3.HeadObject(context.Background(), &s3.HeadObjectInput{
 			Bucket: &bucket,
@@ -75,13 +74,13 @@ func (a *API) UploadObjectExt(r io.Reader, bucket, path string, force bool, poli
 		}
 	}
 
-	input := s3.PutObjectInput{
+	input := transfermanager.UploadObjectInput{
 		Body:   r,
 		Bucket: aws.String(bucket),
 		Key:    aws.String(path),
 	}
 	if policy != "" {
-		input.ACL = s3types.ObjectCannedACL(policy)
+		input.ACL = s3TransferTypes.ObjectCannedACL(policy)
 	}
 	if max_age >= 0 {
 		input.CacheControl = aws.String(fmt.Sprintf("max-age=%d", max_age))
@@ -91,10 +90,9 @@ func (a *API) UploadObjectExt(r io.Reader, bucket, path string, force bool, poli
 	}
 
 	plog.Infof("uploading s3://%v/%v", bucket, path)
-	if _, err := s3uploader.Upload(context.Background(), &input); err != nil {
+	if _, err := a.tManager.UploadObject(context.Background(), &input); err != nil {
 		return fmt.Errorf("error uploading s3://%v/%v: %v", bucket, path, err)
 	}
-
 	return nil
 }
 
@@ -215,14 +213,16 @@ func (a *API) DownloadFile(srcBucket, srcPath string) (*os.File, error) {
 	if err != nil {
 		return nil, err
 	}
-	downloader := manager.NewDownloader(a.s3)
-	_, err = downloader.Download(context.Background(), f, &s3.GetObjectInput{
-		Bucket: aws.String(srcBucket),
-		Key:    aws.String(srcPath),
-	})
-	if err != nil {
+
+	download := transfermanager.DownloadObjectInput{
+		Bucket:   aws.String(srcBucket),
+		Key:      aws.String(srcPath),
+		WriterAt: f,
+	}
+	if _, err := a.tManager.DownloadObject(context.Background(), &download); err != nil {
 		f.Close()
 		return nil, err
 	}
+
 	return f, nil
 }
