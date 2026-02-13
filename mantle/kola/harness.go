@@ -155,8 +155,9 @@ var (
 			skipFlag:          &[]register.Flag{register.NoEmergencyShellCheck}[0],
 		},
 		{
-			desc:  "dracut fatal",
-			match: regexp.MustCompile("dracut: Refusing to continue"),
+			desc:     "dracut fatal",
+			match:    regexp.MustCompile("dracut: Refusing to continue"),
+			skipFlag: &[]register.Flag{register.NoDracutFatalCheck}[0],
 		},
 		{
 			desc:  "kernel panic",
