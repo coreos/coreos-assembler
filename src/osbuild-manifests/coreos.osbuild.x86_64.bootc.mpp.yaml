@@ -556,12 +556,14 @@ pipelines:
             options:
               filename: disk.img
               partscan: true
+              sector-size:
+                  mpp-format-int: "{four_k_sector_size}"
         mounts:
           - name: root
             type: org.osbuild.xfs
             source: disk
             partition:
-              mpp-format-int: '{image.layout[''root''].partnum}'
+              mpp-format-int: '{image4k.layout[''root''].partnum}'
             target: /
       # Then we mount le boot parition and label again so the /boot/efi
       # mount point is labeled properly
@@ -581,18 +583,20 @@ pipelines:
             options:
               filename: disk.img
               partscan: true
+              sector-size:
+                  mpp-format-int: "{four_k_sector_size}"
         mounts:
           - name: root
             type: org.osbuild.xfs
             source: disk
             partition:
-              mpp-format-int: '{image.layout[''root''].partnum}'
+              mpp-format-int: '{image4k.layout[''root''].partnum}'
             target: /
           - name: boot
             type: org.osbuild.ext4
             source: disk
             partition:
-              mpp-format-int: '{image.layout[''boot''].partnum}'
+              mpp-format-int: '{image4k.layout[''boot''].partnum}'
             target: /boot
       # Use bootc install to-filesystem to install the ostree content from the container image
       # inside our disc image
