@@ -122,9 +122,9 @@ def append_build(out, input_):
     if args.stream_name:
         streamnamesrc = {'branch': args.stream_name}
     else:
-        fcos_stream = input_.get('coreos-assembler.oci-imported-labels', {}).get('fedora-coreos.stream')
-        if fcos_stream:
-            streamnamesrc = {'branch': fcos_stream}
+        coreos_stream = input_.get('coreos-assembler.oci-imported-labels', {}).get('com.coreos.stream')
+        if coreos_stream:
+            streamnamesrc = {'branch': coreos_stream}
         else:
             streamnamesrc = input_.get('coreos-assembler.container-config-git')
 

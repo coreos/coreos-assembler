@@ -567,9 +567,9 @@ func syncFindParentImageOptions() error {
 	case "fcos":
 		var stream string
 		if kola.CosaBuild.Meta.CosaImportedOciImage {
-			s, ok := kola.CosaBuild.Meta.OciLabels["fedora-coreos.stream"]
+			s, ok := kola.CosaBuild.Meta.OciLabels["com.coreos.stream"]
 			if !ok {
-				return errors.New("label 'fedora-coreos.stream' not found in build metadata")
+				return errors.New("label 'com.coreos.stream' not found in build metadata")
 			}
 			stream = string(s)
 		} else {
