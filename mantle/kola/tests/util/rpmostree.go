@@ -77,16 +77,3 @@ func GetBootedDeployment(c cluster.TestCluster, m platform.Machine) (*rpmostreec
 
 	return nil, errors.New("No booted deployment found")
 }
-
-func GetDeploymentStream(deployment *rpmostreeclient.Deployment) (string, error) {
-	const streamKey = "fedora-coreos.stream"
-	streamVal, ok := deployment.BaseCommitMeta[streamKey]
-	if !ok {
-		return "", fmt.Errorf("missing %s", streamKey)
-	}
-	stream, ok := streamVal.(string)
-	if !ok {
-		return "", fmt.Errorf("invalid non-string %s", streamKey)
-	}
-	return stream, nil
-}
