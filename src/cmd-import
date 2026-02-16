@@ -144,9 +144,9 @@ def generate_lockfile_and_commitmeta(tmpd, ostree_commit, build_meta):
         'synthetic': True,
     }
 
-    stream = build_meta.get('coreos-assembler.oci-imported-labels', {}).get('fedora-coreos.stream', '')
+    stream = build_meta.get('coreos-assembler.oci-imported-labels', {}).get('com.coreos.stream', '')
     if stream != '':
-        commitmeta['fedora-coreos.stream'] = stream
+        commitmeta['com.coreos.stream'] = stream
 
     with open(tmp_commitmeta, 'w') as f:
         json.dump(commitmeta, f, indent=2)

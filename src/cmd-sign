@@ -267,7 +267,7 @@ def robosign_oci(args, s3, build, gpgkey):
         if 'ref' in build:
             _, stream = build['ref'].rsplit('/', 1)
         else:  # let fail if this is somehow missing
-            stream = build["coreos-assembler.oci-imported-labels"]["fedora-coreos.stream"]
+            stream = build["coreos-assembler.oci-imported-labels"]["com.coreos.stream"]
 
         # Upload them to S3. We upload to `staging/$stream` first, and then will
         # move them to their final location once they're verified.
