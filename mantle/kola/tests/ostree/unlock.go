@@ -86,7 +86,7 @@ func ostreeAdminUnlock(c cluster.TestCluster, m platform.Machine, hotfix bool) e
 // and verifying the install was successful
 // NOTE: RPM name and binary name must match
 func rpmInstallVerify(c cluster.TestCluster, m platform.Machine, rpmFile string, rpmName string) error {
-	_, installErr := c.SSH(m, ("sudo rpm -i " + rpmFile))
+	_, installErr := c.SSH(m, ("sudo rpm --nosignature -i " + rpmFile))
 	if installErr != nil {
 		return fmt.Errorf(`Failed to install RPM: %v`, installErr)
 	}
@@ -159,7 +159,7 @@ func ostreeUnlockTest(c cluster.TestCluster) {
 	// re-install the RPM and verify the unlocked deployment is discarded
 	// after reboot
 	c.Run("discard", func(c cluster.TestCluster) {
-		c.RunCmdSync(m, ("sudo rpm -i " + rpmUrl))
+		c.RunCmdSync(m, ("sudo rpm --nosignature -i " + rpmUrl))
 
 		unlockRebootErr := m.Reboot()
 		if unlockRebootErr != nil {
@@ -219,7 +219,7 @@ func ostreeHotfixTest(c cluster.TestCluster) {
 	// install the RPM again, reboot, verify it the "hotfix" deployment
 	// and RPM have persisted
 	c.RunLogged("persist", func(c cluster.TestCluster) {
-		c.RunCmdSync(m, ("sudo rpm -i " + rpmUrl))
+		c.RunCmdSync(m, ("sudo rpm --nosignature -i " + rpmUrl))
 
 		unlockRebootErr := m.Reboot()
 		if unlockRebootErr != nil {
