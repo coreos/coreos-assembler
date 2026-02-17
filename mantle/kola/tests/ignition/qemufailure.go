@@ -193,7 +193,7 @@ func ignitionFailure(c cluster.TestCluster) error {
 		return err
 	}
 
-	builder.MemoryMiB = 1024
+	builder.MemoryMiB = 2048
 	builder.Firmware = kola.QEMUOptions.Firmware
 
 	searchPattern := "error creating /sysroot/notwritable.txt"
@@ -242,7 +242,7 @@ func dualBootfsFailure(c cluster.TestCluster) error {
 	if err != nil {
 		return err
 	}
-	builder.MemoryMiB = 1024
+	builder.MemoryMiB = 2048
 	builder.Firmware = kola.QEMUOptions.Firmware
 
 	searchRegexString := "Error: System has 2 devices with a filesystem labeled 'boot'"
@@ -300,7 +300,7 @@ func dualBootfsIgnitionFailure(c cluster.TestCluster) error {
 		return err
 	}
 
-	builder.MemoryMiB = 1024
+	builder.MemoryMiB = 2048
 	builder.Firmware = kola.QEMUOptions.Firmware
 
 	searchRegexString := "Error: System has 2 devices with a filesystem labeled 'boot'"
