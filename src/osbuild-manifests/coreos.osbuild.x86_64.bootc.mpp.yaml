@@ -1,0 +1,752 @@
+version: '2'
+mpp-vars:
+  artifact_name_prefix: $artifact_name_prefix
+  ociarchive: $ociarchive
+  osname: $osname
+  container_imgref: $container_imgref
+  container_repo: $container_repo
+  container_tag: $container_tag
+  extra_kargs: $extra_kargs
+  metal_image_size_mb: $metal_image_size_mb
+  cloud_image_size_mb: $cloud_image_size_mb
+  bios_boot_size_mb: 1
+  ppc_prep_size_mb: 4
+  reserved_part_size_mb: 1
+  efi_system_size_mb: 127
+  boot_size_mb: 384
+  sector_size: 512
+  four_k_sector_size: 4096
+  # Filesystem UUID and label definitions. These UUIDs
+  # are looked for on boot and if found replaced with
+  # a new random UUID to make each install unique.
+  boot_fs_uuid: 96d15588-3596-4b3c-adca-a2ff7279ea63
+  boot_fs_label: boot
+  root_fs_uuid: 910678ff-f77e-4a7d-8d53-86f2ac47a823
+  root_fs_label: root
+  # For some stages (i.e. the qemu stages) we'll use the host as
+  # the buildroot (i.e. COSA in most cases but sometimes just
+  # the actual HOST filesystem like in coreos/custom-coreos-disk-images).
+  # This is useful/necessary because we definitely don't include
+  # qemu-img or tools like zip in the actual CoreOS OS. "" here
+  # means to use the host as buildroot. It is worth noting that
+  # the host buildroot is the default if nothing is specified.
+  # We're still defining it here in an attempt to be explicit.
+  host_as_buildroot: ""
+  # Set the buildroot string to use for most operations here. We create
+  # the buildroot from the target OSTree contents so we have version
+  # matches. Unfortunately for FCOS there is no python so we can't
+  # really use FCOS as the buildroot so we'll use the host as the
+  # buildroot there.
+  buildroot:
+    mpp-if: osname in ['rhcos', 'scos']
+    then: "name:deployed-tree"
+    else:
+      mpp-format-string: '{host_as_buildroot}'
+mpp-define-images:
+  - id: image
+    sector_size:
+        mpp-format-int: "{sector_size}"
+    size:
+      mpp-format-string: "{metal_image_size_mb * 1024 * 1024}"
+    table:
+      uuid: 00000000-0000-4000-a000-000000000001
+      label: gpt
+      partitions:
+        - name: BIOS-BOOT
+          type: 21686148-6449-6E6F-744E-656564454649
+          bootable: true
+          size:
+            mpp-format-int: "{bios_boot_size_mb * 1024 * 1024 / sector_size}"
+        - name: EFI-SYSTEM
+          type: C12A7328-F81F-11D2-BA4B-00A0C93EC93B
+          size:
+            mpp-format-int: "{efi_system_size_mb * 1024 * 1024 / sector_size}"
+        - name: boot
+          type: BC13C2FF-59E6-4262-A352-B275FD6F7172
+          size:
+            mpp-format-int: "{boot_size_mb * 1024 * 1024 / sector_size}"
+        - name: root
+          type: 4F68BCE3-E8CD-4DB1-96E7-FBCAF984B709
+  - id: image4k
+    sector_size:
+        mpp-format-int: "{four_k_sector_size}"
+    size:
+      mpp-format-string: "{metal_image_size_mb * 1024 * 1024}"
+    table:
+      uuid: 00000000-0000-4000-a000-000000000001
+      label: gpt
+      partitions:
+        - name: BIOS-BOOT
+          type: 21686148-6449-6E6F-744E-656564454649
+          bootable: true
+          size:
+            mpp-format-int: "{bios_boot_size_mb * 1024 * 1024 / four_k_sector_size}"
+        - name: EFI-SYSTEM
+          type: C12A7328-F81F-11D2-BA4B-00A0C93EC93B
+          size:
+            mpp-format-int: "{efi_system_size_mb * 1024 * 1024 / four_k_sector_size}"
+        - name: boot
+          type: BC13C2FF-59E6-4262-A352-B275FD6F7172
+          size:
+            mpp-format-int: "{boot_size_mb * 1024 * 1024 / four_k_sector_size}"
+        - name: root
+          type: 4F68BCE3-E8CD-4DB1-96E7-FBCAF984B709
+pipelines:
+  # If installing from container then let's pull the container file into a pipeline
+  - name: oci-archive
+    stages:
+      - mpp-if: ociarchive != ''
+        then:
+          type: org.osbuild.copy
+          inputs:
+            inlinefile:
+              type: org.osbuild.files
+              origin: org.osbuild.source
+              mpp-embed:
+                id: coreos.ociarchive
+                url:
+                  mpp-format-string: 'file://{ociarchive}'
+          options:
+            paths:
+              - from:
+                  mpp-format-string: input://inlinefile/{embedded['coreos.ociarchive']}
+                to: tree:///coreos.ociarchive
+        else:
+          type: org.osbuild.noop
+  # Construct a tree here that is a representation of the filesystem
+  # that you would see on a running OSTree system. i.e. instead of just
+  # /ostree and /sysroot at the toplevel we see /usr/ /var/ /etc/ ... that
+  # you would see inside an OSTree deployment. Having the plain files accessible
+  # allows for this pipeline to be used as a buildroot for some stages
+  # or as inputs for others (i.e. file_context input to the org.osbuild.selinux
+  # stages). This pipeline isn't actually used for built artifacts but
+  # to help during build.
+  #
+  # NOTE: this is only used as a buildroot on RHCOS (FCOS doesn't ship python).
+  - name: deployed-tree
+    stages:
+      - mpp-if: ociarchive != ''
+        then:
+          type: org.osbuild.container-deploy
+          inputs:
+            images:
+              type: org.osbuild.containers
+              origin: org.osbuild.pipeline
+              references:
+                name:oci-archive:
+                  name: coreos.ociarchive
+        else:
+          type: org.osbuild.container-deploy
+          inputs:
+            images:
+              type: org.osbuild.containers-storage
+              origin: org.osbuild.source
+              mpp-resolve-images:
+                images:
+                  - source: $container_repo
+                    tag: $container_tag
+  - name: tree
+    build:
+      mpp-format-string: '{buildroot}'
+    source-epoch: 1659397331
+    stages:
+      # Set the context of the root of the tree so that we avoid unlabeled_t files.
+      # https://github.com/coreos/fedora-coreos-tracker/issues/1772
+      - type: org.osbuild.selinux
+        options:
+          file_contexts: input://tree/etc/selinux/targeted/contexts/files/file_contexts
+          target: tree:///
+        inputs:
+          tree:
+            type: org.osbuild.tree
+            origin: org.osbuild.pipeline
+            references:
+              - name:deployed-tree
+  - name: raw-image
+    build:
+      mpp-format-string: '{buildroot}'
+    stages:
+      - type: org.osbuild.truncate
+        options:
+          filename: disk.img
+          size:
+            mpp-format-string: '{image.size}'
+      - type: org.osbuild.sfdisk
+        devices:
+          device:
+            type: org.osbuild.loopback
+            options:
+              filename: disk.img
+        options:
+          mpp-format-json: '{image.layout}'
+      - type: org.osbuild.mkfs.fat
+        devices:
+          device:
+            type: org.osbuild.loopback
+            options:
+              filename: disk.img
+              start:
+                mpp-format-int: '{image.layout[''EFI-SYSTEM''].start}'
+              size:
+                mpp-format-int: '{image.layout[''EFI-SYSTEM''].size}'
+              lock: true
+        options:
+          label: EFI-SYSTEM
+          volid: 7B7795E7
+      - type: org.osbuild.mkfs.ext4
+        devices:
+          device:
+            type: org.osbuild.loopback
+            options:
+              filename: disk.img
+              start:
+                mpp-format-int: '{image.layout[''boot''].start}'
+              size:
+                mpp-format-int: '{image.layout[''boot''].size}'
+              lock: true
+        options:
+          uuid:
+            mpp-format-string: '{boot_fs_uuid}'
+          label:
+            mpp-format-string: '{boot_fs_label}'
+          # Set manually the metadata_csum_seed ext4 option otherwise changing the
+          # filesystem UUID while it's mounted doesn't work. Can remove this when
+          # metadata_csum_seed is default in RHEL, which can be checked by looking
+          # in /etc/mke2fs.conf.
+          metadata_csum_seed: true
+      - type: org.osbuild.mkfs.xfs
+        devices:
+          device:
+            type: org.osbuild.loopback
+            options:
+              filename: disk.img
+              start:
+                mpp-format-int: '{image.layout[''root''].start}'
+              size:
+                mpp-format-int: '{image.layout[''root''].size}'
+              lock: true
+        options:
+          uuid:
+            mpp-format-string: '{root_fs_uuid}'
+          label:
+            mpp-format-string: '{root_fs_label}'
+      # We've created the filesystems. Now let's create the mountpoints (directories)
+      # on the filesystems and label them with appropriate SELinux labels. This also
+      # covers things like filesystem autogenerated files like 'lost+found'. The labeling
+      # will happen once with just the root filesystem mounted and once with the boot
+      # filesystem mounted too (to make sure we get all potentially hidden mountpoints).
+      # https://github.com/coreos/fedora-coreos-tracker/issues/1771
+      - type: org.osbuild.mkdir
+        options:
+          paths:
+            - path: mount://root/boot
+              mode: 493
+            - path: mount://boot/efi
+              mode: 493
+        devices:
+           disk:
+            type: org.osbuild.loopback
+            options:
+              filename: disk.img
+              partscan: true
+        mounts:
+          - name: root
+            type: org.osbuild.xfs
+            source: disk
+            partition:
+              mpp-format-int: '{image.layout[''root''].partnum}'
+            target: /root-mount-point
+          - name: boot
+            type: org.osbuild.ext4
+            source: disk
+            partition:
+              mpp-format-int: '{image.layout[''boot''].partnum}'
+            target: /boot-mount-point
+      # Set the context of the root of disk so that we avoid unlabeled_t files.
+      # Here we make sure to not mount the boot partition because we want to label
+      # the directory mount point
+      # https://github.com/coreos/fedora-coreos-tracker/issues/1772
+      - type: org.osbuild.selinux
+        options:
+          file_contexts: input://tree/etc/selinux/targeted/contexts/files/file_contexts
+          target: mount://root/
+        inputs:
+          tree:
+            type: org.osbuild.tree
+            origin: org.osbuild.pipeline
+            references:
+              - name:deployed-tree
+        devices:
+          disk:
+            type: org.osbuild.loopback
+            options:
+              filename: disk.img
+              partscan: true
+        mounts:
+          - name: root
+            type: org.osbuild.xfs
+            source: disk
+            partition:
+              mpp-format-int: '{image.layout[''root''].partnum}'
+            target: /
+      # Then we mount le boot parition and label again so the /boot/efi
+      # mount point is labeled properly
+      - type: org.osbuild.selinux
+        options:
+          file_contexts: input://tree/etc/selinux/targeted/contexts/files/file_contexts
+          target: mount://root/boot
+        inputs:
+          tree:
+            type: org.osbuild.tree
+            origin: org.osbuild.pipeline
+            references:
+              - name:deployed-tree
+        devices:
+          disk:
+            type: org.osbuild.loopback
+            options:
+              filename: disk.img
+              partscan: true
+        mounts:
+          - name: root
+            type: org.osbuild.xfs
+            source: disk
+            partition:
+              mpp-format-int: '{image.layout[''root''].partnum}'
+            target: /
+          - name: boot
+            type: org.osbuild.ext4
+            source: disk
+            partition:
+              mpp-format-int: '{image.layout[''boot''].partnum}'
+            target: /boot
+      # Use bootc install to-filesystem to install the ostree content from the container image
+      # inside our disc image
+      - type: org.osbuild.bootc.install-to-filesystem
+        inputs: 
+          images:
+            mpp-if: ociarchive != ''
+            then:
+              type: org.osbuild.containers
+              origin: org.osbuild.pipeline
+              references:
+                name:oci-archive:
+                  name: coreos.ociarchive
+            else:
+              type: org.osbuild.containers-storage
+              origin: org.osbuild.source
+              mpp-resolve-images:
+                images:
+                  - source: $container_repo
+                    tag: $container_tag
+        options:
+          kernel-args:
+            - '$ignition_firstboot'
+            - mpp-format-string: '{extra_kargs}'
+          target-imgref:
+            mpp-format-string: '{container_imgref}'
+          stateroot:
+            mpp-format-string: '{osname}'
+          # Empty strings mean mount spec kargs are ommited entirely.
+          # See github.com/bootc-dev/bootc/issues/1441
+          boot-mount-spec: ""
+          root-mount-spec: ""
+          # We don't want bootupd to stamp the boot and UEFI paritions
+          # with the boot uuid because these will change at first boot.
+          # See https://github.com/coreos/fedora-coreos-config/pull/3898
+          bootupd-skip-boot-uuid: true
+        devices:
+          disk:
+            type: org.osbuild.loopback
+            options:
+              filename: disk.img
+              partscan: true
+        mounts:
+          - name: root
+            type: org.osbuild.xfs
+            source: disk
+            partition:
+              mpp-format-int: '{image.layout[''root''].partnum}'
+            target: /
+          - name: boot
+            type: org.osbuild.ext4
+            source: disk
+            partition:
+              mpp-format-int: '{image.layout[''boot''].partnum}'
+            target: /boot
+          - name: efi
+            type: org.osbuild.fat
+            source: disk
+            partition:
+              mpp-format-int: '{image.layout[''EFI-SYSTEM''].partnum}'
+            target: /boot/efi
+      # set up the `ignition.firstboot` stamp at the end because
+      # bootc want empty filesystems
+      - type: org.osbuild.ignition
+        options:
+          target: mount://boot/
+        devices:
+          disk:
+            type: org.osbuild.loopback
+            options:
+              filename: disk.img
+              partscan: true
+        mounts:
+          - name: root
+            type: org.osbuild.xfs
+            source: disk
+            partition:
+              mpp-format-int: '{image.layout[''root''].partnum}'
+            target: /
+          - name: boot
+            type: org.osbuild.ext4
+            source: disk
+            partition:
+              mpp-format-int: '{image.layout[''boot''].partnum}'
+            target: /boot
+      - type: org.osbuild.ln
+        options:
+          paths:
+            - target: ".bootc-aleph.json"
+              link_name: "mount://root/.coreos-aleph-version.json"
+              symbolic: true
+            - target: ".bootc-aleph.json"
+              link_name: "mount://root/.aleph-version.json"
+              symbolic: true
+        devices:
+          disk:
+            type: org.osbuild.loopback
+            options:
+              filename: disk.img
+              partscan: true
+        mounts:
+          - name: root
+            type: org.osbuild.xfs
+            source: disk
+            partition:
+              mpp-format-int: '{image.layout[''root''].partnum}'
+            target: /
+  - name: raw-4k-image
+    build:
+      mpp-format-string: '{buildroot}'
+    stages:
+      - type: org.osbuild.truncate
+        options:
+          filename: disk.img
+          size:
+            mpp-format-string: '{image4k.size}'
+      - type: org.osbuild.sfdisk
+        devices:
+          device:
+            type: org.osbuild.loopback
+            options:
+              filename: disk.img
+              sector-size:
+                  mpp-format-int: "{four_k_sector_size}"
+        options:
+          mpp-format-json: '{image4k.layout}'
+      - type: org.osbuild.mkfs.fat
+        devices:
+          device:
+            type: org.osbuild.loopback
+            options:
+              filename: disk.img
+              start:
+                mpp-format-int: '{image4k.layout[''EFI-SYSTEM''].start}'
+              size:
+                mpp-format-int: '{image4k.layout[''EFI-SYSTEM''].size}'
+              lock: true
+              sector-size:
+                  mpp-format-int: "{four_k_sector_size}"
+        options:
+          label: EFI-SYSTEM
+          volid: 7B7795E7
+      - type: org.osbuild.mkfs.ext4
+        devices:
+          device:
+            type: org.osbuild.loopback
+            options:
+              filename: disk.img
+              start:
+                mpp-format-int: '{image4k.layout[''boot''].start}'
+              size:
+                mpp-format-int: '{image4k.layout[''boot''].size}'
+              lock: true
+              sector-size:
+                  mpp-format-int: "{four_k_sector_size}"
+        options:
+          uuid:
+            mpp-format-string: '{boot_fs_uuid}'
+          label:
+            mpp-format-string: '{boot_fs_label}'
+          # Set manually the metadata_csum_seed ext4 option otherwise changing the
+          # filesystem UUID while it's mounted doesn't work. Can remove this when
+          # metadata_csum_seed is default in RHEL, which can be checked by looking
+          # in /etc/mke2fs.conf.
+          metadata_csum_seed: true
+      - type: org.osbuild.mkfs.xfs
+        devices:
+          device:
+            type: org.osbuild.loopback
+            options:
+              filename: disk.img
+              start:
+                mpp-format-int: '{image4k.layout[''root''].start}'
+              size:
+                mpp-format-int: '{image4k.layout[''root''].size}'
+              lock: true
+              sector-size:
+                  mpp-format-int: "{four_k_sector_size}"
+        options:
+          uuid:
+            mpp-format-string: '{root_fs_uuid}'
+          label:
+            mpp-format-string: '{root_fs_label}'
+      # We've created the filesystems. Now let's create the mountpoints (directories)
+      # on the filesystems and label them with appropriate SELinux labels. This also
+      # covers things like filesystem autogenerated files like 'lost+found'. The labeling
+      # will happen once with just the root filesystem mounted and once with the boot
+      # filesystem mounted too (to make sure we get all potentially hidden mountpoints).
+      # https://github.com/coreos/fedora-coreos-tracker/issues/1771
+      - type: org.osbuild.mkdir
+        options:
+          paths:
+            - path: mount://root/boot
+              mode: 493
+            - path: mount://boot/efi
+              mode: 493
+        devices:
+          disk:
+            type: org.osbuild.loopback
+            options:
+              filename: disk.img
+              partscan: true
+              sector-size:
+                  mpp-format-int: "{four_k_sector_size}"
+        mounts:
+          - name: root
+            type: org.osbuild.xfs
+            source: disk
+            partition:
+              mpp-format-int: '{image4k.layout[''root''].partnum}'
+            target: /root-mount-point
+          - name: boot
+            type: org.osbuild.ext4
+            source: disk
+            partition:
+              mpp-format-int: '{image4k.layout[''boot''].partnum}'
+            target: /boot-mount-point
+      # Set the context of the root of disk so that we avoid unlabeled_t files.
+      # Here we make sure to not mount the boot partition because we want to label
+      # the directory mount point
+      # https://github.com/coreos/fedora-coreos-tracker/issues/1772
+      - type: org.osbuild.selinux
+        options:
+          file_contexts: input://tree/etc/selinux/targeted/contexts/files/file_contexts
+          target: mount://root/
+        inputs:
+          tree:
+            type: org.osbuild.tree
+            origin: org.osbuild.pipeline
+            references:
+              - name:deployed-tree
+        devices:
+          disk:
+            type: org.osbuild.loopback
+            options:
+              filename: disk.img
+              partscan: true
+              sector-size:
+                  mpp-format-int: "{four_k_sector_size}"
+        mounts:
+          - name: root
+            type: org.osbuild.xfs
+            source: disk
+            partition:
+              mpp-format-int: '{image4k.layout[''root''].partnum}'
+            target: /
+      # Then we mount le boot parition and label again so the /boot/efi
+      # mount point is labeled properly
+      - type: org.osbuild.selinux
+        options:
+          file_contexts: input://tree/etc/selinux/targeted/contexts/files/file_contexts
+          target: mount://root/boot
+        inputs:
+          tree:
+            type: org.osbuild.tree
+            origin: org.osbuild.pipeline
+            references:
+              - name:deployed-tree
+        devices:
+          disk:
+            type: org.osbuild.loopback
+            options:
+              filename: disk.img
+              partscan: true
+              sector-size:
+                  mpp-format-int: "{four_k_sector_size}"
+        mounts:
+          - name: root
+            type: org.osbuild.xfs
+            source: disk
+            partition:
+              mpp-format-int: '{image4k.layout[''root''].partnum}'
+            target: /
+          - name: boot
+            type: org.osbuild.ext4
+            source: disk
+            partition:
+              mpp-format-int: '{image4k.layout[''boot''].partnum}'
+            target: /boot
+      # Use bootc install to-filesystem to install the ostree content from the container image
+      # inside our disc image
+      - type: org.osbuild.bootc.install-to-filesystem
+        inputs: 
+          images:
+            mpp-if: ociarchive != ''
+            then:
+              type: org.osbuild.containers
+              origin: org.osbuild.pipeline
+              references:
+                name:oci-archive:
+                  name: coreos.ociarchive
+            else:
+              type: org.osbuild.containers-storage
+              origin: org.osbuild.source
+              mpp-resolve-images:
+                images:
+                  - source: $container_repo
+                    tag: $container_tag
+        options:
+          kernel-args:
+            - '$ignition_firstboot'
+            - mpp-format-string: '{extra_kargs}'
+          target-imgref:
+            mpp-format-string: '{container_imgref}'
+          stateroot:
+            mpp-format-string: '{osname}'
+          # Empty strings mean mount spec kargs are ommited entirely.
+          # See github.com/bootc-dev/bootc/issues/1441
+          boot-mount-spec: ""
+          root-mount-spec: ""
+          # We don't want bootupd to stamp the boot and UEFI paritions
+          # with the boot uuid because these will change at first boot.
+          # See https://github.com/coreos/fedora-coreos-config/pull/3898
+          bootupd-skip-boot-uuid: true
+        devices:
+          disk:
+            type: org.osbuild.loopback
+            options:
+              filename: disk.img
+              partscan: true
+              sector-size:
+                  mpp-format-int: "{four_k_sector_size}"
+        mounts:
+          - name: root
+            type: org.osbuild.xfs
+            source: disk
+            partition:
+              mpp-format-int: '{image4k.layout[''root''].partnum}'
+            target: /
+          - name: boot
+            type: org.osbuild.ext4
+            source: disk
+            partition:
+              mpp-format-int: '{image4k.layout[''boot''].partnum}'
+            target: /boot
+          - name: efi
+            type: org.osbuild.fat
+            source: disk
+            partition:
+              mpp-format-int: '{image4k.layout[''EFI-SYSTEM''].partnum}'
+            target: /boot/efi
+      # set up the `ignition.firstboot` stamp at the end because
+      # bootc want empty filesystems
+      - type: org.osbuild.ignition
+        options:
+          target: mount://boot/
+        devices:
+          disk:
+            type: org.osbuild.loopback
+            options:
+              filename: disk.img
+              partscan: true
+              sector-size:
+                  mpp-format-int: "{four_k_sector_size}"
+        mounts:
+          - name: root
+            type: org.osbuild.xfs
+            source: disk
+            partition:
+              mpp-format-int: '{image4k.layout[''root''].partnum}'
+            target: /
+          - name: boot
+            type: org.osbuild.ext4
+            source: disk
+            partition:
+              mpp-format-int: '{image4k.layout[''boot''].partnum}'
+            target: /boot
+      - type: org.osbuild.ln
+        options:
+          paths:
+            - target: ".bootc-aleph.json"
+              link_name: "mount://root/.coreos-aleph-version.json"
+              symbolic: true
+            - target: ".bootc-aleph.json"
+              link_name: "mount://root/.aleph-version.json"
+              symbolic: true
+        devices:
+          disk:
+            type: org.osbuild.loopback
+            options:
+              filename: disk.img
+              partscan: true
+              sector-size:
+                  mpp-format-int: "{four_k_sector_size}"
+        mounts:
+          - name: root
+            type: org.osbuild.xfs
+            source: disk
+            partition:
+              mpp-format-int: '{image4k.layout[''root''].partnum}'
+            target: /
+  - mpp-import-pipelines:
+      path: platform.aliyun.ipp.yaml
+  - mpp-import-pipelines:
+      path: platform.applehv.ipp.yaml
+  - mpp-import-pipelines:
+      path: platform.aws.ipp.yaml
+  - mpp-import-pipelines:
+      path: platform.azure.ipp.yaml
+  - mpp-import-pipelines:
+      path: platform.azurestack.ipp.yaml
+  - mpp-import-pipelines:
+      path: platform.digitalocean.ipp.yaml
+  - mpp-import-pipelines:
+      path: platform.exoscale.ipp.yaml
+  - mpp-import-pipelines:
+      path: platform.gcp.ipp.yaml
+  - mpp-import-pipelines:
+      path: platform.hetzner.ipp.yaml
+  - mpp-import-pipelines:
+      path: platform.hyperv.ipp.yaml
+  - mpp-import-pipelines:
+      path: platform.ibmcloud.ipp.yaml
+  - mpp-import-pipelines:
+      path: platform.kubevirt.ipp.yaml
+  - mpp-import-pipelines:
+      path: platform.openstack.ipp.yaml
+  - mpp-import-pipelines:
+      path: platform.oraclecloud.ipp.yaml
+  - mpp-import-pipelines:
+      path: platform.proxmoxve.ipp.yaml
+  - mpp-import-pipelines:
+      path: platform.metal.ipp.yaml
+  - mpp-import-pipelines:
+      path: platform.nutanix.ipp.yaml
+  - mpp-import-pipelines:
+      path: platform.qemu.ipp.yaml
+  - mpp-import-pipelines:
+      path: platform.vultr.ipp.yaml
+  - mpp-import-pipelines:
+      path: platform.live.ipp.yaml

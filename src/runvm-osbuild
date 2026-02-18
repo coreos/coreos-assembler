@@ -122,11 +122,18 @@ set -x; osbuild-mpp                                       \
     "${mppyaml}" "${processed_json}"
 set +x
 
-log_disk_usage
+if [[ -z "${RUNVM_SHELL:-}" ]]; then
+    log_disk_usage
+fi
 
 # Build the image
 set -x
 # shellcheck disable=SC2068
+# To stop osbuild at a given stage to inspect the state of
+# things you can add `--break stage_id` to the following.
+# eg : `--break org.osbuild.bootc.install-to-filesystem`
+# The osbuild environnement is set up under `/run/osbuild`
+# Use it in conjuction with `RUNVM_SHELL=1 in `cmd-osbuild`
 osbuild \
     --out "$outdir"              \
     --store "$storedir"          \
