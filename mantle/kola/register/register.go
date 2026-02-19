@@ -30,6 +30,7 @@ const (
 	NoInstanceCreds                   // don't grant credentials (AWS instance profile, GCP service account) to the instance
 	NoEmergencyShellCheck             // don't check console output for emergency shell invocation
 	AllowConfigWarnings               // ignore Ignition and Butane warnings instead of failing
+	NoDracutFatalCheck                // don't check console output for dracut fatal errors
 )
 
 // NativeFuncWrap is a wrapper for the NativeFunc which includes an optional string of arches and/or distributions to
