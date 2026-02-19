@@ -162,6 +162,10 @@ func init() {
 	sv(&kola.QEMUOptions.SecureExecutionHostKey, "qemu-secex-hostkey", "", "Path to Secure Execution HKD certificate")
 	// s390x CEX-specific options
 	bv(&kola.QEMUOptions.Cex, "qemu-cex", false, "Attach CEX device to guest")
+
+	// kola run iso.* options
+	bv(&kola.QEMUOptions.InstInsecure, "inst-insecure", false, "Do not verify signature on metal image")
+	ssv(&kola.QEMUOptions.PxeKernelArgs, "pxe-kargs", nil, "Additional kernel arguments for PXE")
 }
 
 // Sync up the command line options if there is dependency

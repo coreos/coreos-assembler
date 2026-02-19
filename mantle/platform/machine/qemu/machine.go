@@ -92,17 +92,27 @@ func (m *machine) WaitForSoftReboot(timeout time.Duration, oldSoftRebootsCount s
 }
 
 func (m *machine) Destroy() {
-	m.inst.Destroy()
-
-	m.journal.Destroy()
-
-	if buf, err := os.ReadFile(m.consolePath); err == nil {
-		m.console = string(buf)
-	} else {
-		plog.Errorf("Error reading console for instance %v: %v", m.ID(), err)
+	if m.inst != nil {
+		m.inst.Destroy()
+		m.inst = nil
 	}
 
-	m.qc.DelMach(m)
+	if m.journal != nil {
+		m.journal.Destroy()
+		m.journal = nil
+	}
+
+	if m.consolePath != "" {
+		if buf, err := os.ReadFile(m.consolePath); err == nil {
+			m.console = string(buf)
+		} else {
+			plog.Errorf("Error reading console for instance %v: %v", m.ID(), err)
+		}
+	}
+
+	if m.qc != nil {
+		m.qc.DelMach(m)
+	}
 }
 
 func (m *machine) ConsoleOutput() string {
