@@ -42,6 +42,7 @@ var (
 	}
 
 	memory       int
+	numaNodes    bool
 	addDisks     []string
 	usernet      bool
 	cpuCountHost bool
@@ -84,6 +85,7 @@ func init() {
 	cmdQemuExec.Flags().StringVarP(&firstbootkargs, "firstbootkargs", "", "", "Additional first boot kernel arguments")
 	cmdQemuExec.Flags().StringArrayVar(&kargs, "kargs", nil, "Additional kernel arguments applied")
 	cmdQemuExec.Flags().BoolVarP(&usernet, "usernet", "U", false, "Enable usermode networking")
+	cmdQemuExec.Flags().BoolVarP(&numaNodes, "numaNodes", "n", false, "Simulate two numa nodes")
 	cmdQemuExec.Flags().StringSliceVar(&ignitionFragments, "add-ignition", nil, "Append well-known Ignition fragment: [\"autologin\", \"autoresize\", \"noautoupdate\"]")
 	cmdQemuExec.Flags().StringVarP(&hostname, "hostname", "", "", "Set hostname via DHCP")
 	cmdQemuExec.Flags().IntVarP(&memory, "memory", "m", 0, "Memory in MB")
@@ -347,6 +349,8 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 		}
 	}
 	builder.Hostname = hostname
+	builder.NumaNodes = numaNodes
+
 	// for historical reasons, both --memory and --qemu-memory are supported
 	if memory != 0 {
 		builder.MemoryMiB = memory

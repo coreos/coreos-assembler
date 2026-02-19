@@ -1042,6 +1042,7 @@ type externalTestMeta struct {
 	PrimaryDisk               string   `json:"primaryDisk,omitempty"               yaml:"primaryDisk,omitempty"`
 	InjectContainer           bool     `json:"injectContainer,omitempty"           yaml:"injectContainer,omitempty"`
 	MinMemory                 int      `json:"minMemory,omitempty"                 yaml:"minMemory,omitempty"`
+	NumaNodes                 bool     `json:"numaNodes,omitempty"                 yaml:"numaNodes,omitempty"`
 	MinDiskSize               int      `json:"minDisk,omitempty"                   yaml:"minDisk,omitempty"`
 	AdditionalNics            int      `json:"additionalNics,omitempty"            yaml:"additionalNics,omitempty"`
 	AppendKernelArgs          string   `json:"appendKernelArgs,omitempty"          yaml:"appendKernelArgs,omitempty"`
@@ -1280,6 +1281,7 @@ ExecStart=%s
 		PrimaryDisk:               targetMeta.PrimaryDisk,
 		InjectContainer:           targetMeta.InjectContainer,
 		MinMemory:                 targetMeta.MinMemory,
+		NumaNodes:                 targetMeta.NumaNodes,
 		MinDiskSize:               targetMeta.MinDiskSize,
 		AdditionalNics:            targetMeta.AdditionalNics,
 		AppendKernelArgs:          targetMeta.AppendKernelArgs,
@@ -1802,6 +1804,7 @@ func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flig
 			AdditionalDisks:           t.AdditionalDisks,
 			MinMemory:                 t.MinMemory,
 			MinDiskSize:               t.MinDiskSize,
+			NumaNodes:                 t.NumaNodes,
 			AdditionalNics:            t.AdditionalNics,
 			AppendKernelArgs:          t.AppendKernelArgs,
 			AppendFirstbootKernelArgs: t.AppendFirstbootKernelArgs,
