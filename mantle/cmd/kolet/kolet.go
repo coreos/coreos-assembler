@@ -403,7 +403,7 @@ func runExtUnit(cmd *cobra.Command, args []string) error {
 		return n != unitname
 	}
 	compareFunc := func(u1, u2 *systemddbus.UnitStatus) bool { return *u1 != *u2 }
-	unitevents, uniterrs := sdconn.SubscribeUnitsCustom(time.Second, 0, compareFunc, filterFunc)
+	unitevents, uniterrs := sdconn.SubscribeUnitsCustomContext(ctx, time.Second, 0, compareFunc, filterFunc)
 
 	for {
 		systemdjournal.Print(systemdjournal.PriInfo, "Awaiting events")

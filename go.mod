@@ -26,7 +26,7 @@ require (
 	github.com/coreos/butane v0.25.1
 	github.com/coreos/go-semver v0.3.1
 	github.com/coreos/go-systemd v0.0.0-20190321100706-95778dfbb74e
-	github.com/coreos/go-systemd/v22 v22.6.0
+	github.com/coreos/go-systemd/v22 v22.7.0
 	github.com/coreos/ignition/v2 v2.25.0
 	github.com/coreos/pkg v0.0.0-20240122114842-bbd7aa9bf6fb
 	github.com/coreos/rpmostree-client-go v0.0.0-20240514234259-72a33e8554b6
