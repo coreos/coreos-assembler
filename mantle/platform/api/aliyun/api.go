@@ -370,6 +370,32 @@ func (a *API) DeleteImage(id string, force bool) error {
 	return errs.AsError()
 }
 
+func (a *API) CreateTags(resource string, tags map[string]string, region string) error {
+	request := ecs.CreateAddTagsRequest()
+	request.SetConnectTimeout(defaultConnectTimeout)
+	request.SetReadTimeout(defaultReadTimeout)
+	request.ResourceId = resource
+	request.RegionId = region
+	request.ResourceType = "image"
+
+	tagObjs := make([]ecs.AddTagsTag, 0, len(tags))
+	for key, value := range tags {
+		tagObjs = append(tagObjs, ecs.AddTagsTag{
+			Key:   key,
+			Value: value,
+		})
+	}
+
+	request.Tag = &tagObjs
+	response, err := a.ecs.AddTags(request)
+	plog.Infof("response %v", response)
+	if err != nil {
+		return fmt.Errorf("unable to add tags: %v", err)
+	}
+
+	return err
+}
+
 // DeleteSnapshot deletes a snapshot
 func (a *API) DeleteSnapshot(id string, force bool) error {
 	request := ecs.CreateDeleteSnapshotRequest()
