@@ -21,6 +21,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/feature/s3/transfermanager"
 	"github.com/aws/aws-sdk-go-v2/service/ec2"
 	ec2types "github.com/aws/aws-sdk-go-v2/service/ec2/types"
 	"github.com/aws/aws-sdk-go-v2/service/iam"
@@ -58,12 +59,13 @@ type Options struct {
 }
 
 type API struct {
-	config aws.Config
-	ec2    *ec2.Client
-	iam    *iam.Client
-	s3     *s3.Client
-	sts    *sts.Client
-	opts   *Options
+	config   aws.Config
+	ec2      *ec2.Client
+	iam      *iam.Client
+	s3       *s3.Client
+	sts      *sts.Client
+	opts     *Options
+	tManager *transfermanager.Client
 }
 
 // New creates a new AWS API wrapper. It uses credentials from any of the
@@ -98,13 +100,16 @@ func New(opts *Options) (*API, error) {
 		return nil, err
 	}
 
+	s3Client := s3.NewFromConfig(awsCfg)
+	tManager := transfermanager.New(s3Client)
 	api := &API{
-		config: awsCfg,
-		ec2:    ec2.NewFromConfig(awsCfg),
-		iam:    iam.NewFromConfig(awsCfg),
-		s3:     s3.NewFromConfig(awsCfg),
-		sts:    sts.NewFromConfig(awsCfg),
-		opts:   opts,
+		config:   awsCfg,
+		ec2:      ec2.NewFromConfig(awsCfg),
+		iam:      iam.NewFromConfig(awsCfg),
+		s3:       s3Client,
+		sts:      sts.NewFromConfig(awsCfg),
+		opts:     opts,
+		tManager: tManager,
 	}
 
 	return api, nil
