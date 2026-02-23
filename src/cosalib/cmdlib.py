@@ -349,7 +349,7 @@ def import_ostree_commit(workdir, buildpath, buildmeta, extract_json=True, parti
             # so only works with "pure OSTree OCI" encapsulated commits (legacy path)
             subprocess.check_call(['sudo', 'ostree', 'container', 'import', '--repo', build_repo,
                                    '--write-ref', buildmeta['buildid'],
-                                   'ostree-unverified-image:oci-archive:' + tarfile])
+                                   'ostree-unverified-image:oci-archive:' + tarfile] + progress_args())
             subprocess.check_call(['sudo', 'ostree', f'--repo={repo}', 'pull-local', build_repo, buildmeta['buildid']])
             uid = os.getuid()
             gid = os.getgid()
@@ -359,7 +359,8 @@ def import_ostree_commit(workdir, buildpath, buildmeta, extract_json=True, parti
                 subprocess.check_call(['ostree', 'init', '--repo', tmpd, '--mode=bare-user'])
                 subprocess.check_call(['ostree', 'container', 'import', '--repo', tmpd,
                                        '--write-ref', buildmeta['buildid'],
-                                       'ostree-unverified-image:oci-archive:' + tarfile])
+                                       'ostree-unverified-image:oci-archive:' + tarfile] + progress_args())
+
                 subprocess.check_call(['ostree', f'--repo={repo}', 'pull-local', tmpd, buildmeta['buildid']])
 
         # Also extract image.json since it's commonly needed by image builds
@@ -387,7 +388,7 @@ def import_oci_archive(parent_tmpd, repo, ociarchive, ref):
             subprocess.check_call(['ostree', 'pull-local', '--repo', tmprepo, repo] + blob_refs)
 
         subprocess.check_call(['ostree', 'container', 'image', 'pull', tmprepo,
-                               f'ostree-unverified-image:oci-archive:{ociarchive}'])
+                               f'ostree-unverified-image:oci-archive:{ociarchive}'] + progress_args())
 
         # awkwardly work around the fact that there is no --write-ref equivalent
         # XXX: we can make this better once we can rely on --ostree-digestfile
@@ -585,3 +586,8 @@ def skopeo_inspect(image):
 def parse_timestamp(timestamp):
     timestamp = parser.parse(timestamp)
     return rfc3339_time(timestamp.astimezone(tz.UTC))
+
+
+def progress_args():
+    '''When we are not in a tty, we will add the --quiet flag to avoid showing progress bars'''
+    return ['--quiet'] if not sys.stdout.isatty() else []
