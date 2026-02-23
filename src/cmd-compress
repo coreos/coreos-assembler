@@ -253,7 +253,7 @@ if args.mode == "compress":
     # Find what compressor we should use, either picking it up from
     # CLI args or from image.json
     image_json = builds.get_build_image_json(build)
-    gzip_level = 9
+    gzip_level = 6
     if args.fast:
         args.compressor = 'gzip'
         gzip_level = 1
