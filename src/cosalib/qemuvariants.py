@@ -328,7 +328,7 @@ class QemuVariantImage(_Build):
             os.rename(final_img, uncompressed_path)
             match self.compression:
                 case "gzip":
-                    rc = ['gzip', '-9c', uncompressed_path]
+                    rc = ['gzip', '-6c', uncompressed_path]
                 case "zip":
                     rc = ['zip', '-9j', "-", uncompressed_path]
                 case _:
