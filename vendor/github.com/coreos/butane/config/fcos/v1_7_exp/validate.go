@@ -54,6 +54,10 @@ func (conf Config) Validate(c path.ContextPath) (r report.Report) {
 }
 
 func (d BootDevice) Validate(c path.ContextPath) (r report.Report) {
+	if len(d.Mirror.Devices) > 0 && d.Layout == nil {
+		r.AddOnError(c.Append("mirror"), common.ErrMirrorRequiresLayout)
+	}
+
 	if d.Layout != nil {
 		switch *d.Layout {
 		case "aarch64", "ppc64le", "x86_64":

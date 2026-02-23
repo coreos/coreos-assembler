@@ -249,8 +249,12 @@ type Timeouts struct {
 }
 
 type Tree struct {
-	Local string  `yaml:"local"`
-	Path  *string `yaml:"path"`
+	Group    NodeGroup `yaml:"group"`
+	Local    string    `yaml:"local"`
+	Path     *string   `yaml:"path"`
+	User     NodeUser  `yaml:"user"`
+	FileMode *int      `yaml:"file_mode"`
+	DirMode  *int      `yaml:"dir_mode"`
 }
 
 type Unit struct {
