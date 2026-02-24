@@ -45,7 +45,23 @@ def build_container_image(labels, buildDir, containerfile, fromimage, cacheTTL,
     # If it's already present in the local container storage it may be stale.
     cmd.extend(['--pull=always'])
     # Long running command. Send output to stdout for logging
-    runcmd(cmd)
+    try:
+        runcmd(cmd)
+    except subprocess.CalledProcessError as e:
+        # Podman may return exit code 125 due to a container cleanup error
+        # ("identifier is not a container") even when the image was
+        # successfully built and committed. This happens when the
+        # prune-container-resources timer job (which runs `podman container
+        # prune --force` periodically on the builders to prevent disk space
+        # exhaustion) deletes the build container before podman build can
+        # clean it up itself.
+        # See: https://issues.redhat.com/browse/COS-3949
+        if e.returncode == 125 and is_tag_in_podman_storage(repo, tag):
+            logging.warning(f"podman build returned exit code 125 but image "
+                            f"{repo}:{tag} exists in local storage. "
+                            f"Ignoring cleanup error and continuing.")
+        else:
+            raise
 
 
 def push_container_image(repo, tag, digestfile):
