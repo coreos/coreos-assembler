@@ -62,17 +62,23 @@ func init() {
 	// This test follows the same network configuration used on https://github.com/RHsyseng/rhcos-slb
 	// with a slight change, where the script originally run by MCO is run from
 	// ignition: https://github.com/RHsyseng/rhcos-slb/blob/161a421f8fdcdb4b08fb6366daa8fe1b75cbe095/init-interfaces.sh.
+	// s390x: multiple NICs are ordered by the CCW device number. Use classic ethX names to ensure ordering.
+	var kargs string
+	if runtime.GOARCH == "s390x" {
+		kargs = "net.ifnames=0"
+	}
 	register.RegisterTest(&register.Test{
-		Run:            InitInterfacesTest,
-		ClusterSize:    1,
-		Name:           "rhcos.network.init-interfaces-test",
-		Description:    "Verify init-interfaces script works in both fresh setup and reboot.",
-		Timeout:        40 * time.Minute,
-		Distros:        []string{"rhcos"},
-		Platforms:      []string{"qemu"},
-		RequiredTag:    "openshift",
-		AdditionalNics: 2,
-		UserData:       userdata,
+		Run:              InitInterfacesTest,
+		ClusterSize:      1,
+		Name:             "rhcos.network.init-interfaces-test",
+		Description:      "Verify init-interfaces script works in both fresh setup and reboot.",
+		Timeout:          40 * time.Minute,
+		Distros:          []string{"rhcos"},
+		Platforms:        []string{"qemu"},
+		RequiredTag:      "openshift",
+		AdditionalNics:   2,
+		AppendKernelArgs: kargs,
+		UserData:         userdata,
 	})
 }
 
