@@ -212,6 +212,13 @@ build_with_buildah() {
         cmd="bash"
     else
         cmd="/usr/lib/coreos-assembler/cmd-supermin-run --cache"
+        # Since we will be running inside supermin we'll only have access
+        # to our current working directory. Copy in the registry auth to
+        # the tempdir to ensure we'll have access to it for the build.
+        if [ -n "${REGISTRY_AUTH_FILE:-}" ]; then
+            cp -v "${REGISTRY_AUTH_FILE}" "${tempdir}/registry-auth-file.json"
+            export REGISTRY_AUTH_FILE="${tempdir}/registry-auth-file.json"
+        fi
     fi
     cat <<EOF > "${tempdir}/build-with-buildah-script.sh"
         set -euxo pipefail
