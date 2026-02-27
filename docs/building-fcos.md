@@ -88,7 +88,7 @@ cosa() {
        local -r cosa_build_date="$(date -d ${cosa_build_date_str} +%s)"
        if [[ $(date +%s) -ge $((cosa_build_date + 60*60*24*7)) ]] ; then
          echo -e "\e[0;33m----" >&2
-         echo "The COSA container image is more that a week old and likely outdated." >&2
+         echo "The COSA container image is more than a week old and likely outdated." >&2
          echo "You should pull the latest version with:" >&2
          echo "podman pull ${COREOS_ASSEMBLER_CONTAINER_LATEST}" >&2
          echo -e "----\e[0m" >&2
