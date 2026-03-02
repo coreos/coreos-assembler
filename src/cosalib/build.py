@@ -70,8 +70,7 @@ class _Build:
         Keyword args:
             arch:  the base architecture, defaults to the current arch.
             build: the name of the build or latest
-            require_cosa: require the CoreOS Assembler data, such as
-                    coreos-assembler-config-git.json and the cosa tarball.
+            require_cosa: require the CoreOS Assembler cosa tarball
             require_commit: require the commitmeta.json output.
             workdir: the work directory, defaults current working dirvY
 
@@ -115,7 +114,6 @@ class _Build:
         # Setup the instance properties.
         self._build_json = {
             "commit": None,
-            "config": None,
             "image": None,
             "meta": Meta(self.workdir, build,
                          basearch=self.basearch, schema=schema)
@@ -131,10 +129,9 @@ class _Build:
         self._exceptions = {
             "commit": CommitMetaRequired if require_commit else None,
             "image":  COSAMetaRequired if require_cosa else None,
-            "config": COSAMetaRequired if require_cosa else None,
         }
         # Check the required meta-data by calling the properties.
-        (_, _, _, _) = (self.commit, self.meta, self.config, self.image)
+        (_, _, _) = (self.commit, self.meta, self.image)
 
         log.info("Processed build for: %s (%s-%s) %s",
                  self.summary, self.build_name.upper(), self.basearch,
@@ -227,13 +224,6 @@ class _Build:
         return self.meta.get('ostree-commit')
 
     @property
-    def config(self):
-        """ get the the meta-data about the config recipe """
-        if self._build_json["config"] is None:
-            self._build_json["config"] = self.__get_json("config")
-        return self._build_json["config"]
-
-    @property
     def image(self):
         """ get the meta-data about the COSA image """
         if self._build_json["image"] is None:
@@ -295,7 +285,6 @@ class _Build:
         """
         lookup = {
             "commit": "%s/commitmeta.json" % self.build_dir,
-            "config": ("%s/coreos-assembler-config-git.json" % self.build_dir),
             "image": "/cosa/coreos-assembler-git.json",
         }
         return lookup[var]
@@ -333,7 +322,6 @@ class _Build:
         """
         lookup = {
             "commit": self.commit,
-            "config": self.config,
             "image": self.image,
             "meta": self.meta
         }
