@@ -175,8 +175,17 @@ build_with_buildah() {
             --label org.opencontainers.image.source="${source}" \
             --label org.opencontainers.image.revision="${commit}"
 
-    if [ -d "src/yumrepos" ] && [ -e "src/yumrepos/${variant:-}.repo" ]; then
-        set -- "$@" --secret id=yumrepos,src="$(realpath "src/yumrepos/$variant.repo")" \
+    # Determine the name of the yum repo file to be used. If a variant
+    # was set then we use that, otherwise we are using the default for
+    # the branch and we'll just look for a yumrepo file matching the
+    # stream name.
+    # shellcheck disable=SC2153
+    stream=$(eval "$(grep 'STREAM=' "src/config/${argsfile}")"; echo "${STREAM}")
+    yumrepo_filename="${variant:-$stream}.repo"
+
+    # Add --secret args for the yumrepo/contentsets if the repo file exists
+    if [ -d "src/yumrepos" ] && [ -e "src/yumrepos/${yumrepo_filename}" ]; then
+        set -- "$@" --secret id=yumrepos,src="$(realpath "src/yumrepos/${yumrepo_filename}")" \
                     --secret id=contentsets,src="$(realpath src/yumrepos/content_sets.yaml)" \
                     -v /etc/pki/ca-trust:/etc/pki/ca-trust:ro
     fi
