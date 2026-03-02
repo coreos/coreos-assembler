@@ -71,6 +71,7 @@ container_imgref=$(getconfig "container-imgref")
 container_repo=$(getconfig_def "container-repo" "")
 container_tag=$(getconfig_def "container-tag" "")
 extra_kargs=$(getconfig "extra-kargs-string" "")
+use_bootc_install=$(getconfig_def "use-bootc-install" "no")
 
 # Since the underlying osbuild manifests will prefer the ociarchive
 # if it exists then let's check here to see if the container exists
@@ -116,6 +117,7 @@ set -x; osbuild-mpp                                       \
     -D container_repo=\""${container_repo}"\"             \
     -D container_tag=\""${container_tag}"\"               \
     -D extra_kargs=\""${extra_kargs}"\"                   \
+    -D use_bootc_install=\""${use_bootc_install}"\"       \
     -D metal_image_size_mb="${metal_image_size_mb}"       \
     -D cloud_image_size_mb="${cloud_image_size_mb}"       \
     -D rootfs_size_mb="${rootfs_size_mb}"                 \
