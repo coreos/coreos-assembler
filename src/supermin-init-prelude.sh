@@ -108,3 +108,13 @@ EOF
 # [install]
 # enforce-container-sigpolicy = true
 # EOF
+
+# TODO move this to an overlay in fedora-coreos-config
+# so it get baked into the container at build time. We
+# want the container to be the source of truth as much as possible.
+# Same as the entries above, we need to have this in cosa until
+# we move to image builder
+cat <<EOF > /usr/lib/bootc/install/10-grub-users.toml
+[install.ostree]
+bls-append-except-default = 'grub_users=""'
+EOF
