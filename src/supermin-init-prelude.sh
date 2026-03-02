@@ -97,3 +97,11 @@ cat > /usr/lib/ostree/prepare-root.conf <<EOF
 [composefs]
 enabled = true
 EOF
+
+# TODO move this to an overlay in fedora-coreos-config
+# so it get baked into the container at build time. We
+# want the container to be the source of truth as much as possible.
+cat <<EOF > /usr/lib/bootc/install/10-ostree.toml
+[install.ostree]
+bls-append-except-default = 'grub_users=""'
+EOF
