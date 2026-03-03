@@ -15,7 +15,7 @@ jobs:
   shellcheck:
     name: ShellCheck
     runs-on: ubuntu-latest
-    container: registry.ci.openshift.org/coreos/fcos-buildroot:testing-devel
+    container: quay.io/coreos-assembler/fcos-buildroot:testing-devel
     steps:
       - name: Install deps
         run: yum -y install ShellCheck
