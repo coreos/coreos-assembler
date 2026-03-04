@@ -491,7 +491,7 @@ type QemuBuilder struct {
 
 	// If set, use QEMU full emulation for the target architecture
 	architecture string
-	// MemoryMiB defaults to 1024 on most architectures, others it may be 2048
+	// MemoryMiB default determined using DefaultMemoryMiB()
 	MemoryMiB int
 	// If true, two NUMA nodes will be simulated, splitting memory and CPUs between them.
 	// Each node gets half the resources, if there is an odd amount of some resource, node1
@@ -1361,29 +1361,25 @@ func (builder *QemuBuilder) AddIso(path string, bootindexStr string, asDisk bool
 	return nil
 }
 
+// DefaultMemoryMiB returns the default QEMU guest memory in MiB for
+// the given architecture. The historical defaults are 1024 for x86_64
+// and 2048 for all other architectures.
+func DefaultMemoryMiB(arch string) int {
+	switch arch {
+	case "aarch64", "s390x", "ppc64le":
+		return 2048
+	default:
+		return 1024
+	}
+}
+
 func (builder *QemuBuilder) finalize() {
 	if builder.finalized {
 		return
 	}
 	if builder.MemoryMiB == 0 {
-		// FIXME; Required memory should really be a property of the tests, and
-		// let's try to drop these arch-specific overrides.  ARM was bumped via
-		// commit 09391907c0b25726374004669fa6c2b161e3892f
-		// Commit:     Geoff Levand <geoff@infradead.org>
-		// CommitDate: Mon Aug 21 12:39:34 2017 -0700
-		//
-		// kola: More memory for arm64 qemu guest machines
-		//
-		// arm64 guest machines seem to run out of memory with 1024 MiB of
-		// RAM, so increase to 2048 MiB.
+		builder.MemoryMiB = DefaultMemoryMiB(builder.architecture)
 
-		// Then later, other non-x86_64 seemed to just copy that.
-		memory := 1024
-		switch builder.architecture {
-		case "aarch64", "s390x", "ppc64le":
-			memory = 2048
-		}
-		builder.MemoryMiB = memory
 	}
 	builder.finalized = true
 }
