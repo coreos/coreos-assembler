@@ -64,7 +64,12 @@ def aws_run_ore_replicate(build, args):
         print((f"AMIs already exist in {duplicates} region(s), "
                "skipping listed region(s)..."))
 
-    region_list = list(set(args.region) - set(duplicates))
+    excluded_regions = set(duplicates)
+    if args.skip_regions:
+        excluded_regions.update(args.skip_regions)
+        print(f"Skipping region(s): {args.skip_regions}")
+
+    region_list = list(set(args.region) - excluded_regions)
     if len(region_list) == 0:
         print("no new regions detected")
         sys.exit(0)
