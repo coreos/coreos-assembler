@@ -1,4 +1,4 @@
-#!bin/bash
+#!/usr/bin/bash
 set -exuo pipefail
 
 echo "Preparing for genprotimg-daemon"
