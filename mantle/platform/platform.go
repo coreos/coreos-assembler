@@ -203,6 +203,10 @@ type Options struct {
 	SSHOnTestFailure bool
 
 	ExtendTimeoutPercent uint
+
+	NoIgnition bool
+
+	SSHUser string
 }
 
 // RuntimeConfig contains cluster-specific configuration.
@@ -221,6 +225,11 @@ type RuntimeConfig struct {
 
 	// whether a Manhole into a machine should be created on detected failure
 	SSHOnTestFailure bool
+
+	// NoIgnition: when true, do not inject or pass Ignition (use pre-baked image with SSH key).
+	NoIgnition bool
+	// SSHUser: user for SSH connections (e.g. "root"); when set, SSHClient uses this user.
+	SSHUser string
 }
 
 // Wrap a StdoutPipe as a io.ReadCloser

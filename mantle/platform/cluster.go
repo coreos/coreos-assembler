@@ -62,6 +62,9 @@ func NewBaseCluster(bf *BaseFlight, rconf *RuntimeConfig) (*BaseCluster, error) 
 }
 
 func (bc *BaseCluster) SSHClient(ip string) (*ssh.Client, error) {
+	if bc.rconf.SSHUser != "" {
+		return bc.UserSSHClient(ip, bc.rconf.SSHUser)
+	}
 	sshClient, err := bc.bf.agent.NewClient(ip)
 	if err != nil {
 		return nil, err
@@ -145,6 +148,11 @@ func (bc *BaseCluster) appendSSH(m Machine) error {
 	}
 	if port != "" {
 		if _, err := fmt.Fprintf(sshBuf, "  Port %s\n", port); err != nil {
+			return err
+		}
+	}
+	if bc.rconf.SSHUser != "" {
+		if _, err := fmt.Fprintf(sshBuf, "  User %s\n", bc.rconf.SSHUser); err != nil {
 			return err
 		}
 	}
