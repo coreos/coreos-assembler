@@ -90,6 +90,11 @@ type Test struct {
 	// Minimum amount of memory in MB required for test.
 	MinMemory int
 
+	// The artificially reserved memory count in MiB for the test. This is used
+	// for budgeting memory usage for tests prior to the VMs starting up on the
+	// QEMU platform.
+	ReservedMemoryCountMiB int
+
 	// Minimum amount of primary disk in GB required for test. Deprecated in favour
 	// of PrimaryDisk.
 	MinDiskSize int
