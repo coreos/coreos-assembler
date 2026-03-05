@@ -1475,8 +1475,11 @@ func baseNumaQemuArgs(arch string, memoryMiB, cpus int) ([]string, error) {
 	node0StartCpu, node0EndCpu := 0, cpus/2-1
 	node1StartCpu, node1EndCpu := cpus/2, cpus-1
 
-	ret = append(ret, "-object", fmt.Sprintf("memory-backend-memfd,id=%s,size=%dM,share=on", node0MemoryDevice, node0MemoryMiB))
-	ret = append(ret, "-object", fmt.Sprintf("memory-backend-memfd,id=%s,size=%dM,share=on", node1MemoryDevice, node1MemoryMiB))
+	// Define memory using a memfd (in shared mode), which is needed for virtiofs.
+	// Also preallocate all memory up front so scheduling tests based on memory
+	// availability can be more predictable.
+	ret = append(ret, "-object", fmt.Sprintf("memory-backend-memfd,id=%s,size=%dM,share=on,prealloc=on", node0MemoryDevice, node0MemoryMiB))
+	ret = append(ret, "-object", fmt.Sprintf("memory-backend-memfd,id=%s,size=%dM,share=on,prealloc=on", node1MemoryDevice, node1MemoryMiB))
 	ret = append(ret, "-numa", fmt.Sprintf("node,memdev=%s,cpus=%d-%d,nodeid=0", node0MemoryDevice, node0StartCpu, node0EndCpu))
 	ret = append(ret, "-numa", fmt.Sprintf("node,memdev=%s,cpus=%d-%d,nodeid=1", node1MemoryDevice, node1StartCpu, node1EndCpu))
 	ret = append(ret, "-m", fmt.Sprintf("%d", memoryMiB))
@@ -1496,8 +1499,10 @@ func baseQemuArgs(arch string, memoryMiB int) ([]string, error) {
 		return nil, err
 	}
 
-	// And define memory using a memfd (in shared mode), which is needed for virtiofs
-	ret = append(ret, "-object", fmt.Sprintf("memory-backend-memfd,id=%s,size=%dM,share=on", memoryDevice, memoryMiB))
+	// Define memory using a memfd (in shared mode), which is needed for virtiofs.
+	// Also preallocate all memory up front so scheduling tests based on memory
+	// availability can be more predictable.
+	ret = append(ret, "-object", fmt.Sprintf("memory-backend-memfd,id=%s,size=%dM,share=on,prealloc=on", memoryDevice, memoryMiB))
 	ret = append(ret, "-m", fmt.Sprintf("%d", memoryMiB))
 	return ret, nil
 }
