@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"hash/fnv"
 	"io"
+	"math/rand"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -121,6 +122,15 @@ var (
 	TestParallelism int    //glue var to set test parallelism from main
 	TAPFile         string // if not "", write TAP results here
 	NoNet           bool   // Disable tests requiring Internet
+
+	// reservedMemoryCountMiB tracks memory claimed by tests that have been
+	// scheduled but whose QEMU VMs may not have fully allocated yet.
+	// This prevents the thundering-herd problem at startup where all
+	// tests see the same MemAvailable before any VM has preallocated.
+	reservedMemoryCountMiB int
+	// reservedMemoryCountMutex protects access to reservedMemoryCountMiB
+	reservedMemoryCountMutex sync.Mutex
+
 	// ForceRunPlatformIndependent will cause tests that claim platform-independence to run
 	ForceRunPlatformIndependent bool
 
@@ -1737,11 +1747,94 @@ func makeNonExclusiveTest(bucket int, tests []*register.Test, flight platform.Fl
 	return nonExclusiveWrapper
 }
 
+func reserveMemoryCountForTest(t *register.Test, needed int) bool {
+	reservedMemoryCountMutex.Lock()
+	defer reservedMemoryCountMutex.Unlock()
+	avail, err := system.GetCurrentMemAvailableMiB()
+	if err != nil {
+		plog.Warningf("Failed to check available memory, proceeding: %v", err)
+		return true
+	}
+	// Effective available = actual system available minus what
+	// we've already handed out but QEMU may not have allocated yet.
+	effective := int(avail) - reservedMemoryCountMiB
+	if effective >= needed {
+		reservedMemoryCountMiB += needed
+		reserved := reservedMemoryCountMiB
+		t.ReservedMemoryCountMiB = needed
+		plog.Debugf("Reserved %d MiB for %s (available: %d MiB, reserved total: %d MiB)",
+			needed, t.Name, avail, reserved)
+		return true
+	}
+	plog.Debugf("Waiting on memory to run %s: need %d MiB, effective available %d MiB (system: %d MiB, reserved: %d MiB)",
+		t.Name, needed, effective, avail, reservedMemoryCountMiB)
+	return false
+}
+
+// waitForMemory polls the host's available memory until there is enough
+// free to launch this test's QEMU VM. It is called after h.Parallel()
+// has already acquired a count-based slot, so we hold up the slot while
+// waiting for memory. This is intentional to avoid overcommitting.
+//
+// To prevent a thundering-herd at startup (where all tests see the same
+// MemAvailable before any VM has preallocated), we maintain an internal
+// reservation counter. The check and reservation are done atomically
+// under a mutex, and the reservation is released by releaseMemoryCount()
+// after the test's VM is running and memory has been allocated for it.
+func waitForMemory(h *harness.H, flight platform.Flight, t *register.Test) {
+	if flight.Platform() == "qemu" {
+		needed := getNeededMemoryMiB(t)
+		for !reserveMemoryCountForTest(t, needed) {
+			// sleep between 0 and 20 seconds and try again
+			time.Sleep(time.Duration(rand.Intn(20)) * time.Second)
+		}
+	}
+}
+
+// releaseMemoryCount returns a test's counted memory reservation back to the
+// pool. This should be called after the test's QEMU VM has been started and
+// the memory allocated for the VM.
+func releaseMemoryCount(flight platform.Flight, t *register.Test) {
+	if t.ReservedMemoryCountMiB == 0 {
+		return // memory count already released
+	}
+	reservedMemoryCountMutex.Lock()
+	defer reservedMemoryCountMutex.Unlock()
+	reservedMemoryCountMiB -= t.ReservedMemoryCountMiB
+	t.ReservedMemoryCountMiB = 0
+	if reservedMemoryCountMiB < 0 {
+		reservedMemoryCountMiB = 0
+	}
+}
+
+// getNeededMemoryMiB returns the memory in MiB that a QEMU VM for
+// this test will use. It mirrors the resolution logic in
+// platform/machine/qemu/cluster.go:NewMachineWithOptions.
+func getNeededMemoryMiB(t *register.Test) int {
+	// If --qemu-memory is set globally, that takes priority.
+	if QEMUOptions.Memory != "" {
+		if mem, err := strconv.Atoi(QEMUOptions.Memory); err == nil {
+			return mem
+		}
+	}
+	// If the test specifies MinMemory, use that.
+	if t.MinMemory != 0 {
+		return t.MinMemory
+	}
+	// Fall back to architecture-specific defaults from the QEMU platform.
+	return platform.DefaultMemoryMiB(Options.CosaBuildArch)
+}
+
 // runTest is a harness for running a single test.
 // outputDir is where various test logs and data will be written for
 // analysis after the test run. It should already exist.
 func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flight) {
 	h.Parallel()
+	// On QEMU we'll consider the amount of memory available in the
+	// system/cgroup before continuing. We do this after taking a
+	// parallel slot above via Parallel() so we are essentiallly
+	// unblocked to run once there is sufficient memory for our test.
+	waitForMemory(h, flight, t)
 	h.SetSubtests(t.Subtests)
 
 	rconf := &platform.RuntimeConfig{
@@ -1767,6 +1860,8 @@ func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flig
 	defer func() {
 		h.StopExecTimer()
 		c.Destroy()
+		// Release the memory reservation (if there was one) now that the VM is gone.
+		releaseMemoryCount(flight, t)
 		if h.TimedOut() {
 			// We'll allow tests that time out to succeed on rerun.
 			markTestForRerunSuccess(t, "Test timed out.")
@@ -1876,6 +1971,10 @@ func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flig
 			h.Fatal(errors.Wrapf(err, "mach.Start() failed"))
 		}
 	}
+
+	// Release the temporary memory reservation now that the VM is up and should
+	// be using it's allotted memory (preallocation). Applicable on qemu only.
+	releaseMemoryCount(flight, t)
 
 	// drop kolet binary on machines
 	if t.ExternalTest != "" || t.NativeFuncs != nil {
