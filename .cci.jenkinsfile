@@ -5,14 +5,19 @@ properties([
     disableConcurrentBuilds(abortPrevious: true)
 ])
 
+// Grab a decent amount of memory/cpu
+def cpuCount = 10
+def memory = (12 * 1024) as Integer
+
 // Build coreos-assembler image and create
 // an imageStream for it
-def cpuCount = 6
 def cpuCount_s = cpuCount.toString()
 def imageName = buildImage(env: [ENABLE_GO_RACE_DETECTOR: "1", GOMAXPROCS: cpuCount_s], cpu: cpuCount_s)
 
-def memory = (cpuCount * 1536) as Integer
-pod(image: imageName + ":latest", kvm: true, cpu: "${cpuCount}", memory: "${memory}Mi") {
+cosaPod(cpu: "${cpuCount}",
+        memory: "${memory}Mi",
+        image: imageName + ":latest") {
+
     checkout scm
 
     stage("Unit tests") {
