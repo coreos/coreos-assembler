@@ -162,6 +162,10 @@ func init() {
 	sv(&kola.QEMUOptions.SecureExecutionHostKey, "qemu-secex-hostkey", "", "Path to Secure Execution HKD certificate")
 	// s390x CEX-specific options
 	bv(&kola.QEMUOptions.Cex, "qemu-cex", false, "Attach CEX device to guest")
+
+	// No-Ignition mode: use pre-baked QCOW2 with SSH key in image (e.g. from bib)
+	bv(&kola.Options.NoIgnition, "no-ignition", false, "Do not inject Ignition; use pre-baked QCOW2 with SSH key (requires --qemu-image, QEMU only)")
+	sv(&kola.Options.SSHUser, "ssh-user", "", "SSH user for connections (e.g. root for no-Ignition images; default core)")
 }
 
 // Sync up the command line options if there is dependency
@@ -222,6 +226,15 @@ func syncOptionsImpl(useCosa bool) error {
 
 	if err := validateOption("platform", kolaPlatform, kolaPlatforms); err != nil {
 		return err
+	}
+
+	if kola.Options.NoIgnition {
+		if kolaPlatform != "qemu" {
+			return fmt.Errorf("--no-ignition is only supported with platform qemu")
+		}
+		if kola.QEMUOptions.DiskImage == "" {
+			return fmt.Errorf("--no-ignition requires --qemu-image (path to QCOW2 with SSH key pre-injected)")
+		}
 	}
 
 	// Choose an appropriate AWS instance type for the target architecture
