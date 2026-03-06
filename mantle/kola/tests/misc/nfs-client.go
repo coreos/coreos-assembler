@@ -117,7 +117,7 @@ func nfsClientTest(c cluster.TestCluster) {
 		if err != nil {
 			return err
 		} else if string(nfs_status) == "inactive" {
-			return fmt.Errorf("nfs.service is not ready: %s.", string(nfs_status))
+			return fmt.Errorf("nfs.service is not ready: %s", string(nfs_status))
 		}
 		return nil
 	})

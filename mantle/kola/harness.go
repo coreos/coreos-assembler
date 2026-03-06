@@ -1066,7 +1066,7 @@ func metadataFromTestBinary(executable string) (*externalTestMeta, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	r := bufio.NewReader(io.LimitReader(f, 8192))
 	meta := &externalTestMeta{Exclusive: true}
 	inmeta := false    // true if we saw a ## kola: prefix after which we expect YAML
@@ -1415,7 +1415,7 @@ func registerTestDir(dir, testprefix string, children []os.DirEntry) error {
 			if err != nil {
 				return err
 			}
-			defer f.Close()
+			defer func() { _ = f.Close() }()
 			dec := json.NewDecoder(f)
 			dec.DisallowUnknownFields()
 			if err := dec.Decode(&meta); err != nil {
@@ -1507,7 +1507,7 @@ func setupExternalTest(h *harness.H, t *register.Test, tcluster cluster.TestClus
 	if err != nil {
 		h.Fatal(err)
 	}
-	defer in.Close()
+	defer func() { _ = in.Close() }()
 	for _, mach := range tcluster.Machines() {
 		unit := fmt.Sprintf("kola-runext-%s", filepath.Base(t.ExternalTest))
 		remotepath := fmt.Sprintf("/usr/local/bin/%s", unit)
@@ -1529,7 +1529,7 @@ func collectLogsExternalTest(h *harness.H, t *register.Test, tcluster cluster.Te
 			h.Fatal(errors.Wrapf(err, "opening %s", path))
 			return
 		}
-		defer f.Close()
+		defer func() { _ = f.Close() }()
 		out := tcluster.MustSSHf(mach, "journalctl -t %s", unit)
 		if _, err = f.WriteString(string(out)); err != nil {
 			h.Errorf("failed to write journal: %v", err)
@@ -1970,7 +1970,7 @@ func ScpKolet(machines []platform.Machine) error {
 			if err != nil {
 				return err
 			}
-			defer in.Close()
+			defer func() { _ = in.Close() }()
 			for _, m := range machines {
 				if _, err := in.Seek(0, 0); err != nil {
 					return errors.Wrapf(err, "seeking kolet binary")
@@ -1985,7 +1985,7 @@ func ScpKolet(machines []platform.Machine) error {
 			return nil
 		}
 	}
-	return fmt.Errorf("Unable to locate kolet binary for %s", mArch)
+	return fmt.Errorf("unable to locate kolet binary for %s", mArch)
 }
 
 // CheckConsole checks some console output for badness and returns short
@@ -2066,7 +2066,7 @@ func SetupOutputDir(outputDir, platform string) (string, error) {
 		}
 		// atomic rename
 		if err := os.Rename(tempLinkPath, linkPath); err != nil {
-			os.Remove(tempLinkPath)
+			_ = os.Remove(tempLinkPath)
 			return "", err
 		}
 	}

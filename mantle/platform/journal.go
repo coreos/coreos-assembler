@@ -132,7 +132,7 @@ func (j *Journal) Read() ([]byte, error) {
 	if err != nil {
 		return nil, errors.Wrapf(err, "reading journal")
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	return io.ReadAll(f)
 }
 

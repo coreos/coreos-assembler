@@ -37,8 +37,8 @@ func TestPipe1(t *testing.T) {
 		t.Errorf("bad read: got %q", buf[0:n])
 	}
 	<-c
-	r.Close()
-	w.Close()
+	_ = r.Close()
+	_ = w.Close()
 }
 
 func reader(t *testing.T, r io.Reader, c chan int) {
@@ -76,7 +76,7 @@ func TestPipe2(t *testing.T) {
 			t.Errorf("wrote %d, read got %d", n, nn)
 		}
 	}
-	w.Close()
+	_ = w.Close()
 	nn := <-c
 	if nn != 0 {
 		t.Errorf("final read got %d", nn)
@@ -91,7 +91,7 @@ type pipeReturn struct {
 // Test a large write that requires multiple reads to satisfy.
 func writer(w io.WriteCloser, buf []byte, c chan pipeReturn) {
 	n, err := w.Write(buf)
-	w.Close()
+	_ = w.Close()
 	c <- pipeReturn{n, err}
 }
 
@@ -269,7 +269,7 @@ func TestWriteEmpty(t *testing.T) {
 	go func() {
 		_, err := w.Write([]byte{})
 		errs <- err
-		w.Close()
+		_ = w.Close()
 	}()
 	err := <-errs
 	if err != nil {
@@ -280,7 +280,7 @@ func TestWriteEmpty(t *testing.T) {
 	if _, err := io.ReadFull(r, b[0:2]); err.Error() != "EOF" {
 		t.Fatalf("failed to read empty: %v", err)
 	}
-	r.Close()
+	_ = r.Close()
 }
 
 func TestWriteNil(t *testing.T) {
@@ -289,7 +289,7 @@ func TestWriteNil(t *testing.T) {
 	go func() {
 		_, err := w.Write(nil)
 		errs <- err
-		w.Close()
+		_ = w.Close()
 	}()
 	err := <-errs
 	if err != nil {
@@ -299,7 +299,7 @@ func TestWriteNil(t *testing.T) {
 	if _, err := io.ReadFull(r, b[0:2]); err.Error() != "EOF" {
 		t.Fatalf("failed to read nil: %v", err)
 	}
-	r.Close()
+	_ = r.Close()
 }
 
 func TestWriteAfterWriterClose(t *testing.T) {
@@ -312,7 +312,7 @@ func TestWriteAfterWriterClose(t *testing.T) {
 		if err != nil {
 			t.Errorf("got error: %q; expected none", err)
 		}
-		w.Close()
+		_ = w.Close()
 		_, writeErr = w.Write([]byte("world"))
 		done <- true
 	}()

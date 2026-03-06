@@ -28,12 +28,12 @@ func MakeConfigDrive(userdata *conf.Conf, outputDir string) (string, error) {
 	userPath := path.Join(drivePath, "openstack/latest/user_data")
 
 	if err := os.MkdirAll(path.Dir(userPath), 0777); err != nil {
-		os.RemoveAll(drivePath)
+		_ = os.RemoveAll(drivePath)
 		return "", err
 	}
 
 	if err := userdata.WriteFile(userPath); err != nil {
-		os.RemoveAll(drivePath)
+		_ = os.RemoveAll(drivePath)
 		return "", err
 	}
 

@@ -130,7 +130,7 @@ func ServeTLS(customFile []byte) error {
 	if err != nil {
 		return err
 	}
-	caserver.Listener.Close()
+	_ = caserver.Listener.Close()
 	caserver.Listener = l
 	caserver.TLS = config
 	caserver.StartTLS()

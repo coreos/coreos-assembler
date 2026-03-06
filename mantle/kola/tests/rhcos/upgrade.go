@@ -110,7 +110,7 @@ func setup(c cluster.TestCluster) {
 	var tempTar string
 	defer func() {
 		if tempTar != "" {
-			os.Remove(tempTar)
+			_ = os.Remove(tempTar)
 		}
 	}()
 
@@ -225,7 +225,7 @@ func rhcosUpgradeFromOcpRhcos(c cluster.TestCluster) {
 		if rhcosQcow2 == "" {
 			c.SkipNow()
 		}
-		defer os.Remove(rhcosQcow2)
+		defer func() { _ = os.Remove(rhcosQcow2) }()
 
 		options.OverrideBackingFile = rhcosQcow2
 		m, err = pc.NewMachineWithQemuOptions(ignition, options)
@@ -278,7 +278,7 @@ func getJson(url string, target interface{}) error {
 	if err != nil {
 		return err
 	}
-	defer r.Body.Close()
+	defer func() { _ = r.Body.Close() }()
 	return json.NewDecoder(r.Body).Decode(target)
 }
 
@@ -372,7 +372,7 @@ func downloadLatestReleasedRHCOS(target string) (string, error) {
 	// two nodes that don't have an edge to upgrade to. This is generally the
 	// latest 4.Y-1.Z and the latest 4.Y.Z. Choose the latest 4.Y.Z
 	if len(difference) < 1 {
-		return "", errors.New("Could not find the latest release")
+		return "", errors.New("could not find the latest release")
 	}
 	latest := difference[0]
 	if len(difference) > 1 {
@@ -429,7 +429,7 @@ func downloadLatestReleasedRHCOS(target string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer os.Remove(rhcosQcow2GzPath)
+	defer func() { _ = os.Remove(rhcosQcow2GzPath) }()
 
 	return rhcosQcow2Path, nil
 }

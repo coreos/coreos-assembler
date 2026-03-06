@@ -88,7 +88,7 @@ func TestSSHNewClient(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Listen failed: %v", err)
 	}
-	defer listener.Close()
+	defer func() { _ = listener.Close() }()
 
 	// Oh god... I give up for now.
 	t.Skip("Implementation incomplete")

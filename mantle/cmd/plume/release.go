@@ -177,7 +177,7 @@ func getReleaseMetadata(api *aws.API) release.Release {
 	if err != nil {
 		plog.Fatalf("downloading release metadata at %s: %v", releasePath, err)
 	}
-	defer releaseFile.Close()
+	defer func() { _ = releaseFile.Close() }()
 
 	releaseData, err := io.ReadAll(releaseFile)
 	if err != nil {
@@ -270,7 +270,7 @@ func modifyReleaseMetadataIndex(api *aws.API, rel release.Release) {
 				}
 				return []byte{}, fmt.Errorf("downloading release metadata index: %v", err)
 			}
-			defer f.Close()
+			defer func() { _ = f.Close() }()
 			d, err := io.ReadAll(f)
 			if err != nil {
 				return []byte{}, fmt.Errorf("reading release metadata index: %v", err)

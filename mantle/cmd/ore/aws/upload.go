@@ -115,7 +115,7 @@ func defaultBucketURL(urlPrefix, file, region string) (*url.URL, error) {
 		return nil, fmt.Errorf("invalid s3 scheme; must be 's3://', not '%s://'", s3URL.Scheme)
 	}
 	if s3URL.Host == "" {
-		return nil, fmt.Errorf("URL missing bucket name %v\n", urlPrefix)
+		return nil, fmt.Errorf("URL missing bucket name %v", urlPrefix)
 	}
 
 	// if prefix not specified, default to 'ami-import'
@@ -239,7 +239,7 @@ func runUpload(cmd *cobra.Command, args []string) error {
 			fmt.Fprintf(os.Stderr, "Could not open image file %v: %v\n", uploadFile, err)
 			os.Exit(1)
 		}
-		defer f.Close()
+		defer func() { _ = f.Close() }()
 
 		err = API.UploadObject(f, s3BucketName, s3ObjectPath, uploadForce)
 		if err != nil {

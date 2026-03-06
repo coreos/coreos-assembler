@@ -27,7 +27,7 @@ func init() {
 		if err != nil {
 			panic(errors.Wrapf(err, "failed to open schema file %s", runtimeSchemaPath))
 		}
-		defer f.Close()
+		defer func() { _ = f.Close() }()
 
 		if err := SetSchemaFromFile(f); err != nil {
 			panic(errors.Wrapf(err, "failed to read in schema file %s", runtimeSchemaPath))

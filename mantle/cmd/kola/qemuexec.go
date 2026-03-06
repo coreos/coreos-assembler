@@ -119,7 +119,7 @@ func renderFragments(fragments []string, c *conf.Conf) error {
 		case "noautoupdate":
 			c.DisableAutomaticUpdates()
 		default:
-			return fmt.Errorf("Unknown fragment: %s", fragtype)
+			return fmt.Errorf("unknown fragment: %s", fragtype)
 		}
 	}
 	return nil
@@ -189,13 +189,13 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 			if !prevIsArg {
 				if strings.HasSuffix(arg, ".qcow2") {
 					if kola.QEMUOptions.DiskImage != "" {
-						return fmt.Errorf("Multiple disk images provided")
+						return fmt.Errorf("multiple disk images provided")
 					}
 					kola.QEMUOptions.DiskImage = arg
 					removeIdx = i
 					continue
 				}
-				return fmt.Errorf("Unhandled non-option argument passed for qemu: %s", arg)
+				return fmt.Errorf("unhandled non-option argument passed for qemu: %s", arg)
 			}
 			prevIsArg = false
 		}
@@ -211,17 +211,17 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 		devshell = true
 
 		if consoleFile != "" {
-			return fmt.Errorf("Cannot use console devshell and --console-to-file")
+			return fmt.Errorf("cannot use console devshell and --console-to-file")
 		}
 
 		ignitionFragments = append(ignitionFragments, "autoresize")
 	}
 	if devshell {
 		if directIgnition {
-			return fmt.Errorf("Cannot use devshell with --ignition-direct")
+			return fmt.Errorf("cannot use devshell with --ignition-direct")
 		}
 		if kola.QEMUOptions.DiskImage == "" && kolaPlatform == "qemu" {
-			return fmt.Errorf("No disk image provided")
+			return fmt.Errorf("no disk image provided")
 		}
 		ignitionFragments = append(ignitionFragments, "autologin")
 		cpuCountHost = true
@@ -239,19 +239,19 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 	}
 
 	if ignition != "" && butane != "" {
-		return fmt.Errorf("Cannot use both --ignition and --butane")
+		return fmt.Errorf("cannot use both --ignition and --butane")
 	}
 	if directIgnition && ignition == "" && butane == "" {
-		return fmt.Errorf("Cannot use --ignition-direct without --ignition or --butane")
+		return fmt.Errorf("cannot use --ignition-direct without --ignition or --butane")
 	}
 	if len(ignitionFragments) > 0 && directIgnition {
-		return fmt.Errorf("Cannot use --add-ignition with --ignition-direct")
+		return fmt.Errorf("cannot use --add-ignition with --ignition-direct")
 	}
 	if len(bindro) > 0 && directIgnition {
-		return fmt.Errorf("Cannot use --bind-ro with --ignition-direct")
+		return fmt.Errorf("cannot use --bind-ro with --ignition-direct")
 	}
 	if len(bindrw) > 0 && directIgnition {
-		return fmt.Errorf("Cannot use --bind-rw with --ignition-direct")
+		return fmt.Errorf("cannot use --bind-rw with --ignition-direct")
 	}
 
 	builder := platform.NewQemuBuilder()

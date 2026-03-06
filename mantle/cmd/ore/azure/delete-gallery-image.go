@@ -48,13 +48,13 @@ func init() {
 
 func runDeleteGalleryImage(cmd *cobra.Command, args []string) error {
 	if err := api.SetupClients(); err != nil {
-		return fmt.Errorf("setting up clients: %v\n", err)
+		return fmt.Errorf("setting up clients: %v", err)
 	}
 
 	if deleteGallery {
 		err := api.DeleteGallery(galleryName, resourceGroup)
 		if err != nil {
-			return fmt.Errorf("Couldn't delete gallery: %v\n", err)
+			return fmt.Errorf("couldn't delete gallery: %v", err)
 		}
 		plog.Printf("Gallery %q in resource group %q removed", galleryName, resourceGroup)
 		return nil
@@ -62,14 +62,14 @@ func runDeleteGalleryImage(cmd *cobra.Command, args []string) error {
 
 	err := api.DeleteGalleryImage(imageName, resourceGroup, galleryName)
 	if err != nil {
-		return fmt.Errorf("Couldn't delete gallery image: %v\n", err)
+		return fmt.Errorf("couldn't delete gallery image: %v", err)
 	}
 
 	// Gallery image versions are backed by managed images with the same name,
 	// so we can easily identify and delete them together.
 	err = api.DeleteImage(imageName, resourceGroup)
 	if err != nil {
-		return fmt.Errorf("Couldn't delete image: %v\n", err)
+		return fmt.Errorf("couldn't delete image: %v", err)
 	}
 
 	plog.Printf("Image %q in gallery %q in resource group %q removed", imageName, galleryName, resourceGroup)

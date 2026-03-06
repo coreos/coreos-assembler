@@ -80,13 +80,13 @@ func (t *TestCluster) RunNative(funcName string, m platform.Machine) bool {
 		if err != nil {
 			c.Fatalf("kolet SSH client: %v", err)
 		}
-		defer client.Close()
+		defer func() { _ = client.Close() }()
 
 		session, err := client.NewSession()
 		if err != nil {
 			c.Fatalf("kolet SSH session: %v", err)
 		}
-		defer session.Close()
+		defer func() { _ = session.Close() }()
 
 		b, err := session.CombinedOutput(command)
 		b = bytes.TrimSpace(b)
@@ -111,7 +111,7 @@ func DropFile(machines []platform.Machine, localPath string) error {
 	if err != nil {
 		return err
 	}
-	defer in.Close()
+	defer func() { _ = in.Close() }()
 
 	for _, m := range machines {
 		if _, err := in.Seek(0, 0); err != nil {

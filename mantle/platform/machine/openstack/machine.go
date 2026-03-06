@@ -127,7 +127,7 @@ func (om *machine) saveConsole() error {
 	var err error
 	om.console, err = om.cluster.flight.api.GetConsoleOutput(om.ID())
 	if err != nil {
-		return fmt.Errorf("Error retrieving console log for %v: %v", om.ID(), err)
+		return fmt.Errorf("error retrieving console log for %v: %v", om.ID(), err)
 	}
 
 	path := filepath.Join(om.dir, "console.txt")
@@ -135,7 +135,7 @@ func (om *machine) saveConsole() error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	if _, err := f.WriteString(om.console); err != nil {
 		return err
 	}

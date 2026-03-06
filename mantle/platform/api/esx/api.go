@@ -190,7 +190,7 @@ func (a *API) buildCloneSpec(baseVM *object.VirtualMachine, folder *object.Folde
 		}
 	}
 	if card == nil {
-		return nil, fmt.Errorf("No network device found.")
+		return nil, fmt.Errorf("no network device found")
 	}
 
 	netDev, err := getNetworkDevice(network)
@@ -274,7 +274,7 @@ func (a *API) GetConsoleOutput(name string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("couldn't download console logs: %v", err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	buf, err := io.ReadAll(f)
 	if err != nil {
@@ -315,7 +315,7 @@ func (a *API) CleanupDevice(name string) error {
 
 func (a *API) CreateDevice(name string, conf *conf.Conf) (*ESXMachine, error) {
 	if a.options.BaseVMName == "" {
-		return nil, fmt.Errorf("Base VM Name must be supplied")
+		return nil, fmt.Errorf("base VM Name must be supplied")
 	}
 
 	userdata := base64.StdEncoding.EncodeToString(conf.Bytes())
@@ -639,7 +639,7 @@ func (a *API) upload(arch *archive, lease nfc.Lease, ofi ovfFileItem) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	opts := soap.Upload{
 		ContentLength: size,

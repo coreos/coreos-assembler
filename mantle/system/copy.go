@@ -29,7 +29,7 @@ func CopyRegularFile(src, dest string) (err error) {
 	if err != nil {
 		return err
 	}
-	defer srcFile.Close()
+	defer func() { _ = srcFile.Close() }()
 
 	srcInfo, err := srcFile.Stat()
 	if err != nil {
@@ -37,7 +37,7 @@ func CopyRegularFile(src, dest string) (err error) {
 	}
 	mode := srcInfo.Mode()
 	if !mode.IsRegular() {
-		return fmt.Errorf("Not a regular file: %s", src)
+		return fmt.Errorf("not a regular file: %s", src)
 	}
 
 	destFile, err := os.OpenFile(dest, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, mode)

@@ -126,7 +126,7 @@ func setupNFSMachine(c cluster.TestCluster) NfsServer {
 		if err != nil {
 			return err
 		} else if string(nfs_status) != "active" {
-			return fmt.Errorf("nfs-server.service is not ready: %s.", string(nfs_status))
+			return fmt.Errorf("nfs-server.service is not ready: %s", string(nfs_status))
 		}
 		return nil
 	})

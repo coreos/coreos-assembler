@@ -503,7 +503,7 @@ func filterTests(tests []string, patterns []string) ([]string, error) {
 
 func runTestIso(cmd *cobra.Command, args []string) (err error) {
 	if kola.CosaBuild == nil {
-		return fmt.Errorf("Must provide --build")
+		return fmt.Errorf("must provide --build")
 	}
 	tests := getAllTests(kola.CosaBuild)
 	if len(args) != 0 {
@@ -726,7 +726,7 @@ func awaitCompletion(ctx context.Context, inst *platform.QemuInstance, outdir st
 					// to give a chance for .Wait() above to feed the channel with a
 					// better error
 					time.Sleep(1 * time.Second)
-					errchan <- fmt.Errorf("Got EOF from completion channel, %s expected", exp)
+					errchan <- fmt.Errorf("got EOF from completion channel, %s expected", exp)
 				} else {
 					errchan <- errors.Wrapf(err, "reading from completion channel")
 				}
@@ -734,7 +734,7 @@ func awaitCompletion(ctx context.Context, inst *platform.QemuInstance, outdir st
 			}
 			line := strings.TrimSpace(l)
 			if line != exp {
-				errchan <- fmt.Errorf("Unexpected string from completion channel: %s expected: %s", line, exp)
+				errchan <- fmt.Errorf("unexpected string from completion channel: %s expected: %s", line, exp)
 				return
 			}
 			plog.Debugf("Matched expected message %s", exp)
@@ -816,7 +816,7 @@ func testPXE(ctx context.Context, inst platform.Install, outdir string) (time.Du
 	if err != nil {
 		return 0, errors.Wrapf(err, "creating tempdir")
 	}
-	defer os.RemoveAll(tmpd)
+	defer func() { _ = os.RemoveAll(tmpd) }()
 
 	sshPubKeyBuf, _, err := util.CreateSSHAuthorizedKey(tmpd)
 	if err != nil {
@@ -877,7 +877,7 @@ func testLiveIso(ctx context.Context, inst platform.Install, outdir string, mini
 	if err != nil {
 		return 0, err
 	}
-	defer os.RemoveAll(tmpd)
+	defer func() { _ = os.RemoveAll(tmpd) }()
 
 	sshPubKeyBuf, _, err := util.CreateSSHAuthorizedKey(tmpd)
 	if err != nil {
@@ -948,7 +948,7 @@ func testLiveFIPS(ctx context.Context, outdir string) (time.Duration, error) {
 	if err != nil {
 		return 0, err
 	}
-	defer os.RemoveAll(tmpd)
+	defer func() { _ = os.RemoveAll(tmpd) }()
 
 	builddir := kola.CosaBuild.Dir
 	isopath := filepath.Join(builddir, kola.CosaBuild.Meta.BuildArtifacts.LiveIso.Path)

@@ -103,7 +103,7 @@ func (a *API) UploadPageBlob(storageaccount, key, file, container, blobname stri
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	fi, err := f.Stat()
 	if err != nil {
 		return err

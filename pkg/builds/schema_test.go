@@ -96,7 +96,7 @@ func TestBuildURL(t *testing.T) {
 
 		resp := w.Result()
 		_, err = buildParser(resp.Body)
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 		if err != nil {
 			t.Errorf("error reading url: %v", err)
 		}

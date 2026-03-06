@@ -155,7 +155,7 @@ func NewDnsmasq() (*Dnsmasq, error) {
 	for s := byte(0); s < numSegments; s++ {
 		seg, err := newSegment(s)
 		if err != nil {
-			return nil, fmt.Errorf("Network setup failed: %v", err)
+			return nil, fmt.Errorf("network setup failed: %v", err)
 		}
 		dm.Segments = append(dm.Segments, seg)
 	}
@@ -163,11 +163,11 @@ func NewDnsmasq() (*Dnsmasq, error) {
 	// setup lo
 	lo, err := netlink.LinkByName("lo")
 	if err != nil {
-		return nil, fmt.Errorf("Network loopback setup failed: %v", err)
+		return nil, fmt.Errorf("network loopback setup failed: %v", err)
 	}
 	err = netlink.LinkSetUp(lo)
 	if err != nil {
-		return nil, fmt.Errorf("Network loopback setup failed: %v", err)
+		return nil, fmt.Errorf("network loopback setup failed: %v", err)
 	}
 
 	dm.dnsmasq = exec.Command("dnsmasq", "--conf-file=-")
@@ -183,7 +183,7 @@ func NewDnsmasq() (*Dnsmasq, error) {
 	go util.LogFrom(capnslog.INFO, out)
 
 	if err = dm.dnsmasq.Start(); err != nil {
-		cfg.Close()
+		_ = cfg.Close()
 		return nil, err
 	}
 
@@ -198,11 +198,11 @@ func NewDnsmasq() (*Dnsmasq, error) {
 	}
 
 	if err = configTemplate.Execute(cfg, dm); err != nil {
-		cfg.Close()
+		_ = cfg.Close()
 		dm.Destroy()
 		return nil, err
 	}
-	cfg.Close()
+	_ = cfg.Close()
 
 	return dm, nil
 }

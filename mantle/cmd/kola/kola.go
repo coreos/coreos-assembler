@@ -289,7 +289,7 @@ func writeProps() error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	enc := json.NewEncoder(f)
 	enc.SetIndent("", "    ")
@@ -447,12 +447,12 @@ func runList(cmd *cobra.Command, args []string) error {
 	if !listJSON {
 		var w = tabwriter.NewWriter(os.Stdout, 0, 8, 0, '\t', 0)
 
-		fmt.Fprintln(w, "Test Name\tPlatforms\tArchitectures\tDistributions\tTags")
-		fmt.Fprintln(w, "\t")
+		_, _ = fmt.Fprintln(w, "Test Name\tPlatforms\tArchitectures\tDistributions\tTags")
+		_, _ = fmt.Fprintln(w, "\t")
 		for _, item := range newtestlist {
-			fmt.Fprintf(w, "%v\n", item)
+			_, _ = fmt.Fprintf(w, "%v\n", item)
 		}
-		w.Flush()
+		_ = w.Flush()
 	} else {
 		out, err := json.MarshalIndent(newtestlist, "", "\t")
 		if err != nil {
@@ -521,7 +521,7 @@ func runHTTPServer(cmd *cobra.Command, args []string) error {
 
 	http.Handle("/", http.FileServer(http.Dir(directory)))
 
-	fmt.Fprintf(os.Stdout, "Serving HTTP on port: %d\n", httpPort)
+	_, _ = fmt.Fprintf(os.Stdout, "Serving HTTP on port: %d\n", httpPort)
 	return http.ListenAndServe(fmt.Sprintf(":%d", httpPort), nil)
 }
 
@@ -553,7 +553,7 @@ func preRunUpgrade(cmd *cobra.Command, args []string) error {
 
 func runUpgradeCleanup() {
 	if qemuImageDir != "" && qemuImageDirIsTemp {
-		os.RemoveAll(qemuImageDir)
+		_ = os.RemoveAll(qemuImageDir)
 	}
 }
 
@@ -621,7 +621,7 @@ func syncFindParentImageOptions() error {
 			qemuImageDirIsTemp = true
 		}
 		if parentCosaBuild.BuildArtifacts.Qemu == nil {
-			return fmt.Errorf("No QEMU in parent meta.json")
+			return fmt.Errorf("no QEMU in parent meta.json")
 		}
 		qcowURL := parentBaseURL + parentCosaBuild.BuildArtifacts.Qemu.Path
 		qcowLocal := filepath.Join(qemuImageDir, parentCosaBuild.BuildArtifacts.Qemu.Path)

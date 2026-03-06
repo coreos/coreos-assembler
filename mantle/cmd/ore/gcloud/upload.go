@@ -246,7 +246,7 @@ func writeFile(api *storage.Service, bucket, filename, destname string) error {
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	req := api.Objects.Insert(bucket, &storage.Object{
 		Name:        destname,

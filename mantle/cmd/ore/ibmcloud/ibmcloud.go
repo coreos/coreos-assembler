@@ -93,7 +93,7 @@ func preflightCheck(cmd *cobra.Command, args []string) error {
 				os.Exit(1)
 			}
 		}
-		defer file.Close()
+		defer func() { _ = file.Close() }()
 
 		var apiKeyValues apiKeyFile
 		bytes, err := io.ReadAll(file)

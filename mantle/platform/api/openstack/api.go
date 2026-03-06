@@ -554,7 +554,7 @@ func (a *API) UploadImage(name, path, arch, visibility string, protected bool) (
 	case "community":
 		imageVisibility = images.ImageVisibilityCommunity
 	default:
-		return "", fmt.Errorf("Invalid given image visibility: %v", visibility)
+		return "", fmt.Errorf("invalid given image visibility: %v", visibility)
 	}
 	image, err := images.Create(a.imageClient, images.CreateOpts{
 		Name:            name,
@@ -577,7 +577,7 @@ func (a *API) UploadImage(name, path, arch, visibility string, protected bool) (
 		}
 		return "", fmt.Errorf("opening image file: %v", err)
 	}
-	defer data.Close()
+	defer func() { _ = data.Close() }()
 
 	err = imagedata.Upload(a.imageClient, image.ID, data).ExtractErr()
 	if err != nil {
@@ -607,11 +607,11 @@ func (a *API) DeleteImage(imageID string, force bool) error {
 			_, err = images.Update(a.imageClient, imageID, updateOpts).Extract()
 			if err != nil {
 				return fmt.Errorf(
-					"Error removing protection from image %s: %v", imageID, err)
+					"error removing protection from image %s: %v", imageID, err)
 			}
 		} else {
 			return fmt.Errorf(
-				"Image %s is protected from deletion and force is not enabled", imageID)
+				"image %s is protected from deletion and force is not enabled", imageID)
 		}
 	}
 	// Finally, delete the image.

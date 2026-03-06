@@ -54,7 +54,7 @@ func runDeleteImage(cmd *cobra.Command, args []string) error {
 
 func deleteImage() error {
 	if imageName == "" {
-		return fmt.Errorf("Image name must be specified")
+		return fmt.Errorf("image name must be specified")
 	}
 
 	ctx := context.Background()

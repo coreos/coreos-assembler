@@ -441,7 +441,7 @@ func syncStreamOptions() error {
 	var artifacts *stream.Arch
 	switch kola.Options.Distribution {
 	case "":
-		return fmt.Errorf("Must specify -b/--distro with --stream")
+		return fmt.Errorf("must specify -b/--distro with --stream")
 	case "fcos":
 		artifacts, err = fcos.FetchCanonicalStreamArtifacts(kola.Options.Stream, kola.Options.CosaBuildArch)
 		if err != nil {
@@ -453,7 +453,7 @@ func syncStreamOptions() error {
 			return errors.Wrapf(err, "failed to fetch stream")
 		}
 	default:
-		return fmt.Errorf("Unhandled stream for distribution %s", kola.Options.Distribution)
+		return fmt.Errorf("unhandled stream for distribution %s", kola.Options.Distribution)
 	}
 
 	release := ""
@@ -472,7 +472,7 @@ func syncStreamOptions() error {
 		kola.GCPOptions.Image = fmt.Sprintf("projects/%s/global/images/%s", imageproject, imagename)
 		extra = fmt.Sprintf("(image project: %s, image name: %s)", imageproject, imagename)
 	default:
-		return fmt.Errorf("Unhandled platform %s for stream", kolaPlatform)
+		return fmt.Errorf("unhandled platform %s for stream", kolaPlatform)
 	}
 
 	fmt.Printf("Resolved distro=%s stream=%s platform=%s arch=%s to release=%s %s\n",

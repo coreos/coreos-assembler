@@ -61,7 +61,7 @@ func (p *Pending) Wait() error {
 		} else {
 			failures++
 			if failures > 5 {
-				return fmt.Errorf("Fetching %q status failed: %v", p.desc, err)
+				return fmt.Errorf("fetching %q status failed: %v", p.desc, err)
 			}
 		}
 		if op != nil && op.Status == "DONE" {
@@ -75,9 +75,9 @@ func (p *Pending) Wait() error {
 			for _, err := range op.Error.Errors {
 				messages = append(messages, err.Message)
 			}
-			return fmt.Errorf("Operation %q failed: %+v", p.desc, messages)
+			return fmt.Errorf("operation %q failed: %+v", p.desc, messages)
 		}
-		return fmt.Errorf("Operation %q failed to start", p.desc)
+		return fmt.Errorf("operation %q failed to start", p.desc)
 	}
 	return nil
 }
@@ -86,15 +86,15 @@ func (p *Pending) defaultProgress(desc string, elapsed time.Duration, op *comput
 	var err error
 	switch op.Status {
 	case "PENDING", "RUNNING":
-		err = fmt.Errorf("Operation %q is %q", desc, op.Status)
+		err = fmt.Errorf("operation %q is %q", desc, op.Status)
 	case "DONE":
 		return nil
 	default:
-		err = fmt.Errorf("Unknown operation status %q for %q: %+v", op.Status, desc, op)
+		err = fmt.Errorf("unknown operation status %q for %q: %+v", op.Status, desc, op)
 	}
 
 	if p.Timeout > 0 && elapsed > p.Timeout {
-		return fmt.Errorf("Failed to wait for operation %q: %v", desc, err)
+		return fmt.Errorf("failed to wait for operation %q: %v", desc, err)
 	}
 
 	return nil

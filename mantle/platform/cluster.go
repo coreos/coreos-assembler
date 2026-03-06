@@ -98,13 +98,13 @@ func (bc *BaseCluster) SSH(m Machine, cmd string) ([]byte, []byte, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	session, err := client.NewSession()
 	if err != nil {
 		return nil, nil, err
 	}
-	defer session.Close()
+	defer func() { _ = session.Close() }()
 
 	session.Stdout = &stdout
 	session.Stderr = &stderr
@@ -130,7 +130,7 @@ func (bc *BaseCluster) appendSSH(m Machine) error {
 	if err != nil {
 		return errors.Wrapf(err, "creating ssh config")
 	}
-	defer sshConfig.Close()
+	defer func() { _ = sshConfig.Close() }()
 	sshBuf := bufio.NewWriter(sshConfig)
 
 	_, err = fmt.Fprintf(sshBuf, "Host %s\n", m.ID())

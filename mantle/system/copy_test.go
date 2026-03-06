@@ -27,7 +27,7 @@ func checkFile(t *testing.T, path string, data []byte, mode os.FileMode) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	info, err := file.Stat()
 	if err != nil {

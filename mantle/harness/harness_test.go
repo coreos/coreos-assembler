@@ -78,7 +78,7 @@ func TestContextCancel(t *testing.T) {
 func TestSubTests(t *testing.T) {
 	// When TERM is set, we add colors to highlight tests results: '--- FAIL' will be in red '--- \033[31mFAIL\033[0m'
 	// Let's unset it here for simplicity
-	os.Unsetenv("TERM")
+	_ = os.Unsetenv("TERM")
 	realTest := t
 	testCases := []struct {
 		desc   string
@@ -455,10 +455,10 @@ func TestTempFile(t *testing.T) {
 		run: func(h *H) {
 			f := h.TempFile("first")
 			testfiles = append(testfiles, f.Name())
-			f.Close()
+			_ = f.Close()
 			f = h.TempFile("second")
 			testfiles = append(testfiles, f.Name())
-			f.Close()
+			_ = f.Close()
 		},
 		timeout: DefaultTimeoutFlag,
 	}

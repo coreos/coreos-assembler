@@ -302,7 +302,7 @@ func (inst *QemuInstance) Destroy() {
 	if inst.journalPipe != nil {
 		plog.Debugf("Sleep 1 to allow for more journal messages to get flushed")
 		time.Sleep(1 * time.Second)
-		inst.journalPipe.Close()
+		_ = inst.journalPipe.Close()
 		inst.journalPipe = nil
 	}
 	// kill is safe if already dead
@@ -334,7 +334,7 @@ func (inst *QemuInstance) Destroy() {
 func (inst *QemuInstance) SwitchBootOrder() (err2 error) {
 	switch inst.architecture {
 	case "s390x", "aarch64":
-		break
+		// applicable for these arches
 	default:
 		//Not applicable for other arches
 		return nil
@@ -355,7 +355,6 @@ func (inst *QemuInstance) SwitchBootOrder() (err2 error) {
 		case "child<virtio-net-pci>", "child<virtio-net-ccw>":
 			bootdev = filepath.Join("/machine/peripheral-anon", dev.Name)
 		default:
-			break
 		}
 	}
 	// Get boot device for ISO boots and target block device
@@ -373,20 +372,19 @@ func (inst *QemuInstance) SwitchBootOrder() (err2 error) {
 				bootdev = devpath
 			}
 		default:
-			break
 		}
 	}
 
 	if bootdev == "" {
-		return fmt.Errorf("Could not find boot device using QMP.\n"+
-			"Full list of peripherals: %v.\n"+
-			"Full list of block devices: %v.\n",
+		return fmt.Errorf("could not find boot device using QMP. "+
+			"Full list of peripherals: %v. "+
+			"Full list of block devices: %v",
 			devs.Return, blkdevs.Return)
 	}
 
 	if primarydev == "" {
-		return fmt.Errorf("Could not find target disk using QMP.\n"+
-			"Full list of block devices: %v.\n",
+		return fmt.Errorf("could not find target disk using QMP. "+
+			"Full list of block devices: %v",
 			blkdevs.Return)
 	}
 
@@ -462,7 +460,7 @@ func (inst *QemuInstance) RemoveBlockDeviceForMultipath(device string) error {
 		}
 	}
 	if devicePath == "" {
-		return fmt.Errorf("Target device %q not found in block device list", device)
+		return fmt.Errorf("target device %q not found in block device list", device)
 	}
 
 	if err = inst.deleteBlockDevice(devicePath); err != nil {
@@ -679,7 +677,7 @@ func (builder *QemuBuilder) setupNetworking() error {
 		if err != nil {
 			return err
 		}
-		l.Close()
+		_ = l.Close()
 		builder.requestedHostForwardPorts[i].HostPort = l.Addr().(*net.TCPAddr).Port
 		netdev += fmt.Sprintf(",hostfwd=tcp:127.0.0.1:%d-:%d",
 			builder.requestedHostForwardPorts[i].HostPort,
@@ -764,10 +762,10 @@ func (builder *QemuBuilder) SetSecureExecution(gpgkey string, hostkey string, co
 	if supports, err := builder.supportsSecureExecution(); err != nil {
 		return err
 	} else if !supports {
-		return fmt.Errorf("Secure Execution was requested but isn't supported/enabled")
+		return fmt.Errorf("secure Execution was requested but isn't supported/enabled")
 	}
 	if gpgkey == "" {
-		return fmt.Errorf("Secure Execution was requested, but we don't have a GPG Public Key to encrypt the config")
+		return fmt.Errorf("secure Execution was requested, but we don't have a GPG Public Key to encrypt the config")
 	}
 
 	if config != nil {
@@ -872,10 +870,10 @@ const fileRemoteLocation = "/ignition/config.ign"
 // findLabel finds the partition based on the label. The partition belongs to the image attached to the guestfish instance identified by pid.
 func findLabel(label, pid string) (string, error) {
 	if pid == "" {
-		return "", fmt.Errorf("The pid cannot be empty")
+		return "", fmt.Errorf("the pid cannot be empty")
 	}
 	if label == "" {
-		return "", fmt.Errorf("The label cannot be empty")
+		return "", fmt.Errorf("the label cannot be empty")
 	}
 	remote := fmt.Sprintf("--remote=%s", pid)
 	cmd := exec.Command("guestfish", remote, "findfs-label", label)
@@ -910,7 +908,7 @@ func newGuestfish(arch, diskImagePath string, diskSectorSize int) (*coreosGuestf
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting stdout pipe")
 	}
-	defer stdout.Close()
+	defer func() { _ = stdout.Close() }()
 
 	if err := cmd.Start(); err != nil {
 		return nil, errors.Wrapf(err, "running guestfish")
@@ -925,11 +923,11 @@ func newGuestfish(arch, diskImagePath string, diskSectorSize int) (*coreosGuestf
 	//GUESTFISH_PID=$PID; export GUESTFISH_PID
 	gfVarPid := strings.Split(string(buf), ";")
 	if len(gfVarPid) != 2 {
-		return nil, fmt.Errorf("Failing parsing GUESTFISH_PID got: expecting length 2 got instead %d", len(gfVarPid))
+		return nil, fmt.Errorf("failing parsing GUESTFISH_PID got: expecting length 2 got instead %d", len(gfVarPid))
 	}
 	gfVarPidArr := strings.Split(gfVarPid[0], "=")
 	if len(gfVarPidArr) != 2 {
-		return nil, fmt.Errorf("Failing parsing GUESTFISH_PID got: expecting length 2 got instead %d", len(gfVarPid))
+		return nil, fmt.Errorf("failing parsing GUESTFISH_PID got: expecting length 2 got instead %d", len(gfVarPid))
 	}
 	pid := gfVarPidArr[1]
 	remote := fmt.Sprintf("--remote=%s", pid)
@@ -1004,7 +1002,7 @@ func setupPreboot(arch, confPath, firstbootkargs, kargs string, diskImagePath st
 		}
 		confs := strings.Split(strings.TrimSpace(string(confpathout)), "\n")
 		if len(confs) != 1 {
-			return fmt.Errorf("Multiple values for bootloader config: %v", confpathout)
+			return fmt.Errorf("multiple values for bootloader config: %v", confpathout)
 		}
 		confpath := confs[0]
 		origconf, err := exec.Command("guestfish", gf.remote, "read-file", confpath).Output()
@@ -1291,7 +1289,7 @@ func (builder *QemuBuilder) addDiskImpl(disk *Disk, primary bool) error {
 			// In the non-multipath/nbd case we can just unlink the disk now
 			// and avoid leaking space if we get Ctrl-C'd (though it's best if
 			// higher level code catches SIGINT and cleans up the directory)
-			os.Remove(disk.dstFileName)
+			_ = os.Remove(disk.dstFileName)
 		}
 		disk.dstFileName = ""
 		switch channel {
@@ -1513,7 +1511,7 @@ func (builder *QemuBuilder) setupUefi(secureBoot bool) error {
 		if err != nil {
 			return err
 		}
-		defer varsSrc.Close()
+		defer func() { _ = varsSrc.Close() }()
 		vars, err := os.CreateTemp("", "mantle-qemu")
 		if err != nil {
 			return err
@@ -1635,7 +1633,7 @@ func (builder *QemuBuilder) setupIso() error {
 		if err != nil {
 			return errors.Wrapf(err, "opening ISO image for writing")
 		}
-		defer f.Close()
+		defer func() { _ = f.Close() }()
 		// Invalidate Boot System Identifier in the El Torito Boot
 		// Record Volume Descriptor so the system must boot via the
 		// MBR or ESP.  If we don't do this, QEMU's UEFI firmware
@@ -2139,7 +2137,6 @@ func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 				case "child<scsi-cd>":
 					cdrom = filepath.Join("/machine/peripheral-anon", dev.Name)
 				default:
-					break
 				}
 			}
 			if cdrom == "" {
@@ -2166,12 +2163,12 @@ func (builder *QemuBuilder) Close() {
 		return
 	}
 	for _, f := range builder.fds {
-		f.Close()
+		_ = f.Close()
 	}
 	builder.fds = nil
 
 	if builder.tempdir != "" {
-		os.RemoveAll(builder.tempdir)
+		_ = os.RemoveAll(builder.tempdir)
 	}
 }
 

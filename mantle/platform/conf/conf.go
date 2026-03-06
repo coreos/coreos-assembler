@@ -509,7 +509,7 @@ func (c *Conf) MaybeCompress() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer writer.Close()
+	defer func() { _ = writer.Close() }()
 	if _, err := writer.Write([]byte(config)); err != nil {
 		return "", err
 	}

@@ -107,11 +107,11 @@ func runCosaBuildToStream(cmd *cobra.Command, args []string) error {
 		}
 		if !strings.HasPrefix(arg, "https://") {
 			if distro != "rhcos" {
-				return errors.New("Arguments must be https:// URLs (or with --distro rhcos, ARCH=VERSION)")
+				return errors.New("arguments must be https:// URLs (or with --distro rhcos, ARCH=VERSION)")
 			}
 			parts := strings.SplitN(arg, "=", 2)
 			if len(parts) < 2 {
-				return fmt.Errorf("Expecting ARCH=VERSION, found: %s", arg)
+				return fmt.Errorf("expecting ARCH=VERSION, found: %s", arg)
 			}
 			arch := parts[0]
 			ver := parts[1]
@@ -152,7 +152,7 @@ func runCosaBuildToStream(cmd *cobra.Command, args []string) error {
 		for arch, relarchdata := range relarches {
 			if _, ok := streamArches[arch]; ok {
 				if target == "" {
-					return fmt.Errorf("Duplicate architecture %s", arch)
+					return fmt.Errorf("duplicate architecture %s", arch)
 				}
 			}
 			streamArches[arch] = relarchdata
@@ -173,7 +173,7 @@ func runCosaBuildToStream(cmd *cobra.Command, args []string) error {
 	encoder := json.NewEncoder(targetWriter)
 	encoder.SetIndent("", "  ")
 	if err := encoder.Encode(&outStream); err != nil {
-		return fmt.Errorf("Error while encoding: %v", err)
+		return fmt.Errorf("error while encoding: %v", err)
 	}
 	return nil
 }

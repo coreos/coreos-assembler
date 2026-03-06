@@ -72,11 +72,11 @@ func ostreeAdminUnlock(c cluster.TestCluster, m platform.Machine, hotfix bool) e
 
 	// verify that the unlock was successful
 	if hotfix && status.Deployments[0].Unlocked != "hotfix" {
-		return fmt.Errorf(`Hotfix mode is not reflected in "rpm-ostree status"; got: %q`, status.Deployments[0].Unlocked)
+		return fmt.Errorf(`hotfix mode is not reflected in "rpm-ostree status"; got: %q`, status.Deployments[0].Unlocked)
 	}
 
 	if !hotfix && status.Deployments[0].Unlocked != "development" {
-		return fmt.Errorf(`Unlocked mode is not reflected in "rpm-ostree status"; got: %q`, status.Deployments[0].Unlocked)
+		return fmt.Errorf(`unlocked mode is not reflected in "rpm-ostree status"; got: %q`, status.Deployments[0].Unlocked)
 	}
 
 	return nil
@@ -88,17 +88,17 @@ func ostreeAdminUnlock(c cluster.TestCluster, m platform.Machine, hotfix bool) e
 func rpmInstallVerify(c cluster.TestCluster, m platform.Machine, rpmFile string, rpmName string) error {
 	_, installErr := c.SSH(m, ("sudo rpm --nosignature -i " + rpmFile))
 	if installErr != nil {
-		return fmt.Errorf(`Failed to install RPM: %v`, installErr)
+		return fmt.Errorf(`failed to install RPM: %v`, installErr)
 	}
 
 	_, cmdErr := c.SSH(m, ("command -v " + rpmName))
 	if cmdErr != nil {
-		return fmt.Errorf(`Failed to find binary: %v`, cmdErr)
+		return fmt.Errorf(`failed to find binary: %v`, cmdErr)
 	}
 
 	_, rpmErr := c.SSH(m, ("rpm -q " + rpmName))
 	if rpmErr != nil {
-		return fmt.Errorf(`Failed to find RPM in rpmdb: %v`, rpmErr)
+		return fmt.Errorf(`failed to find RPM in rpmdb: %v`, rpmErr)
 	}
 
 	return nil
@@ -110,12 +110,12 @@ func rpmInstallVerify(c cluster.TestCluster, m platform.Machine, rpmFile string,
 func rpmUninstallVerify(c cluster.TestCluster, m platform.Machine, rpmName string) error {
 	_, uninstallErr := c.SSH(m, ("sudo rpm -e " + rpmName))
 	if uninstallErr != nil {
-		return fmt.Errorf(`Failed to uninstall RPM: %v`, uninstallErr)
+		return fmt.Errorf(`failed to uninstall RPM: %v`, uninstallErr)
 	}
 
 	_, missCmdErr := c.SSH(m, ("command -v " + rpmName))
 	if missCmdErr == nil {
-		return fmt.Errorf(`Found a binary that should not be there: %v`, missCmdErr)
+		return fmt.Errorf(`found a binary that should not be there: %v`, missCmdErr)
 	}
 
 	_, missRpmErr := c.SSH(m, ("rpm -q " + rpmName))

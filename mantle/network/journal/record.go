@@ -75,7 +75,7 @@ func (r *Recorder) StartSSH(ctx context.Context, client *ssh.Client) error {
 	ctx, cancel := context.WithCancel(ctx)
 	go func() {
 		<-ctx.Done()
-		client.Close()
+		_ = client.Close()
 	}()
 
 	journal, err := client.NewSession()

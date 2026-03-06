@@ -231,7 +231,7 @@ func generateCrioConfig(podName, imageName string, command []string) (string, st
 	if err != nil {
 		return "", "", err
 	}
-	defer tmpFilePod.Close()
+	defer func() { _ = tmpFilePod.Close() }()
 	if _, err = tmpFilePod.Write([]byte(fileContentsPod)); err != nil {
 		return "", "", err
 	}
@@ -242,7 +242,7 @@ func generateCrioConfig(podName, imageName string, command []string) (string, st
 	if err != nil {
 		return "", "", err
 	}
-	defer tmpFileContainer.Close()
+	defer func() { _ = tmpFileContainer.Close() }()
 	if _, err = tmpFileContainer.Write([]byte(fileContentsContainer)); err != nil {
 		return "", "", err
 	}

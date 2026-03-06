@@ -57,9 +57,9 @@ func New(opts *Options) (*API, error) {
 	}
 
 	opts.SubscriptionID = azCreds.SubscriptionID
-	os.Setenv("AZURE_CLIENT_ID", azCreds.ClientID)
-	os.Setenv("AZURE_TENANT_ID", azCreds.TenantID)
-	os.Setenv("AZURE_CLIENT_SECRET", azCreds.ClientSecret)
+	_ = os.Setenv("AZURE_CLIENT_ID", azCreds.ClientID)
+	_ = os.Setenv("AZURE_TENANT_ID", azCreds.TenantID)
+	_ = os.Setenv("AZURE_CLIENT_SECRET", azCreds.ClientSecret)
 
 	api := &API{
 		opts: opts,

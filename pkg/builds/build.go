@@ -143,7 +143,7 @@ func ReadBuild(dir, buildID, arch string) (*Build, string, error) {
 			if err != nil {
 				return b, p, err
 			}
-			defer f.Close()
+			defer func() { _ = f.Close() }()
 			if err := b.mergeMeta(f); err != nil {
 				return b, p, err
 			}
@@ -169,7 +169,7 @@ func ParseBuild(path string) (*Build, error) {
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to open %s", path)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	b, err := buildParser(f)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed parsing of %s", path)
@@ -259,7 +259,7 @@ func (build *Build) artifacts() map[string]*Artifact {
 	// as a top level entry.
 	ret["extensions"] = build.Extensions.toArtifact()
 
-	var ba BuildArtifacts = *build.BuildArtifacts
+	var ba = *build.BuildArtifacts
 	rv := reflect.TypeOf(ba)
 	for i := 0; i < rv.NumField(); i++ {
 		tag := rv.Field(i).Tag.Get("json")
@@ -323,10 +323,10 @@ func FetchAndParseBuild(url string) (*Build, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer res.Body.Close()
+	defer func() { _ = res.Body.Close() }()
 	if res.StatusCode != 200 {
 		return nil, fmt.Errorf(
-			"Received a %d error in http response for: %s", res.StatusCode, url)
+			"received a %d error in http response for: %s", res.StatusCode, url)
 	}
 	return buildParser(res.Body)
 }

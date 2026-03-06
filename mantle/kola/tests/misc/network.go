@@ -149,7 +149,7 @@ NextProcess:
 		}
 
 		c.Logf("full ss output: %q", output)
-		return fmt.Errorf("Unexpected listener process: %q", line)
+		return fmt.Errorf("unexpected listener process: %q", line)
 	}
 
 	return nil

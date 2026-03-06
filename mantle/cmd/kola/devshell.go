@@ -81,14 +81,14 @@ func runDevShellSSH(ctx context.Context, builder *platform.QemuBuilder, conf *co
 	if err != nil {
 		return err
 	}
-	defer os.RemoveAll(tmpd)
+	defer func() { _ = os.RemoveAll(tmpd) }()
 
 	// Define SSH key
 	agent, err := network.NewSSHAgent(network.NewRetryDialer())
 	if err != nil {
 		return err
 	}
-	defer agent.Close()
+	defer func() { _ = agent.Close() }()
 
 	keys, err := agent.List()
 	if err != nil {
@@ -352,7 +352,7 @@ func (se systemdEventMessage) message() (string, error) {
 	} else if s, ok := se.Message.(string); ok {
 		return s, nil
 	} else {
-		return "", fmt.Errorf("Unhandled systemd json message of type %T", se.Message)
+		return "", fmt.Errorf("unhandled systemd json message of type %T", se.Message)
 	}
 }
 

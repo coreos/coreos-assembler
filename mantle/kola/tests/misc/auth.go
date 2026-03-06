@@ -36,7 +36,7 @@ func AuthVerify(c cluster.TestCluster) {
 
 	client, err := m.PasswordSSHClient("core", "asdf")
 	if err == nil {
-		client.Close()
+		_ = client.Close()
 		c.Fatalf("Successfully authenticated despite invalid password auth")
 	}
 }
