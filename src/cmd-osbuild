@@ -23,6 +23,7 @@ declare -A SUPPORTED_PLATFORMS=(
     ['metal4k']='raw'
     ['metal']='raw'
     ['nutanix']='qcow2'
+    ['nvidiabluefield']='bfb'
     ['openstack']='qcow2'
     ['oraclecloud']='qcow2'
     ['proxmoxve']='qcow2'
@@ -262,6 +263,7 @@ main() {
         "cmd-buildextend-ibmcloud") platforms=(ibmcloud);;
         "cmd-buildextend-kubevirt") platforms=(kubevirt);;
         "cmd-buildextend-nutanix") platforms=(nutanix);;
+        "cmd-buildextend-nvidiabluefield") platforms=(nvidiabluefield);;
         "cmd-buildextend-openstack") platforms=(openstack);;
         "cmd-buildextend-oraclecloud") platforms=(oraclecloud);;
         "cmd-buildextend-proxmoxve") platforms=(proxmoxve);;
@@ -423,7 +425,7 @@ main() {
 
         # Perform postprocessing
         case "$platform" in
-            gcp|kubevirt|nutanix)
+            gcp|kubevirt|nutanix|nvidiabluefield)
                 # Update the meta.json and builddir with the generated artifact.
                 # Skip Compression on these platforms as they are either already
                 # compressed or the artifact itself has internal compression enabled.

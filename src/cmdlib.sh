@@ -746,8 +746,8 @@ runvm() {
     # include COSA in the image
     find /usr/lib/coreos-assembler/ -type f > "${vmpreparedir}/hostfiles"
     cat <<EOF >> "${vmpreparedir}/hostfiles"
-/usr/lib/osbuild/stages/org.osbuild.coreos.live-artifacts.mono
-/usr/lib/osbuild/stages/org.osbuild.coreos.live-artifacts.mono.meta.json
+/usr/lib/osbuild/stages/org.osbuild.bfb
+/usr/lib/osbuild/stages/org.osbuild.bfb.meta.json
 EOF
 
     # and include all GPG keys
