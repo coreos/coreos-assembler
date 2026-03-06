@@ -15,6 +15,7 @@
 package system
 
 import (
+	"bufio"
 	"fmt"
 	"math"
 	"os"
@@ -50,56 +51,157 @@ func GetProcessors() (uint, error) {
 	return uint(nproc), nil
 }
 
+// getCpuQuota() returns the cpu quota associated with the current
+// cgroup (v2) or math.MaxUint if not in a cgroup.
 func getCpuQuota() (uint, error) {
 	// cgroups v2
 	buf, err := os.ReadFile("/sys/fs/cgroup/cpu.max")
-	if err == nil {
-		vals := strings.SplitN(strings.TrimSpace(string(buf)), " ", 2)
-		if len(vals) != 2 {
-			return 0, fmt.Errorf("invalid cpu.max value")
-		}
-		if vals[0] != "max" {
-			quota, err := strconv.ParseUint(vals[0], 10, 32)
-			if err != nil {
-				return 0, fmt.Errorf("invalid CPU quota: %w", err)
-			}
-			period, err := strconv.ParseUint(vals[1], 10, 32)
-			if err != nil {
-				return 0, fmt.Errorf("invalid CPU period: %w", err)
-			}
-			if quota > 0 && period > 0 {
-				return uint((quota + period - 1) / period), nil
-			}
-		}
-	} else if !os.IsNotExist(err) {
-		return 0, fmt.Errorf("reading cpu.max: %w", err)
-	}
-
-	// cgroups v1
-	buf, err = os.ReadFile("/sys/fs/cgroup/cpu/cpu.cfs_quota_us")
 	if os.IsNotExist(err) {
 		return math.MaxUint, nil
 	} else if err != nil {
-		return 0, fmt.Errorf("reading cpu.cfs_quota_us: %w", err)
+		return 0, fmt.Errorf("reading cpu.max: %w", err)
 	}
-	// can be -1
-	quota, err := strconv.ParseInt(strings.TrimSpace(string(buf)), 10, 32)
+	vals := strings.SplitN(strings.TrimSpace(string(buf)), " ", 2)
+	if len(vals) != 2 {
+		return 0, fmt.Errorf("invalid cpu.max value")
+	}
+	if vals[0] == "max" {
+		return math.MaxUint, nil
+	}
+	quota, err := strconv.ParseUint(vals[0], 10, 32)
 	if err != nil {
 		return 0, fmt.Errorf("invalid CPU quota: %w", err)
 	}
-	buf, err = os.ReadFile("/sys/fs/cgroup/cpu/cpu.cfs_period_us")
-	if os.IsNotExist(err) {
-		return math.MaxUint, nil
-	} else if err != nil {
-		return 0, fmt.Errorf("reading cpu.cfs_period_us: %w", err)
-	}
-	period, err := strconv.ParseUint(strings.TrimSpace(string(buf)), 10, 32)
+	period, err := strconv.ParseUint(vals[1], 10, 32)
 	if err != nil {
 		return 0, fmt.Errorf("invalid CPU period: %w", err)
 	}
 	if quota > 0 && period > 0 {
-		return uint((uint64(quota) + period - 1) / period), nil
+		return uint((quota + period - 1) / period), nil
+	}
+	return math.MaxUint, nil
+}
+
+// GetTotalMemoryMiB returns the total system memory in MiB, taking into
+// account cgroup v2 memory limits. This is suitable for determining
+// the total memory budget at startup.
+func GetTotalMemoryMiB() (uint, error) {
+	sysMem, err := readMeminfoFieldMiB("MemTotal")
+	if err != nil {
+		return 0, err
 	}
 
-	return math.MaxUint, nil
+	cgroupMem, err := getCgroupMemoryLimitMiB()
+	if err != nil {
+		return 0, err
+	}
+
+	if cgroupMem < sysMem {
+		return cgroupMem, nil
+	}
+	return sysMem, nil
+}
+
+// GetCurrentMemAvailableMiB returns the memory currently available in
+// MiB. This reads MemAvailable from /proc/meminfo and also checks
+// cgroup memory usage against limits. It is designed to be called
+// repeatedly at runtime to check whether enough memory is free to
+// start a new QEMU instance.
+func GetCurrentMemAvailableMiB() (uint, error) {
+	sysAvail, err := readMeminfoFieldMiB("MemAvailable")
+	if err != nil {
+		return 0, err
+	}
+
+	cgroupAvail, err := getCgroupMemoryAvailableMiB()
+	if err != nil {
+		return 0, err
+	}
+
+	if cgroupAvail < sysAvail {
+		return cgroupAvail, nil
+	}
+	return sysAvail, nil
+}
+
+// readMeminfoFieldMiB reads a specific field from /proc/meminfo and
+// returns the value in MiB (the kernel reports values in kB).
+func readMeminfoFieldMiB(field string) (uint, error) {
+	f, err := os.Open("/proc/meminfo")
+	if err != nil {
+		return 0, fmt.Errorf("reading /proc/meminfo: %w", err)
+	}
+	defer f.Close()
+
+	prefix := field + ":"
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.HasPrefix(line, prefix) {
+			fields := strings.Fields(line)
+			if len(fields) < 2 {
+				return 0, fmt.Errorf("unexpected %s format: %s", field, line)
+			}
+			kB, err := strconv.ParseUint(fields[1], 10, 64)
+			if err != nil {
+				return 0, fmt.Errorf("parsing %s: %w", field, err)
+			}
+			return uint(kB / 1024), nil
+		}
+	}
+	if err := scanner.Err(); err != nil {
+		return 0, fmt.Errorf("scanning /proc/meminfo: %w", err)
+	}
+	return 0, fmt.Errorf("%s not found in /proc/meminfo", field)
+}
+
+// getCgroupMemoryLimitMiB returns the cgroup v2 memory limit in MiB,
+// or math.MaxUint if no limit is set.
+func getCgroupMemoryLimitMiB() (uint, error) {
+	buf, err := os.ReadFile("/sys/fs/cgroup/memory.max")
+	if os.IsNotExist(err) {
+		return math.MaxUint, nil
+	} else if err != nil {
+		return 0, fmt.Errorf("reading memory.max: %w", err)
+	}
+	val := strings.TrimSpace(string(buf))
+	if val == "max" {
+		return math.MaxUint, nil
+	}
+	limit, err := strconv.ParseUint(val, 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("invalid memory.max value: %w", err)
+	}
+	return uint(limit / (1024 * 1024)), nil
+}
+
+// getCgroupMemoryAvailableMiB returns the available memory within the
+// cgroup v2 in MiB (limit - current usage), or math.MaxUint if no limit.
+func getCgroupMemoryAvailableMiB() (uint, error) {
+	maxBuf, err := os.ReadFile("/sys/fs/cgroup/memory.max")
+	if os.IsNotExist(err) {
+		return math.MaxUint, nil
+	} else if err != nil {
+		return 0, fmt.Errorf("reading memory.max: %w", err)
+	}
+	val := strings.TrimSpace(string(maxBuf))
+	if val == "max" {
+		return math.MaxUint, nil
+	}
+	limit, err := strconv.ParseUint(val, 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("invalid memory.max value: %w", err)
+	}
+	curBuf, err := os.ReadFile("/sys/fs/cgroup/memory.current")
+	if err != nil {
+		return 0, fmt.Errorf("reading memory.current: %w", err)
+	}
+	current, err := strconv.ParseUint(strings.TrimSpace(string(curBuf)), 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("invalid memory.current value: %w", err)
+	}
+	if current >= limit {
+		return 0, nil
+	}
+	return uint((limit - current) / (1024 * 1024)), nil
 }
