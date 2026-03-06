@@ -1,0 +1,113 @@
+# This file defines the pipeline for building the NVIDIA Bluefield artifacts.
+version: '2'
+pipelines:
+  - name: nvidiabluefield-buildroot
+    stages:
+      # Copy in the original buildroot 
+      - type: org.osbuild.copy
+        inputs:
+          tree:
+            type: org.osbuild.tree
+            origin: org.osbuild.pipeline
+            references:
+              - mpp-format-string: '{buildroot}'
+        options:
+          paths:
+            - from: input://tree/
+              to: tree:///
+        devices:
+          disk:
+            type: org.osbuild.loopback
+            options:
+              filename: disk.img
+              partscan: true
+      # And then install two mlx* RPMs that will be used to create the BFB image
+      - type: org.osbuild.rpm
+        inputs:
+          packages:
+            type: org.osbuild.files
+            origin: org.osbuild.source
+            mpp-depsolve:
+              architecture:
+                mpp-format-string: '{arch}'
+              repos:
+				- id: mellanox
+				  baseurl: https://linux.mellanox.com/public/repo/doca/latest-3.2-LTS/rhel9.6/$arch/
+              packages:
+                - mlxbf-bfscripts
+                - mlxbf-bootimages-signed
+        options:
+          exclude:
+            docs: true
+          gpgkeys:
+			  # https://linux.mellanox.com/public/repo/doca/latest-3.2-LTS/rhel9.6/aarch64/GPG-KEY-Mellanox.pub
+			  - |
+				-----BEGIN PGP PUBLIC KEY BLOCK-----
+				Version: GnuPG v1
+
+				mQENBFpbc0cBCADDST+ekKD1YJje77oDX94gRolmUlh0df4n6/xvE700M1vPAiTT
+				kU3WJcvwnuTZpyMGSsAQCXXQRJuQObnkPEvjVAPgh8fvghCXgVElcr6dqXu3EVze
+				iCkdYm08t/+FF3kg/P6VYPjgEM/GIFnKTz37LrQlUM4ArG0ENIYM9xjurnKWuV9r
+				JuckJcUsmZUS/D9QMM2fuurYOEWHrE8t+n2EcO4aoY2x0ogYce0vON539rJiskjz
+				OPhIB9G7ZFQabQnyxzEKiUUDyJsbe38XDT4eyjUR2mlHGgTY/WzGdDEtIKRBWsd3
+				TV3wXt42nF9YA3oieeaTbIluyywNnOj1vyT1ABEBAAG0VU1lbGxhbm94IFRlY2hu
+				b2xvZ2llcyAoTWVsbGFub3ggVGVjaG5vbG9naWVzIC0gU2lnbmluZyBLZXkgdjMp
+				IDxzdXBwb3J0QG1lbGxhbm94LmNvbT6JATcEEwEIACEFAlpbc0cCGwMFCwkIBwMF
+				FQoJCAsFFgIDAQACHgECF4AACgkQoCT28ObWooFXYwgAunwBFELGlwKonnmnbi4/
+				avUa8e0wRpww//DJjI0HQWjMk7oPLDbS50CVps1Mu0SxBAPYGtsFeSH6UMC6A0K4
+				yoxXICVl409vYkycNu/vq6eLTbM2Y0PFvBDzRAf3rJXL0ApLuUb57ARZvc7Np7LA
+				v8K53PdOJUEFns8Ipp+2puEVx5dfezm7LwRca6ohoLUEdI/PobmGUeNvO5dvfiix
+				LvSVw2A2awihB7dcs5cpo57VxBWPs7+sYBZ0+EUJbtQEiHAyPvKs29nMeaCIwPTd
+				88A5RrhsEJx+QWXuG6NA4rfehy5e9j1PW3XnC2fMl6w7gNLY5I8Vq6c2MJ73NZ6y
+				wLkBDQRaW3NHAQgAynkQ+mf4f5cdM4/bJuRWlPxxuN3CUxN9Q6B5B1/13p6tkydP
+				C7S4ro8H8sSlO5FbbxihfZLPTbFNrBkd///OQYMJW/slbtT6D9dYmCIeuHObMEMb
+				V+Bn1bWQId2vZgr0+m0Xe3K+KqhsylsrmC1ebShMnny/V+MlOQQt+L089BNiyCB4
+				70mhgM1NiJFv9EOQlXWWaMqWTxZGYkdOuFW0q8NnSGOqI5xjrAUxaHZ/1U3yPy0k
+				eAjX1AKJngaj86SvIzEefxq4oA2gZ8UFVO/qFH5OhfoovrEwudJEuIgGb76XOb9m
+				AoZlAqQLJniC97ld515ivBdSi4SZkaFbypnX4QARAQABiQEfBBgBCAAJBQJaW3NH
+				AhsMAAoJEKAk9vDm1qKBHhMIAJuGbb6S3nb2xAD3GjB8F2xNcZxWQ+Qz70DY5vV/
+				WhrJl7cknXMxsbWvQupuYk6LujZraG9YoD4csZ5o+k3s3BGKVUXdZdhjaHpcAa5F
+				X12ADLHca5mlmdCaaORYXQ+xHYRlOKas4I6LPpZ79BauVomEnPcv/bL0kGFzDvLr
+				K3RdQ1n/pbcWcxxSY3InphAnslLUg0PTAME6Yay5F7WrJsnZnXApUjOlZvlPIl2c
+				iplivN8o85eBKQXvYRg/c5iyc0koTmkM6OXNvUy0hV9z8WhhK9O+ApXwMUMf43DS
+				KOIg9RxhZFQoPXptaQZDLz89sWmZaiXsyBPJyjlmaTjwHGM=
+				=Iy5R
+				-----END PGP PUBLIC KEY BLOCK-----
+  - name: nvidiabluefield
+    build: name:nvidiabluefield-buildroot
+    stages:
+      - type: org.osbuild.coreos.live-artifacts.mono
+        inputs:
+          kernel:
+            type: org.osbuild.files
+            origin: org.osbuild.pipeline
+            references:
+              name:live:
+                file:
+                  mpp-format-string: '/{artifact_name_prefix}-live-kernel.{arch}'
+          initramfs:
+            type: org.osbuild.files
+            origin: org.osbuild.pipeline
+            references:
+              name:live:
+                file:
+                  mpp-format-string: '/{artifact_name_prefix}-live-initramfs.{arch}.img'
+          rootfs:
+            type: org.osbuild.files
+            origin: org.osbuild.pipeline
+            references:
+              name:live:
+                file:
+                  mpp-format-string: '/{artifact_name_prefix}-live-rootfs.{arch}.img'
+        options:
+          boot_args_v2:
+            - "console=hvc0"
+            - "console=ttyAMA0"
+            - "earlycon=pl011,0x13010000"
+            - "initrd=initramfs"
+            - "modprobe.blacklist=mlxbf_pmc"
+            - "ignition.firstboot",
+            - "ignition.platform.id=nvidiabluefield"
+          filename:
+              mpp-format-string: '{artifact_name_prefix}-nvidiabluefield.{arch}.bfb'
+
