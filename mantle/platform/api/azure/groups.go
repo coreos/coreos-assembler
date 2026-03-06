@@ -75,7 +75,7 @@ func (a *API) ListResourceGroups() ([]*armresources.ResourceGroup, error) {
 		if err != nil {
 			return nil, err
 		}
-		resourceGroups = append(resourceGroups, pageResp.ResourceGroupListResult.Value...)
+		resourceGroups = append(resourceGroups, pageResp.Value...)
 	}
 	return resourceGroups, nil
 }

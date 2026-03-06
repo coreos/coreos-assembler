@@ -247,7 +247,7 @@ func TransferFile(src Machine, srcPath string, dst Machine, dstPath string) erro
 	if err != nil {
 		return err
 	}
-	defer srcPipe.Close()
+	defer func() { _ = srcPipe.Close() }()
 
 	if err := InstallFile(srcPipe, dst, dstPath); err != nil {
 		return err
@@ -265,15 +265,15 @@ func ReadFile(m Machine, path string) (io.ReadCloser, error) {
 
 	session, err := client.NewSession()
 	if err != nil {
-		client.Close()
+		_ = client.Close()
 		return nil, errors.Wrapf(err, "failed creating SSH session")
 	}
 
 	// connect session stdout
 	stdoutPipe, err := session.StdoutPipe()
 	if err != nil {
-		session.Close()
-		client.Close()
+		_ = session.Close()
+		_ = client.Close()
 		return nil, err
 	}
 
@@ -284,8 +284,8 @@ func ReadFile(m Machine, path string) (io.ReadCloser, error) {
 	// stream file to stdout
 	err = session.Start(fmt.Sprintf("sudo cat %s", path))
 	if err != nil {
-		session.Close()
-		client.Close()
+		_ = session.Close()
+		_ = client.Close()
 		return nil, err
 	}
 
@@ -307,14 +307,14 @@ func InstallFile(in io.Reader, m Machine, to string) error {
 		return errors.Wrapf(err, "failed creating SSH client")
 	}
 
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	session, err := client.NewSession()
 	if err != nil {
 		return errors.Wrapf(err, "failed creating SSH session")
 	}
 
-	defer session.Close()
+	defer func() { _ = session.Close() }()
 
 	// write file to fs from stdin
 	session.Stdin = in
@@ -339,14 +339,14 @@ func CopyDirToMachine(inputdir string, m Machine, destdir string) error {
 		return errors.Wrapf(err, "failed creating SSH client")
 	}
 
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	session, err := client.NewSession()
 	if err != nil {
 		return errors.Wrapf(err, "failed creating SSH session")
 	}
 
-	defer session.Close()
+	defer func() { _ = session.Close() }()
 
 	// Use compression level 1 for speed
 	compressArgv := []string{"-c", "tar chf - . | gzip -1"}
@@ -357,7 +357,7 @@ func CopyDirToMachine(inputdir string, m Machine, destdir string) error {
 	if err != nil {
 		return err
 	}
-	defer stdout.Close()
+	defer func() { _ = stdout.Close() }()
 	err = clientCmd.Start()
 	if err != nil {
 		return err
@@ -508,8 +508,8 @@ func CheckMachine(ctx context.Context, m Machine) error {
 	} else {
 		systemdCmd = "systemctl --no-legend --state status list-units | awk '{print $1}'"
 	}
-	failedUnitsCmd = strings.Replace(systemdCmd, "status", "failed", -1)
-	activatingUnitsCmd = strings.Replace(systemdCmd, "status", "activating", -1)
+	failedUnitsCmd = strings.ReplaceAll(systemdCmd, "status", "failed")
+	activatingUnitsCmd = strings.ReplaceAll(systemdCmd, "status", "activating")
 
 	// Ensure no systemd units failed during boot
 	out, stderr, err = m.SSH(failedUnitsCmd)

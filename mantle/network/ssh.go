@@ -92,7 +92,7 @@ func NewSSHAgent(dialer Dialer) (*SSHAgent, error) {
 	listener, err := net.ListenUnix("unix", sockAddr)
 	if err != nil {
 		if sockdirOwned {
-			os.RemoveAll(sockDir)
+			_ = os.RemoveAll(sockDir)
 		}
 		return nil, err
 	}
@@ -124,7 +124,7 @@ func NewSSHAgent(dialer Dialer) (*SSHAgent, error) {
 
 // Close closes the unix socket of the agent.
 func (a *SSHAgent) Close() error {
-	a.listener.Close()
+	_ = a.listener.Close()
 	if a.sockdirOwned {
 		return os.RemoveAll(a.sockDir)
 	}
@@ -167,7 +167,7 @@ func (a *SSHAgent) newClient(host string, user string, auth []ssh.AuthMethod) (*
 	client := ssh.NewClient(sshconn, chans, reqs)
 	err = agent.ForwardToAgent(client, a)
 	if err != nil {
-		client.Close()
+		_ = client.Close()
 		return nil, err
 	}
 

@@ -47,7 +47,7 @@ func NewLocalFlight(opts *platform.Options, platformName platform.Name) (*LocalF
 	nsdialer := network.NewNsDialer(nshandle)
 	bf, err := platform.NewBaseFlightWithDialer(opts, platformName, nsdialer)
 	if err != nil {
-		nshandle.Close()
+		_ = nshandle.Close()
 		return nil, err
 	}
 

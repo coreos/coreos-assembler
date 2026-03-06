@@ -54,7 +54,7 @@ func ReadAzureCredentials(path string) (AzureCredentials, error) {
 	if err != nil {
 		return azCreds, err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	content, err := io.ReadAll(f)
 	if err != nil {

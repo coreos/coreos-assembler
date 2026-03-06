@@ -209,7 +209,7 @@ func (h *Header) MarshalBinary() ([]byte, error) {
 	if h.LeapIndicator > liMax ||
 		h.VersionNumber > vnMax ||
 		h.Mode > modeMax {
-		return nil, fmt.Errorf("Invalid NTP Header %v", h)
+		return nil, fmt.Errorf("invalid NTP Header %v", h)
 	}
 
 	data := make([]byte, headerSize)

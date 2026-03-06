@@ -185,19 +185,20 @@ func (c *H) flushToParent(format string, args ...interface{}) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
-	fmt.Fprintf(p.w, format, args...)
+	_, _ = fmt.Fprintf(p.w, format, args...)
 
 	status := c.status()
 
 	// TODO: include test numbers in TAP output.
 	if p.tap != nil {
-		name := strings.Replace(c.name, "#", "", -1)
-		if status == testresult.Fail {
-			fmt.Fprintf(p.tap, "not ok - %s\n", name)
-		} else if status == testresult.Skip {
-			fmt.Fprintf(p.tap, "ok - %s # SKIP\n", name)
-		} else {
-			fmt.Fprintf(p.tap, "ok - %s\n", name)
+		name := strings.ReplaceAll(c.name, "#", "")
+		switch status {
+		case testresult.Fail:
+			_, _ = fmt.Fprintf(p.tap, "not ok - %s\n", name)
+		case testresult.Skip:
+			_, _ = fmt.Fprintf(p.tap, "ok - %s # SKIP\n", name)
+		default:
+			_, _ = fmt.Fprintf(p.tap, "ok - %s\n", name)
 		}
 	}
 
@@ -597,7 +598,7 @@ func (t *H) RunTimeout(name string, f func(t *H), timeout time.Duration) bool {
 		root := t.parent
 		for ; root.parent != nil; root = root.parent {
 		}
-		fmt.Fprintf(root.w, "=== RUN   %s\n", t.name)
+		_, _ = fmt.Fprintf(root.w, "=== RUN   %s\n", t.name)
 	}
 	// Instead of reducing the running count of this test before calling the
 	// tRunner and increasing it afterwards, we rely on tRunner keeping the
@@ -683,7 +684,7 @@ func CleanOutputDir(path string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	f.Close()
+	_ = f.Close()
 
 	return path, nil
 }

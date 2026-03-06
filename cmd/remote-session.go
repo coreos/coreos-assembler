@@ -103,9 +103,9 @@ func envVarIsSet(v string) bool {
 // environment variable error based on the given inputs.
 func envVarError(v string, required bool) error {
 	if required {
-		return fmt.Errorf("The env var %s must be defined and non-empty", v)
+		return fmt.Errorf("the env var %s must be defined and non-empty", v)
 	} else {
-		return fmt.Errorf("The env var %s must not be defined", v)
+		return fmt.Errorf("the env var %s must not be defined", v)
 	}
 }
 
@@ -231,7 +231,7 @@ func runSync(c *cobra.Command, args []string) error {
 		}
 	}
 	if found != 1 {
-		return fmt.Errorf("Must pass in a single arg with `:` prepended")
+		return fmt.Errorf("must pass in a single arg with `:` prepended")
 	}
 	// build command and execute
 	rsyncargs := []string{"-ah", "--no-owner", "--no-group", "--mkpath", "--blocking-io",

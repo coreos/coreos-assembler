@@ -79,7 +79,7 @@ func downloadArtifact(a *stream.Artifact) error {
 	}
 	// Shouldn't happen but let's double check
 	if path != destfile {
-		return fmt.Errorf("Unexpected downloaded path: %s vs %s", path, destfile)
+		return fmt.Errorf("unexpected downloaded path: %s vs %s", path, destfile)
 	}
 	fmt.Printf("Download complete: %s\n", destfile)
 
@@ -127,7 +127,7 @@ func runStreamMirror(cmd *cobra.Command, args []string) error {
 	}
 
 	if newBaseURL != nil && destFile == "" {
-		return fmt.Errorf("Must specify --dest-file with --url")
+		return fmt.Errorf("must specify --dest-file with --url")
 	}
 	var srcStream stream.Stream
 	buf, err := os.ReadFile(srcFile)

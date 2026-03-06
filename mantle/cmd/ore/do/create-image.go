@@ -65,10 +65,10 @@ func runCreateImage(cmd *cobra.Command, args []string) error {
 
 func createImage() error {
 	if imageName == "" {
-		return fmt.Errorf("Image name must be specified")
+		return fmt.Errorf("image name must be specified")
 	}
 	if imageURL == "" {
-		return fmt.Errorf("Image URL must be specified")
+		return fmt.Errorf("image URL must be specified")
 	}
 
 	if customImage {
@@ -135,7 +135,7 @@ func createSnapshot() error {
 		return droplet.Status == "off", nil
 	})
 	if err != nil {
-		return fmt.Errorf("Failed waiting for droplet to power off (%v). Did install fail?", err)
+		return fmt.Errorf("failed waiting for droplet to power off (%v). Did install fail?", err)
 	}
 
 	if err := API.SnapshotDroplet(ctx, dropletID, imageName); err != nil {
@@ -207,7 +207,7 @@ systemd:
 
 	conf, err := conf.Ignition(config).Render(conf.ReportWarnings)
 	if err != nil {
-		return "", fmt.Errorf("Couldn't render userdata: %v", err)
+		return "", fmt.Errorf("couldn't render userdata: %v", err)
 	}
 	return conf.String(), nil
 }

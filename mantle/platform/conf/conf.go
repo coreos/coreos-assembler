@@ -172,7 +172,7 @@ func (u *UserData) Contains(substr string) bool {
 // Subst performs a string substitution and returns a new UserData.
 func (u *UserData) Subst(old, new string) *UserData {
 	ret := *u
-	ret.data = strings.Replace(u.data, old, new, -1)
+	ret.data = strings.ReplaceAll(u.data, old, new)
 	return &ret
 }
 
@@ -509,7 +509,7 @@ func (c *Conf) MaybeCompress() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer writer.Close()
+	defer func() { _ = writer.Close() }()
 	if _, err := writer.Write([]byte(config)); err != nil {
 		return "", err
 	}

@@ -80,7 +80,7 @@ func (a *API) CreateImage(spec *ImageSpec, overwrite bool) (*compute.Operation, 
 			// If not in URI format then query GCP for that info
 			license, err := a.compute.Licenses.Get(a.options.Project, l).Do()
 			if err != nil {
-				return nil, nil, fmt.Errorf("Invalid GCP license %s: %v", l, err)
+				return nil, nil, fmt.Errorf("invalid GCP license %s: %v", l, err)
 			}
 			licenses[i] = license.SelfLink
 		}
@@ -187,7 +187,7 @@ func (a *API) ListImages(ctx context.Context, prefix string, family string) ([]*
 		return nil
 	})
 	if err != nil {
-		return nil, fmt.Errorf("Listing GCP images failed: %v", err)
+		return nil, fmt.Errorf("listing GCP images failed: %v", err)
 	}
 	return images, nil
 }
@@ -197,10 +197,10 @@ func (a *API) GetPendingForImage(image *compute.Image) (*Pending, error) {
 	op.Filter(fmt.Sprintf("(targetId eq %v) (operationType eq insert)", image.Id))
 	pendingOps, err := op.Do()
 	if err != nil {
-		return nil, fmt.Errorf("Couldn't list pending operations on %q: %v", image.Name, err)
+		return nil, fmt.Errorf("couldn't list pending operations on %q: %v", image.Name, err)
 	}
 	if len(pendingOps.Items) != 1 {
-		return nil, fmt.Errorf("Found %d != 1 insert operations on %q", len(pendingOps.Items), image.Name)
+		return nil, fmt.Errorf("found %d != 1 insert operations on %q", len(pendingOps.Items), image.Name)
 	}
 	pendingOp := pendingOps.Items[0]
 	doable := a.compute.GlobalOperations.Get(a.options.Project, pendingOp.Name)
@@ -223,7 +223,7 @@ func (a *API) DeprecateImage(name string, state DeprecationState, replacement st
 	})
 	op, err := req.Do()
 	if err != nil {
-		return nil, fmt.Errorf("Deprecating %s failed: %v", name, err)
+		return nil, fmt.Errorf("deprecating %s failed: %v", name, err)
 	}
 	opReq := a.compute.GlobalOperations.Get(a.options.Project, op.Name)
 	return a.NewPending(op.Name, opReq), nil
@@ -251,7 +251,7 @@ func (a *API) UpdateImage(name string, family string, description string) (*Pend
 	req := a.compute.Images.Patch(a.options.Project, name, image)
 	op, err := req.Do()
 	if err != nil {
-		return nil, fmt.Errorf("Updating %s failed: %v", name, err)
+		return nil, fmt.Errorf("updating %s failed: %v", name, err)
 	}
 	opReq := a.compute.GlobalOperations.Get(a.options.Project, op.Name)
 	return a.NewPending(op.Name, opReq), nil
@@ -269,7 +269,7 @@ func (a *API) SetImagePublic(name string) error {
 	// Get the current policy for the image
 	policy, err := a.compute.Images.GetIamPolicy(a.options.Project, name).Do()
 	if err != nil {
-		return fmt.Errorf("Getting image %s IAM policy failed: %v", name, err)
+		return fmt.Errorf("getting image %s IAM policy failed: %v", name, err)
 	}
 
 	// Add entries to the policy to make the image public.
@@ -283,7 +283,7 @@ func (a *API) SetImagePublic(name string) error {
 	_, err = a.compute.Images.SetIamPolicy(
 		a.options.Project, name, globalsetpolicyrequest).Do()
 	if err != nil {
-		return fmt.Errorf("Setting image %s IAM policy failed: %v", name, err)
+		return fmt.Errorf("setting image %s IAM policy failed: %v", name, err)
 	}
 	return nil
 }

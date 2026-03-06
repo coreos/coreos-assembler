@@ -73,7 +73,7 @@ var testData = []testHeader{
 
 func TestHeaderMarshal(t *testing.T) {
 	for i, d := range testData {
-		b, err := d.Header.MarshalBinary()
+		b, err := d.MarshalBinary()
 		if err != nil {
 			t.Errorf("testData[%d] marshal failed: %v", i, err)
 			continue

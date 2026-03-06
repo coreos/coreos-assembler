@@ -47,16 +47,16 @@ func init() {
 
 func changeVisibility(cmd *cobra.Command, args []string) error {
 	if len(args) == 0 {
-		return fmt.Errorf("Specify one ore more region:image pairs.\n")
+		return fmt.Errorf("specify one ore more region:image pairs")
 	}
 
 	if (public && private) || (!public && !private) {
-		return fmt.Errorf("Must only specify --public or --private.\n")
+		return fmt.Errorf("must only specify --public or --private")
 	}
 
 	supportedRegions, err := API.ListRegions()
 	if err != nil {
-		return fmt.Errorf("could not list regions: %v\n", err)
+		return fmt.Errorf("could not list regions: %v", err)
 	}
 	supportedMap := make(map[string]bool)
 	for _, r := range supportedRegions {
@@ -65,18 +65,18 @@ func changeVisibility(cmd *cobra.Command, args []string) error {
 
 	for _, pair := range args {
 		if !strings.Contains(pair, ":") {
-			return fmt.Errorf("Argument isn't a valid region:image pair: %v\n", pair)
+			return fmt.Errorf("argument isn't a valid region:image pair: %v", pair)
 		}
 
 		v := strings.Split(pair, ":")
 		if len(v) > 2 {
-			return fmt.Errorf("Argument isn't a valid region:image pair: %v\n", pair)
+			return fmt.Errorf("argument isn't a valid region:image pair: %v", pair)
 		}
 
 		region, image := v[0], v[1]
 
 		if !supportedMap[region] {
-			return fmt.Errorf("%v is not a valid region\n", region)
+			return fmt.Errorf("%v is not a valid region", region)
 		}
 
 		// default bool is false
@@ -86,7 +86,7 @@ func changeVisibility(cmd *cobra.Command, args []string) error {
 		}
 		err = API.ChangeVisibility(region, image, visibility)
 		if err != nil {
-			return fmt.Errorf("Couldn't change the visibility of image %v in region %v: %v", image, region, err)
+			return fmt.Errorf("couldn't change the visibility of image %v in region %v: %v", image, region, err)
 		}
 	}
 

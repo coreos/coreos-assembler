@@ -131,11 +131,11 @@ func runBootMirrorTest(c cluster.TestCluster) {
 	detachPrimaryBlockDevice(c, m)
 	// Check if there are two devices with the active raid
 	rootOutput = c.MustSSH(m, "sudo mdadm --export --detail /dev/md/md-root")
-	if strings.Contains(string(rootOutput), "/dev/vdc4") || !(strings.Contains(string(rootOutput), "/dev/vda4") && strings.Contains(string(rootOutput), "/dev/vdb4")) {
+	if strings.Contains(string(rootOutput), "/dev/vdc4") || (!strings.Contains(string(rootOutput), "/dev/vda4") || !strings.Contains(string(rootOutput), "/dev/vdb4")) {
 		c.Fatalf("found unexpected root raid device; expected devices: %v", string(rootOutput))
 	}
 	bootOutput = c.MustSSH(m, "sudo mdadm --export --detail /dev/md/md-boot")
-	if strings.Contains(string(bootOutput), "/dev/vdc3") || !(strings.Contains(string(bootOutput), "/dev/vda3") && strings.Contains(string(bootOutput), "/dev/vdb3")) {
+	if strings.Contains(string(bootOutput), "/dev/vdc3") || (!strings.Contains(string(bootOutput), "/dev/vda3") || !strings.Contains(string(bootOutput), "/dev/vdb3")) {
 		c.Fatalf("found unexpected boot raid device; expected devices: %v", string(bootOutput))
 	}
 	verifyBootMirrorAfterReboot(c, m)

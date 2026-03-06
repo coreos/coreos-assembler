@@ -181,7 +181,7 @@ func TestDbusPerms() error {
 			return err
 		}
 	} else {
-		return fmt.Errorf("We were able to call RestartUnit as a non-root user.")
+		return fmt.Errorf("we were able to call RestartUnit as a non-root user")
 	}
 
 	c = exec.Command(
@@ -195,7 +195,7 @@ func TestDbusPerms() error {
 
 	out, err = c.CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("Err:%s\n Out:%v", err, out)
+		return fmt.Errorf("err:%s\n Out:%v", err, out)
 	}
 	return nil
 }
@@ -212,7 +212,7 @@ func servicesActive(units []string) error {
 		c := exec.Command("systemctl", "is-active", unit)
 		err := c.Run()
 		if err != nil {
-			return fmt.Errorf("Services Active: %v", err)
+			return fmt.Errorf("services active: %v", err)
 		}
 	}
 	return nil
@@ -236,7 +236,7 @@ func servicesInactive(units []string) error {
 		c := exec.Command("systemctl", "is-active", unit)
 		err := c.Run()
 		if err == nil {
-			return fmt.Errorf("Service Incorrectly Active: %q", unit)
+			return fmt.Errorf("service incorrectly active: %q", unit)
 		}
 	}
 	return nil
@@ -252,7 +252,7 @@ func servicesDisabled(units []string) error {
 			// that are checked, we expect some to report "static"
 			outString := strings.TrimSuffix(string(out), "\n")
 			if (outString != "disabled") && (outString != "static") {
-				return fmt.Errorf("Service Incorrectly Enabled: %q", unit)
+				return fmt.Errorf("service incorrectly enabled: %q", unit)
 			}
 		}
 	}
@@ -272,16 +272,16 @@ func TestReadOnlyFs() error {
 		if mp {
 			return nil
 		} else {
-			return fmt.Errorf("/usr is not mounted read-only.")
+			return fmt.Errorf("/usr is not mounted read-only")
 		}
 	} else if mp, ok := mountModes["/"]; ok {
 		if mp {
 			return nil
 		} else {
-			return fmt.Errorf("/ is not mounted read-only.")
+			return fmt.Errorf("/ is not mounted read-only")
 		}
 	}
-	return fmt.Errorf("could not find /usr or / mount points.")
+	return fmt.Errorf("could not find /usr or / mount points")
 }
 
 // Test that the root disk's GUID was set to a random one on first boot.
@@ -327,9 +327,10 @@ func TestUseradd() error {
 // Test that /etc/machine-id isn't empty or COREOS_BLANK_MACHINE_ID
 func TestMachineID() error {
 	id := MachineID()
-	if id == "" {
+	switch id {
+	case "":
 		return fmt.Errorf("machine-id is empty")
-	} else if id == "COREOS_BLANK_MACHINE_ID" {
+	case "COREOS_BLANK_MACHINE_ID":
 		return fmt.Errorf("machine-id is %s", id)
 	}
 	return nil
@@ -384,7 +385,7 @@ func checkService(unit string) error {
 	}
 	var journalOutput map[string]string
 	if err := json.Unmarshal(out, &journalOutput); err != nil {
-		return fmt.Errorf("Error getting journalclt output for %s: %s. Out: %s", unit, err, out)
+		return fmt.Errorf("error getting journalclt output for %s: %s. Out: %s", unit, err, out)
 	}
 	if journalOutput["JOB_RESULT"] != "done" {
 		return fmt.Errorf("%s did not start successfully\n Journalctl output: %q", unit, out)
@@ -396,14 +397,14 @@ func checkFilesystemSize(size int) error {
 	c := exec.Command("bash", "-c", "echo $(($(stat -f /sysroot --format '%S * %b')))")
 	filesystemSizeStr, err := c.Output()
 	if err != nil {
-		return fmt.Errorf("Error getting filesystem size: %s", err)
+		return fmt.Errorf("error getting filesystem size: %s", err)
 	}
 	filesystemSize, err := strconv.Atoi(strings.TrimSuffix(string(filesystemSizeStr), "\n"))
 	if err != nil {
-		return fmt.Errorf("Error converting filesystem size from string to int: %s", err)
+		return fmt.Errorf("error converting filesystem size from string to int: %s", err)
 	}
 	if filesystemSize < size {
-		return fmt.Errorf("Filesystem size is less than %d bytes, size in bytes: %d", size, filesystemSize)
+		return fmt.Errorf("filesystem size is less than %d bytes, size in bytes: %d", size, filesystemSize)
 	}
 	return nil
 }

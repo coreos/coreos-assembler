@@ -104,12 +104,12 @@ func (inst *Install) checkArtifactsExist(artifacts []string) error {
 	for _, name := range artifacts {
 		artifact, err := inst.CosaBuild.Meta.GetArtifact(name)
 		if err != nil {
-			return fmt.Errorf("Missing artifact %s for %s build: %s", name, version, err)
+			return fmt.Errorf("missing artifact %s for %s build: %s", name, version, err)
 		}
 		path := filepath.Join(inst.CosaBuild.Dir, artifact.Path)
 		if _, err := os.Stat(path); err != nil {
 			if os.IsNotExist(err) {
-				return fmt.Errorf("Missing local file for artifact %s for build %s", name, version)
+				return fmt.Errorf("missing local file for artifact %s for build %s", name, version)
 			}
 		}
 	}
@@ -232,7 +232,7 @@ func (inst *Install) setup(kern *kernelSetup) (*installerRun, error) {
 	cleanupTempdir := true
 	defer func() {
 		if cleanupTempdir {
-			os.RemoveAll(tempdir)
+			_ = os.RemoveAll(tempdir)
 		}
 	}()
 
@@ -312,7 +312,7 @@ func (inst *Install) setup(kern *kernelSetup) (*installerRun, error) {
 		pxe.tftpipaddr = "10.0.2.2"
 		pxe.bootindex = "1"
 	default:
-		return nil, fmt.Errorf("Unsupported arch %s", coreosarch.CurrentRpmArch())
+		return nil, fmt.Errorf("unsupported arch %s", coreosarch.CurrentRpmArch())
 	}
 
 	mux := http.NewServeMux()
@@ -490,7 +490,7 @@ func switchBootOrderSignal(qinst *QemuInstance, bootstartedchan *os.File, booter
 				// to give a chance for .Wait() above to feed the channel with a
 				// better error
 				time.Sleep(1 * time.Second)
-				*booterrchan <- fmt.Errorf("Got EOF from boot started channel, %s expected", bootStartedSignal)
+				*booterrchan <- fmt.Errorf("got EOF from boot started channel, %s expected", bootStartedSignal)
 			} else {
 				*booterrchan <- errors.Wrapf(err, "reading from boot started channel")
 			}
@@ -514,13 +514,13 @@ func cat(outfile string, infiles ...string) error {
 	if err != nil {
 		return err
 	}
-	defer out.Close()
+	defer func() { _ = out.Close() }()
 	for _, infile := range infiles {
 		in, err := os.Open(infile)
 		if err != nil {
 			return err
 		}
-		defer in.Close()
+		defer func() { _ = in.Close() }()
 		_, err = io.Copy(out, in)
 		if err != nil {
 			return err
@@ -615,7 +615,7 @@ func (inst *Install) InstallViaISOEmbed(kargs []string, liveIgnition, targetIgni
 		panic("Can't run minimal install offline")
 	}
 	if offline && len(inst.NmKeyfiles) > 0 {
-		return nil, fmt.Errorf("Cannot use `--add-nm-keyfile` with offline mode")
+		return nil, fmt.Errorf("cannot use `--add-nm-keyfile` with offline mode")
 	}
 
 	installerConfig := installerConfig{
@@ -646,7 +646,7 @@ func (inst *Install) InstallViaISOEmbed(kargs []string, liveIgnition, targetIgni
 	cleanupTempdir := true
 	defer func() {
 		if cleanupTempdir {
-			os.RemoveAll(tempdir)
+			_ = os.RemoveAll(tempdir)
 		}
 	}()
 

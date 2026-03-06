@@ -75,5 +75,5 @@ func GetBootedDeployment(c cluster.TestCluster, m platform.Machine) (*rpmostreec
 		}
 	}
 
-	return nil, errors.New("No booted deployment found")
+	return nil, errors.New("no booted deployment found")
 }

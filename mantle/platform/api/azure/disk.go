@@ -57,11 +57,11 @@ func (a *API) CreateDisk(name, resourceGroup string, sizeGB int32, sku armcomput
 		return "", err
 	}
 
-	if diskResponse.Disk.ID == nil {
+	if diskResponse.ID == nil {
 		return "", fmt.Errorf("failed to get azure disk id")
 	}
 
-	return *diskResponse.Disk.ID, nil
+	return *diskResponse.ID, nil
 }
 
 // DeleteDisk deletes a managed disk by name from the specified Azure resource group.

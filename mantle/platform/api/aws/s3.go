@@ -220,7 +220,7 @@ func (a *API) DownloadFile(srcBucket, srcPath string) (*os.File, error) {
 		WriterAt: f,
 	}
 	if _, err := a.tManager.DownloadObject(context.Background(), &download); err != nil {
-		f.Close()
+		_ = f.Close()
 		return nil, err
 	}
 

@@ -1066,7 +1066,7 @@ func metadataFromTestBinary(executable string) (*externalTestMeta, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	r := bufio.NewReader(io.LimitReader(f, 8192))
 	meta := &externalTestMeta{Exclusive: true}
 	inmeta := false    // true if we saw a ## kola: prefix after which we expect YAML
@@ -1415,7 +1415,7 @@ func registerTestDir(dir, testprefix string, children []os.DirEntry) error {
 			if err != nil {
 				return err
 			}
-			defer f.Close()
+			defer func() { _ = f.Close() }()
 			dec := json.NewDecoder(f)
 			dec.DisallowUnknownFields()
 			if err := dec.Decode(&meta); err != nil {
@@ -1507,7 +1507,7 @@ func setupExternalTest(h *harness.H, t *register.Test, tcluster cluster.TestClus
 	if err != nil {
 		h.Fatal(err)
 	}
-	defer in.Close()
+	defer func() { _ = in.Close() }()
 	for _, mach := range tcluster.Machines() {
 		unit := fmt.Sprintf("kola-runext-%s", filepath.Base(t.ExternalTest))
 		remotepath := fmt.Sprintf("/usr/local/bin/%s", unit)
@@ -1529,7 +1529,7 @@ func collectLogsExternalTest(h *harness.H, t *register.Test, tcluster cluster.Te
 			h.Fatal(errors.Wrapf(err, "opening %s", path))
 			return
 		}
-		defer f.Close()
+		defer func() { _ = f.Close() }()
 		out := tcluster.MustSSHf(mach, "journalctl -t %s", unit)
 		if _, err = f.WriteString(string(out)); err != nil {
 			h.Errorf("failed to write journal: %v", err)
@@ -1693,7 +1693,7 @@ func makeNonExclusiveTest(bucket int, tests []*register.Test, flight platform.Fl
 			for _, t := range tests {
 				t := t
 				run := func(h *harness.H) {
-					tcluster.H.NonExclusiveTestStarted()
+					tcluster.NonExclusiveTestStarted()
 					testResults.add(h)
 					// tcluster has a reference to the wrapper's harness
 					// We need a new TestCluster that has a reference to the
@@ -1712,16 +1712,16 @@ func makeNonExclusiveTest(bucket int, tests []*register.Test, flight platform.Fl
 						defer collectLogsExternalTest(h, t, newTC)
 					}
 					if IsWarningOnFailure(t.Name) {
-						newTC.H.WarningOnFailure()
+						newTC.WarningOnFailure()
 					}
 
 					t.Run(newTC)
 				}
 				// Each non-exclusive test is run as a subtest of this wrapper test
 				if t.Timeout == harness.DefaultTimeoutFlag {
-					tcluster.H.RunTimeout(t.Name, run, time.Duration(1)*time.Minute)
+					tcluster.RunTimeout(t.Name, run, time.Duration(1)*time.Minute)
 				} else {
-					tcluster.H.RunTimeout(t.Name, run, t.Timeout)
+					tcluster.RunTimeout(t.Name, run, t.Timeout)
 				}
 			}
 		},
@@ -1797,7 +1797,7 @@ func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flig
 	}()
 
 	if t.ClusterSize > 0 {
-		var userdata *conf.UserData = t.UserData
+		var userdata = t.UserData
 
 		options := platform.MachineOptions{
 			MultiPathDisk:             t.MultiPathDisk,
@@ -1851,7 +1851,7 @@ func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flig
 	}
 
 	if IsWarningOnFailure(t.Name) {
-		tcluster.H.WarningOnFailure()
+		tcluster.WarningOnFailure()
 	}
 
 	// Note that we passed in SkipStartMachine=true in our machine
@@ -1970,7 +1970,7 @@ func ScpKolet(machines []platform.Machine) error {
 			if err != nil {
 				return err
 			}
-			defer in.Close()
+			defer func() { _ = in.Close() }()
 			for _, m := range machines {
 				if _, err := in.Seek(0, 0); err != nil {
 					return errors.Wrapf(err, "seeking kolet binary")
@@ -1985,7 +1985,7 @@ func ScpKolet(machines []platform.Machine) error {
 			return nil
 		}
 	}
-	return fmt.Errorf("Unable to locate kolet binary for %s", mArch)
+	return fmt.Errorf("unable to locate kolet binary for %s", mArch)
 }
 
 // CheckConsole checks some console output for badness and returns short
@@ -2066,7 +2066,7 @@ func SetupOutputDir(outputDir, platform string) (string, error) {
 		}
 		// atomic rename
 		if err := os.Rename(tempLinkPath, linkPath); err != nil {
-			os.Remove(tempLinkPath)
+			_ = os.Remove(tempLinkPath)
 			return "", err
 		}
 	}

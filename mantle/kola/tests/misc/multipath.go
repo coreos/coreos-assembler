@@ -233,7 +233,7 @@ func waitForCompleteFirstboot(c cluster.TestCluster) {
 		if err != nil {
 			return false, err
 		} else if string(firstbootTargetState) != "active" {
-			return false, fmt.Errorf("first-boot-complete.target state: %s.", string(firstbootTargetState))
+			return false, fmt.Errorf("first-boot-complete.target state: %s", string(firstbootTargetState))
 		}
 		return true, nil
 	})

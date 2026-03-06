@@ -91,11 +91,11 @@ func runSpawn(cmd *cobra.Command, args []string) error {
 	}
 
 	if spawnNodeCount <= 0 {
-		return fmt.Errorf("Cluster Failed: nodecount must be one or more")
+		return fmt.Errorf("cluster failed: nodecount must be one or more")
 	}
 
 	if spawnReconnect && !strings.HasPrefix(kolaPlatform, "qemu") {
-		return fmt.Errorf("Cannot use --reconnect on non-qemu platforms %v", kolaPlatform)
+		return fmt.Errorf("cannot use --reconnect on non-qemu platforms %v", kolaPlatform)
 	}
 
 	var userdata *conf.UserData
@@ -149,9 +149,9 @@ func runSpawn(cmd *cobra.Command, args []string) error {
 	if spawnJSONInfoFd >= 0 {
 		jsonInfoFile = os.NewFile(uintptr(spawnJSONInfoFd), "json-info")
 		if jsonInfoFile == nil {
-			return fmt.Errorf("Failed to create *File from fd %d", spawnJSONInfoFd)
+			return fmt.Errorf("failed to create *File from fd %d", spawnJSONInfoFd)
 		}
-		defer jsonInfoFile.Close()
+		defer func() { _ = jsonInfoFile.Close() }()
 	}
 
 	var someMach platform.Machine
@@ -197,7 +197,7 @@ func runSpawn(cmd *cobra.Command, args []string) error {
 		}
 		if jsonInfoFile != nil {
 			if err := platform.WriteJSONInfo(mach, jsonInfoFile); err != nil {
-				return fmt.Errorf("Failed writing JSON info: %v", err)
+				return fmt.Errorf("failed writing JSON info: %v", err)
 			}
 		}
 
@@ -255,14 +255,14 @@ func addSSHKeys(userdata *conf.UserData) (*conf.UserData, error) {
 		if agentEnv != "" {
 			f, err := net.Dial("unix", agentEnv)
 			if err != nil {
-				return nil, fmt.Errorf("Couldn't connect to unix socket %q: %v", agentEnv, err)
+				return nil, fmt.Errorf("couldn't connect to unix socket %q: %v", agentEnv, err)
 			}
-			defer f.Close()
+			defer func() { _ = f.Close() }()
 
 			agent := agent.NewClient(f)
 			keys, err := agent.List()
 			if err != nil {
-				return nil, fmt.Errorf("Couldn't talk to ssh-agent: %v", err)
+				return nil, fmt.Errorf("couldn't talk to ssh-agent: %v", err)
 			}
 			for _, key := range keys {
 				userdata = userdata.AddKey(*key)

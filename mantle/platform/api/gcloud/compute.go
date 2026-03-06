@@ -149,7 +149,7 @@ func (a *API) mkinstance(userdata, name string, keys []*agent.Key, opts platform
 	// create confidential instance
 	if a.options.ConfidentialType != "" {
 		ConfidentialType := strings.ToUpper(a.options.ConfidentialType)
-		ConfidentialType = strings.Replace(ConfidentialType, "-", "_", -1)
+		ConfidentialType = strings.ReplaceAll(ConfidentialType, "-", "_")
 		if ConfidentialType == "SEV" || ConfidentialType == "SEV_SNP" || ConfidentialType == "TDX" {
 			fmt.Printf("Using confidential type for confidential computing %s\n", ConfidentialType)
 			instance.ConfidentialInstanceConfig = &compute.ConfidentialInstanceConfig{
@@ -159,7 +159,7 @@ func (a *API) mkinstance(userdata, name string, keys []*agent.Key, opts platform
 				OnHostMaintenance: "TERMINATE",
 			}
 		} else {
-			return nil, fmt.Errorf("Does not support confidential type %s, should be: sev, sev_snp, tdx\n", a.options.ConfidentialType)
+			return nil, fmt.Errorf("does not support confidential type %s, should be: sev, sev_snp, tdx", a.options.ConfidentialType)
 		}
 	}
 	// metal instances can only have a TERMINATE maintenance policy
@@ -192,7 +192,7 @@ func (a *API) CreateInstance(userdata string, keys []*agent.Key, opts platform.M
 
 	op, err := a.compute.Instances.Insert(a.options.Project, a.options.Zone, inst).Do()
 	if err != nil {
-		return nil, fmt.Errorf("failed to request new GCP instance: %v\n", err)
+		return nil, fmt.Errorf("failed to request new GCP instance: %v", err)
 	}
 
 	doable := a.compute.ZoneOperations.Get(a.options.Project, a.options.Zone, op.Name)

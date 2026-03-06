@@ -50,7 +50,7 @@ func MachineID() string {
 		panic(err)
 	}
 
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	buf, err := io.ReadAll(f)
 	if err != nil {

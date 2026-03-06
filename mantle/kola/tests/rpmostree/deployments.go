@@ -69,8 +69,8 @@ func init() {
 // a commit to the branch, and rebases the host to said commit.  After a successful
 // "upgrade", the host is rolled back to the original deployment.
 func rpmOstreeUpgradeRollback(c cluster.TestCluster) {
-	var newBranch string = "local-branch"
-	var newVersion string = "kola-test-1.0"
+	var newBranch = "local-branch"
+	var newVersion = "kola-test-1.0"
 
 	m := c.Machines()[0]
 
@@ -235,7 +235,7 @@ func rpmOstreeInstallUninstall(c cluster.TestCluster) {
 		c.AssertCmdOutputMatches(m, "rpm -q "+installPkgName, regexp.MustCompile("^"+installPkgName))
 
 		// package should be in the metadata
-		var reqPkg bool = false
+		var reqPkg = false
 		for _, pkg := range postInstallStatus.Deployments[0].RequestedLocalPackages {
 			if pkg == installPkgName {
 				reqPkg = true

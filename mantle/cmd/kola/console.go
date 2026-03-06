@@ -81,7 +81,7 @@ func runCheckConsole(cmd *cobra.Command, args []string) error {
 		}
 	}
 	if errorcount > 0 {
-		return errors.New("Errors found on console")
+		return errors.New("errors found on console")
 	}
 	return nil
 }

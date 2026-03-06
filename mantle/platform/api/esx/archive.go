@@ -43,7 +43,7 @@ func (t *archive) readOvf(fpath string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer r.Close()
+	defer func() { _ = r.Close() }()
 
 	return io.ReadAll(r)
 }
@@ -57,7 +57,7 @@ func (t *archive) readEnvelope(fpath string) (*ovf.Envelope, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer r.Close()
+	defer func() { _ = r.Close() }()
 
 	e, err := ovf.Unmarshal(r)
 	if err != nil {
@@ -81,13 +81,13 @@ func (t *archive) open(pattern string) (io.ReadCloser, int64, error) {
 			break
 		}
 		if err != nil {
-			f.Close()
+			_ = f.Close()
 			return nil, 0, err
 		}
 
 		matched, err := path.Match(pattern, path.Base(h.Name))
 		if err != nil {
-			f.Close()
+			_ = f.Close()
 			return nil, 0, err
 		}
 
@@ -96,6 +96,6 @@ func (t *archive) open(pattern string) (io.ReadCloser, int64, error) {
 		}
 	}
 
-	f.Close()
+	_ = f.Close()
 	return nil, 0, fmt.Errorf("couldn't find file in archive")
 }

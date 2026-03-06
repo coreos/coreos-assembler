@@ -43,6 +43,6 @@ func TargetDistro(build *builds.Build) (string, error) {
 	case "fedora-coreos":
 		return "fcos", nil
 	default:
-		return "", fmt.Errorf("Unknown distribution: %s", build.Name)
+		return "", fmt.Errorf("unknown distribution: %s", build.Name)
 	}
 }

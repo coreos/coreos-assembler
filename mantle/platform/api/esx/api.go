@@ -190,7 +190,7 @@ func (a *API) buildCloneSpec(baseVM *object.VirtualMachine, folder *object.Folde
 		}
 	}
 	if card == nil {
-		return nil, fmt.Errorf("No network device found.")
+		return nil, fmt.Errorf("no network device found")
 	}
 
 	netDev, err := getNetworkDevice(network)
@@ -274,7 +274,7 @@ func (a *API) GetConsoleOutput(name string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("couldn't download console logs: %v", err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	buf, err := io.ReadAll(f)
 	if err != nil {
@@ -315,7 +315,7 @@ func (a *API) CleanupDevice(name string) error {
 
 func (a *API) CreateDevice(name string, conf *conf.Conf) (*ESXMachine, error) {
 	if a.options.BaseVMName == "" {
-		return nil, fmt.Errorf("Base VM Name must be supplied")
+		return nil, fmt.Errorf("base VM Name must be supplied")
 	}
 
 	userdata := base64.StdEncoding.EncodeToString(conf.Bytes())
@@ -523,7 +523,7 @@ func (a *API) uploadToResourcePool(arch *archive, resourcePool *object.ResourceP
 				continue
 			}
 
-			u, err := a.client.Client.ParseURL(device.Url)
+			u, err := a.client.ParseURL(device.Url)
 			if err != nil {
 				return nil, err
 			}
@@ -579,7 +579,8 @@ func (a *API) updateOVFEnv(vm *object.VirtualMachine, userdata string) error {
 	}
 
 	for _, item := range mvm.Config.VAppConfig.(*types.VmConfigInfo).Property {
-		if item.Id == "guestinfo.coreos.config.data" {
+		switch item.Id {
+		case "guestinfo.coreos.config.data":
 			property = append(property, types.VAppPropertySpec{
 				ArrayUpdateSpec: types.ArrayUpdateSpec{
 					Operation: types.ArrayUpdateOperationEdit,
@@ -590,7 +591,7 @@ func (a *API) updateOVFEnv(vm *object.VirtualMachine, userdata string) error {
 					DefaultValue: userdata,
 				},
 			})
-		} else if item.Id == "guestinfo.coreos.config.data.encoding" {
+		case "guestinfo.coreos.config.data.encoding":
 			property = append(property, types.VAppPropertySpec{
 				ArrayUpdateSpec: types.ArrayUpdateSpec{
 					Operation: types.ArrayUpdateOperationEdit,
@@ -638,7 +639,7 @@ func (a *API) upload(arch *archive, lease nfc.Lease, ofi ovfFileItem) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	opts := soap.Upload{
 		ContentLength: size,
@@ -657,7 +658,7 @@ func (a *API) upload(arch *archive, lease nfc.Lease, ofi ovfFileItem) error {
 		opts.Type = "application/x-vnd.vmware-streamVmdk"
 	}
 
-	return a.client.Client.Upload(a.ctx, f, ofi.url, &opts)
+	return a.client.Upload(a.ctx, f, ofi.url, &opts)
 }
 
 func (a *API) PreflightCheck() error {

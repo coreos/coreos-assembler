@@ -76,7 +76,7 @@ func newTunTap(name string, flags uint16) (*TunTap, error) {
 	ifname := fromZeroTerm(ifr.IfrnName[:len(ifr.IfrnName)-1])
 	iflink, err := netlink.LinkByName(ifname)
 	if err != nil {
-		dev.Close()
+		_ = dev.Close()
 		return nil, err
 	}
 

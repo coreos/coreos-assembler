@@ -221,7 +221,7 @@ func dispatchRunExtUnit(ctx context.Context, unitname string, sdconn *systemddbu
 
 	result := props["Result"]
 	if result == "exit-code" {
-		return false, fmt.Errorf("Unit %s exited with code %d", unitname, props["ExecMainStatus"])
+		return false, fmt.Errorf("unit %s exited with code %d", unitname, props["ExecMainStatus"])
 	}
 
 	state := props["ActiveState"]
@@ -246,29 +246,29 @@ func dispatchRunExtUnit(ctx context.Context, unitname string, sdconn *systemddbu
 					} else {
 						// I don't think this can happen, we'd have exit-code above; but just
 						// for completeness
-						return false, fmt.Errorf("Unit %s failed with code %d", unitname, mainstatus)
+						return false, fmt.Errorf("unit %s failed with code %d", unitname, mainstatus)
 					}
 				case CLD_KILLED:
-					return true, fmt.Errorf("Unit %s killed by signal %d", unitname, mainstatus)
+					return true, fmt.Errorf("unit %s killed by signal %d", unitname, mainstatus)
 				default:
-					return false, fmt.Errorf("Unit %s had unhandled code %d", unitname, maincode)
+					return false, fmt.Errorf("unit %s had unhandled code %d", unitname, maincode)
 				}
 			case "running":
 				return false, nil
 			case "failed":
-				return true, fmt.Errorf("Unit %s in substate 'failed'", unitname)
+				return true, fmt.Errorf("unit %s in substate 'failed'", unitname)
 			default:
 				// Pass through other states
 				return false, nil
 			}
 		}
 	default:
-		return false, fmt.Errorf("Unhandled systemd unit state:%s", state)
+		return false, fmt.Errorf("unhandled systemd unit state:%s", state)
 	}
 }
 
 func initiateReboot(mark string) error {
-	systemdjournal.Print(systemdjournal.PriInfo, "Processing reboot request")
+	_ = systemdjournal.Print(systemdjournal.PriInfo, "Processing reboot request")
 	res := kola.KoletResult{
 		Reboot: string(mark),
 	}
@@ -277,7 +277,7 @@ func initiateReboot(mark string) error {
 		return errors.Wrapf(err, "serializing KoletResult")
 	}
 	fmt.Println(string(buf))
-	systemdjournal.Print(systemdjournal.PriInfo, "Acknowledged reboot request with mark: %s", buf)
+	_ = systemdjournal.Print(systemdjournal.PriInfo, "Acknowledged reboot request with mark: %s", buf)
 	return nil
 }
 
@@ -297,7 +297,7 @@ func mkfifo(path string) error {
 }
 
 func initiateSoftReboot(mark string) error {
-	systemdjournal.Print(systemdjournal.PriInfo, "Processing soft-reboot request")
+	_ = systemdjournal.Print(systemdjournal.PriInfo, "Processing soft-reboot request")
 	res := kola.KoletResult{
 		SoftReboot: string(mark),
 	}
@@ -306,7 +306,7 @@ func initiateSoftReboot(mark string) error {
 		return errors.Wrapf(err, "serializing KoletResult")
 	}
 	fmt.Println(string(buf))
-	systemdjournal.Print(systemdjournal.PriInfo, "Acknowledged soft-reboot request with mark: %s", buf)
+	_ = systemdjournal.Print(systemdjournal.PriInfo, "Acknowledged soft-reboot request with mark: %s", buf)
 	return nil
 }
 
@@ -345,7 +345,7 @@ func runExtUnit(cmd *cobra.Command, args []string) error {
 				errChan <- err
 				return
 			}
-			defer rebootReader.Close()
+			defer func() { _ = rebootReader.Close() }()
 			buf, err := io.ReadAll(rebootReader)
 			if err != nil {
 				errChan <- err
@@ -364,7 +364,7 @@ func runExtUnit(cmd *cobra.Command, args []string) error {
 				errChan <- err
 				return
 			}
-			defer softRebootReader.Close()
+			defer func() { _ = softRebootReader.Close() }()
 			buf, err := io.ReadAll(softRebootReader)
 			if err != nil {
 				errChan <- err
@@ -406,7 +406,7 @@ func runExtUnit(cmd *cobra.Command, args []string) error {
 	unitevents, uniterrs := sdconn.SubscribeUnitsCustomContext(ctx, time.Second, 0, compareFunc, filterFunc)
 
 	for {
-		systemdjournal.Print(systemdjournal.PriInfo, "Awaiting events")
+		_ = systemdjournal.Print(systemdjournal.PriInfo, "Awaiting events")
 		select {
 		case err := <-errChan:
 			return err
@@ -417,9 +417,9 @@ func runExtUnit(cmd *cobra.Command, args []string) error {
 		case m := <-unitevents:
 			for n := range m {
 				if n == unitname {
-					systemdjournal.Print(systemdjournal.PriInfo, "Dispatching %s", n)
+					_ = systemdjournal.Print(systemdjournal.PriInfo, "Dispatching %s", n)
 					r, err := dispatchRunExtUnit(ctx, unitname, sdconn)
-					systemdjournal.Print(systemdjournal.PriInfo, "Done dispatching %s", n)
+					_ = systemdjournal.Print(systemdjournal.PriInfo, "Done dispatching %s", n)
 					if err != nil {
 						return err
 					}
@@ -427,7 +427,7 @@ func runExtUnit(cmd *cobra.Command, args []string) error {
 						return nil
 					}
 				} else {
-					systemdjournal.Print(systemdjournal.PriInfo, "Unexpected event %v", n)
+					_ = systemdjournal.Print(systemdjournal.PriInfo, "Unexpected event %v", n)
 				}
 			}
 		case m := <-uniterrs:
@@ -445,7 +445,7 @@ func runReboot(cmd *cobra.Command, args []string) error {
 	}
 
 	mark := args[0]
-	systemdjournal.Print(systemdjournal.PriInfo, "Requesting reboot with mark: %s", mark)
+	_ = systemdjournal.Print(systemdjournal.PriInfo, "Requesting reboot with mark: %s", mark)
 	err := mkfifo(kola.KoletRebootAckFifo)
 	if err != nil {
 		return err
@@ -463,7 +463,7 @@ func runReboot(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	systemdjournal.Print(systemdjournal.PriInfo, "Reboot request acknowledged")
+	_ = systemdjournal.Print(systemdjournal.PriInfo, "Reboot request acknowledged")
 	return nil
 }
 
@@ -474,7 +474,7 @@ func runSoftReboot(cmd *cobra.Command, args []string) error {
 	}
 
 	mark := args[0]
-	systemdjournal.Print(systemdjournal.PriInfo, "Requesting soft-reboot with mark: %s", mark)
+	_ = systemdjournal.Print(systemdjournal.PriInfo, "Requesting soft-reboot with mark: %s", mark)
 	err := mkfifo(kola.KoletRebootAckFifo)
 	if err != nil {
 		return err
@@ -492,7 +492,7 @@ func runSoftReboot(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	systemdjournal.Print(systemdjournal.PriInfo, "Soft-reboot request acknowledged")
+	_ = systemdjournal.Print(systemdjournal.PriInfo, "Soft-reboot request acknowledged")
 	return nil
 }
 

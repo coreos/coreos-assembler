@@ -132,9 +132,10 @@ func verifyError(builder *platform.QemuBuilder, searchPattern string) error {
 	errchan := make(chan error)
 	go func() {
 		resultingError := inst.WaitAll(ctx)
-		if resultingError == nil {
+		switch resultingError {
+		case nil:
 			resultingError = fmt.Errorf("ignition unexpectedly succeeded")
-		} else if resultingError == platform.ErrInitramfsEmergency {
+		case platform.ErrInitramfsEmergency:
 			// Expected initramfs failure, checking the console file to ensure
 			// that it failed the expected way
 			found, err := fileContainsPattern(builder.ConsoleFile, searchPattern)
@@ -146,7 +147,7 @@ func verifyError(builder *platform.QemuBuilder, searchPattern string) error {
 				// The expected case
 				resultingError = nil
 			}
-		} else {
+		default:
 			resultingError = errors.Wrapf(resultingError, "expected initramfs emergency.target error")
 		}
 		errchan <- resultingError
@@ -177,7 +178,7 @@ func ignitionFailure(c cluster.TestCluster) error {
 	}
 
 	// Create a temporary log file
-	consoleFile := c.H.TempFile("console-")
+	consoleFile := c.TempFile("console-")
 
 	// Instruct builder to use it
 	builder.ConsoleFile = consoleFile.Name()

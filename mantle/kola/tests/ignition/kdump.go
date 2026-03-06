@@ -56,7 +56,7 @@ func testRemoteKdump(c cluster.TestCluster, kdump_machine platform.Machine, remo
 		if err != nil {
 			return err
 		} else if string(kdump_status) == "inactive" {
-			return fmt.Errorf("Kdump.service is not ready: %s.", string(kdump_status))
+			return fmt.Errorf("kdump.service is not ready: %s", string(kdump_status))
 		}
 		return nil
 	})
@@ -81,7 +81,7 @@ func testRemoteKdump(c cluster.TestCluster, kdump_machine platform.Machine, remo
 		if err != nil {
 			return fmt.Errorf("failed to search for vmcore: %w", err)
 		} else if logs == nil {
-			return fmt.Errorf("No vmcore created on remote host")
+			return fmt.Errorf("no vmcore created on remote host")
 		}
 		return nil
 	})
@@ -117,7 +117,7 @@ func setupSSHMachine(c cluster.TestCluster) SshServer {
 	if err != nil {
 		c.Fatalf("Error creating tempdir: %v", err)
 	}
-	defer os.RemoveAll(tmpd)
+	defer func() { _ = os.RemoveAll(tmpd) }()
 
 	// generate an ssh key pair we'll use for authentication
 	pubkeyBuf, privkeyPath, err := util.CreateSSHAuthorizedKey(tmpd)
@@ -348,7 +348,7 @@ kernel_arguments:
 		if err != nil {
 			return err
 		} else if string(nfs_status) == "inactive" {
-			return fmt.Errorf("nfs.service is not ready: %s.", string(nfs_status))
+			return fmt.Errorf("nfs.service is not ready: %s", string(nfs_status))
 		}
 		return nil
 	})

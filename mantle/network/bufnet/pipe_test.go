@@ -51,7 +51,7 @@ func TestPipe(t *testing.T) {
 	go checkPipeWrite(t, cli, []byte("a third line"), c)
 	checkPipeRead(t, srv, []byte("a third line"), nil)
 	<-c
-	go srv.Close()
+	go func() { _ = srv.Close() }()
 	checkPipeRead(t, cli, nil, io.EOF)
-	cli.Close()
+	_ = cli.Close()
 }

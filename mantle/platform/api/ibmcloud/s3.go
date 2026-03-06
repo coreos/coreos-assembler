@@ -112,7 +112,7 @@ func (a *API) CreateBucket(bucketName string) error {
 		Bucket: aws.String(bucketName), // New Bucket Name
 	})
 	if err != nil {
-		return fmt.Errorf("Unable to create bucket %q, %v", bucketName, err)
+		return fmt.Errorf("unable to create bucket %q, %v", bucketName, err)
 	}
 	// Wait until bucket is created before finishing
 	plog.Infof("Waiting for bucket %q to be created...\n", bucketName)
@@ -176,13 +176,13 @@ func (a *API) CopyObject(srcBucket, srcName, destBucket string) error {
 		if awserr, ok := err.(awserr.Error); ok {
 			err = awserr
 		}
-		return fmt.Errorf("Error copying object to bucket: %v", err)
+		return fmt.Errorf("error copying object to bucket: %v", err)
 	}
 
 	// Wait to see if the item got copied
 	err = a.s3client.s3Session.WaitUntilObjectExists(&s3.HeadObjectInput{Bucket: aws.String(destBucket), Key: aws.String(srcName)})
 	if err != nil {
-		return fmt.Errorf("Error occurred while waiting for item %q to be copied to bucket %q, %v", srcName, destBucket, err)
+		return fmt.Errorf("error occurred while waiting for item %q to be copied to bucket %q, %v", srcName, destBucket, err)
 	}
 
 	plog.Infof("Item %q successfully copied from bucket %q to bucket %q\n", srcName, srcBucket, destBucket)

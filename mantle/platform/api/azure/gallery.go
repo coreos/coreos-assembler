@@ -181,7 +181,7 @@ func (a *API) DeleteGallery(galleryName, resourceGroup string) error {
 			for _, image := range page.Value {
 				err := a.DeleteGalleryImage(*image.Name, resourceGroup, galleryName)
 				if err != nil {
-					return fmt.Errorf("Couldn't delete gallery image: %v\n", err)
+					return fmt.Errorf("couldn't delete gallery image: %v", err)
 				}
 			}
 		}

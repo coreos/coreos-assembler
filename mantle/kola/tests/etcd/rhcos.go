@@ -229,13 +229,13 @@ sudo openssl req -config /etc/ssl/etcd.cnf -x509 -nodes -newkey rsa:4096 -sha512
 		if err != nil {
 			c.Fatalf("failed creating SSH client: %v", err)
 		}
-		defer client.Close()
+		defer func() { _ = client.Close() }()
 
 		session, err := client.NewSession()
 		if err != nil {
 			c.Fatalf("failed creating SSH session: %v", err)
 		}
-		defer session.Close()
+		defer func() { _ = session.Close() }()
 
 		session.Stdin = bytes.NewReader(tar)
 		out, err := session.CombinedOutput("sudo mkdir -p /etc/ssl/certs && sudo tar -C /etc/ssl/certs -xJ")

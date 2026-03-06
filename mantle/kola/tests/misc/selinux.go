@@ -92,7 +92,7 @@ func getSelinuxBooleanState(c cluster.TestCluster, m platform.Machine, seBool st
 	reBool, _ := regexp.Compile(reString)
 	origOut, err := c.SSH(m, "getsebool "+seBool)
 	if err != nil {
-		return boolState, fmt.Errorf(`Could not get SELinux boolean: %v`, err)
+		return boolState, fmt.Errorf(`could not get SELinux boolean: %v`, err)
 	}
 
 	match := reBool.FindStringSubmatch(string(origOut))

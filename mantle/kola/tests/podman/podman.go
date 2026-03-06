@@ -109,12 +109,12 @@ func getPodmanInfo(c cluster.TestCluster, m platform.Machine) (simplifiedPodmanI
 
 	pInfoJSON, err := c.SSH(m, `sudo podman info --format json`)
 	if err != nil {
-		return target, fmt.Errorf("Could not get info: %v", err)
+		return target, fmt.Errorf("could not get info: %v", err)
 	}
 
 	err = json.Unmarshal(pInfoJSON, &target)
 	if err != nil {
-		return target, fmt.Errorf("Could not unmarshal info %q into known JSON: %v", string(pInfoJSON), err)
+		return target, fmt.Errorf("could not unmarshal info %q into known JSON: %v", string(pInfoJSON), err)
 	}
 	return target, nil
 }
@@ -149,7 +149,7 @@ func podmanWorkflow(c cluster.TestCluster) {
 				return err
 			}
 			if !bytes.Contains(b, []byte("TEST PAGE")) {
-				return fmt.Errorf("Fedora container is not running %s", b)
+				return fmt.Errorf("fedora container is not running %s", b)
 			}
 			return nil
 		}

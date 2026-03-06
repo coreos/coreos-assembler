@@ -34,14 +34,14 @@ func Enter(ns netns.NsHandle) (func() error, error) {
 
 	err = netns.Set(ns)
 	if err != nil {
-		origns.Close()
+		_ = origns.Close()
 		runtime.UnlockOSThread()
 		return nil, err
 	}
 
 	return func() error {
 		defer runtime.UnlockOSThread()
-		defer origns.Close()
+		defer func() { _ = origns.Close() }()
 		if err := netns.Set(origns); err != nil {
 			return err
 		}
@@ -59,7 +59,7 @@ func Create() (netns.NsHandle, error) {
 	if err != nil {
 		return netns.None(), err
 	}
-	defer origns.Close()
+	defer func() { _ = origns.Close() }()
 
 	newns, err := netns.New()
 	if err != nil {
@@ -67,7 +67,7 @@ func Create() (netns.NsHandle, error) {
 	}
 
 	if err := netns.Set(origns); err != nil {
-		newns.Close()
+		_ = newns.Close()
 		return netns.None(), err
 	}
 

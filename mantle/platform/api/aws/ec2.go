@@ -392,7 +392,7 @@ func (a *API) GetZonesForInstanceType(instanceType string) ([]string, error) {
 		return nil, fmt.Errorf("error describing instance offerings: %v", err)
 	}
 	if len(output.InstanceTypeOfferings) == 0 {
-		return nil, fmt.Errorf("no availability zones found for this instance type %v:", instanceType)
+		return nil, fmt.Errorf("no availability zones found for this instance type %v", instanceType)
 	}
 
 	var zones []string

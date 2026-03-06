@@ -84,7 +84,7 @@ func resourceLocal(c cluster.TestCluster) {
 
 	ip := server.PrivateIP()
 
-	var conf *conf.UserData = localClient
+	var conf = localClient
 	client, err := c.NewMachine(conf.Subst("$IP", ip))
 	if err != nil {
 		c.Fatalf("starting client: %v", err)

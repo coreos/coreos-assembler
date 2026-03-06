@@ -83,7 +83,7 @@ func (am *machine) refetchIPs() error {
 	var err error
 	am.mach.PublicIPAddress, am.mach.PrivateIPAddress, err = am.cluster.flight.api.GetIPAddresses(am.InterfaceName(), am.PublicIPName(), am.ResourceGroup())
 	if err != nil {
-		return fmt.Errorf("Fetching IP addresses: %v", err)
+		return fmt.Errorf("fetching IP addresses: %v", err)
 	}
 	return nil
 }
@@ -150,7 +150,7 @@ func (am *machine) saveConsole() error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	_, err = f.Write(am.console)
 	if err != nil {
 		return fmt.Errorf("failed writing console to file: %v", err)

@@ -47,7 +47,7 @@ func ReadDOConfig(path string) (map[string]DOProfile, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	var profiles map[string]DOProfile
 	if err := json.NewDecoder(f).Decode(&profiles); err != nil {

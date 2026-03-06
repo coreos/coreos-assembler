@@ -194,7 +194,7 @@ func (s *Suite) Run() (err error) {
 		if err == nil && err2 != nil {
 			err = fmt.Errorf("harness: can't write %s profile: %v", name, err2)
 		}
-		f.Close()
+		_ = f.Close()
 	}
 
 	outputDir, err := CleanOutputDir(s.opts.OutputDir)
@@ -207,7 +207,7 @@ func (s *Suite) Run() (err error) {
 	if err != nil {
 		return err
 	}
-	defer tap.Close()
+	defer func() { _ = tap.Close() }()
 	if _, err := fmt.Fprintf(tap, "1..%d\n", len(s.tests)); err != nil {
 		return err
 	}
@@ -249,7 +249,7 @@ func (s *Suite) Run() (err error) {
 		if err != nil {
 			return err
 		}
-		defer f.Close()
+		defer func() { _ = f.Close() }()
 		if err := pprof.StartCPUProfile(f); err != nil {
 			return errors.Wrapf(err, "harness: can't start cpu profile")
 		}
@@ -260,7 +260,7 @@ func (s *Suite) Run() (err error) {
 		if err != nil {
 			return err
 		}
-		defer f.Close()
+		defer func() { _ = f.Close() }()
 		if err := trace.Start(f); err != nil {
 			return errors.Wrapf(err, "harness: can't start tacing")
 		}

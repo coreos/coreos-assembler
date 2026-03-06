@@ -54,14 +54,14 @@ func Manhole(m Machine) (err error) {
 		return fmt.Errorf("SSH client failed: %v", err)
 	}
 
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	session, err := client.NewSession()
 	if err != nil {
 		return fmt.Errorf("SSH session failed: %v", err)
 	}
 
-	defer session.Close()
+	defer func() { _ = session.Close() }()
 
 	session.Stdin = os.Stdin
 	session.Stdout = os.Stdout

@@ -19,11 +19,8 @@ all: bin/coreos-assembler mantle
 
 src:=$(shell find src -maxdepth 1 -type f -executable -print)
 pysources=$(shell find src -type f -name '*.py') $(shell for x in $(src); do if head -1 $$x | grep -q python; then echo $$x; fi; done)
-src_checked:=$(patsubst src/%,src/.%.shellchecked,${src})
 tests:=$(shell find tests -maxdepth 1 -type f -executable -print)
-tests_checked:=$(patsubst tests/%,tests/.%.shellchecked,${tests})
 cwd:=$(shell find . -maxdepth 1 -type f -executable -print)
-cwd_checked:=$(patsubst ./%,.%.shellchecked,${cwd})
 GOARCH:=$(shell uname -m)
 export COSA_META_SCHEMA:=$(shell pwd)/src/v1.json
 ifeq ($(GOARCH),x86_64)
@@ -45,10 +42,8 @@ bin/coreos-assembler:
 	cd cmd && go build -mod vendor -o ../$@
 .PHONY: bin/coreos-assembler
 
-.%.shellchecked: %
-	./tests/check_one.sh $< $@
-
-shellcheck: ${src_checked} ${tests_checked} ${cwd_checked}
+shellcheck:
+	ci/shellcheck
 
 check: flake8 pycheck schema-check mantle-check cosa-go-check
 	echo OK
