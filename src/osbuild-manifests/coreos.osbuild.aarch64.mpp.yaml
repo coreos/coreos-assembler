@@ -775,3 +775,5 @@ pipelines:
       path: platform.qemu.ipp.yaml
   - mpp-import-pipelines:
       path: platform.live.ipp.yaml
+  - mpp-import-pipelines:
+      path: platform.nvidiabluefield.yaml
