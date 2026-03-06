@@ -508,8 +508,8 @@ func CheckMachine(ctx context.Context, m Machine) error {
 	} else {
 		systemdCmd = "systemctl --no-legend --state status list-units | awk '{print $1}'"
 	}
-	failedUnitsCmd = strings.Replace(systemdCmd, "status", "failed", -1)
-	activatingUnitsCmd = strings.Replace(systemdCmd, "status", "activating", -1)
+	failedUnitsCmd = strings.ReplaceAll(systemdCmd, "status", "failed")
+	activatingUnitsCmd = strings.ReplaceAll(systemdCmd, "status", "activating")
 
 	// Ensure no systemd units failed during boot
 	out, stderr, err = m.SSH(failedUnitsCmd)

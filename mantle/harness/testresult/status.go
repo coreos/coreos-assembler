@@ -36,13 +36,14 @@ func (s TestResult) Display() string {
 	green := "\033[32m"
 	reset := "\033[0m"
 
-	if s == Fail {
+	switch s {
+	case Fail:
 		return red + string(s) + reset
-	} else if s == Warn {
+	case Warn:
 		return yellow + string(s) + reset
-	} else if s == Skip {
+	case Skip:
 		return blue + string(s) + reset
-	} else {
+	default:
 		return green + string(s) + reset
 	}
 }

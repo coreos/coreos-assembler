@@ -191,12 +191,13 @@ func (c *H) flushToParent(format string, args ...interface{}) {
 
 	// TODO: include test numbers in TAP output.
 	if p.tap != nil {
-		name := strings.Replace(c.name, "#", "", -1)
-		if status == testresult.Fail {
+		name := strings.ReplaceAll(c.name, "#", "")
+		switch status {
+		case testresult.Fail:
 			fmt.Fprintf(p.tap, "not ok - %s\n", name)
-		} else if status == testresult.Skip {
+		case testresult.Skip:
 			fmt.Fprintf(p.tap, "ok - %s # SKIP\n", name)
-		} else {
+		default:
 			fmt.Fprintf(p.tap, "ok - %s\n", name)
 		}
 	}

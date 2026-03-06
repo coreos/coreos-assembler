@@ -45,7 +45,7 @@ func (a *API) GetStorageServiceKeys(account, resourceGroup string) (armstorage.A
 
 func (a *API) CreateStorageAccount(resourceGroup string) (string, error) {
 	// Only lower-case letters & numbers allowed in storage account names
-	name := strings.Replace(util.RandomName("kolasa"), "-", "", -1)
+	name := strings.ReplaceAll(util.RandomName("kolasa"), "-", "")
 	parameters := armstorage.AccountCreateParameters{
 		SKU: &armstorage.SKU{
 			Name: to.Ptr(armstorage.SKUNameStandardLRS),

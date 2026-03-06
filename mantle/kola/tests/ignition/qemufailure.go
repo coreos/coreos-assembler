@@ -125,11 +125,12 @@ func verifyError(builder *platform.QemuBuilder, searchPattern string) error {
 	errchan := make(chan error)
 	go func() {
 		resultingError := inst.WaitAll(ctx)
-		if resultingError == nil {
+		switch resultingError {
+		case nil:
 			resultingError = fmt.Errorf("ignition unexpectedly succeeded")
-		} else if resultingError == platform.ErrInitramfsEmergency {
+		case platform.ErrInitramfsEmergency:
 			resultingError = checkConsole(builder.ConsoleFile, searchPattern)
-		} else {
+		default:
 			resultingError = errors.Wrapf(resultingError, "expected initramfs emergency.target error")
 		}
 		errchan <- resultingError
@@ -182,7 +183,7 @@ func ignitionFailure(c cluster.TestCluster) error {
 	builder := platform.NewQemuBuilder()
 	defer builder.Close()
 	// Create a temporary log file
-	consoleFile := c.H.TempFile("console-")
+	consoleFile := c.TempFile("console-")
 	// Instruct builder to use it
 	builder.ConsoleFile = consoleFile.Name()
 	builder.SetConfig(failConfig)
@@ -208,7 +209,7 @@ func dualBootfsFailure(c cluster.TestCluster) error {
 	builder := platform.NewQemuBuilder()
 	defer builder.Close()
 	// Create a temporary log file allocated in the output dir of the test
-	consoleFile := c.H.TempFile("console-")
+	consoleFile := c.TempFile("console-")
 	// Instruct builder to use it
 	builder.ConsoleFile = consoleFile.Name()
 	// get current path and create tmp dir
@@ -260,7 +261,7 @@ func dualBootfsIgnitionFailure(c cluster.TestCluster) error {
 	builder := platform.NewQemuBuilder()
 	defer builder.Close()
 	// Create a temporary log file
-	consoleFile := c.H.TempFile("console-")
+	consoleFile := c.TempFile("console-")
 	// Instruct builder to use it
 	builder.ConsoleFile = consoleFile.Name()
 	failConfig, err := conf.EmptyIgnition().Render(conf.FailWarnings)

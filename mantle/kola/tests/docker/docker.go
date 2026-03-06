@@ -350,7 +350,7 @@ func dockerNetwork(c cluster.TestCluster) {
 			}
 
 			exit, ok := err.(*ssh.ExitError)
-			if !ok || exit.Waitmsg.ExitStatus() != 1 { // 1 is the expected exit of grep -q
+			if !ok || exit.ExitStatus() != 1 { // 1 is the expected exit of grep -q
 				return err
 			}
 

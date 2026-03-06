@@ -214,7 +214,7 @@ func (a *API) CreateInstance(name, userdata, sshkey, resourceGroup, storageAccou
 			return false, err
 		}
 
-		state := resp.VirtualMachine.Properties.ProvisioningState
+		state := resp.Properties.ProvisioningState
 		if state != nil && *state != "Succeeded" {
 			return false, nil
 		}

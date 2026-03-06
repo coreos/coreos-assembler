@@ -327,9 +327,10 @@ func TestUseradd() error {
 // Test that /etc/machine-id isn't empty or COREOS_BLANK_MACHINE_ID
 func TestMachineID() error {
 	id := MachineID()
-	if id == "" {
+	switch id {
+	case "":
 		return fmt.Errorf("machine-id is empty")
-	} else if id == "COREOS_BLANK_MACHINE_ID" {
+	case "COREOS_BLANK_MACHINE_ID":
 		return fmt.Errorf("machine-id is %s", id)
 	}
 	return nil

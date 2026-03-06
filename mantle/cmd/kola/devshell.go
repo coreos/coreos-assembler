@@ -155,7 +155,7 @@ func runDevShellSSH(ctx context.Context, builder *platform.QemuBuilder, conf *co
 				errChan <- err
 			}
 
-			_, _ = serialLog.WriteString(fmt.Sprintf("%s\n", msg))
+			_, _ = fmt.Fprintf(serialLog, "%s\n", msg)
 			serialChan <- msg
 			checkWriteState(msg, stateChan)
 		}

@@ -326,8 +326,8 @@ func TestSubTests(t *testing.T) {
 }
 
 func makeRegexp(s string) string {
-	s = strings.Replace(s, ":NNN:", `:\d\d\d:`, -1)
-	s = strings.Replace(s, "(N.NNs)", `\(\d*\.\d*s\)`, -1)
+	s = strings.ReplaceAll(s, ":NNN:", `:\d\d\d:`)
+	s = strings.ReplaceAll(s, "(N.NNs)", `\(\d*\.\d*s\)`)
 	return s
 }
 

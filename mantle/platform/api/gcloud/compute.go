@@ -149,7 +149,7 @@ func (a *API) mkinstance(userdata, name string, keys []*agent.Key, opts platform
 	// create confidential instance
 	if a.options.ConfidentialType != "" {
 		ConfidentialType := strings.ToUpper(a.options.ConfidentialType)
-		ConfidentialType = strings.Replace(ConfidentialType, "-", "_", -1)
+		ConfidentialType = strings.ReplaceAll(ConfidentialType, "-", "_")
 		if ConfidentialType == "SEV" || ConfidentialType == "SEV_SNP" || ConfidentialType == "TDX" {
 			fmt.Printf("Using confidential type for confidential computing %s\n", ConfidentialType)
 			instance.ConfidentialInstanceConfig = &compute.ConfidentialInstanceConfig{

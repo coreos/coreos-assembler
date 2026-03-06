@@ -439,8 +439,8 @@ var userdata = conf.Ignition(fmt.Sprintf(`{
 	}`,
 	base64.StdEncoding.EncodeToString([]byte(captureMacsScript)),
 	base64.StdEncoding.EncodeToString([]byte(initInterfacesScript)),
-	strings.Replace(captureMacsSystemdContents, "\n", "\\n", -1),
-	strings.Replace(initInterfacesSystemdContents, "\n", "\\n", -1)))
+	strings.ReplaceAll(captureMacsSystemdContents, "\n", "\\n"),
+	strings.ReplaceAll(initInterfacesSystemdContents, "\n", "\\n")))
 
 // NetworkAdditionalNics verifies that additional NICs are created on the node
 func NetworkAdditionalNics(c cluster.TestCluster) {
@@ -735,7 +735,7 @@ func getConnectionDeviceMap(c cluster.TestCluster, m platform.Machine, connectio
 
 func getDeviceMAC(c cluster.TestCluster, m platform.Machine, deviceName string) (string, error) {
 	output := string(c.MustSSH(m, fmt.Sprintf("nmcli -g GENERAL.HWADDR device show '%s'", deviceName)))
-	output = strings.Replace(output, "\\:", ":", -1)
+	output = strings.ReplaceAll(output, "\\:", ":")
 
 	var macAddress net.HardwareAddr
 	var err error

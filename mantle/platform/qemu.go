@@ -1265,7 +1265,7 @@ func (builder *QemuBuilder) addDiskImpl(disk *Disk, primary bool) error {
 
 			for i := 0; i < 2; i++ {
 				if i == 1 {
-					opts = strings.Replace(opts, "bootindex=1", "bootindex=2", -1)
+					opts = strings.ReplaceAll(opts, "bootindex=1", "bootindex=2")
 				}
 				pID := fmt.Sprintf("mpath%d%d", builder.diskID, i)
 				scsiID := fmt.Sprintf("scsi_%s", pID)

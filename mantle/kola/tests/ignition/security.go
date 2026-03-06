@@ -74,7 +74,7 @@ func securityTLS(c cluster.TestCluster) {
 
 	c.RunCmdSync(server, "sudo mkdir /var/tls")
 	c.RunCmdSync(server, "sudo openssl ecparam -genkey -name secp384r1 -out /var/tls/server.key")
-	c.RunCmdSync(server, strings.Replace(`sudo bash -c 'openssl req -new -x509 -sha256 -key /var/tls/server.key -out /var/tls/server.crt -days 3650 -subj "/CN=$IP" -config <(cat <<-EOF
+	c.RunCmdSync(server, strings.ReplaceAll(`sudo bash -c 'openssl req -new -x509 -sha256 -key /var/tls/server.key -out /var/tls/server.crt -days 3650 -subj "/CN=$IP" -config <(cat <<-EOF
 [req]
 default_bits = 2048
 default_md = sha256
@@ -86,10 +86,10 @@ CN = $IP
 [ SAN ]
 subjectAltName = IP:$IP
 EOF
-) -extensions SAN'`, "$IP", ip, -1))
+) -extensions SAN'`, "$IP", ip))
 	publicKey := c.MustSSH(server, "sudo cat /var/tls/server.crt")
 
-	var conf *conf.UserData = localSecurityClient
+	var conf = localSecurityClient
 	c.RunCmdSyncf(server, "sudo systemd-run --quiet /usr/local/bin/kolet run %s TLSServe", c.H.Name())
 
 	client, err := c.NewMachine(conf.Subst("$IP", ip).Subst("$KEY", dataurl.EncodeBytes(publicKey)))

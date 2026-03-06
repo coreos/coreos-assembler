@@ -523,7 +523,7 @@ func (a *API) uploadToResourcePool(arch *archive, resourcePool *object.ResourceP
 				continue
 			}
 
-			u, err := a.client.Client.ParseURL(device.Url)
+			u, err := a.client.ParseURL(device.Url)
 			if err != nil {
 				return nil, err
 			}
@@ -579,7 +579,8 @@ func (a *API) updateOVFEnv(vm *object.VirtualMachine, userdata string) error {
 	}
 
 	for _, item := range mvm.Config.VAppConfig.(*types.VmConfigInfo).Property {
-		if item.Id == "guestinfo.coreos.config.data" {
+		switch item.Id {
+		case "guestinfo.coreos.config.data":
 			property = append(property, types.VAppPropertySpec{
 				ArrayUpdateSpec: types.ArrayUpdateSpec{
 					Operation: types.ArrayUpdateOperationEdit,
@@ -590,7 +591,7 @@ func (a *API) updateOVFEnv(vm *object.VirtualMachine, userdata string) error {
 					DefaultValue: userdata,
 				},
 			})
-		} else if item.Id == "guestinfo.coreos.config.data.encoding" {
+		case "guestinfo.coreos.config.data.encoding":
 			property = append(property, types.VAppPropertySpec{
 				ArrayUpdateSpec: types.ArrayUpdateSpec{
 					Operation: types.ArrayUpdateOperationEdit,
@@ -657,7 +658,7 @@ func (a *API) upload(arch *archive, lease nfc.Lease, ofi ovfFileItem) error {
 		opts.Type = "application/x-vnd.vmware-streamVmdk"
 	}
 
-	return a.client.Client.Upload(a.ctx, f, ofi.url, &opts)
+	return a.client.Upload(a.ctx, f, ofi.url, &opts)
 }
 
 func (a *API) PreflightCheck() error {

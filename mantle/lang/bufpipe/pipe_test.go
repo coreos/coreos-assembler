@@ -113,9 +113,10 @@ func TestPipe3(t *testing.T) {
 
 		// only final two reads should be short - 1 byte, then 0
 		expect := n
-		if n == 128 {
+		switch n {
+		case 128:
 			expect = 1
-		} else if n == 256 {
+		case 256:
 			expect = 0
 			if err != io.EOF {
 				t.Fatalf("read at end: %v", err)

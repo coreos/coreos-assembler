@@ -145,7 +145,7 @@ func (t *TestCluster) SSH(m platform.Machine, cmd string) ([]byte, error) {
 	errMsg := fmt.Sprintf("ssh: %s", cmd)
 	// If f does not before the test timeout, the RunWithExecTimeoutCheck
 	// will end this goroutine and mark the test as failed
-	t.H.RunWithExecTimeoutCheck(f, errMsg)
+	t.RunWithExecTimeoutCheck(f, errMsg)
 	if len(stderr) > 0 {
 		for _, line := range strings.Split(string(stderr), "\n") {
 			t.Log(line)

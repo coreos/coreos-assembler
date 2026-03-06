@@ -50,7 +50,7 @@ var (
 
 // ostreeAdminUnlock will unlock the deployment and verify the success of the operation
 func ostreeAdminUnlock(c cluster.TestCluster, m platform.Machine, hotfix bool) error {
-	var unlockCmd string = "sudo ostree admin unlock"
+	var unlockCmd = "sudo ostree admin unlock"
 	if hotfix {
 		unlockCmd = "sudo ostree admin unlock --hotfix"
 	}

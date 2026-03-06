@@ -123,7 +123,7 @@ func (qc *Cluster) NewMachineWithQemuOptions(userdata *conf.UserData, options pl
 		builder.Firmware = qc.flight.opts.Firmware
 	}
 	builder.Swtpm = qc.flight.opts.Swtpm
-	builder.Hostname = fmt.Sprintf("qemu%d", qc.BaseCluster.AllocateMachineSerial())
+	builder.Hostname = fmt.Sprintf("qemu%d", qc.AllocateMachineSerial())
 	builder.ConsoleFile = qm.consolePath
 
 	// This one doesn't support configuring the path because we can't

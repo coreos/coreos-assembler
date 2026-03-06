@@ -55,7 +55,7 @@ func (d discardCloser) Write(b []byte) (int, error) {
 // Escapes ; chars in cursor with \
 // May need tweaking if the shellquote library behavior ever changes.
 func journalAfterEsc(cursor string) string {
-	return journalAfter + strings.Replace(cursor, ";", "\\;", -1)
+	return journalAfter + strings.ReplaceAll(cursor, ";", "\\;")
 }
 
 func TestRecorderSSH(t *testing.T) {

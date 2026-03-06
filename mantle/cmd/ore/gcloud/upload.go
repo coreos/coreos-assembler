@@ -220,11 +220,11 @@ func gcpSanitize(name string) string {
 	}
 
 	// remove incompatible chars from version.txt
-	name = strings.Replace(name, ".", "-", -1)
-	name = strings.Replace(name, "+", "-", -1)
+	name = strings.ReplaceAll(name, ".", "-")
+	name = strings.ReplaceAll(name, "+", "-")
 
 	// remove forward slashes likely from prefix
-	name = strings.Replace(name, "/", "-", -1)
+	name = strings.ReplaceAll(name, "/", "-")
 
 	// ensure name starts with [a-z]
 	char := name[0]

@@ -1693,7 +1693,7 @@ func makeNonExclusiveTest(bucket int, tests []*register.Test, flight platform.Fl
 			for _, t := range tests {
 				t := t
 				run := func(h *harness.H) {
-					tcluster.H.NonExclusiveTestStarted()
+					tcluster.NonExclusiveTestStarted()
 					testResults.add(h)
 					// tcluster has a reference to the wrapper's harness
 					// We need a new TestCluster that has a reference to the
@@ -1712,16 +1712,16 @@ func makeNonExclusiveTest(bucket int, tests []*register.Test, flight platform.Fl
 						defer collectLogsExternalTest(h, t, newTC)
 					}
 					if IsWarningOnFailure(t.Name) {
-						newTC.H.WarningOnFailure()
+						newTC.WarningOnFailure()
 					}
 
 					t.Run(newTC)
 				}
 				// Each non-exclusive test is run as a subtest of this wrapper test
 				if t.Timeout == harness.DefaultTimeoutFlag {
-					tcluster.H.RunTimeout(t.Name, run, time.Duration(1)*time.Minute)
+					tcluster.RunTimeout(t.Name, run, time.Duration(1)*time.Minute)
 				} else {
-					tcluster.H.RunTimeout(t.Name, run, t.Timeout)
+					tcluster.RunTimeout(t.Name, run, t.Timeout)
 				}
 			}
 		},
@@ -1797,7 +1797,7 @@ func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flig
 	}()
 
 	if t.ClusterSize > 0 {
-		var userdata *conf.UserData = t.UserData
+		var userdata = t.UserData
 
 		options := platform.MachineOptions{
 			MultiPathDisk:             t.MultiPathDisk,
@@ -1851,7 +1851,7 @@ func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flig
 	}
 
 	if IsWarningOnFailure(t.Name) {
-		tcluster.H.WarningOnFailure()
+		tcluster.WarningOnFailure()
 	}
 
 	// Note that we passed in SkipStartMachine=true in our machine
