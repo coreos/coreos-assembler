@@ -284,9 +284,11 @@ class HTTPFetcher(Fetcher):
         with requests.head(url) as r:
             if r.status_code == 200:
                 return True
-            # just treat 403 as ENOENT too; this is common for APIs to do (like
+            # Just treat 403 as ENOENT too; this is common for APIs to do (like
             # AWS) and we don't support HTTP basic auth here anyway
-            if r.status_code in [404, 403]:
+            # Lump 504 in here because the RHCOS builds browser/proxy returns a
+            # 504 if the object doesn't exist.
+            if r.status_code in [404, 403, 504]:
                 return False
             raise Exception(f"Received rc {r.status_code} for {url}")
 
