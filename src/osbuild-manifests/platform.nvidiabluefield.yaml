@@ -1,5 +1,12 @@
 # This file defines the pipeline for building the NVIDIA Bluefield artifacts.
 version: '2'
+sources:
+  org.osbuild.curl:
+    items:
+      sha256:31291585b25881f633e9f4d7e97367d10413dd7877117fbf16b8eda5cb425ccc:
+        url: https://linux.mellanox.com/public/repo/doca/3.3.0/rhel9.6/arm64-dpu/mlxbf-bfscripts-3.6.0-1.el9.noarch.rpm
+      sha256:b35ad0f987fd3870e11ad5dbec3340a019a456b7879caa4b82c944c4ff6841b4:
+        url: https://linux.mellanox.com/public/repo/doca/3.3.0/rhel9.6/arm64-dpu/mlxbf-bootimages-signed-4.14.0-13878.aarch64.rpm
 pipelines:
   - name: nvidiabluefield-buildroot
     stages:
@@ -21,22 +28,18 @@ pipelines:
           packages:
             type: org.osbuild.files
             origin: org.osbuild.source
-            mpp-depsolve:
-              architecture:
-                mpp-format-string: '{arch}'
-              repos:
-                - id: mellanox
-                  # Using `rhel-9.6` here because the packages we need aren't in the rhel 10 versions of the repos yet.
-                  baseurl: https://linux.mellanox.com/public/repo/doca/3.3.0/rhel9.6/arm64-dpu
-              packages:
-                # mlxbf-bfscripts contains the mlx-mkbfb.py, a python script that runs well with the stdlib
-                - mlxbf-bfscripts
-                # mlxbf-bootimages-signed contains the binary blobs we use to build the BFB
-                - mlxbf-bootimages-signed
-              excludes:
-                - binutils
-                - mlxbf-bootctl
+            references:
+              # mlxbf-bfscripts contains the mlx-mkbfb.py, a python script that runs well with the stdlib
+              # Using `rhel-9.6` here because the packages we need aren't in the rhel 10 versions of the repos yet.
+              # https://linux.mellanox.com/public/repo/doca/3.3.0/rhel9.6/arm64-dpu/mlxbf-bfscripts-3.6.0-1.el9.noarch.rpm
+              sha256:31291585b25881f633e9f4d7e97367d10413dd7877117fbf16b8eda5cb425ccc: {}
+              # mlxbf-bootimages-signed contains the binary blobs we use to build the BFB
+              # https://linux.mellanox.com/public/repo/doca/3.3.0/rhel9.6/arm64-dpu/mlxbf-bootimages-signed-4.14.0-13878.aarch64.rpm
+              sha256:b35ad0f987fd3870e11ad5dbec3340a019a456b7879caa4b82c944c4ff6841b4: {}
         options:
+          # The two RPMS above pull in more deps than we actually need for  mlx-mkbfb.py like
+          # binutils and mlxbf-bootctl. Let's just install them without considering missing deps.
+          nodeps: true
           exclude:
             docs: true
           gpgkeys:
