@@ -1,0 +1,144 @@
+From 6e9192e138c4b2da4e6ed0dcfa639b2438438b29 Mon Sep 17 00:00:00 2001
+From: jbtrystram <jbtrystram@redhat.com>
+Date: Mon, 9 Mar 2026 11:15:36 +0100
+Subject: [PATCH] stages/aleph: make path parametrizable
+
+Allow passing a mount to specify where to write the alep file.
+This is because when running bootc install we want to write the aleph
+after the deployement, so we need to write to the mount instead of the
+tree.
+
+See also https://github.com/osbuild/osbuild/pull/2149 for a similar fix
+for the ignition stage.
+
+Longer term, we will use the aleph file that bootc write, but it's not
+shipping enough details at the moment. This is tracked in https://github.com/bootc-dev/bootc/issues/2038
+
+Signed-off-by: jbtrystram <jbtrystram@redhat.com>
+---
+ stages/org.osbuild.ostree.aleph           | 39 ++++++++++++-----------
+ stages/org.osbuild.ostree.aleph.meta.json |  5 +++
+ 2 files changed, 26 insertions(+), 18 deletions(-)
+
+diff --git a/stages/org.osbuild.ostree.aleph b/stages/org.osbuild.ostree.aleph
+index 28e4c7d9..62a6508f 100755
+--- a/stages/org.osbuild.ostree.aleph
++++ b/stages/org.osbuild.ostree.aleph
+@@ -4,20 +4,20 @@ import os
+ import sys
+ 
+ import osbuild.api
+-from osbuild.util import ostree
++from osbuild.util import ostree, parsing
+ 
+ ALEPH_FILENAME = ".aleph-version.json"
+ COREOS_ALEPH_FILENAME = ".coreos-aleph-version.json"
+ 
+ 
+-def aleph_commit(tree, imgref):
++def aleph_commit(sysroot_path, imgref):
+     extra_args = []
+     extra_args.append("--print-metadata-key=version")
+ 
+-    aleph_version = ostree.cli("show", f"--repo={tree}/ostree/repo", imgref, *extra_args).stdout.rstrip().strip('\'')
++    aleph_version = ostree.cli("show", f"--repo={sysroot_path}/ostree/repo", imgref, *extra_args).stdout.rstrip().strip('\'')
+     aleph_ref = imgref
+     # get the commit by parsing the revision of the deployment
+-    aleph_ostree_commit = ostree.rev_parse(tree + "/ostree/repo", imgref)
++    aleph_ostree_commit = ostree.rev_parse(sysroot_path + "/ostree/repo", imgref)
+ 
+     aleph_version_data = {
+         "osbuild-version": osbuild.__version__,
+@@ -29,7 +29,7 @@ def aleph_commit(tree, imgref):
+     return aleph_version_data
+ 
+ 
+-def aleph_container(tree, imgref):
++def aleph_container(sysroot_path, imgref):
+     # Determine the image name used for the deployment. We first attempt to do this by checking
+     # how many container images are stored in the OSTree repo. If it's only one then clearly
+     # that's the one to inspect here and we'll use that. If there's more than one we'll
+@@ -46,7 +46,7 @@ def aleph_container(tree, imgref):
+     #   $ ostree container image list --repo=/sysroot/ostree/repo
+     #   docker://quay.io/podman/machine-os:6.0
+     #
+-    extra_args = [f"--repo={tree}/ostree/repo"]
++    extra_args = [f"--repo={sysroot_path}/ostree/repo"]
+     container_list = ostree.cli("container", "image", "list", *extra_args).stdout.splitlines()
+     if len(container_list) == 1:
+         img_name = container_list[0]
+@@ -96,40 +96,43 @@ def aleph_container(tree, imgref):
+     return aleph_version_data
+ 
+ 
+-def construct_aleph_json(tree, origin):
++def construct_aleph_json(sysroot_path, origin):
+     deploy_type, imgref = ostree.parse_origin(origin)
+     data = {}
+     # null deploy_type and imgref error is caught in the parse_origin() function
+     if deploy_type == "container":
+-        data = aleph_container(tree, imgref)
++        data = aleph_container(sysroot_path, imgref)
+     elif deploy_type == "ostree_commit":
+-        data = aleph_commit(tree, imgref)
++        data = aleph_commit(sysroot_path, imgref)
+     else:
+         raise ValueError("Unknown deployment type")
+ 
+     return data
+ 
+ 
+-def main(tree, options):
++def main(args):
++    options = args["options"]
++    sysroot_path = options.get("sysroot_path", "tree:///")
++    sysroot = parsing.parse_location(sysroot_path, args)
++
+     coreos_compat = options.get("coreos_compat", False)
+     dep = options["deployment"]
+-    osname, ref, serial = ostree.parse_deployment_option(tree, dep)
++    osname, ref, serial = ostree.parse_deployment_option(sysroot, dep)
+ 
+-    origin = ostree.deployment_path(tree, osname, ref, serial) + ".origin"
+-    data = construct_aleph_json(tree, origin)
++    origin = ostree.deployment_path(sysroot, osname, ref, serial) + ".origin"
++    data = construct_aleph_json(sysroot, origin)
+ 
+     # write the data out to the file
+-    with open(os.path.join(tree, ALEPH_FILENAME), "w", encoding="utf8") as f:
++    with open(os.path.join(sysroot, ALEPH_FILENAME), "w", encoding="utf8") as f:
+         json.dump(data, f, indent=4, sort_keys=True)
+         f.write("\n")
+ 
+     # create a symlink for backwards compatibility with CoreOS
+     if coreos_compat:
+-        os.symlink(ALEPH_FILENAME, os.path.join(tree, COREOS_ALEPH_FILENAME))
++        os.symlink(ALEPH_FILENAME, os.path.join(sysroot, COREOS_ALEPH_FILENAME))
+ 
+ 
+ if __name__ == '__main__':
+-    stage_args = osbuild.api.arguments()
+-    r = main(stage_args["tree"],
+-             stage_args["options"])
++    args = osbuild.api.arguments()
++    r = main(args)
+     sys.exit(r)
+diff --git a/stages/org.osbuild.ostree.aleph.meta.json b/stages/org.osbuild.ostree.aleph.meta.json
+index 29ea0b7d..142de55b 100644
+--- a/stages/org.osbuild.ostree.aleph.meta.json
++++ b/stages/org.osbuild.ostree.aleph.meta.json
+@@ -15,6 +15,11 @@
+           "description": "boolean to allow for CoreOS aleph version backwards compatibility",
+           "type": "boolean"
+         },
++        "sysroot_path": {
++          "type": "string",
++          "description": "Location of the OSTree sysroot to read the repo and deployments from.",
++          "default": "tree:///"
++        },
+         "deployment": {
+           "additionalProperties": false,
+           "oneOf": [
+-- 
+2.53.0
+
