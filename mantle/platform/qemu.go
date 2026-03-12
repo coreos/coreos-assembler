@@ -1454,8 +1454,8 @@ func platformQemuArgs(arch, machineArg string) ([]string, error) {
 // split the machine's resources evenly between them.
 // See: https://www.qemu.org/docs/master/system/invocation.html#cmdoption-smp
 func baseNumaQemuArgs(arch string, memoryMiB, cpus int) ([]string, error) {
-	if cpus < 2 {
-		return nil, fmt.Errorf("must have at least 2 CPUs to simulate NUMA nodes")
+	if cpus < 2 || cpus%2 != 0 {
+		return nil, fmt.Errorf("must have an even number of CPUs to simulate NUMA nodes")
 	}
 
 	ret, err := platformQemuArgs(arch, "")
@@ -1480,12 +1480,14 @@ func baseNumaQemuArgs(arch string, memoryMiB, cpus int) ([]string, error) {
 	ret = append(ret, "-numa", fmt.Sprintf("node,memdev=%s,cpus=%d-%d,nodeid=0", node0MemoryDevice, node0StartCpu, node0EndCpu))
 	ret = append(ret, "-numa", fmt.Sprintf("node,memdev=%s,cpus=%d-%d,nodeid=1", node1MemoryDevice, node1StartCpu, node1EndCpu))
 	ret = append(ret, "-m", fmt.Sprintf("%d", memoryMiB))
+	// to avoid kernel warnings, we need to have two sockets
+	ret = append(ret, "-smp", fmt.Sprintf("%d,sockets=2", cpus))
 	return ret, nil
 }
 
 // baseQemuArgs takes a board and returns the basic qemu
 // arguments needed for the current architecture.
-func baseQemuArgs(arch string, memoryMiB int) ([]string, error) {
+func baseQemuArgs(arch string, memoryMiB, cpus int) ([]string, error) {
 	// memoryDevice is the object identifier we use for the backing RAM
 	const memoryDevice = "mem"
 	// The machine argument needs to reference our memory device; see below
@@ -1499,6 +1501,7 @@ func baseQemuArgs(arch string, memoryMiB int) ([]string, error) {
 	// And define memory using a memfd (in shared mode), which is needed for virtiofs
 	ret = append(ret, "-object", fmt.Sprintf("memory-backend-memfd,id=%s,size=%dM,share=on", memoryDevice, memoryMiB))
 	ret = append(ret, "-m", fmt.Sprintf("%d", memoryMiB))
+	ret = append(ret, "-smp", fmt.Sprintf("%d", cpus))
 	return ret, nil
 }
 
@@ -1835,14 +1838,12 @@ func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 	if builder.NumaNodes {
 		argv, err = baseNumaQemuArgs(builder.architecture, builder.MemoryMiB, builder.Processors)
 	} else {
-		argv, err = baseQemuArgs(builder.architecture, builder.MemoryMiB)
+		argv, err = baseQemuArgs(builder.architecture, builder.MemoryMiB, builder.Processors)
 	}
 
 	if err != nil {
 		return nil, err
 	}
-
-	argv = append(argv, "-smp", fmt.Sprintf("%d", builder.Processors))
 
 	switch builder.Firmware {
 	case "":
