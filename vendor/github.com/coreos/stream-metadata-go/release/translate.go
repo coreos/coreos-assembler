@@ -225,6 +225,13 @@ func (releaseArch *Arch) toStreamArch(rel *Release) stream.Arch {
 		}
 	}
 
+	if releaseArch.Media.NvidiaBluefield != nil {
+		artifacts["nvidiabluefield"] = stream.PlatformArtifacts{
+			Release: rel.Release,
+			Formats: mapFormats(releaseArch.Media.NvidiaBluefield.Artifacts),
+		}
+	}
+
 	if releaseArch.Media.Openstack != nil {
 		artifacts["openstack"] = stream.PlatformArtifacts{
 			Release: rel.Release,
