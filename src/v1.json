@@ -533,6 +533,7 @@
         "metal",
         "metal4k",
         "nutanix",
+        "nvidiabluefield",
         "openstack",
         "oraclecloud",
         "proxmoxve",
@@ -657,6 +658,12 @@
           "$id": "#/properties/images/properties/nutanix",
           "type": "object",
           "title": "Nutanix",
+          "$ref": "#/definitions/artifact"
+        },
+        "nvidiabluefield": {
+          "$id": "#/properties/images/properties/nvidiabluefield",
+          "type": "object",
+          "title": "NVIDIA Bluefield",
           "$ref": "#/definitions/artifact"
         },
         "openstack": {
