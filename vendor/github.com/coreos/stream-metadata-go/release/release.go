@@ -60,29 +60,30 @@ type Arch struct {
 
 // Media contains release details for various platforms
 type Media struct {
-	Aliyun       *PlatformAliyun   `json:"aliyun"`
-	AppleHV      *PlatformBase     `json:"applehv"`
-	Aws          *PlatformAws      `json:"aws"`
-	Azure        *PlatformBase     `json:"azure"`
-	AzureStack   *PlatformBase     `json:"azurestack"`
-	Digitalocean *PlatformBase     `json:"digitalocean"`
-	Exoscale     *PlatformBase     `json:"exoscale"`
-	Gcp          *PlatformGcp      `json:"gcp"`
-	Hetzner      *PlatformBase     `json:"hetzner"`
-	HyperV       *PlatformBase     `json:"hyperv"`
-	Ibmcloud     *PlatformIBMCloud `json:"ibmcloud"`
-	KubeVirt     *PlatformKubeVirt `json:"kubevirt"`
-	Metal        *PlatformBase     `json:"metal"`
-	Nutanix      *PlatformBase     `json:"nutanix"`
-	Openstack    *PlatformBase     `json:"openstack"`
-	OracleCloud  *PlatformBase     `json:"oraclecloud"`
-	PowerVS      *PlatformIBMCloud `json:"powervs"`
-	ProxmoxVE    *PlatformBase     `json:"proxmoxve"`
-	Qemu         *PlatformBase     `json:"qemu"`
-	QemuSecex    *PlatformBase     `json:"qemu-secex"`
-	VirtualBox   *PlatformBase     `json:"virtualbox"`
-	Vmware       *PlatformBase     `json:"vmware"`
-	Vultr        *PlatformBase     `json:"vultr"`
+	Aliyun          *PlatformAliyun   `json:"aliyun"`
+	AppleHV         *PlatformBase     `json:"applehv"`
+	Aws             *PlatformAws      `json:"aws"`
+	Azure           *PlatformBase     `json:"azure"`
+	AzureStack      *PlatformBase     `json:"azurestack"`
+	Digitalocean    *PlatformBase     `json:"digitalocean"`
+	Exoscale        *PlatformBase     `json:"exoscale"`
+	Gcp             *PlatformGcp      `json:"gcp"`
+	Hetzner         *PlatformBase     `json:"hetzner"`
+	HyperV          *PlatformBase     `json:"hyperv"`
+	Ibmcloud        *PlatformIBMCloud `json:"ibmcloud"`
+	KubeVirt        *PlatformKubeVirt `json:"kubevirt"`
+	Metal           *PlatformBase     `json:"metal"`
+	Nutanix         *PlatformBase     `json:"nutanix"`
+	NvidiaBluefield *PlatformBase     `json:"nvidiabluefield"`
+	Openstack       *PlatformBase     `json:"openstack"`
+	OracleCloud     *PlatformBase     `json:"oraclecloud"`
+	PowerVS         *PlatformIBMCloud `json:"powervs"`
+	ProxmoxVE       *PlatformBase     `json:"proxmoxve"`
+	Qemu            *PlatformBase     `json:"qemu"`
+	QemuSecex       *PlatformBase     `json:"qemu-secex"`
+	VirtualBox      *PlatformBase     `json:"virtualbox"`
+	Vmware          *PlatformBase     `json:"vmware"`
+	Vultr           *PlatformBase     `json:"vultr"`
 }
 
 // PlatformBase with no cloud images
