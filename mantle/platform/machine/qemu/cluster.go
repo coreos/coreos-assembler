@@ -20,8 +20,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-
-	"sync"
 	"time"
 
 	"github.com/pborman/uuid"
@@ -40,7 +38,6 @@ type Cluster struct {
 	*platform.BaseCluster
 	flight *flight
 
-	mu          sync.Mutex
 	tearingDown bool
 }
 
@@ -66,16 +63,10 @@ func (qc *Cluster) NewMachineWithQemuOptions(userdata *conf.UserData, options pl
 		return nil, err
 	}
 
-	// hacky solution for cloud config ip substitution
-	// NOTE: escaping is not supported
-	qc.mu.Lock()
-
 	conf, err := qc.RenderUserData(userdata, map[string]string{})
 	if err != nil {
-		qc.mu.Unlock()
 		return nil, err
 	}
-	qc.mu.Unlock()
 
 	journal, err := platform.NewJournal(dir)
 	if err != nil {
