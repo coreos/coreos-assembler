@@ -245,13 +245,23 @@ func (qc *Cluster) Destroy() {
 	qc.flight.DelCluster(qc)
 }
 
-func (qc *Cluster) RenderUserDataAndWriteIgnitionFileToDir(userdata *conf.UserData, dir string) (*conf.Conf, string, error) {
+func (qc *Cluster) RenderUserDataAndWriteIgnitionFileToDir(userdata any, dir string) (*conf.Conf, string, error) {
 	var config *conf.Conf
 	var configPath string
 	var err error
-	config, err = qc.RenderUserData(userdata, map[string]string{})
-	if err != nil {
-		return nil, "", err
+	// Some callers provide the config directly rather than something
+	// that needs to be rendered. Render the userdata into a config
+	// if needed.
+	switch c := userdata.(type) {
+	case *conf.UserData:
+		config, err = qc.RenderUserData(c, map[string]string{})
+		if err != nil {
+			return nil, "", err
+		}
+	case *conf.Conf:
+		config = c // Already rendered. Just pass through what was provided.
+	default:
+		return nil, "", fmt.Errorf("unknown config pointer type: %T", c)
 	}
 	if config != nil {
 		if config.IsIgnition() {
