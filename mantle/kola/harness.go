@@ -1754,6 +1754,11 @@ func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flig
 		SSHOnTestFailure:   Options.SSHOnTestFailure,
 		WarningsAction:     conf.FailWarnings,
 		EarlyRelease:       h.Release,
+		NoIgnition:         Options.NoIgnition,
+		SSHUser:            Options.SSHUser,
+	}
+	if Options.NoIgnition && Options.SSHUser == "" {
+		rconf.SSHUser = "root"
 	}
 	if t.HasFlag(register.AllowConfigWarnings) {
 		rconf.WarningsAction = conf.IgnoreWarnings

@@ -70,12 +70,30 @@ func (qc *Cluster) NewMachineWithQemuOptions(userdata *conf.UserData, options pl
 	// NOTE: escaping is not supported
 	qc.mu.Lock()
 
-	conf, err := qc.RenderUserData(userdata, map[string]string{})
-	if err != nil {
+	noIgnition := qc.RuntimeConf().NoIgnition
+	var conf *conf.Conf
+	var confPath string
+	var err error
+	if noIgnition {
+
 		qc.mu.Unlock()
-		return nil, err
+	} else {
+		conf, err = qc.RenderUserData(userdata, map[string]string{})
+		if err != nil {
+			qc.mu.Unlock()
+			return nil, err
+		}
+		qc.mu.Unlock()
+
+		if conf.IsIgnition() {
+			confPath = filepath.Join(dir, "ignition.json")
+			if err := conf.WriteFile(confPath); err != nil {
+				return nil, err
+			}
+		} else if !conf.IsEmpty() {
+			return nil, fmt.Errorf("qemu only supports Ignition or empty configs")
+		}
 	}
-	qc.mu.Unlock()
 
 	journal, err := platform.NewJournal(dir)
 	if err != nil {
@@ -94,24 +112,15 @@ func (qc *Cluster) NewMachineWithQemuOptions(userdata *conf.UserData, options pl
 		builder.Pdeathsig = false
 	}
 
-	if qc.flight.opts.SecureExecution {
+	if !noIgnition && qc.flight.opts.SecureExecution {
 		if err := builder.SetSecureExecution(qc.flight.opts.SecureExecutionIgnitionPubKey, qc.flight.opts.SecureExecutionHostKey, conf); err != nil {
 			return nil, err
 		}
 	}
 
-	var confPath string
-	if conf.IsIgnition() {
-		confPath = filepath.Join(dir, "ignition.json")
-		if err := conf.WriteFile(confPath); err != nil {
-			return nil, err
-		}
-	} else if conf.IsEmpty() {
-	} else {
-		return nil, fmt.Errorf("qemu only supports Ignition or empty configs")
+	if !noIgnition {
+		builder.ConfigFile = confPath
 	}
-
-	builder.ConfigFile = confPath
 	defer builder.Close()
 	builder.UUID = qm.id
 	if qc.flight.opts.Arch != "" {
