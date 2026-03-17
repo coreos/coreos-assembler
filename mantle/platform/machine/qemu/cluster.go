@@ -20,6 +20,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/pborman/uuid"
@@ -38,7 +39,8 @@ type Cluster struct {
 	*platform.BaseCluster
 	flight *flight
 
-	tearingDown bool
+	// Use atomic.Bool to prevent race conditions
+	tearingDown atomic.Bool
 }
 
 func (qc *Cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error) {
@@ -240,7 +242,7 @@ func (qc *Cluster) NewMachineWithQemuOptions(userdata *conf.UserData, options pl
 	// it knows to stop the test once QEMU dies.
 	go func() {
 		err := inst.Wait()
-		if err != nil && !qc.tearingDown {
+		if err != nil && !qc.tearingDown.Load() {
 			plog.Errorf("QEMU process finished abnormally: %v", err)
 		}
 	}()
@@ -249,7 +251,7 @@ func (qc *Cluster) NewMachineWithQemuOptions(userdata *conf.UserData, options pl
 }
 
 func (qc *Cluster) Destroy() {
-	qc.tearingDown = true
+	qc.tearingDown.Store(true)
 	qc.BaseCluster.Destroy()
 	qc.flight.DelCluster(qc)
 }
