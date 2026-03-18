@@ -14,7 +14,9 @@ fi
 ip="$1"
 
 tmpdir="$(mktemp -d)"
-cp Containerfile ${tmpdir}
+trap 'rm -rf -- "${tmpdir}"' EXIT
+
+cp Containerfile "${tmpdir}"
 cd ${tmpdir}
 
 # Prepare index.html

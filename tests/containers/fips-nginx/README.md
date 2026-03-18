@@ -1,6 +1,6 @@
 # fips-nginx Container
 
-This is used by the `fips.enable.https` test to verify that using
+This is used by the `fips.enable.tls` test to verify that using
 TLS works in FIPS mode by having Ignition fetch a remote resource
 over HTTPS with FIPS compatible algorithms.
 
