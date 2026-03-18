@@ -1747,7 +1747,7 @@ func makeNonExclusiveTest(bucket int, tests []*register.Test, flight platform.Fl
 	return nonExclusiveWrapper
 }
 
-func reserveMemoryCountForTest(t *register.Test, needed int, logger func(format string, args ...interface{})) bool {
+func reserveMemoryCountForTest(t *register.Test, needed int, warnOnWait bool) bool {
 	reservedMemoryCountMutex.Lock()
 	defer reservedMemoryCountMutex.Unlock()
 	avail, err := system.GetCurrentMemAvailableMiB()
@@ -1762,9 +1762,13 @@ func reserveMemoryCountForTest(t *register.Test, needed int, logger func(format 
 		reservedMemoryCountMiB += needed
 		reserved := reservedMemoryCountMiB
 		t.ReservedMemoryCountMiB = needed
-		logger("Reserved %d MiB for %s (available: %d MiB, reserved total: %d MiB)",
+		plog.Debugf("Reserved %d MiB for %s (available: %d MiB, reserved total: %d MiB)",
 			needed, t.Name, avail, reserved)
 		return true
+	}
+	logger := plog.Debugf
+	if warnOnWait {
+		logger = plog.Warningf
 	}
 	logger("Waiting on memory to run %s: need %d MiB, effective available %d MiB (system: %d MiB, reserved: %d MiB)",
 		t.Name, needed, effective, avail, reservedMemoryCountMiB)
@@ -1785,15 +1789,15 @@ func waitForMemory(h *harness.H, flight platform.Flight, t *register.Test) {
 	if flight.Platform() == "qemu" {
 		needed := getNeededMemoryMiB(t)
 		start := time.Now()
-		logger := plog.Debugf
-		for !reserveMemoryCountForTest(t, needed, logger) {
-			// After a period of time switch the logger so we get some
+		warnOnWait := true // warn on first wait
+		for !reserveMemoryCountForTest(t, needed, warnOnWait) {
+			// After a period of time switch to log a warning so we get some
 			// info even if debug isn't turned on.
 			if time.Since(start) > 5*time.Minute {
-				logger = plog.Warningf
+				warnOnWait = true
 				start = time.Now() // reset counter
 			} else {
-				logger = plog.Debugf
+				warnOnWait = false
 			}
 			// sleep between 0 and 20 seconds and try again
 			time.Sleep(time.Duration(rand.Intn(20)) * time.Second)
