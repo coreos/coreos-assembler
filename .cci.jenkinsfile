@@ -2,7 +2,14 @@
 
 properties([
     // abort previous runs when a PR is updated to save resources
-    disableConcurrentBuilds(abortPrevious: true)
+    disableConcurrentBuilds(abortPrevious: true),
+
+    // only keep the last 10 builds
+    // builds older than 30 days are also rotated out
+    buildDiscarder(logRotator(
+        numToKeepStr: '10',
+        daysToKeepStr: '30'
+    ))
 ])
 
 // Grab a decent amount of memory/cpu
