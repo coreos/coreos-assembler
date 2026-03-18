@@ -45,8 +45,16 @@ coreos_gf_run() {
         return
     fi
     coreos_gf_launch "$@"
+
+	# set-smp has a limit of 255 vcpus, anything over that will error
+	# See: https://github.com/libguestfs/libguestfs/blob/5011bea96da06878864149767650bcc41f425fb9/lib/handle.c#L916
+	local ncpus
+	ncpus=$(kola ncpu)
+	if [ "$ncpus" -gt 255 ]; then
+		ncpus=255
+	fi
     # Allow mksquashfs to parallelize
-    coreos_gf set-smp "$(kola ncpu)"
+    coreos_gf set-smp "$ncpus"
     coreos_gf run
     GUESTFISH_RUNNING=1
 }
