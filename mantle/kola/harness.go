@@ -378,7 +378,6 @@ type DenyListObj struct {
 
 type ManifestData struct {
 	Variables struct {
-		Stream    string `yaml:"stream"`
 		OsVersion string `yaml:"osversion"`
 	} `yaml:"variables"`
 }
@@ -387,7 +386,11 @@ type InitConfigData struct {
 	ConfigVariant string `json:"coreos-assembler.config-variant"`
 }
 
-func getStreamAndOsVersionFromManifest() (string, string, error) {
+type MetaDataLabels struct {
+	ImportedLabels map[string]string `json:"coreos-assembler.oci-imported-labels"`
+}
+
+func getStreamAndOsVersion() (string, string, error) {
 	// Look for the right manifest, taking into account the variant
 	var manifest ManifestData
 	var pathToManifest string
@@ -417,7 +420,22 @@ func getStreamAndOsVersionFromManifest() (string, string, error) {
 		return "", "", err
 	}
 
-	stream := manifest.Variables.Stream
+	var metadata MetaDataLabels
+	pathToMetaJSON := filepath.Join(Options.CosaWorkdir, fmt.Sprintf("builds/latest/%s/meta.json", Options.CosaBuildArch))
+	metaJSONFile, err := os.ReadFile(pathToMetaJSON)
+	if err != nil {
+		return "", "", err
+	}
+
+	err = json.Unmarshal(metaJSONFile, &metadata)
+	if err != nil {
+		return "", "", err
+	}
+
+	var stream string
+	if metadata.ImportedLabels != nil {
+		stream = metadata.ImportedLabels["com.coreos.stream"]
+	}
 	osversion := manifest.Variables.OsVersion
 	return stream, osversion, nil
 }
@@ -447,7 +465,7 @@ func ParseDenyListYaml(pltfrm string) error {
 
 	// Get the stream and osversion variables from the manifest since DenylistStream is not specified
 	if len(DenylistStream) == 0 {
-		stream, osversion, err = getStreamAndOsVersionFromManifest()
+		stream, osversion, err = getStreamAndOsVersion()
 		if err != nil {
 			return err
 		}
