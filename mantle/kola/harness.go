@@ -372,72 +372,31 @@ type DenyListObj struct {
 	Arches     []string `yaml:"arches"`
 	Platforms  []string `yaml:"platforms"`
 	SnoozeDate string   `yaml:"snooze"`
-	OsVersion  []string `yaml:"osversion"`
 	Warn       bool     `yaml:"warn"`
-}
-
-type ManifestData struct {
-	Variables struct {
-		OsVersion string `yaml:"osversion"`
-	} `yaml:"variables"`
-}
-
-type InitConfigData struct {
-	ConfigVariant string `json:"coreos-assembler.config-variant"`
 }
 
 type MetaDataLabels struct {
 	ImportedLabels map[string]string `json:"coreos-assembler.oci-imported-labels"`
 }
 
-func getStreamAndOsVersion() (string, string, error) {
-	// Look for the right manifest, taking into account the variant
-	var manifest ManifestData
-	var pathToManifest string
-	pathToInitConfig := filepath.Join(Options.CosaWorkdir, "src/config.json")
-	initConfigFile, err := os.ReadFile(pathToInitConfig)
-	if os.IsNotExist(err) {
-		// No variant config found. Let's read the default manifest
-		pathToManifest = filepath.Join(Options.CosaWorkdir, "src/config/manifest.yaml")
-	} else if err != nil {
-		// Unexpected error
-		return "", "", err
-	} else {
-		// Figure out the variant and read the corresponding manifests
-		var initConfig InitConfigData
-		err = json.Unmarshal(initConfigFile, &initConfig)
-		if err != nil {
-			return "", "", err
-		}
-		pathToManifest = filepath.Join(Options.CosaWorkdir, fmt.Sprintf("src/config/manifest-%s.yaml", initConfig.ConfigVariant))
-	}
-	manifestFile, err := os.ReadFile(pathToManifest)
-	if err != nil {
-		return "", "", err
-	}
-	err = yaml.Unmarshal(manifestFile, &manifest)
-	if err != nil {
-		return "", "", err
-	}
-
+func getStreamFromMeta() (string, error) {
 	var metadata MetaDataLabels
 	pathToMetaJSON := filepath.Join(Options.CosaWorkdir, fmt.Sprintf("builds/latest/%s/meta.json", Options.CosaBuildArch))
 	metaJSONFile, err := os.ReadFile(pathToMetaJSON)
 	if err != nil {
-		return "", "", err
+		return "", err
 	}
 
 	err = json.Unmarshal(metaJSONFile, &metadata)
 	if err != nil {
-		return "", "", err
+		return "", err
 	}
 
 	var stream string
 	if metadata.ImportedLabels != nil {
 		stream = metadata.ImportedLabels["com.coreos.stream"]
 	}
-	osversion := manifest.Variables.OsVersion
-	return stream, osversion, nil
+	return stream, nil
 }
 
 func ParseDenyListYaml(pltfrm string) error {
@@ -461,11 +420,10 @@ func ParseDenyListYaml(pltfrm string) error {
 	plog.Debug("Parsed kola-denylist.yaml")
 
 	var stream string
-	var osversion string
 
-	// Get the stream and osversion variables from the manifest since DenylistStream is not specified
+	// Get the stream variable from meta.json since DenylistStream is not specified
 	if len(DenylistStream) == 0 {
-		stream, osversion, err = getStreamAndOsVersion()
+		stream, err = getStreamFromMeta()
 		if err != nil {
 			return err
 		}
@@ -477,7 +435,7 @@ func ParseDenyListYaml(pltfrm string) error {
 	arch := Options.CosaBuildArch
 	today := time.Now()
 
-	plog.Debugf("Denylist: Skipping tests for stream: '%s', osversion: '%s', arch: '%s'\n", stream, osversion, arch)
+	plog.Debugf("Denylist: Skipping tests for stream: '%s', arch: '%s'\n", stream, arch)
 
 	// Accumulate patterns filtering by set policies
 	plog.Debug("Processing denial patterns from yaml...")
@@ -491,10 +449,6 @@ func ParseDenyListYaml(pltfrm string) error {
 		}
 
 		if len(stream) > 0 && len(obj.Streams) > 0 && !HasString(stream, obj.Streams) {
-			continue
-		}
-
-		if len(osversion) > 0 && len(obj.OsVersion) > 0 && !HasString(osversion, obj.OsVersion) {
 			continue
 		}
 
