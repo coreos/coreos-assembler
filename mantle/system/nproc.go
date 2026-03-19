@@ -176,12 +176,7 @@ func getCgroupMemoryLimitMiB() (uint, error) {
 }
 
 // getCgroupMemoryAvailableMiB returns the available memory within the
-// cgroup v2 in MiB, or math.MaxUint if no limit is set. It computes
-// available memory as: limit - (current - page_cache), where page_cache
-// is the "file" field from memory.stat. Page cache (file-backed memory)
-// is reclaimable by the kernel under memory pressure, so it should not
-// be counted as unavailable. This mirrors how /proc/meminfo computes
-// MemAvailable by considering reclaimable caches.
+// cgroup v2 in MiB (limit - current usage), or math.MaxUint if no limit.
 func getCgroupMemoryAvailableMiB() (uint, error) {
 	maxBuf, err := os.ReadFile("/sys/fs/cgroup/memory.max")
 	if os.IsNotExist(err) {
@@ -205,57 +200,8 @@ func getCgroupMemoryAvailableMiB() (uint, error) {
 	if err != nil {
 		return 0, fmt.Errorf("invalid memory.current value: %w", err)
 	}
-
-	// Read page cache size from memory.stat to exclude reclaimable
-	// file-backed memory from the usage calculation.
-	pageCache, err := getCgroupMemoryStatField("file")
-	if err != nil {
-		return 0, err
-	}
-
-	// Subtract the page cache size from the memory.current. Page
-	// cache should always be less than the memory.current but
-	// add a check and do nothing just in case.
-	usage := current
-	if pageCache < usage {
-		usage -= pageCache
-	}
-
-	// This also shouldn't happen, but in case the usage is larger
-	// than the limit let's just return that there's 0 available memory.
-	if usage >= limit {
+	if current >= limit {
 		return 0, nil
 	}
-	return uint((limit - usage) / (1024 * 1024)), nil
-}
-
-// getCgroupMemoryStatField reads a specific field from
-// /sys/fs/cgroup/memory.stat and returns its value in bytes.
-// The file contains key-value pairs like "file 123456789".
-// Returns 0 if the file does not exist or the field is not found.
-func getCgroupMemoryStatField(field string) (uint64, error) {
-	f, err := os.Open("/sys/fs/cgroup/memory.stat")
-	if os.IsNotExist(err) {
-		return 0, nil
-	} else if err != nil {
-		return 0, fmt.Errorf("reading memory.stat: %w", err)
-	}
-	defer f.Close()
-
-	scanner := bufio.NewScanner(f)
-	for scanner.Scan() {
-		parts := strings.Fields(scanner.Text())
-		if len(parts) == 2 && parts[0] == field {
-			val, err := strconv.ParseUint(parts[1], 10, 64)
-			if err != nil {
-				return 0, fmt.Errorf("parsing memory.stat field %s: %w", field, err)
-			}
-			return val, nil
-		}
-	}
-	if err := scanner.Err(); err != nil {
-		return 0, fmt.Errorf("scanning memory.stat: %w", err)
-	}
-	// Field not found; return 0 so callers degrade gracefully.
-	return 0, nil
+	return uint((limit - current) / (1024 * 1024)), nil
 }
