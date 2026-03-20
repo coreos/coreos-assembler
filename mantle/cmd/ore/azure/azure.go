@@ -34,6 +34,7 @@ var (
 
 	azureCredentials string
 	azureLocation    string
+	azureOffer       string
 	azurePublisher   string
 
 	api *azure.API
@@ -45,7 +46,8 @@ func init() {
 	sv := Azure.PersistentFlags().StringVar
 	sv(&azureCredentials, "azure-credentials", "", "Azure credentials file location (default \"~/"+auth.AzureCredentialsPath+"\")")
 	sv(&azureLocation, "azure-location", "westus", "Azure location (default \"westus\")")
-	sv(&azurePublisher, "azure-publisher", "CoreOS", "Azure image publisher")
+	sv(&azureOffer, "azure-offer", "CoreOS", "Azure image offer")
+	sv(&azurePublisher, "azure-publisher", "Fedora", "Azure image publisher")
 }
 
 func preauth(cmd *cobra.Command, args []string) error {
@@ -54,6 +56,7 @@ func preauth(cmd *cobra.Command, args []string) error {
 	a, err := azure.New(&azure.Options{
 		AzureCredentials: azureCredentials,
 		Location:         azureLocation,
+		Offer:            azureOffer,
 		Publisher:        azurePublisher,
 	})
 	if err != nil {

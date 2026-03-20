@@ -19,6 +19,7 @@ import (
 	"context"
 	"fmt"
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
@@ -27,7 +28,22 @@ import (
 	"github.com/coreos/coreos-assembler/mantle/util"
 )
 
-func (a *API) CreateGalleryImage(name, galleryName, resourceGroup, sourceImageID, architecture string) (armcompute.GalleryImageVersion, error) {
+// truncateFCOSVersion converts an FCOS version like 42.20250526.2.1
+// into an Azure-compatible gallery image version string like 42.20250526.1.
+// The mapping is:
+//
+//	<major>.<yyyymmdd>.<stream>.<rev> -> <major>.<yyyymmdd>.<rev>
+//
+// See: https://github.com/coreos/fedora-coreos-tracker/issues/148#issuecomment-2963690654
+func truncateFCOSVersion(version string) (string, error) {
+	parts := strings.Split(version, ".")
+	if len(parts) != 4 {
+		return "", fmt.Errorf("unexpected FCOS version format %q", version)
+	}
+	return parts[0] + "." + parts[1] + "." + parts[3], nil
+}
+
+func (a *API) CreateGalleryImage(name, galleryName, resourceGroup, sourceImageID, architecture, coreosVersion string) (armcompute.GalleryImageVersion, error) {
 	ctx := context.Background()
 
 	// Ensure the Azure Shared Image Gallery exists. BeginCreateOrUpdate will create the gallery
@@ -77,8 +93,8 @@ func (a *API) CreateGalleryImage(name, galleryName, resourceGroup, sourceImageID
 			HyperVGeneration: to.Ptr(armcompute.HyperVGeneration(armcompute.HyperVGenerationV2)),
 			Identifier: &armcompute.GalleryImageIdentifier{
 				Publisher: &a.opts.Publisher,
-				Offer:     to.Ptr(name),
-				SKU:       to.Ptr(util.RandomName("sku")),
+				Offer:     &a.opts.Offer,
+				SKU:       to.Ptr(name),
 			},
 			Features:     galleryImageFeatures,
 			Architecture: &azureArch,
@@ -92,8 +108,23 @@ func (a *API) CreateGalleryImage(name, galleryName, resourceGroup, sourceImageID
 		return armcompute.GalleryImageVersion{}, err
 	}
 
+	versionName, err := truncateFCOSVersion(coreosVersion)
+	if err != nil {
+		return armcompute.GalleryImageVersion{}, err
+	}
+
+	// Tag the image with the full build ID (pre-truncated).
+	// Images uploaded to the Fedora community gallery need to be tagged
+	// with, at least, `owner: CoreOS`. The `delete: never` tag is added
+	// so we can manage when these images are deleted.
+	// https://github.com/coreos/fedora-coreos-tracker/issues/148#issuecomment-3612864751
+	tags := map[string]*string{
+		"real_version": &coreosVersion,
+		"owner":        to.Ptr("CoreOS"),
+		"delete":       to.Ptr("never"),
+	}
+
 	// Create a Gallery Image Version
-	versionName := "1.0.0"
 	imageVersionPoller, err := a.galImgVerClient.BeginCreateOrUpdate(ctx, resourceGroup, galleryName, name, versionName, armcompute.GalleryImageVersion{
 		Location: &a.opts.Location,
 		Properties: &armcompute.GalleryImageVersionProperties{
@@ -103,6 +134,7 @@ func (a *API) CreateGalleryImage(name, galleryName, resourceGroup, sourceImageID
 				},
 			},
 		},
+		Tags: tags,
 	}, nil)
 	if err != nil {
 		return armcompute.GalleryImageVersion{}, err
