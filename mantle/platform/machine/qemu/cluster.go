@@ -65,7 +65,7 @@ func (qc *Cluster) NewMachineWithQemuOptions(userdata *conf.UserData, options pl
 		return nil, err
 	}
 
-	config, configPath, err := qc.RenderUserDataAndWriteIgnitionFileToDir(userdata, dir)
+	config, err := qc.RenderUserDataIfNeeded(userdata)
 	if err != nil {
 		return nil, err
 	}
@@ -93,7 +93,7 @@ func (qc *Cluster) NewMachineWithQemuOptions(userdata *conf.UserData, options pl
 		}
 	}
 
-	builder.ConfigFile = configPath
+	builder.SetConfig(config)
 	defer builder.Close()
 	builder.UUID = qm.id
 	if qc.flight.opts.Arch != "" {
@@ -245,9 +245,8 @@ func (qc *Cluster) Destroy() {
 	qc.flight.DelCluster(qc)
 }
 
-func (qc *Cluster) RenderUserDataAndWriteIgnitionFileToDir(userdata any, dir string) (*conf.Conf, string, error) {
+func (qc *Cluster) RenderUserDataIfNeeded(userdata any) (*conf.Conf, error) {
 	var config *conf.Conf
-	var configPath string
 	var err error
 	// Some callers provide the config directly rather than something
 	// that needs to be rendered. Render the userdata into a config
@@ -256,22 +255,12 @@ func (qc *Cluster) RenderUserDataAndWriteIgnitionFileToDir(userdata any, dir str
 	case *conf.UserData:
 		config, err = qc.RenderUserData(c, map[string]string{})
 		if err != nil {
-			return nil, "", err
+			return nil, err
 		}
 	case *conf.Conf:
 		config = c // Already rendered. Just pass through what was provided.
 	default:
-		return nil, "", fmt.Errorf("unknown config pointer type: %T", c)
+		return nil, fmt.Errorf("unknown config pointer type: %T", c)
 	}
-	if config != nil {
-		if config.IsIgnition() {
-			configPath = filepath.Join(dir, "ignition.json")
-			if err = config.WriteFile(configPath); err != nil {
-				return nil, "", err
-			}
-		} else if !config.IsEmpty() {
-			return nil, "", fmt.Errorf("qemu only supports Ignition or empty configs")
-		}
-	}
-	return config, configPath, nil
+	return config, nil
 }
