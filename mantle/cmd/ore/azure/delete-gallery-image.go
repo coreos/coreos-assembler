@@ -30,18 +30,14 @@ var (
 
 		SilenceUsage: true,
 	}
-
-	deleteGallery bool
 )
 
 func init() {
 	sv := cmdDeleteGalleryImage.Flags().StringVar
-	bv := cmdDeleteGalleryImage.Flags().BoolVar
 
 	sv(&imageName, "gallery-image-name", "", "gallery image name")
 	sv(&resourceGroup, "resource-group", "kola", "resource group name")
 	sv(&galleryName, "gallery-name", "kola", "gallery name")
-	bv(&deleteGallery, "delete-entire-gallery", false, "delete entire gallery")
 
 	Azure.AddCommand(cmdDeleteGalleryImage)
 }
@@ -49,15 +45,6 @@ func init() {
 func runDeleteGalleryImage(cmd *cobra.Command, args []string) error {
 	if err := api.SetupClients(); err != nil {
 		return fmt.Errorf("setting up clients: %v\n", err)
-	}
-
-	if deleteGallery {
-		err := api.DeleteGallery(galleryName, resourceGroup)
-		if err != nil {
-			return fmt.Errorf("Couldn't delete gallery: %v\n", err)
-		}
-		plog.Printf("Gallery %q in resource group %q removed", galleryName, resourceGroup)
-		return nil
 	}
 
 	err := api.DeleteGalleryImage(imageName, resourceGroup, galleryName)
