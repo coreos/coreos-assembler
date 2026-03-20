@@ -17,11 +17,14 @@ package azure
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"net/http"
 	"runtime"
 	"strings"
 	"time"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute"
 
@@ -43,23 +46,39 @@ func truncateFCOSVersion(version string) (string, error) {
 	return parts[0] + "." + parts[1] + "." + parts[3], nil
 }
 
+// isNotFound returns true if the error is an Azure API error with a 404 status code
+// This is helpful when trying to determine if Azure resources already exist since a 404
+// error on Get() means the resource does not exist.
+func isNotFound(err error) bool {
+	var respErr *azcore.ResponseError
+	if errors.As(err, &respErr) {
+		return respErr.StatusCode == http.StatusNotFound
+	}
+	return false
+}
+
 func (a *API) CreateGalleryImage(name, galleryName, resourceGroup, sourceImageID, architecture, coreosVersion string) (armcompute.GalleryImageVersion, error) {
 	ctx := context.Background()
 
-	// Ensure the Azure Shared Image Gallery exists. BeginCreateOrUpdate will create the gallery
-	// in the specified resource group if it doesn't already exist, or update it if it does.
-	// Since no properties are being changed here, this acts as a no-op if the gallery does exist.
-	// Note: the gallery's location is immutable. If a gallery with the same name exists in a different
-	// location within the same resource group, the operation will fail.
-	galleryPoller, err := a.galClient.BeginCreateOrUpdate(ctx, resourceGroup, galleryName, armcompute.Gallery{
-		Location: &a.opts.Location,
-	}, nil)
+	_, err := a.galClient.Get(ctx, resourceGroup, galleryName, nil)
 	if err != nil {
-		return armcompute.GalleryImageVersion{}, err
-	}
-	_, err = galleryPoller.PollUntilDone(context.Background(), nil)
-	if err != nil {
-		return armcompute.GalleryImageVersion{}, err
+		if !isNotFound(err) {
+			return armcompute.GalleryImageVersion{}, err
+		}
+
+		// Create the Image Gallery if it doesn't already exist.
+		galleryPoller, err := a.galClient.BeginCreateOrUpdate(ctx, resourceGroup, galleryName, armcompute.Gallery{
+			Location: &a.opts.Location,
+		}, nil)
+		if err != nil {
+			return armcompute.GalleryImageVersion{}, err
+		}
+		_, err = galleryPoller.PollUntilDone(context.Background(), nil)
+		if err != nil {
+			return armcompute.GalleryImageVersion{}, err
+		}
+	} else {
+		plog.Infof("gallery %q already exists in resource group %q; skipping creation", galleryName, resourceGroup)
 	}
 
 	// enable NVMe support for Gen2 images only. NVMe support is not available on Gen1 images.
@@ -84,32 +103,49 @@ func (a *API) CreateGalleryImage(name, galleryName, resourceGroup, sourceImageID
 		return armcompute.GalleryImageVersion{}, fmt.Errorf("unsupported azure architecture %q", architecture)
 	}
 
-	// Create a Gallery Image Definition with the specified Hyper-V generation (V1 or V2).
-	galleryImagePoller, err := a.galImgClient.BeginCreateOrUpdate(ctx, resourceGroup, galleryName, name, armcompute.GalleryImage{
-		Location: &a.opts.Location,
-		Properties: &armcompute.GalleryImageProperties{
-			OSState:          to.Ptr(armcompute.OperatingSystemStateTypesGeneralized),
-			OSType:           to.Ptr(armcompute.OperatingSystemTypesLinux),
-			HyperVGeneration: to.Ptr(armcompute.HyperVGeneration(armcompute.HyperVGenerationV2)),
-			Identifier: &armcompute.GalleryImageIdentifier{
-				Publisher: &a.opts.Publisher,
-				Offer:     &a.opts.Offer,
-				SKU:       to.Ptr(name),
+	_, err = a.galImgClient.Get(ctx, resourceGroup, galleryName, name, nil)
+	if err != nil {
+		if !isNotFound(err) {
+			return armcompute.GalleryImageVersion{}, err
+		}
+
+		// Create a Gallery Image Definition if it doesn't already exist.
+		galleryImagePoller, err := a.galImgClient.BeginCreateOrUpdate(ctx, resourceGroup, galleryName, name, armcompute.GalleryImage{
+			Location: &a.opts.Location,
+			Properties: &armcompute.GalleryImageProperties{
+				OSState:          to.Ptr(armcompute.OperatingSystemStateTypesGeneralized),
+				OSType:           to.Ptr(armcompute.OperatingSystemTypesLinux),
+				HyperVGeneration: to.Ptr(armcompute.HyperVGeneration(armcompute.HyperVGenerationV2)),
+				Identifier: &armcompute.GalleryImageIdentifier{
+					Publisher: &a.opts.Publisher,
+					Offer:     &a.opts.Offer,
+					SKU:       to.Ptr(name),
+				},
+				Features:     galleryImageFeatures,
+				Architecture: &azureArch,
 			},
-			Features:     galleryImageFeatures,
-			Architecture: &azureArch,
-		},
-	}, nil)
-	if err != nil {
-		return armcompute.GalleryImageVersion{}, err
-	}
-	_, err = galleryImagePoller.PollUntilDone(context.Background(), nil)
-	if err != nil {
-		return armcompute.GalleryImageVersion{}, err
+		}, nil)
+		if err != nil {
+			return armcompute.GalleryImageVersion{}, err
+		}
+		_, err = galleryImagePoller.PollUntilDone(context.Background(), nil)
+		if err != nil {
+			return armcompute.GalleryImageVersion{}, err
+		}
+	} else {
+		plog.Infof("gallery image definition %q already exists in gallery %q; skipping creation", name, galleryName)
 	}
 
 	versionName, err := truncateFCOSVersion(coreosVersion)
 	if err != nil {
+		return armcompute.GalleryImageVersion{}, err
+	}
+
+	_, err = a.galImgVerClient.Get(ctx, resourceGroup, galleryName, name, versionName, nil)
+	if err == nil {
+		return armcompute.GalleryImageVersion{}, fmt.Errorf("gallery image version %q already exists for image %q", versionName, name)
+	}
+	if !isNotFound(err) {
 		return armcompute.GalleryImageVersion{}, err
 	}
 
