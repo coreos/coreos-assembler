@@ -375,30 +375,6 @@ type DenyListObj struct {
 	Warn       bool     `yaml:"warn"`
 }
 
-type MetaDataLabels struct {
-	ImportedLabels map[string]string `json:"coreos-assembler.oci-imported-labels"`
-}
-
-func getStreamFromMeta() (string, error) {
-	var metadata MetaDataLabels
-	pathToMetaJSON := filepath.Join(Options.CosaWorkdir, fmt.Sprintf("builds/latest/%s/meta.json", Options.CosaBuildArch))
-	metaJSONFile, err := os.ReadFile(pathToMetaJSON)
-	if err != nil {
-		return "", err
-	}
-
-	err = json.Unmarshal(metaJSONFile, &metadata)
-	if err != nil {
-		return "", err
-	}
-
-	var stream string
-	if metadata.ImportedLabels != nil {
-		stream = metadata.ImportedLabels["com.coreos.stream"]
-	}
-	return stream, nil
-}
-
 func ParseDenyListYaml(pltfrm string) error {
 	var objs []DenyListObj
 
@@ -422,13 +398,15 @@ func ParseDenyListYaml(pltfrm string) error {
 	var stream string
 
 	// Get the stream variable from meta.json since DenylistStream is not specified
-	if len(DenylistStream) == 0 {
-		stream, err = getStreamFromMeta()
-		if err != nil {
-			return err
-		}
-	} else {
+	if len(DenylistStream) > 0 {
 		stream = DenylistStream
+	} else if CosaBuild.Meta.OciLabels != nil {
+		s := CosaBuild.Meta.OciLabels["com.coreos.stream"]
+		stream = string(s)
+	}
+	if stream == "" {
+		// In this case no stream was detected so we'll just continue best effort
+		plog.Warningf("Unable to determine stream from '--denylist-stream' or meta.json. Won't consider denials based on stream.")
 	}
 
 	// Get the current arch & current time
