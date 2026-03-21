@@ -17,33 +17,68 @@ package azure
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"net/http"
 	"runtime"
+	"strings"
 	"time"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute"
 
 	"github.com/coreos/coreos-assembler/mantle/util"
 )
 
-func (a *API) CreateGalleryImage(name, galleryName, resourceGroup, sourceImageID, architecture string) (armcompute.GalleryImageVersion, error) {
+// truncateFCOSVersion converts an FCOS version like 42.20250526.2.1
+// into an Azure-compatible gallery image version string like 42.20250526.1.
+// The mapping is:
+//
+//	<major>.<yyyymmdd>.<stream>.<rev> -> <major>.<yyyymmdd>.<rev>
+//
+// See: https://github.com/coreos/fedora-coreos-tracker/issues/148#issuecomment-2963690654
+func truncateFCOSVersion(version string) (string, error) {
+	parts := strings.Split(version, ".")
+	if len(parts) != 4 {
+		return "", fmt.Errorf("unexpected FCOS version format %q", version)
+	}
+	return parts[0] + "." + parts[1] + "." + parts[3], nil
+}
+
+// isNotFound returns true if the error is an Azure API error with a 404 status code
+// This is helpful when trying to determine if Azure resources already exist since a 404
+// error on Get() means the resource does not exist.
+func isNotFound(err error) bool {
+	var respErr *azcore.ResponseError
+	if errors.As(err, &respErr) {
+		return respErr.StatusCode == http.StatusNotFound
+	}
+	return false
+}
+
+func (a *API) CreateGalleryImage(name, galleryName, resourceGroup, sourceImageID, architecture, coreosVersion string) (armcompute.GalleryImageVersion, error) {
 	ctx := context.Background()
 
-	// Ensure the Azure Shared Image Gallery exists. BeginCreateOrUpdate will create the gallery
-	// in the specified resource group if it doesn't already exist, or update it if it does.
-	// Since no properties are being changed here, this acts as a no-op if the gallery does exist.
-	// Note: the gallery's location is immutable. If a gallery with the same name exists in a different
-	// location within the same resource group, the operation will fail.
-	galleryPoller, err := a.galClient.BeginCreateOrUpdate(ctx, resourceGroup, galleryName, armcompute.Gallery{
-		Location: &a.opts.Location,
-	}, nil)
+	_, err := a.galClient.Get(ctx, resourceGroup, galleryName, nil)
 	if err != nil {
-		return armcompute.GalleryImageVersion{}, err
-	}
-	_, err = galleryPoller.PollUntilDone(context.Background(), nil)
-	if err != nil {
-		return armcompute.GalleryImageVersion{}, err
+		if !isNotFound(err) {
+			return armcompute.GalleryImageVersion{}, err
+		}
+
+		// Create the Image Gallery if it doesn't already exist.
+		galleryPoller, err := a.galClient.BeginCreateOrUpdate(ctx, resourceGroup, galleryName, armcompute.Gallery{
+			Location: &a.opts.Location,
+		}, nil)
+		if err != nil {
+			return armcompute.GalleryImageVersion{}, err
+		}
+		_, err = galleryPoller.PollUntilDone(context.Background(), nil)
+		if err != nil {
+			return armcompute.GalleryImageVersion{}, err
+		}
+	} else {
+		plog.Infof("gallery %q already exists in resource group %q; skipping creation", galleryName, resourceGroup)
 	}
 
 	// enable NVMe support for Gen2 images only. NVMe support is not available on Gen1 images.
@@ -68,32 +103,64 @@ func (a *API) CreateGalleryImage(name, galleryName, resourceGroup, sourceImageID
 		return armcompute.GalleryImageVersion{}, fmt.Errorf("unsupported azure architecture %q", architecture)
 	}
 
-	// Create a Gallery Image Definition with the specified Hyper-V generation (V1 or V2).
-	galleryImagePoller, err := a.galImgClient.BeginCreateOrUpdate(ctx, resourceGroup, galleryName, name, armcompute.GalleryImage{
-		Location: &a.opts.Location,
-		Properties: &armcompute.GalleryImageProperties{
-			OSState:          to.Ptr(armcompute.OperatingSystemStateTypesGeneralized),
-			OSType:           to.Ptr(armcompute.OperatingSystemTypesLinux),
-			HyperVGeneration: to.Ptr(armcompute.HyperVGeneration(armcompute.HyperVGenerationV2)),
-			Identifier: &armcompute.GalleryImageIdentifier{
-				Publisher: &a.opts.Publisher,
-				Offer:     to.Ptr(name),
-				SKU:       to.Ptr(util.RandomName("sku")),
-			},
-			Features:     galleryImageFeatures,
-			Architecture: &azureArch,
-		},
-	}, nil)
+	_, err = a.galImgClient.Get(ctx, resourceGroup, galleryName, name, nil)
 	if err != nil {
-		return armcompute.GalleryImageVersion{}, err
+		if !isNotFound(err) {
+			return armcompute.GalleryImageVersion{}, err
+		}
+
+		// Create a Gallery Image Definition if it doesn't already exist.
+		galleryImagePoller, err := a.galImgClient.BeginCreateOrUpdate(ctx, resourceGroup, galleryName, name, armcompute.GalleryImage{
+			Location: &a.opts.Location,
+			Properties: &armcompute.GalleryImageProperties{
+				OSState:          to.Ptr(armcompute.OperatingSystemStateTypesGeneralized),
+				OSType:           to.Ptr(armcompute.OperatingSystemTypesLinux),
+				HyperVGeneration: to.Ptr(armcompute.HyperVGeneration(armcompute.HyperVGenerationV2)),
+				Identifier: &armcompute.GalleryImageIdentifier{
+					Publisher: &a.opts.Publisher,
+					Offer:     &a.opts.Offer,
+					SKU:       to.Ptr(name),
+				},
+				Features:     galleryImageFeatures,
+				Architecture: &azureArch,
+			},
+		}, nil)
+		if err != nil {
+			return armcompute.GalleryImageVersion{}, err
+		}
+		_, err = galleryImagePoller.PollUntilDone(context.Background(), nil)
+		if err != nil {
+			return armcompute.GalleryImageVersion{}, err
+		}
+	} else {
+		plog.Infof("gallery image definition %q already exists in gallery %q; skipping creation", name, galleryName)
 	}
-	_, err = galleryImagePoller.PollUntilDone(context.Background(), nil)
+
+	versionName, err := truncateFCOSVersion(coreosVersion)
 	if err != nil {
 		return armcompute.GalleryImageVersion{}, err
 	}
 
+	_, err = a.galImgVerClient.Get(ctx, resourceGroup, galleryName, name, versionName, nil)
+	if err == nil {
+		return armcompute.GalleryImageVersion{}, fmt.Errorf("gallery image version %q already exists for image %q", versionName, name)
+	}
+	if !isNotFound(err) {
+		return armcompute.GalleryImageVersion{}, err
+	}
+
+	// Tag the image with the full build ID (pre-truncated).
+	// Images uploaded to the Fedora community gallery need to be tagged
+	// with, at least, `owner: CoreOS`. The `delete: never` tag is added
+	// so we can manage when these images are deleted.
+	// https://github.com/coreos/fedora-coreos-tracker/issues/148#issuecomment-3612864751
+	tags := map[string]*string{
+		"real_version": &coreosVersion,
+		"owner":        to.Ptr("CoreOS"),
+		"delete":       to.Ptr("never"),
+	}
+
 	// Create a Gallery Image Version
-	versionName := "1.0.0"
 	imageVersionPoller, err := a.galImgVerClient.BeginCreateOrUpdate(ctx, resourceGroup, galleryName, name, versionName, armcompute.GalleryImageVersion{
 		Location: &a.opts.Location,
 		Properties: &armcompute.GalleryImageVersionProperties{
@@ -103,6 +170,7 @@ func (a *API) CreateGalleryImage(name, galleryName, resourceGroup, sourceImageID
 				},
 			},
 		},
+		Tags: tags,
 	}, nil)
 	if err != nil {
 		return armcompute.GalleryImageVersion{}, err
@@ -146,48 +214,6 @@ func (a *API) DeleteGalleryImage(imageName, resourceGroup, galleryName string) e
 
 		// delete the gallery image
 		poller, err := a.galImgClient.BeginDelete(ctx, resourceGroup, galleryName, imageName, nil)
-		if err != nil {
-			return err
-		}
-		_, err = poller.PollUntilDone(ctx, nil)
-		if err != nil {
-			return err
-		}
-
-		return nil
-	})
-
-	return err
-
-}
-
-func (a *API) DeleteGallery(galleryName, resourceGroup string) error {
-	ctx := context.Background()
-
-	timeout := 10 * time.Minute
-	delay := 5 * time.Second
-	// There is sometimes a delay in the azure backend where deleted gallery images still show
-	// within the gallery causing a failure during gallery deletion. We'll retry the delete
-	// command again until a specified timeout to ensure the gallery is deleted.
-	err := util.RetryUntilTimeout(timeout, delay, func() error {
-		// Find all images in the gallery and delete them.
-		// Galleries can only be deleted if they have no nested resources.
-		imagePager := a.galImgClient.NewListByGalleryPager(resourceGroup, galleryName, nil)
-		for imagePager.More() {
-			page, err := imagePager.NextPage(ctx)
-			if err != nil {
-				return fmt.Errorf("failed to get image definitions")
-			}
-			for _, image := range page.Value {
-				err := a.DeleteGalleryImage(*image.Name, resourceGroup, galleryName)
-				if err != nil {
-					return fmt.Errorf("Couldn't delete gallery image: %v\n", err)
-				}
-			}
-		}
-
-		// delete the gallery
-		poller, err := a.galClient.BeginDelete(ctx, resourceGroup, galleryName, nil)
 		if err != nil {
 			return err
 		}
