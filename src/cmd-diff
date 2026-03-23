@@ -475,7 +475,7 @@ def extract_live_sysroot_img(diff_from, diff_to):
 
 def diff_live_sysroot_tree(diff_from, diff_to):
     (dir_from, dir_to) = extract_live_sysroot_img(diff_from, diff_to)
-    diff_cmd_outputs(['find', '{}', '-printf', "%P\n"], dir_from, dir_to)
+    diff_cmd_outputs(['find', '{}', '-printf', "%P\n"], dir_from, dir_to, sort_field=1)
 
 
 def diff_live_sysroot(diff_from, diff_to):
@@ -596,16 +596,16 @@ def diff_metal(diff_from, diff_to):
 def diff_metal_du(diff_from, diff_to):
     mount_dir_from, mount_dir_to = diff_metal_helper(diff_from, diff_to)
     cmd = ['find', '.', '-type', 'd', '-exec', 'du', '-sh', '{}', ';']
-    diff_cmd_outputs(cmd, mount_dir_from, mount_dir_to, strategy=DiffCmdOutputStrategy.CD)
+    diff_cmd_outputs(cmd, mount_dir_from, mount_dir_to, strategy=DiffCmdOutputStrategy.CD, sort_field=2)
 
 
 def diff_metal_ls(diff_from, diff_to):
     mount_dir_from, mount_dir_to = diff_metal_helper(diff_from, diff_to)
     cmd = ['find', '.']
-    diff_cmd_outputs(cmd, mount_dir_from, mount_dir_to, strategy=DiffCmdOutputStrategy.CD)
+    diff_cmd_outputs(cmd, mount_dir_from, mount_dir_to, strategy=DiffCmdOutputStrategy.CD, sort_field=1)
 
 
-def diff_cmd_outputs(cmd, path_from, path_to, strategy: DiffCmdOutputStrategy = DiffCmdOutputStrategy.TEMPLATE):
+def diff_cmd_outputs(cmd, path_from, path_to, strategy: DiffCmdOutputStrategy = DiffCmdOutputStrategy.TEMPLATE, sort_field=0):
     workingdir = None
     with tempfile.NamedTemporaryFile(prefix=cmd[0] + '-') as from_output, \
          tempfile.NamedTemporaryFile(prefix=cmd[0] + '-') as to_output:
@@ -618,7 +618,11 @@ def diff_cmd_outputs(cmd, path_from, path_to, strategy: DiffCmdOutputStrategy = 
                 c[idx] = path
             elif strategy == DiffCmdOutputStrategy.CD:
                 workingdir = path
-            subprocess.run(c, cwd=workingdir, check=True, stdout=output)
+            if sort_field:
+                proc = subprocess.run(c, cwd=workingdir, check=True, stdout=subprocess.PIPE)
+                subprocess.run(['sort', f'-k{sort_field}'], input=proc.stdout, check=True, stdout=output)
+            else:
+                subprocess.run(c, cwd=workingdir, check=True, stdout=output)
         git_diff(from_output.name, to_output.name)
 
 
