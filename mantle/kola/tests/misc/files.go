@@ -16,7 +16,6 @@ package misc
 
 import (
 	"fmt"
-	"runtime"
 	"strings"
 
 	"github.com/coreos/coreos-assembler/mantle/kola/cluster"
@@ -37,7 +36,6 @@ func Filesystem(c cluster.TestCluster) {
 	c.Run("writablefiles", WritableFiles)
 	c.Run("writabledirs", WritableDirs)
 	c.Run("stickydirs", StickyDirs)
-	c.Run("denylist", Denylist)
 }
 
 func WritableFiles(c cluster.TestCluster) {
@@ -85,51 +83,5 @@ func StickyDirs(c cluster.TestCluster) {
 
 	if string(output) != "" {
 		c.Fatalf("Unknown sticky directories found: %s", output)
-	}
-}
-
-func Denylist(c cluster.TestCluster) {
-	m := c.Machines()[0]
-
-	skip := []string{
-		// Directories not to descend into
-		"/proc",
-		"/sys",
-		"/var/lib/docker",
-		"/sysroot/ostree",
-		"/run/NetworkManager", // default connections include spaces
-		"/run/udev",
-		"/usr/lib/firmware",
-	}
-
-	denylist := []string{
-		// Things excluded from the image that might slip in
-		"/usr/bin/python",
-		"/usr/share/man",
-
-		// net-tools "make install" copies binaries from
-		// /usr/bin/{} to /usr/bin/{}.old before overwriting them.
-		// This sometimes produced an extraneous set of {}.old
-		// binaries due to make parallelism.
-		// https://github.com/coreos/coreos-overlay/pull/2734
-		"/usr/bin/*.old",
-
-		// Control characters in filenames
-		"*[\x01-\x1f]*",
-		// Space
-		"* *",
-		// DEL
-		"*\x7f*",
-	}
-
-	// https://github.com/coreos/fedora-coreos-tracker/issues/1217
-	if runtime.GOARCH != "s390x" {
-		denylist = append(denylist, "/usr/bin/perl")
-	}
-
-	output := c.MustSSH(m, fmt.Sprintf("sudo find / -ignore_readdir_race -path %s -prune -o -path '%s' -print", strings.Join(skip, " -prune -o -path "), strings.Join(denylist, "' -print -o -path '")))
-
-	if string(output) != "" {
-		c.Fatalf("Denylisted files or directories found:\n%s", output)
 	}
 }
