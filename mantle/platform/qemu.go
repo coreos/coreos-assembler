@@ -57,6 +57,13 @@ import (
 var (
 	// ErrInitramfsEmergency is the marker error returned upon node blocking in emergency mode in initramfs.
 	ErrInitramfsEmergency = errors.New("entered emergency.target in initramfs")
+
+	ConsoleKernelArgument = map[string]string{
+		"x86_64":  "ttyS0,115200n8",
+		"ppc64le": "hvc0",
+		"aarch64": "ttyAMA0",
+		"s390x":   "ttysclp0",
+	}
 )
 
 // HostForwardPort contains details about port-forwarding for the VM.
@@ -607,8 +614,8 @@ func (builder *QemuBuilder) TempFile(pattern string) (*os.File, error) {
 	return os.CreateTemp(builder.tempdir, pattern)
 }
 
-// renderIgnition lazily renders a parsed config if one is set
-func (builder *QemuBuilder) renderIgnition() error {
+// RenderIgnition lazily renders a parsed config if one is set
+func (builder *QemuBuilder) RenderIgnition() error {
 	if !builder.ignitionSet || builder.ignitionRendered {
 		return nil
 	}
@@ -1182,7 +1189,7 @@ func (builder *QemuBuilder) addDiskImpl(disk *Disk, primary bool) error {
 		if !builder.configInjected {
 			// If the board doesn't support -fw_cfg or we were explicitly
 			// requested, inject via libguestfs on the primary disk.
-			if err := builder.renderIgnition(); err != nil {
+			if err := builder.RenderIgnition(); err != nil {
 				return errors.Wrapf(err, "rendering ignition")
 			}
 			requiresInjection := builder.ConfigFile != "" && builder.ForceConfigInjection
@@ -1614,7 +1621,7 @@ func (builder *QemuBuilder) setupIso() error {
 	if kargsSupported, err := coreosInstallerSupportsISOKargs(); err != nil {
 		return err
 	} else if kargsSupported {
-		allargs := fmt.Sprintf("console=%s %s", consoleKernelArgument[coreosarch.CurrentRpmArch()], builder.AppendKernelArgs)
+		allargs := fmt.Sprintf("console=%s %s", ConsoleKernelArgument[coreosarch.CurrentRpmArch()], builder.AppendKernelArgs)
 		instCmdKargs := exec.Command("coreos-installer", "iso", "kargs", "modify", "--append", allargs, isoEmbeddedPath)
 		var stderrb bytes.Buffer
 		instCmdKargs.Stderr = &stderrb
@@ -1793,7 +1800,7 @@ func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 	builder.finalize()
 	var err error
 
-	if err := builder.renderIgnition(); err != nil {
+	if err := builder.RenderIgnition(); err != nil {
 		return nil, errors.Wrapf(err, "rendering ignition")
 	}
 
