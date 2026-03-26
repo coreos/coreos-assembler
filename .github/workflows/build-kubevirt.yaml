@@ -1,0 +1,55 @@
+---
+name: Build Fedora CoreOS KubeVirt Image
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-kubevirt:
+    name: Build KubeVirt Image
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Enable KVM access
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Build KubeVirt image
+        run: |
+          set -euxo pipefail
+
+          cosa() {
+            env | sort > /tmp/cosa-env
+            podman run --rm \
+              --security-opt=label=disable --privileged \
+              --uidmap=1000:0:1 --uidmap=0:1:1000 --uidmap=1001:1001:64536 \
+              -v="${PWD}:/srv/" --device=/dev/kvm --device=/dev/fuse \
+              --tmpfs=/tmp -v=/var/tmp:/var/tmp \
+              --env-file=/tmp/cosa-env \
+              ${COREOS_ASSEMBLER_CONTAINER} "$@"
+            rc=$?; return $rc
+          }
+
+          export COREOS_ASSEMBLER_CONTAINER="${COREOS_ASSEMBLER_CONTAINER:-quay.io/coreos-assembler/coreos-assembler:latest}"
+
+          cosa init https://github.com/coreos/fedora-coreos-config
+          cosa fetch
+          cosa build
+          cosa buildextend-kubevirt
+
+      - name: Upload KubeVirt artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: fcos-kubevirt-image
+          path: builds/latest/**/fedora-coreos-*-kubevirt.*.ociarchive
+          if-no-files-found: error
