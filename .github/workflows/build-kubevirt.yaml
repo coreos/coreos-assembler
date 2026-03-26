@@ -28,12 +28,14 @@ jobs:
         run: |
           set -euxo pipefail
 
+          builddir=$(mktemp -d)
+
           cosa() {
             env | sort > /tmp/cosa-env
             podman run --rm \
               --security-opt=label=disable --privileged \
               --uidmap=1000:0:1 --uidmap=0:1:1000 --uidmap=1001:1001:64536 \
-              -v="${PWD}:/srv/" --device=/dev/kvm --device=/dev/fuse \
+              -v="${builddir}:/srv/" --device=/dev/kvm --device=/dev/fuse \
               --tmpfs=/tmp -v=/var/tmp:/var/tmp \
               --env-file=/tmp/cosa-env \
               ${COREOS_ASSEMBLER_CONTAINER} "$@"
@@ -46,6 +48,9 @@ jobs:
           cosa fetch
           cosa build
           cosa buildextend-kubevirt
+
+          # Copy artifacts back for upload
+          cp -r "${builddir}/builds" "${GITHUB_WORKSPACE}/builds"
 
       - name: Upload KubeVirt artifact
         uses: actions/upload-artifact@v4
