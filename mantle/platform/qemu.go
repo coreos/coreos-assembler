@@ -607,8 +607,8 @@ func (builder *QemuBuilder) TempFile(pattern string) (*os.File, error) {
 	return os.CreateTemp(builder.tempdir, pattern)
 }
 
-// renderIgnition lazily renders a parsed config if one is set
-func (builder *QemuBuilder) renderIgnition() error {
+// RenderIgnition lazily renders a parsed config if one is set
+func (builder *QemuBuilder) RenderIgnition() error {
 	if !builder.ignitionSet || builder.ignitionRendered {
 		return nil
 	}
@@ -1182,7 +1182,7 @@ func (builder *QemuBuilder) addDiskImpl(disk *Disk, primary bool) error {
 		if !builder.configInjected {
 			// If the board doesn't support -fw_cfg or we were explicitly
 			// requested, inject via libguestfs on the primary disk.
-			if err := builder.renderIgnition(); err != nil {
+			if err := builder.RenderIgnition(); err != nil {
 				return errors.Wrapf(err, "rendering ignition")
 			}
 			requiresInjection := builder.ConfigFile != "" && builder.ForceConfigInjection
@@ -1793,7 +1793,7 @@ func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 	builder.finalize()
 	var err error
 
-	if err := builder.renderIgnition(); err != nil {
+	if err := builder.RenderIgnition(); err != nil {
 		return nil, errors.Wrapf(err, "rendering ignition")
 	}
 
