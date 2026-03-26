@@ -45,6 +45,7 @@ import (
 	doapi "github.com/coreos/coreos-assembler/mantle/platform/api/do"
 	esxapi "github.com/coreos/coreos-assembler/mantle/platform/api/esx"
 	gcloudapi "github.com/coreos/coreos-assembler/mantle/platform/api/gcloud"
+	kubevirtapi "github.com/coreos/coreos-assembler/mantle/platform/api/kubevirt"
 	openstackapi "github.com/coreos/coreos-assembler/mantle/platform/api/openstack"
 	"github.com/coreos/coreos-assembler/mantle/platform/conf"
 	"github.com/coreos/coreos-assembler/mantle/platform/machine/aws"
@@ -52,6 +53,7 @@ import (
 	"github.com/coreos/coreos-assembler/mantle/platform/machine/do"
 	"github.com/coreos/coreos-assembler/mantle/platform/machine/esx"
 	"github.com/coreos/coreos-assembler/mantle/platform/machine/gcloud"
+	"github.com/coreos/coreos-assembler/mantle/platform/machine/kubevirt"
 	"github.com/coreos/coreos-assembler/mantle/platform/machine/openstack"
 	"github.com/coreos/coreos-assembler/mantle/platform/machine/qemu"
 	"github.com/coreos/coreos-assembler/mantle/platform/machine/qemuiso"
@@ -113,6 +115,7 @@ var (
 	DOOptions        = doapi.Options{Options: &Options}        // glue to set platform options from main
 	ESXOptions       = esxapi.Options{Options: &Options}       // glue to set platform options from main
 	GCPOptions       = gcloudapi.Options{Options: &Options}    // glue to set platform options from main
+	KubeVirtOptions  = kubevirtapi.Options{Options: &Options}  // glue to set platform options from main
 	OpenStackOptions = openstackapi.Options{Options: &Options} // glue to set platform options from main
 	QEMUOptions      = qemu.Options{Options: &Options}         // glue to set platform options from main
 	QEMUIsoOptions   = qemuiso.Options{Options: &Options}      // glue to set platform options from main
@@ -310,6 +313,8 @@ func NewFlight(pltfrm string) (flight platform.Flight, err error) {
 		flight, err = esx.NewFlight(&ESXOptions)
 	case "gcp":
 		flight, err = gcloud.NewFlight(&GCPOptions)
+	case "kubevirt":
+		flight, err = kubevirt.NewFlight(&KubeVirtOptions)
 	case "openstack":
 		flight, err = openstack.NewFlight(&OpenStackOptions)
 	case "qemu":
@@ -1164,7 +1169,7 @@ func runExternalTest(c cluster.TestCluster, mach platform.Machine, testNum int) 
 	}
 }
 
-func registerExternalTest(testname, executable, dependencydir string, userdata *conf.UserData, baseMeta externalTestMeta) error {
+func registerExternalTest(testname, executable, dependencydir string, userdata *conf.UserData, baseMeta externalTestMeta, networkData, cloudInitType string) error {
 	targetMeta, err := metadataFromTestBinary(executable)
 	if err != nil {
 		return errors.Wrapf(err, "Parsing metadata from %s", executable)
@@ -1250,6 +1255,8 @@ ExecStart=%s
 		InstanceType:              targetMeta.InstanceType,
 		NonExclusive:              !targetMeta.Exclusive,
 		Conflicts:                 targetMeta.Conflicts,
+		CloudInitType:             cloudInitType,
+		NetworkData:               networkData,
 
 		Run: func(c cluster.TestCluster) {
 			mach := c.Machines()[0]
@@ -1337,6 +1344,8 @@ func patternMatchesTests(pattern string, tests map[string]*register.Test) (bool,
 // registerTestDir parses one test directory and registers it as a test
 func registerTestDir(dir, testprefix string, children []os.DirEntry) error {
 	var dependencydir string
+	var networkData string
+	var cloudInitType string
 	var meta externalTestMeta
 	userdata := conf.EmptyIgnition()
 	executables := []string{}
@@ -1381,6 +1390,26 @@ func registerTestDir(dir, testprefix string, children []os.DirEntry) error {
 			if err := dec.Decode(&meta); err != nil {
 				return errors.Wrapf(err, "parsing %s", fpath)
 			}
+		} else if isreg && c.Name() == "network_data.json" {
+			if cloudInitType != "" {
+				return fmt.Errorf("found both network_data.json and network-config in %s; use only one", dir)
+			}
+			v, err := os.ReadFile(filepath.Join(dir, c.Name()))
+			if err != nil {
+				return errors.Wrapf(err, "reading %s", c.Name())
+			}
+			networkData = string(v)
+			cloudInitType = "configdrive"
+		} else if isreg && c.Name() == "network-config" {
+			if cloudInitType != "" {
+				return fmt.Errorf("found both network_data.json and network-config in %s; use only one", dir)
+			}
+			v, err := os.ReadFile(filepath.Join(dir, c.Name()))
+			if err != nil {
+				return errors.Wrapf(err, "reading %s", c.Name())
+			}
+			networkData = string(v)
+			cloudInitType = "nocloud"
 		} else if c.IsDir() && c.Name() == kolaExtBinDataName {
 			dependencydir = filepath.Join(dir, c.Name())
 		} else if c.Mode()&os.ModeSymlink != 0 && c.Name() == kolaExtBinDataName {
@@ -1427,7 +1456,7 @@ func registerTestDir(dir, testprefix string, children []os.DirEntry) error {
 			continue
 		}
 
-		err := registerExternalTest(testname, executable, dependencydir, userdata, meta)
+		err := registerExternalTest(testname, executable, dependencydir, userdata, meta, networkData, cloudInitType)
 		if err != nil {
 			return err
 		}
@@ -1870,6 +1899,8 @@ func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flig
 			AppendFirstbootKernelArgs: t.AppendFirstbootKernelArgs,
 			SkipStartMachine:          true,
 			InstanceType:              t.InstanceType,
+			CloudInitType:             t.CloudInitType,
+			NetworkData:               t.NetworkData,
 		}
 
 		if testSecureBoot(t) {
