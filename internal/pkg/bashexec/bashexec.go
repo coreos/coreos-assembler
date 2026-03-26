@@ -2,15 +2,14 @@
 // What this primarily offers over directly writing e.g. `exec.Command("bash")`
 // is:
 //
-// - By default, all fragments are executed in "bash strict mode": http://redsymbol.net/articles/unofficial-bash-strict-mode/
-// - The code encourages adding a "name" for in-memory scripts, similar to e.g.
-//   Ansible tasks as well as many CI systems like Github actions
-// - The code to execute is piped to stdin instead of passed via `-c` which
-//   avoids argument length limits and makes the output of e.g. `ps` readable.
-// - Scripts are assumed synchronous, and stdin/stdout/stderr are passed directly
-//   instead of piped.
-// - We use prctl(PR_SET_PDEATHSIG) (assuming Linux) to lifecycle bind the script to the caller
-//
+//   - By default, all fragments are executed in "bash strict mode": http://redsymbol.net/articles/unofficial-bash-strict-mode/
+//   - The code encourages adding a "name" for in-memory scripts, similar to e.g.
+//     Ansible tasks as well as many CI systems like Github actions
+//   - The code to execute is piped to stdin instead of passed via `-c` which
+//     avoids argument length limits and makes the output of e.g. `ps` readable.
+//   - Scripts are assumed synchronous, and stdin/stdout/stderr are passed directly
+//     instead of piped.
+//   - We use prctl(PR_SET_PDEATHSIG) (assuming Linux) to lifecycle bind the script to the caller
 package bashexec
 
 import (
