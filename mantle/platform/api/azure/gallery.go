@@ -22,13 +22,10 @@ import (
 	"net/http"
 	"runtime"
 	"strings"
-	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute"
-
-	"github.com/coreos/coreos-assembler/mantle/util"
 )
 
 // truncateFCOSVersion converts an FCOS version like 42.20250526.2.1
@@ -203,37 +200,17 @@ func (a *API) CreateGalleryImage(name, galleryName, resourceGroup, sourceImageID
 	return imageVersionResponse.GalleryImageVersion, nil
 }
 
-func (a *API) DeleteGalleryImage(imageName, resourceGroup, galleryName string) error {
+func (a *API) DeleteGalleryImageVersion(imageName, version, resourceGroup, galleryName, galleryProfile string, deleteDefinition bool) error {
 	ctx := context.Background()
 
-	timeout := 5 * time.Minute
-	delay := 5 * time.Second
-	// There is sometimes a delay in the azure backend where deleted gallery images versions
-	// still show within the image definition causing a failure during image deletion. We'll
-	// retry the delete command again until a specified timeout to ensure the image is deleted.
-	err := util.RetryUntilTimeout(timeout, delay, func() error {
-		// Find all image versions in the image definition and delete them.
-		// Gallery images can only be deleted if they have no nested resources.
-		versionPager := a.galImgVerClient.NewListByGalleryImagePager(resourceGroup, galleryName, imageName, nil)
-		for versionPager.More() {
-			versionPage, err := versionPager.NextPage(ctx)
-			if err != nil {
-				return fmt.Errorf("failed to list image versions for %s: %v", imageName, err)
-			}
-			for _, version := range versionPage.Value {
-				poller, err := a.galImgVerClient.BeginDelete(ctx, resourceGroup, galleryName, imageName, *version.Name, nil)
-				if err != nil {
-					return err
-				}
-				_, err = poller.PollUntilDone(ctx, nil)
-				if err != nil {
-					return err
-				}
-			}
-		}
+	profileCfg, err := a.resolveGalleryProfile(galleryProfile, version)
+	if err != nil {
+		return err
+	}
 
-		// delete the gallery image
-		poller, err := a.galImgClient.BeginDelete(ctx, resourceGroup, galleryName, imageName, nil)
+	_, err = a.galImgVerClient.Get(ctx, resourceGroup, galleryName, imageName, profileCfg.Version, nil)
+	if err == nil {
+		poller, err := a.galImgVerClient.BeginDelete(ctx, resourceGroup, galleryName, imageName, profileCfg.Version, nil)
 		if err != nil {
 			return err
 		}
@@ -242,9 +219,36 @@ func (a *API) DeleteGalleryImage(imageName, resourceGroup, galleryName string) e
 			return err
 		}
 
-		return nil
-	})
+		plog.Printf("Gallery image version %q for image %q in gallery %q in resource group %q removed", profileCfg.Version, imageName, galleryName, resourceGroup)
 
-	return err
+	} else if isNotFound(err) {
+		plog.Printf("Gallery image version %q for image %q not found in gallery %q in resource group %q; nothing to delete", profileCfg.Version, imageName, galleryName, resourceGroup)
+	} else {
+		return err
+	}
 
+	// Delete the gallery image definition if requested.
+	// Gallery images definitions can only be deleted if they have no nested versions.
+	if deleteDefinition {
+		_, err = a.galImgClient.Get(ctx, resourceGroup, galleryName, imageName, nil)
+		if err == nil {
+			poller, err := a.galImgClient.BeginDelete(ctx, resourceGroup, galleryName, imageName, nil)
+			if err != nil {
+				return err
+			}
+			_, err = poller.PollUntilDone(ctx, nil)
+			if err != nil {
+				return err
+			}
+
+			plog.Printf("Gallery image definition %q in gallery %q in resource group %q removed", imageName, galleryName, resourceGroup)
+
+		} else if isNotFound(err) {
+			plog.Printf("Gallery image definition %q not found in gallery %q in resource group %q; nothing to delete", imageName, galleryName, resourceGroup)
+		} else {
+			return err
+		}
+	}
+
+	return nil
 }
