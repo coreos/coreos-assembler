@@ -40,7 +40,7 @@ var (
 	kolaPlatform      string
 	kolaParallelArg   string
 	kolaArchitectures = []string{"amd64"}
-	kolaPlatforms     = []string{"aws", "azure", "do", "esx", "gcp", "openstack", "qemu", "qemu-iso"}
+	kolaPlatforms     = []string{"aws", "azure", "do", "esx", "gcp", "kubevirt", "openstack", "qemu", "qemu-iso"}
 	kolaDistros       = []string{"fcos", "rhcos", "scos"}
 )
 
@@ -139,6 +139,14 @@ func init() {
 	sv(&kola.OpenStackOptions.Network, "openstack-network", "", "OpenStack network")
 	sv(&kola.OpenStackOptions.Domain, "openstack-domain", "", "OpenStack domain ID")
 	sv(&kola.OpenStackOptions.FloatingIPNetwork, "openstack-floating-ip-network", "", "OpenStack network to use when creating a floating IP")
+
+	// kubevirt-specific options
+	sv(&kola.KubeVirtOptions.Kubeconfig, "kubevirt-kubeconfig", "", "Path to kubeconfig (default: in-cluster or ~/.kube/config)")
+	sv(&kola.KubeVirtOptions.Namespace, "kubevirt-namespace", "default", "Kubernetes namespace for VMs")
+	sv(&kola.KubeVirtOptions.Image, "kubevirt-image", "", "Container disk image pull spec")
+	sv(&kola.KubeVirtOptions.CloudInitType, "kubevirt-cloud-init-type", "configdrive", "Cloud-init type: configdrive or nocloud")
+	sv(&kola.KubeVirtOptions.Memory, "kubevirt-memory", "2Gi", "VM memory")
+	root.PersistentFlags().Uint32Var(&kola.KubeVirtOptions.CPUs, "kubevirt-cpus", 2, "VM CPUs")
 
 	// QEMU-specific options
 	sv(&kola.QEMUOptions.Firmware, "qemu-firmware", "", "Boot firmware: bios,uefi,uefi-secure (default bios)")

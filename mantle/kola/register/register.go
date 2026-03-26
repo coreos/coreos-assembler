@@ -128,6 +128,15 @@ type Test struct {
 	// If provided, this test will be run on the target instance type.
 	// This overrides the instance type set with `kola run`
 	InstanceType string
+
+	// CloudInitType specifies the cloud-init volume type (kubevirt-only):
+	// "configdrive" or "nocloud". Auto-detected from network data filename:
+	// network_data.json -> configdrive, network-config -> nocloud.
+	CloudInitType string
+
+	// NetworkData is network configuration passed to the cloud-init volume
+	// (kubevirt-only). Format depends on CloudInitType.
+	NetworkData string
 }
 
 // Registered tests that run as part of `kola run` live here. Mapping of names

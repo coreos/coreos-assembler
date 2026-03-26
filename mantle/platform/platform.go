@@ -169,6 +169,8 @@ type MachineOptions struct {
 	SkipStartMachine          bool // Skip platform.StartMachine on machine bringup
 	InstanceType              string
 	Firmware                  string
+	CloudInitType             string // kubevirt-only: "configdrive" or "nocloud"
+	NetworkData               string // kubevirt-only: network config passed to cloud-init volume
 }
 
 // SystemdDropin is a userdata type agnostic struct representing a systemd dropin

@@ -19,11 +19,11 @@ import (
 
 	"github.com/coreos/coreos-assembler/mantle/kola/cluster"
 	"github.com/coreos/coreos-assembler/mantle/kola/register"
+	"github.com/coreos/coreos-assembler/mantle/platform"
 	"github.com/coreos/coreos-assembler/mantle/platform/conf"
 )
 
-func init() {
-	enableMetadataService := conf.Ignition(`{
+var enableMetadataService = conf.Ignition(`{
 		"ignition": {"version": "3.0.0"},
 		"systemd": {
 			"units": [{
@@ -36,6 +36,8 @@ func init() {
 			}]
 		}
 	}`)
+
+func init() {
 
 	register.RegisterTest(&register.Test{
 		Name:        "fcos.metadata.aws",
@@ -56,6 +58,24 @@ func init() {
 		UserData:    enableMetadataService,
 		Distros:     []string{"fcos"},
 	})
+
+	register.RegisterTest(&register.Test{
+		Name:        "fcos.metadata.kubevirt.configdrive",
+		Description: "Verify afterburn metadata on KubeVirt with ConfigDrive.",
+		Run:         verifyKubeVirtConfigDrive,
+		ClusterSize: 0,
+		Platforms:   []string{"kubevirt"},
+		Distros:     []string{"fcos"},
+	})
+
+	register.RegisterTest(&register.Test{
+		Name:        "fcos.metadata.kubevirt.nocloud",
+		Description: "Verify afterburn metadata on KubeVirt with NoCloud.",
+		Run:         verifyKubeVirtNoCloud,
+		ClusterSize: 0,
+		Platforms:   []string{"kubevirt"},
+		Distros:     []string{"fcos"},
+	})
 }
 
 func verifyAWS(c cluster.TestCluster) {
@@ -66,6 +86,28 @@ func verifyAzure(c cluster.TestCluster) {
 	verify(c, "AFTERBURN_AZURE_IPV4_DYNAMIC")
 	// kola tests do not spawn machines behind a load balancer on Azure
 	// which is required for AFTERBURN_AZURE_IPV4_VIRTUAL to be present
+}
+
+func verifyKubeVirtConfigDrive(c cluster.TestCluster) {
+	opts := platform.MachineOptions{
+		CloudInitType: "configdrive",
+	}
+	_, err := c.NewMachineWithOptions(enableMetadataService, opts)
+	if err != nil {
+		c.Fatalf("Unable to create machine: %v", err)
+	}
+	verify(c, "AFTERBURN_KUBEVIRT_INSTANCE_ID", "AFTERBURN_KUBEVIRT_HOSTNAME")
+}
+
+func verifyKubeVirtNoCloud(c cluster.TestCluster) {
+	opts := platform.MachineOptions{
+		CloudInitType: "nocloud",
+	}
+	_, err := c.NewMachineWithOptions(enableMetadataService, opts)
+	if err != nil {
+		c.Fatalf("Unable to create machine: %v", err)
+	}
+	verify(c, "AFTERBURN_KUBEVIRT_INSTANCE_ID", "AFTERBURN_KUBEVIRT_HOSTNAME")
 }
 
 func verify(c cluster.TestCluster, keys ...string) {
