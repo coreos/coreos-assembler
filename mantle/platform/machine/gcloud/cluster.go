@@ -40,18 +40,6 @@ func (gc *cluster) NewMachineWithOptions(userdata *conf.UserData, options platfo
 	if err := options.EnsureNoQEMUOnlyOptions("gcp"); err != nil {
 		return nil, err
 	}
-	if options.MultiPathDisk {
-		return nil, errors.New("platform gcp does not support multipathed disks")
-	}
-	if options.AdditionalNics > 0 {
-		return nil, errors.New("platform gcp does not support additional nics")
-	}
-	if options.AppendKernelArgs != "" {
-		return nil, errors.New("platform gcp does not support appending kernel arguments")
-	}
-	if options.AppendFirstbootKernelArgs != "" {
-		return nil, errors.New("platform gcp does not support appending firstboot kernel arguments")
-	}
 	if options.InstanceType != "" {
 		return nil, errors.New("platform gcp does not support changing instance types")
 	}
