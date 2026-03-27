@@ -22,13 +22,16 @@ import (
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
-	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v4"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/storage/armstorage"
+	"github.com/coreos/pkg/capnslog"
 
 	"github.com/coreos/coreos-assembler/mantle/auth"
 )
+
+var plog = capnslog.NewPackageLogger("github.com/coreos/coreos-assembler/mantle", "platform/api/azure")
 
 type API struct {
 	azIdCred        *azidentity.DefaultAzureCredential

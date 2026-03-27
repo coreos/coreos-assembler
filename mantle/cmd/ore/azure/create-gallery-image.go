@@ -37,6 +37,8 @@ var (
 	galleryImageName string
 	galleryName      string
 	architecture     string
+	galleryProfile   string
+	version          string
 )
 
 func init() {
@@ -47,6 +49,8 @@ func init() {
 	sv(&blobUrl, "image-blob", "", "source blob url")
 	sv(&resourceGroup, "resource-group", "kola", "resource group name")
 	sv(&architecture, "arch", "", "The target architecture for the image")
+	sv(&galleryProfile, "coreos-gallery-profile", "", "The CoreOS specific gallery profile to apply to the image on upload")
+	sv(&version, "version", "", "The azure gallery image version")
 
 	Azure.AddCommand(cmdCreateGalleryImage)
 }
@@ -57,23 +61,17 @@ func runCreateGalleryImage(cmd *cobra.Command, args []string) error {
 		os.Exit(1)
 	}
 
+	if version == "" {
+		fmt.Fprintf(os.Stderr, "must supply --version\n")
+		os.Exit(1)
+	}
+
 	if err := api.SetupClients(); err != nil {
 		fmt.Fprintf(os.Stderr, "setting up clients: %v\n", err)
 		os.Exit(1)
 	}
 
-	img, err := api.CreateImage(galleryImageName, resourceGroup, blobUrl)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Couldn't create Azure image: %v\n", err)
-		os.Exit(1)
-	}
-	if img.ID == nil {
-		fmt.Fprintf(os.Stderr, "received nil image\n")
-		os.Exit(1)
-	}
-	sourceImageId := *img.ID
-
-	galleryImage, err := api.CreateGalleryImage(galleryImageName, galleryName, resourceGroup, sourceImageId, architecture)
+	galleryImage, err := api.CreateGalleryImage(galleryImageName, galleryName, resourceGroup, blobUrl, architecture, version, galleryProfile)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Couldn't create Azure Shared Image Gallery image: %v\n", err)
 		os.Exit(1)
