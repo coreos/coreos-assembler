@@ -115,40 +115,48 @@ kernel_arguments:
 
 func init() {
 	register.RegisterTest(&register.Test{
-		Name:          "multipath.day1",
-		Description:   "Verify that multipath can be configured day 1 through Ignition.",
-		Run:           runMultipathDay1,
-		ClusterSize:   1,
-		Platforms:     []string{"qemu"},
-		UserData:      mpath_on_boot_day1,
-		MultiPathDisk: true,
+		Name:        "multipath.day1",
+		Description: "Verify that multipath can be configured day 1 through Ignition.",
+		Run:         runMultipathDay1,
+		ClusterSize: 1,
+		Platforms:   []string{"qemu"},
+		UserData:    mpath_on_boot_day1,
+		MachineOptions: platform.MachineOptions{
+			MultiPathDisk: true,
+		},
 	})
 	register.RegisterTest(&register.Test{
-		Name:          "multipath.day2",
-		Description:   "Verify that multipath can be configured day 2 through Ignition.",
-		Run:           runMultipathDay2,
-		ClusterSize:   1,
-		Platforms:     []string{"qemu"},
-		MultiPathDisk: true,
+		Name:        "multipath.day2",
+		Description: "Verify that multipath can be configured day 2 through Ignition.",
+		Run:         runMultipathDay2,
+		ClusterSize: 1,
+		Platforms:   []string{"qemu"},
+		MachineOptions: platform.MachineOptions{
+			MultiPathDisk: true,
+		},
 	})
 	register.RegisterTest(&register.Test{
-		Name:            "multipath.partition",
-		Description:     "Verify that multipath can be configured for a partition.",
-		Run:             runMultipathPartition,
-		ClusterSize:     1,
-		Platforms:       []string{"qemu"},
-		UserData:        mpath_on_var_lib_containers,
-		AdditionalDisks: []string{"1G:mpath,wwn=1"},
+		Name:        "multipath.partition",
+		Description: "Verify that multipath can be configured for a partition.",
+		Run:         runMultipathPartition,
+		ClusterSize: 1,
+		Platforms:   []string{"qemu"},
+		UserData:    mpath_on_var_lib_containers,
+		MachineOptions: platform.MachineOptions{
+			AdditionalDisks: []string{"1G:mpath,wwn=1"},
+		},
 	})
 	// See https://issues.redhat.com/browse/OCPBUGS-56597
 	register.RegisterTest(&register.Test{
-		Name:          "multipath.single-disk",
-		Description:   "Verify that multipath can be reduced to one path",
-		Run:           runMultipathReduceDisk,
-		ClusterSize:   1,
-		Platforms:     []string{"qemu"},
-		UserData:      mpath_single_disk,
-		MultiPathDisk: true,
+		Name:        "multipath.single-disk",
+		Description: "Verify that multipath can be reduced to one path",
+		Run:         runMultipathReduceDisk,
+		ClusterSize: 1,
+		Platforms:   []string{"qemu"},
+		UserData:    mpath_single_disk,
+		MachineOptions: platform.MachineOptions{
+			MultiPathDisk: true,
+		},
 	})
 }
 
