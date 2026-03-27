@@ -35,6 +35,9 @@ func (oc *cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error)
 }
 
 func (oc *cluster) NewMachineWithOptions(userdata *conf.UserData, options platform.MachineOptions) (platform.Machine, error) {
+	if err := options.EnsureNoQEMUOnlyOptions("openstack"); err != nil {
+		return nil, err
+	}
 	if len(options.AdditionalDisks) > 0 {
 		return nil, errors.New("platform openstack does not yet support additional disks")
 	}

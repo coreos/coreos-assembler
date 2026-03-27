@@ -129,7 +129,7 @@ func runBasicTests(c cluster.TestCluster, firmware string, nvme bool) {
 	var err error
 	var m platform.Machine
 
-	options := platform.QemuMachineOptions{
+	options := platform.MachineOptions{
 		Firmware: firmware,
 		Nvme:     nvme,
 	}
