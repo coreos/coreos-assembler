@@ -16,7 +16,6 @@ package azure
 
 import (
 	"crypto/rand"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -48,18 +47,6 @@ func (ac *cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error)
 func (ac *cluster) NewMachineWithOptions(userdata *conf.UserData, options platform.MachineOptions) (platform.Machine, error) {
 	if err := options.EnsureNoQEMUOnlyOptions("azure"); err != nil {
 		return nil, err
-	}
-	if options.MultiPathDisk {
-		return nil, errors.New("platform azure does not support multipathed disks")
-	}
-	if options.AdditionalNics > 0 {
-		return nil, errors.New("platform azure does not support additional nics")
-	}
-	if options.AppendKernelArgs != "" {
-		return nil, errors.New("platform azure does not support appending kernel arguments")
-	}
-	if options.AppendFirstbootKernelArgs != "" {
-		return nil, errors.New("platform azure does not support appending firstboot kernel arguments")
 	}
 
 	conf, err := ac.RenderUserData(userdata, map[string]string{
