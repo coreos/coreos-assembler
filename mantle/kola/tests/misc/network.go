@@ -67,17 +67,19 @@ func init() {
 		kargs = "net.ifnames=0"
 	}
 	register.RegisterTest(&register.Test{
-		Run:              InitInterfacesTest,
-		ClusterSize:      1,
-		Name:             "rhcos.network.init-interfaces-test",
-		Description:      "Verify init-interfaces script works in both fresh setup and reboot.",
-		Timeout:          40 * time.Minute,
-		Distros:          []string{"rhcos"},
-		Platforms:        []string{"qemu"},
-		RequiredTag:      "openshift",
-		AdditionalNics:   2,
-		AppendKernelArgs: kargs,
-		UserData:         userdata,
+		Run:         InitInterfacesTest,
+		ClusterSize: 1,
+		Name:        "rhcos.network.init-interfaces-test",
+		Description: "Verify init-interfaces script works in both fresh setup and reboot.",
+		Timeout:     40 * time.Minute,
+		Distros:     []string{"rhcos"},
+		Platforms:   []string{"qemu"},
+		RequiredTag: "openshift",
+		MachineOptions: platform.MachineOptions{
+			AdditionalNics:   2,
+			AppendKernelArgs: kargs,
+		},
+		UserData: userdata,
 	})
 }
 

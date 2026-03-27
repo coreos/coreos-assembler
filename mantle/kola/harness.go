@@ -1238,18 +1238,20 @@ ExecStart=%s
 		DependencyDir: destDirs,
 		Tags:          []string{"external"},
 
-		AdditionalDisks:           targetMeta.AdditionalDisks,
-		PrimaryDisk:               targetMeta.PrimaryDisk,
-		InjectContainer:           targetMeta.InjectContainer,
-		MinMemory:                 targetMeta.MinMemory,
-		NumaNodes:                 targetMeta.NumaNodes,
-		MinDiskSize:               targetMeta.MinDiskSize,
-		AdditionalNics:            targetMeta.AdditionalNics,
-		AppendKernelArgs:          targetMeta.AppendKernelArgs,
-		AppendFirstbootKernelArgs: targetMeta.AppendFirstbootKernelArgs,
-		InstanceType:              targetMeta.InstanceType,
-		NonExclusive:              !targetMeta.Exclusive,
-		Conflicts:                 targetMeta.Conflicts,
+		MachineOptions: platform.MachineOptions{
+			AdditionalDisks:           targetMeta.AdditionalDisks,
+			PrimaryDisk:               targetMeta.PrimaryDisk,
+			MinMemory:                 targetMeta.MinMemory,
+			NumaNodes:                 targetMeta.NumaNodes,
+			MinDiskSize:               targetMeta.MinDiskSize,
+			AdditionalNics:            targetMeta.AdditionalNics,
+			AppendKernelArgs:          targetMeta.AppendKernelArgs,
+			AppendFirstbootKernelArgs: targetMeta.AppendFirstbootKernelArgs,
+			InstanceType:              targetMeta.InstanceType,
+		},
+		InjectContainer: targetMeta.InjectContainer,
+		NonExclusive:    !targetMeta.Exclusive,
+		Conflicts:       targetMeta.Conflicts,
 
 		Run: func(c cluster.TestCluster) {
 			mach := c.Machines()[0]
@@ -1620,7 +1622,7 @@ func makeNonExclusiveTest(bucket int, tests []*register.Test, flight platform.Fl
 		if test.HasFlag(register.AllowConfigWarnings) {
 			plog.Fatalf("Non-exclusive test %v cannot have AllowConfigWarnings flag", test.Name)
 		}
-		if test.AppendKernelArgs != "" {
+		if test.MachineOptions.AppendKernelArgs != "" {
 			plog.Fatalf("Non-exclusive test %v cannot have AppendKernelArgs", test.Name)
 		}
 		if !internetAccess && testRequiresInternet(test) {
@@ -1782,8 +1784,8 @@ func getNeededMemoryMiB(t *register.Test) int {
 		}
 	}
 	// If the test specifies MinMemory, use that.
-	if t.MinMemory != 0 {
-		return t.MinMemory
+	if t.MachineOptions.MinMemory != 0 {
+		return t.MachineOptions.MinMemory
 	}
 	// Fall back to architecture-specific defaults from the QEMU platform.
 	return platform.DefaultMemoryMiB(Options.CosaBuildArch)
@@ -1861,18 +1863,7 @@ func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flig
 	if t.ClusterSize > 0 {
 		var userdata *conf.UserData = t.UserData
 
-		options := platform.MachineOptions{
-			MultiPathDisk:             t.MultiPathDisk,
-			PrimaryDisk:               t.PrimaryDisk,
-			AdditionalDisks:           t.AdditionalDisks,
-			MinMemory:                 t.MinMemory,
-			MinDiskSize:               t.MinDiskSize,
-			NumaNodes:                 t.NumaNodes,
-			AdditionalNics:            t.AdditionalNics,
-			AppendKernelArgs:          t.AppendKernelArgs,
-			AppendFirstbootKernelArgs: t.AppendFirstbootKernelArgs,
-			InstanceType:              t.InstanceType,
-		}
+		options := t.MachineOptions
 
 		if testSecureBoot(t) {
 			options.Firmware = "uefi-secure"
