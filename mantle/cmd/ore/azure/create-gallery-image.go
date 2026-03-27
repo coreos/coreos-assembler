@@ -71,18 +71,7 @@ func runCreateGalleryImage(cmd *cobra.Command, args []string) error {
 		os.Exit(1)
 	}
 
-	img, err := api.CreateImage(galleryImageName, resourceGroup, blobUrl)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Couldn't create Azure image: %v\n", err)
-		os.Exit(1)
-	}
-	if img.ID == nil {
-		fmt.Fprintf(os.Stderr, "received nil image\n")
-		os.Exit(1)
-	}
-	sourceImageId := *img.ID
-
-	galleryImage, err := api.CreateGalleryImage(galleryImageName, galleryName, resourceGroup, sourceImageId, architecture, version, galleryProfile)
+	galleryImage, err := api.CreateGalleryImage(galleryImageName, galleryName, resourceGroup, blobUrl, architecture, version, galleryProfile)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Couldn't create Azure Shared Image Gallery image: %v\n", err)
 		os.Exit(1)

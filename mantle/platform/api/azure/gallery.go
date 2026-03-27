@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"runtime"
 	"strings"
 
@@ -88,7 +89,31 @@ func isNotFound(err error) bool {
 	return false
 }
 
-func (a *API) CreateGalleryImage(name, galleryName, resourceGroup, sourceImageID, architecture, version, galleryProfile string) (armcompute.GalleryImageVersion, error) {
+// storageAccountIDFromBlobURL parses the blob URL, extracts the storage account name
+// and returns the corresponding storage account resource ID
+func (a *API) storageAccountIDFromBlobURL(blobURL, resourceGroup string) (*string, error) {
+	u, err := url.Parse(blobURL)
+	if err != nil {
+		return nil, fmt.Errorf("parsing blob URL %q: %w", blobURL, err)
+	}
+
+	hostParts := strings.Split(u.Hostname(), ".")
+	if len(hostParts) < 1 || hostParts[0] == "" {
+		return nil, fmt.Errorf("extracting storage account from blob URL %q", blobURL)
+	}
+
+	storageAccountName := hostParts[0]
+	resp, err := a.accClient.GetProperties(context.Background(), resourceGroup, storageAccountName, nil)
+	if err != nil {
+		return nil, err
+	}
+	if resp.ID == nil {
+		return nil, fmt.Errorf("storage account %q in resource group %q returned nil ID", storageAccountName, resourceGroup)
+	}
+	return resp.ID, nil
+}
+
+func (a *API) CreateGalleryImage(name, galleryName, resourceGroup, sourceBlobURI, architecture, version, galleryProfile string) (armcompute.GalleryImageVersion, error) {
 	ctx := context.Background()
 
 	_, err := a.galClient.Get(ctx, resourceGroup, galleryName, nil)
@@ -177,13 +202,21 @@ func (a *API) CreateGalleryImage(name, galleryName, resourceGroup, sourceImageID
 		return armcompute.GalleryImageVersion{}, err
 	}
 
+	storageAccountID, err := a.storageAccountIDFromBlobURL(sourceBlobURI, resourceGroup)
+	if err != nil {
+		return armcompute.GalleryImageVersion{}, err
+	}
+
 	// Create a Gallery Image Version
 	imageVersionPoller, err := a.galImgVerClient.BeginCreateOrUpdate(ctx, resourceGroup, galleryName, name, profileCfg.Version, armcompute.GalleryImageVersion{
 		Location: &a.opts.Location,
 		Properties: &armcompute.GalleryImageVersionProperties{
 			StorageProfile: &armcompute.GalleryImageVersionStorageProfile{
-				Source: &armcompute.GalleryArtifactVersionSource{
-					ID: to.Ptr(sourceImageID),
+				OSDiskImage: &armcompute.GalleryOSDiskImage{
+					Source: &armcompute.GalleryDiskImageSource{
+						StorageAccountID: storageAccountID,
+						URI:              to.Ptr(sourceBlobURI),
+					},
 				},
 			},
 		},
