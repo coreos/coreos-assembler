@@ -43,6 +43,9 @@ func (ec *cluster) NewMachine(userdata *platformConf.UserData) (platform.Machine
 }
 
 func (ec *cluster) NewMachineWithOptions(userdata *platformConf.UserData, options platform.MachineOptions) (platform.Machine, error) {
+	if err := options.EnsureNoQEMUOnlyOptions("esx"); err != nil {
+		return nil, err
+	}
 	if len(options.AdditionalDisks) > 0 {
 		return nil, errors.New("platform esx does not yet support additional disks")
 	}

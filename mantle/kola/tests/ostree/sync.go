@@ -96,13 +96,13 @@ func setupNFSMachine(c cluster.TestCluster) NfsServer {
 	var err error
 	var nfs_server string
 
-	options := platform.QemuMachineOptions{
+	options := platform.MachineOptions{
 		HostForwardPorts: []platform.HostForwardPort{
 			{Service: "ssh", HostPort: 0, GuestPort: 22},
 			{Service: "nfs", HostPort: 2049, GuestPort: 2049},
 		},
+		MinMemory: 2048,
 	}
-	options.MinMemory = 2048
 	// start the machine
 	switch c := c.Cluster.(type) {
 	// These cases have to be separated because when put together to the same case statement

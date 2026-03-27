@@ -37,6 +37,9 @@ func (dc *cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error)
 }
 
 func (dc *cluster) NewMachineWithOptions(userdata *conf.UserData, options platform.MachineOptions) (platform.Machine, error) {
+	if err := options.EnsureNoQEMUOnlyOptions("do"); err != nil {
+		return nil, err
+	}
 	if len(options.AdditionalDisks) > 0 {
 		return nil, errors.New("platform do does not yet support additional disks")
 	}

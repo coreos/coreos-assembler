@@ -46,6 +46,9 @@ func (ac *cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error)
 }
 
 func (ac *cluster) NewMachineWithOptions(userdata *conf.UserData, options platform.MachineOptions) (platform.Machine, error) {
+	if err := options.EnsureNoQEMUOnlyOptions("azure"); err != nil {
+		return nil, err
+	}
 	if options.MultiPathDisk {
 		return nil, errors.New("platform azure does not support multipathed disks")
 	}

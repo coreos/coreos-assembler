@@ -505,10 +505,8 @@ func setupMultipleNetworkTest(c cluster.TestCluster, primaryMac, secondaryMac st
 	var m platform.Machine
 	var err error
 
-	options := platform.QemuMachineOptions{
-		MachineOptions: platform.MachineOptions{
-			AdditionalNics: 2,
-		},
+	options := platform.MachineOptions{
+		AdditionalNics: 2,
 	}
 	// On s390x, multiple NICs are ordered by the CCW device number. Use classic ethX names to ensure consistent and ordered naming.
 	if runtime.GOARCH == "s390x" {

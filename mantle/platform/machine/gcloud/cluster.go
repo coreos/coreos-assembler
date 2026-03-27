@@ -37,6 +37,9 @@ func (gc *cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error)
 }
 
 func (gc *cluster) NewMachineWithOptions(userdata *conf.UserData, options platform.MachineOptions) (platform.Machine, error) {
+	if err := options.EnsureNoQEMUOnlyOptions("gcp"); err != nil {
+		return nil, err
+	}
 	if options.MultiPathDisk {
 		return nil, errors.New("platform gcp does not support multipathed disks")
 	}

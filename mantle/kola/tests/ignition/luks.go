@@ -74,7 +74,7 @@ func setupTangMachine(c cluster.TestCluster) ut.TangServer {
 	var thumbprint []byte
 	var tangAddress string
 
-	options := platform.QemuMachineOptions{
+	options := platform.MachineOptions{
 		HostForwardPorts: []platform.HostForwardPort{
 			{Service: "ssh", HostPort: 0, GuestPort: 22},
 			{Service: "tang", HostPort: 0, GuestPort: 80},
@@ -234,10 +234,10 @@ func runCexTest(c cluster.TestCluster) {
 		}
 	}`)
 
-	opts := platform.QemuMachineOptions{
-		Cex: true,
+	opts := platform.MachineOptions{
+		Cex:       true,
+		MinMemory: 8192,
 	}
-	opts.MinMemory = 8192
 
 	switch pc := c.Cluster.(type) {
 	case *qemu.Cluster:

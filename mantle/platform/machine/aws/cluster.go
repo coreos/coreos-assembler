@@ -37,6 +37,9 @@ func (ac *cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error)
 }
 
 func (ac *cluster) NewMachineWithOptions(userdata *conf.UserData, options platform.MachineOptions) (platform.Machine, error) {
+	if err := options.EnsureNoQEMUOnlyOptions("aws"); err != nil {
+		return nil, err
+	}
 	if len(options.AdditionalDisks) > 0 {
 		return nil, errors.New("platform aws does not yet support additional disks")
 	}

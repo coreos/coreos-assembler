@@ -51,13 +51,6 @@ func (qc *Cluster) NewMachineWithOptions(userdata *conf.UserData, options platfo
 	if options.InstanceType != "" {
 		return nil, errors.New("platform qemu does not support changing instance types")
 	}
-	return qc.NewMachineWithQemuOptions(userdata, platform.QemuMachineOptions{
-		MachineOptions: options,
-		Firmware:       options.Firmware,
-	})
-}
-
-func (qc *Cluster) NewMachineWithQemuOptions(userdata *conf.UserData, options platform.QemuMachineOptions) (platform.Machine, error) {
 	id := uuid.New()
 
 	dir := filepath.Join(qc.RuntimeConf().OutputDir, id)
@@ -235,6 +228,13 @@ func (qc *Cluster) NewMachineWithQemuOptions(userdata *conf.UserData, options pl
 	}()
 
 	return qm, nil
+}
+
+// NewMachineWithQemuOptions is a convenience alias for NewMachineWithOptions.
+// Callers that previously used QemuMachineOptions can now pass MachineOptions
+// directly — the QEMU-specific fields live there.
+func (qc *Cluster) NewMachineWithQemuOptions(userdata *conf.UserData, options platform.MachineOptions) (platform.Machine, error) {
+	return qc.NewMachineWithOptions(userdata, options)
 }
 
 func (qc *Cluster) Destroy() {
