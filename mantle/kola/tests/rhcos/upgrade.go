@@ -205,7 +205,7 @@ func rhcosUpgradeBasic(c cluster.TestCluster) {
 // no downgraded packages
 func rhcosUpgradeFromOcpRhcos(c cluster.TestCluster) {
 	var m platform.Machine
-	options := platform.QemuMachineOptions{}
+	options := platform.MachineOptions{}
 	ignition := conf.Ignition(`{
 		"ignition": {
 			"version": "3.0.0"

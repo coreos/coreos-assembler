@@ -66,17 +66,6 @@ type HostForwardPort struct {
 	GuestPort int
 }
 
-// QemuMachineOptions is specialized MachineOption struct for QEMU.
-type QemuMachineOptions struct {
-	MachineOptions
-	HostForwardPorts    []HostForwardPort
-	DisablePDeathSig    bool
-	OverrideBackingFile string
-	Firmware            string
-	Nvme                bool
-	Cex                 bool
-}
-
 // QEMUMachine represents a qemu instance.
 type QEMUMachine interface {
 	// Embedding the Machine interface

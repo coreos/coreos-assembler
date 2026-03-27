@@ -94,11 +94,9 @@ func init() {
 func runBootMirrorTest(c cluster.TestCluster) {
 	var m platform.Machine
 	var err error
-	options := platform.QemuMachineOptions{
-		MachineOptions: platform.MachineOptions{
-			AdditionalDisks: []string{"5G", "5G"},
-			MinMemory:       4096,
-		},
+	options := platform.MachineOptions{
+		AdditionalDisks: []string{"5G", "5G"},
+		MinMemory:       4096,
 	}
 	// ppc64le uses 64K pages; see similar logic in harness.go and luks.go
 	switch coreosarch.CurrentRpmArch() {
@@ -146,11 +144,9 @@ func runBootMirrorTest(c cluster.TestCluster) {
 func runBootMirrorLUKSTest(c cluster.TestCluster) {
 	var m platform.Machine
 	var err error
-	options := platform.QemuMachineOptions{
-		MachineOptions: platform.MachineOptions{
-			AdditionalDisks: []string{"5G"},
-			MinMemory:       4096,
-		},
+	options := platform.MachineOptions{
+		AdditionalDisks: []string{"5G"},
+		MinMemory:       4096,
 	}
 	// ppc64le uses 64K pages; see similar logic in harness.go and luks.go
 	switch coreosarch.CurrentRpmArch() {

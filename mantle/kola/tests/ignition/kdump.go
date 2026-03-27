@@ -106,7 +106,7 @@ func setupSSHMachine(c cluster.TestCluster) SshServer {
 	var address string
 	var port string
 
-	options := platform.QemuMachineOptions{
+	options := platform.MachineOptions{
 		HostForwardPorts: []platform.HostForwardPort{
 			{Service: "ssh", HostPort: 0, GuestPort: 22},
 		},
@@ -253,7 +253,7 @@ func setupNFSMachine(c cluster.TestCluster) NfsServer {
 	var m platform.Machine
 	var err error
 
-	options := platform.QemuMachineOptions{
+	options := platform.MachineOptions{
 		HostForwardPorts: []platform.HostForwardPort{
 			{Service: "ssh", HostPort: 0, GuestPort: 22},
 			// Kdump NFS option does not allow a custom port

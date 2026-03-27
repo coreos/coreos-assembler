@@ -168,6 +168,36 @@ type MachineOptions struct {
 	AppendFirstbootKernelArgs string
 	InstanceType              string
 	Firmware                  string
+
+	// Fields below are only supported on QEMU-based platforms.
+	// Non-QEMU platforms call EnsureNoQEMUOnlyOptions() to reject them.
+	HostForwardPorts    []HostForwardPort
+	DisablePDeathSig    bool
+	OverrideBackingFile string
+	Nvme                bool
+	Cex                 bool
+}
+
+// EnsureNoQEMUOnlyOptions returns an error if any QEMU-only options
+// are set. Non-QEMU platforms should call this to reject unsupported
+// options early.
+func (m *MachineOptions) EnsureNoQEMUOnlyOptions(platformName string) error {
+	if len(m.HostForwardPorts) > 0 {
+		return fmt.Errorf("platform %s does not support host forward ports", platformName)
+	}
+	if m.DisablePDeathSig {
+		return fmt.Errorf("platform %s does not support DisablePDeathSig", platformName)
+	}
+	if m.OverrideBackingFile != "" {
+		return fmt.Errorf("platform %s does not support OverrideBackingFile", platformName)
+	}
+	if m.Nvme {
+		return fmt.Errorf("platform %s does not support NVMe", platformName)
+	}
+	if m.Cex {
+		return fmt.Errorf("platform %s does not support Cex", platformName)
+	}
+	return nil
 }
 
 // SystemdDropin is a userdata type agnostic struct representing a systemd dropin
