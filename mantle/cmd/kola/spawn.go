@@ -161,8 +161,7 @@ func runSpawn(cmd *cobra.Command, args []string) error {
 		if spawnVerbose {
 			fmt.Println("Spawning machine...")
 		}
-		// use qemu-specific options only if needed
-		if strings.HasPrefix(kolaPlatform, "qemu") && (spawnMachineOptions != "" || !spawnRemove) {
+		if spawnMachineOptions != "" || !spawnRemove {
 			machineOpts := platform.MachineOptions{
 				DisablePDeathSig: !spawnRemove,
 			}
