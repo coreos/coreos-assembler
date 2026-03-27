@@ -15,7 +15,6 @@ import (
 	"github.com/coreos/coreos-assembler/mantle/kola/cluster"
 	"github.com/coreos/coreos-assembler/mantle/kola/register"
 	"github.com/coreos/coreos-assembler/mantle/platform"
-	"github.com/coreos/coreos-assembler/mantle/platform/machine/qemu"
 )
 
 const (
@@ -133,16 +132,7 @@ func runBasicTests(c cluster.TestCluster, firmware string, nvme bool) {
 		Firmware: firmware,
 		Nvme:     nvme,
 	}
-	switch pc := c.Cluster.(type) {
-	// These cases have to be separated because when put together to the same case statement
-	// the golang compiler no longer checks that the individual types in the case have the
-	// NewMachineWithQemuOptions function, but rather whether platform.Cluster
-	// does which fails
-	case *qemu.Cluster:
-		m, err = pc.NewMachineWithQemuOptions(nil, options)
-	default:
-		panic("Unsupported cluster type")
-	}
+	m, err = c.Cluster.NewMachineWithOptions(nil, options)
 	if err != nil {
 		c.Fatal(err)
 	}

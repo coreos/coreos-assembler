@@ -104,16 +104,12 @@ func setupNFSMachine(c cluster.TestCluster) NfsServer {
 		MinMemory: 2048,
 	}
 	// start the machine
-	switch c := c.Cluster.(type) {
-	// These cases have to be separated because when put together to the same case statement
-	// the golang compiler no longer checks that the individual types in the case have the
-	// NewMachineWithQemuOptions function, but rather whether platform.Cluster
-	// does which fails
+	switch c.Cluster.(type) {
 	case *qemu.Cluster:
-		m, err = c.NewMachineWithQemuOptions(nfs_server_butane, options)
+		m, err = c.Cluster.NewMachineWithOptions(nfs_server_butane, options)
 		nfs_server = "10.0.2.2"
 	default:
-		m, err = c.NewMachine(nfs_server_butane)
+		m, err = c.Cluster.NewMachine(nfs_server_butane)
 		nfs_server = m.PrivateIP()
 	}
 	if err != nil {

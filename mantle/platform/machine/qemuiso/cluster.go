@@ -159,11 +159,6 @@ func (qc *Cluster) NewMachineWithOptions(userdata *conf.UserData, options platfo
 	return qm, nil
 }
 
-// NewMachineWithQemuOptions is a convenience alias for NewMachineWithOptions.
-func (qc *Cluster) NewMachineWithQemuOptions(userdata *conf.UserData, options platform.MachineOptions) (platform.Machine, error) {
-	return qc.NewMachineWithOptions(userdata, options)
-}
-
 func (qc *Cluster) Destroy() {
 	qc.BaseCluster.Destroy()
 	qc.flight.DelCluster(qc)

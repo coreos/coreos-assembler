@@ -32,7 +32,6 @@ import (
 	"github.com/coreos/coreos-assembler/mantle/kola"
 	"github.com/coreos/coreos-assembler/mantle/platform"
 	"github.com/coreos/coreos-assembler/mantle/platform/conf"
-	"github.com/coreos/coreos-assembler/mantle/platform/machine/qemu"
 )
 
 var (
@@ -162,7 +161,7 @@ func runSpawn(cmd *cobra.Command, args []string) error {
 		if spawnVerbose {
 			fmt.Println("Spawning machine...")
 		}
-		// use qemu-specific interface only if needed
+		// use qemu-specific options only if needed
 		if strings.HasPrefix(kolaPlatform, "qemu") && (spawnMachineOptions != "" || !spawnRemove) {
 			machineOpts := platform.MachineOptions{
 				DisablePDeathSig: !spawnRemove,
@@ -178,13 +177,7 @@ func runSpawn(cmd *cobra.Command, args []string) error {
 					return errors.Wrapf(err, "Could not unmarshal machine options")
 				}
 			}
-
-			switch qc := cluster.(type) {
-			case *qemu.Cluster:
-				mach, err = qc.NewMachineWithQemuOptions(userdata, machineOpts)
-			default:
-				plog.Fatalf("unreachable: qemu cluster %v unknown type", qc)
-			}
+			mach, err = cluster.NewMachineWithOptions(userdata, machineOpts)
 		} else {
 			mach, err = cluster.NewMachine(userdata)
 		}
