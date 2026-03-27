@@ -11,7 +11,6 @@ import (
 	"github.com/coreos/coreos-assembler/mantle/kola/register"
 	"github.com/coreos/coreos-assembler/mantle/platform"
 	"github.com/coreos/coreos-assembler/mantle/platform/conf"
-	"github.com/coreos/coreos-assembler/mantle/platform/machine/qemu"
 	"github.com/coreos/coreos-assembler/mantle/util"
 )
 
@@ -146,16 +145,7 @@ func setupSSHMachine(c cluster.TestCluster) SshServer {
     }`, strings.TrimSpace(string(pubkeyBuf))))
 
 	// start the machine
-	switch c := c.Cluster.(type) {
-	// These cases have to be separated because when put together to the same case statement
-	// the golang compiler no longer checks that the individual types in the case have the
-	// NewMachineWithQemuOptions function, but rather whether platform.Cluster
-	// does which fails
-	case *qemu.Cluster:
-		m, err = c.NewMachineWithQemuOptions(ignition, options)
-	default:
-		panic("unreachable")
-	}
+	m, err = c.Cluster.NewMachineWithOptions(ignition, options)
 	if err != nil {
 		c.Fatal(err)
 	}
@@ -280,16 +270,7 @@ storage:
     - path: /var/nfs/crash`)
 
 	// start the machine
-	switch c := c.Cluster.(type) {
-	// These cases have to be separated because when put together to the same case statement
-	// the golang compiler no longer checks that the individual types in the case have the
-	// NewMachineWithQemuOptions function, but rather whether platform.Cluster
-	// does which fails
-	case *qemu.Cluster:
-		m, err = c.NewMachineWithQemuOptions(nfs_server_butane, options)
-	default:
-		panic("unreachable")
-	}
+	m, err = c.Cluster.NewMachineWithOptions(nfs_server_butane, options)
 	if err != nil {
 		c.Fatal(err)
 	}
