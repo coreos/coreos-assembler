@@ -212,7 +212,7 @@ func rhcosUpgradeFromOcpRhcos(c cluster.TestCluster) {
 		}
 	}`)
 
-	switch pc := c.Cluster.(type) {
+	switch c.Cluster.(type) {
 	case *qemu.Cluster:
 		ostreeCommit := kola.CosaBuild.Meta.OstreeCommit
 		temp := os.TempDir()
@@ -228,7 +228,7 @@ func rhcosUpgradeFromOcpRhcos(c cluster.TestCluster) {
 		defer os.Remove(rhcosQcow2)
 
 		options.OverrideBackingFile = rhcosQcow2
-		m, err = pc.NewMachineWithQemuOptions(ignition, options)
+		m, err = c.Cluster.NewMachineWithOptions(ignition, options)
 		if err != nil {
 			c.Fatal(err)
 		}
