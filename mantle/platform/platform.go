@@ -166,7 +166,6 @@ type MachineOptions struct {
 	AdditionalNics            int
 	AppendKernelArgs          string
 	AppendFirstbootKernelArgs string
-	SkipStartMachine          bool // Skip platform.StartMachine on machine bringup
 	InstanceType              string
 	Firmware                  string
 }
