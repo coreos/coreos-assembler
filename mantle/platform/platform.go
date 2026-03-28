@@ -221,6 +221,12 @@ type RuntimeConfig struct {
 
 	// whether a Manhole into a machine should be created on detected failure
 	SSHOnTestFailure bool
+
+	// TestExecTimeout is a context that is cancelled when the test
+	// execution timeout fires. BaseCluster.SSH uses it to terminate
+	// in-flight SSH commands when the test times out. If nil,
+	// context.Background() is used (no timeout).
+	TestExecTimeout context.Context
 }
 
 // Wrap a StdoutPipe as a io.ReadCloser

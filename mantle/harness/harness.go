@@ -146,6 +146,16 @@ func (t *H) RunWithExecTimeoutCheck(f func(), errMsg string) {
 	t.runTimeoutCheck(t.timeoutContext, t.timeout, f, errMsg)
 }
 
+// TimeoutContext returns a context that is cancelled when the test
+// execution timer fires. If the timer has not been started yet it
+// is started now.
+func (t *H) TimeoutContext() context.Context {
+	if t.execTimer == nil {
+		t.StartExecTimer()
+	}
+	return t.timeoutContext
+}
+
 func (t *H) StopExecTimer() {
 	if t.execTimer == nil {
 		return
