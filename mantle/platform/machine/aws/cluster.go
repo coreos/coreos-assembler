@@ -37,26 +37,12 @@ func (ac *cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error)
 }
 
 func (ac *cluster) NewMachineWithOptions(userdata *conf.UserData, options platform.MachineOptions) (platform.Machine, error) {
+	if err := options.EnsureNoQEMUOnlyOptions("aws"); err != nil {
+		return nil, err
+	}
 	if len(options.AdditionalDisks) > 0 {
 		return nil, errors.New("platform aws does not yet support additional disks")
 	}
-
-	if options.MultiPathDisk {
-		return nil, errors.New("platform aws does not support multipathed disks")
-	}
-
-	if options.AdditionalNics > 0 {
-		return nil, errors.New("platform aws does not support additional nics")
-	}
-
-	if options.AppendKernelArgs != "" {
-		return nil, errors.New("platform aws does not support appending kernel arguments")
-	}
-
-	if options.AppendFirstbootKernelArgs != "" {
-		return nil, errors.New("platform aws does not support appending firstboot kernel arguments")
-	}
-
 	if options.InstanceType != "" {
 		return nil, errors.New("platform aws does not support changing instance types")
 	}
@@ -115,12 +101,10 @@ func (ac *cluster) NewMachineWithOptions(userdata *conf.UserData, options platfo
 	}
 
 	// Run StartMachine, which blocks on the machine being booted up enough
-	// for SSH access, but only if the caller didn't tell us not to.
-	if !options.SkipStartMachine {
-		if err := platform.StartMachine(mach, mach.journal); err != nil {
-			mach.Destroy()
-			return nil, err
-		}
+	// for SSH access.
+	if err := platform.StartMachine(mach, mach.journal); err != nil {
+		mach.Destroy()
+		return nil, err
 	}
 
 	ac.AddMach(mach)

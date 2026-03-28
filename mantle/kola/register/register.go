@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/coreos/coreos-assembler/mantle/kola/cluster"
+	"github.com/coreos/coreos-assembler/mantle/platform"
 	"github.com/coreos/coreos-assembler/mantle/platform/conf"
 )
 
@@ -70,45 +71,20 @@ type Test struct {
 	Timeout              time.Duration // the duration for which a test will be allowed to run
 	RequiredTag          string        // if specified, test is filtered by default unless tag is provided -- defaults to none
 	Description          string        // test description
-	NumaNodes            bool          // simulate two NUMA nodes
 
-	// Whether the primary disk is multipathed. Deprecated in favour of PrimaryDisk.
-	MultiPathDisk bool
-
-	// Sizes of additional empty disks to attach to the node, followed by
-	// comma-separated list of optional options (e.g. ["1G",
-	// "5G:mpath,foo,bar"]) -- defaults to none.
-	AdditionalDisks []string
-
-	// Size of primary disk to attach to the node, followed by
-	// comma-separated list of optional options (e.g. "20G:mpath"]).
-	PrimaryDisk string
+	// MachineOptions contains options for machine creation (disks, memory,
+	// kernel args, etc.). The test harness passes these to
+	// NewMachineWithOptions when ClusterSize > 0.
+	MachineOptions platform.MachineOptions
 
 	// InjectContainer will cause the ostree base image to be injected into the target
 	InjectContainer bool
-
-	// Minimum amount of memory in MB required for test.
-	MinMemory int
 
 	// The artificially reserved memory count in MiB for the test. This is used
 	// for budgeting memory usage for tests prior to the VMs starting up on the
 	// QEMU platform.
 	ReservedMemoryCountMiB int
 
-	// Minimum amount of primary disk in GB required for test. Deprecated in favour
-	// of PrimaryDisk.
-	MinDiskSize int
-
-	// Additional amount of NICs required for test.
-	AdditionalNics int
-
-	// Additional kernel arguments to append to the defaults.
-	AppendKernelArgs string
-
-	// Additional first boot kernel arguments to append to the defaults.
-	AppendFirstbootKernelArgs string
-
-	// ExternalTest is a path to a binary that will be uploaded
 	ExternalTest string
 	// DependencyDir is a path to directory that will be uploaded, normally used by external tests
 	DependencyDir DepDirMap
@@ -124,10 +100,6 @@ type Test struct {
 	// Conflicts is non-empty iff nonexclusive is true
 	// Contains the tests that conflict with this particular test
 	Conflicts []string
-
-	// If provided, this test will be run on the target instance type.
-	// This overrides the instance type set with `kola run`
-	InstanceType string
 }
 
 // Registered tests that run as part of `kola run` live here. Mapping of names

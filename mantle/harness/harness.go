@@ -139,11 +139,20 @@ func (t *H) StartExecTimer() {
 
 func (t *H) RunWithExecTimeoutCheck(f func(), errMsg string) {
 	if t.execTimer == nil {
-		// Some subtests do not explcitly start timer, since timer is started in
-		// kola/harness.go: runTest. So we will assign a timer in that case.
+		// If the timer is not started go ahead and start it now.
 		t.StartExecTimer()
 	}
 	t.runTimeoutCheck(t.timeoutContext, t.timeout, f, errMsg)
+}
+
+// TimeoutContext returns a context that is cancelled when the test
+// execution timer fires. If the timer has not been started yet it
+// is started now.
+func (t *H) TimeoutContext() context.Context {
+	if t.execTimer == nil {
+		t.StartExecTimer()
+	}
+	return t.timeoutContext
 }
 
 func (t *H) StopExecTimer() {

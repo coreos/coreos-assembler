@@ -43,20 +43,11 @@ func (ec *cluster) NewMachine(userdata *platformConf.UserData) (platform.Machine
 }
 
 func (ec *cluster) NewMachineWithOptions(userdata *platformConf.UserData, options platform.MachineOptions) (platform.Machine, error) {
+	if err := options.EnsureNoQEMUOnlyOptions("esx"); err != nil {
+		return nil, err
+	}
 	if len(options.AdditionalDisks) > 0 {
 		return nil, errors.New("platform esx does not yet support additional disks")
-	}
-	if options.MultiPathDisk {
-		return nil, errors.New("platform esx does not support multipathed disks")
-	}
-	if options.AdditionalNics > 0 {
-		return nil, errors.New("platform esx does not support additional nics")
-	}
-	if options.AppendKernelArgs != "" {
-		return nil, errors.New("platform esx does not support appending kernel arguments")
-	}
-	if options.AppendFirstbootKernelArgs != "" {
-		return nil, errors.New("platform esx does not support appending firstboot kernel arguments")
 	}
 	if options.InstanceType != "" {
 		return nil, errors.New("platform esx does not support changing instance types")
@@ -107,12 +98,10 @@ ExecStart=/usr/bin/bash -c 'echo "COREOS_ESX_IPV4_PRIVATE_0=$(ip addr show ens19
 	}
 
 	// Run StartMachine, which blocks on the machine being booted up enough
-	// for SSH access, but only if the caller didn't tell us not to.
-	if !options.SkipStartMachine {
-		if err := platform.StartMachine(mach, mach.journal); err != nil {
-			mach.Destroy()
-			return nil, err
-		}
+	// for SSH access.
+	if err := platform.StartMachine(mach, mach.journal); err != nil {
+		mach.Destroy()
+		return nil, err
 	}
 
 	ec.AddMach(mach)

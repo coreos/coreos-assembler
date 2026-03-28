@@ -11,11 +11,8 @@ import (
 
 	"github.com/pborman/uuid"
 
-	"github.com/coreos/coreos-assembler/mantle/kola"
-	"github.com/coreos/coreos-assembler/mantle/kola/cluster"
 	"github.com/coreos/coreos-assembler/mantle/kola/register"
 	"github.com/coreos/coreos-assembler/mantle/platform"
-	"github.com/coreos/coreos-assembler/mantle/platform/machine/qemu"
 )
 
 const (
@@ -64,31 +61,40 @@ func init() {
 	register.RegisterTest(&register.Test{
 		Name:          "basic.uefi",
 		Description:   "Verify basic functionalities like SSH, systemd services, useradd, etc, with UEFI enabled",
-		Run:           uefiWithBasicTests,
+		Run:           LocalTests,
 		Platforms:     []string{"qemu"},
-		ClusterSize:   0,
+		ClusterSize:   1,
 		NativeFuncs:   nativeFuncs,
 		Architectures: []string{"x86_64", "aarch64"},
+		MachineOptions: platform.MachineOptions{
+			Firmware: uefi,
+		},
 	})
 	register.RegisterTest(&register.Test{
 		Name:          "basic.uefi-secure",
 		Description:   "Verify basic functionalities like SSH, systemd services, useradd, etc, with UEFI Secure Boot enabled",
-		Run:           uefiSecureWithBasicTests,
+		Run:           LocalTests,
 		Platforms:     []string{"qemu"},
-		ClusterSize:   0,
+		ClusterSize:   1,
 		NativeFuncs:   nativeFuncs,
 		Architectures: []string{"x86_64"},
+		MachineOptions: platform.MachineOptions{
+			Firmware: uefiSecure,
+		},
 	})
 	register.RegisterTest(&register.Test{
 		Name:        "basic.nvme",
 		Description: "Verify basic functionalities like SSH, systemd services, useradd, etc, with nvme enabled",
-		Run:         nvmeBasicTests,
+		Run:         LocalTests,
 		Platforms:   []string{"qemu"},
-		ClusterSize: 0,
+		ClusterSize: 1,
 		NativeFuncs: nativeFuncs,
 		// NVMe in theory is supported on all arches, but the way we test it seems to
 		// only work on x86_64 and aarch64.
 		Architectures: []string{"x86_64", "aarch64"},
+		MachineOptions: platform.MachineOptions{
+			Nvme: true,
+		},
 	})
 	register.RegisterTest(&register.Test{
 		Name:        "rootfs.uuid",
@@ -111,47 +117,6 @@ func init() {
 		},
 		Distros: []string{"rhcos"},
 	})
-}
-
-func uefiWithBasicTests(c cluster.TestCluster) {
-	runBasicTests(c, uefi, false)
-}
-
-func uefiSecureWithBasicTests(c cluster.TestCluster) {
-	runBasicTests(c, uefiSecure, false)
-}
-
-func nvmeBasicTests(c cluster.TestCluster) {
-	runBasicTests(c, "", true)
-}
-
-func runBasicTests(c cluster.TestCluster, firmware string, nvme bool) {
-	var err error
-	var m platform.Machine
-
-	options := platform.QemuMachineOptions{
-		Firmware: firmware,
-		Nvme:     nvme,
-	}
-	switch pc := c.Cluster.(type) {
-	// These cases have to be separated because when put together to the same case statement
-	// the golang compiler no longer checks that the individual types in the case have the
-	// NewMachineWithQemuOptions function, but rather whether platform.Cluster
-	// does which fails
-	case *qemu.Cluster:
-		m, err = pc.NewMachineWithQemuOptions(nil, options)
-	default:
-		panic("Unsupported cluster type")
-	}
-	if err != nil {
-		c.Fatal(err)
-	}
-
-	// copy over kolet into the machine
-	if err := kola.ScpKolet([]platform.Machine{m}); err != nil {
-		c.Fatal(err)
-	}
-	LocalTests(c)
 }
 
 func TestPortSsh() error {

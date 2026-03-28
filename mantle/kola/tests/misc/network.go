@@ -27,7 +27,6 @@ import (
 	"github.com/coreos/coreos-assembler/mantle/kola/register"
 	"github.com/coreos/coreos-assembler/mantle/platform"
 	"github.com/coreos/coreos-assembler/mantle/platform/conf"
-	"github.com/coreos/coreos-assembler/mantle/platform/machine/qemu"
 	"github.com/coreos/coreos-assembler/mantle/util"
 )
 
@@ -68,17 +67,19 @@ func init() {
 		kargs = "net.ifnames=0"
 	}
 	register.RegisterTest(&register.Test{
-		Run:              InitInterfacesTest,
-		ClusterSize:      1,
-		Name:             "rhcos.network.init-interfaces-test",
-		Description:      "Verify init-interfaces script works in both fresh setup and reboot.",
-		Timeout:          40 * time.Minute,
-		Distros:          []string{"rhcos"},
-		Platforms:        []string{"qemu"},
-		RequiredTag:      "openshift",
-		AdditionalNics:   2,
-		AppendKernelArgs: kargs,
-		UserData:         userdata,
+		Run:         InitInterfacesTest,
+		ClusterSize: 1,
+		Name:        "rhcos.network.init-interfaces-test",
+		Description: "Verify init-interfaces script works in both fresh setup and reboot.",
+		Timeout:     40 * time.Minute,
+		Distros:     []string{"rhcos"},
+		Platforms:   []string{"qemu"},
+		RequiredTag: "openshift",
+		MachineOptions: platform.MachineOptions{
+			AdditionalNics:   2,
+			AppendKernelArgs: kargs,
+		},
+		UserData: userdata,
 	})
 }
 
@@ -505,10 +506,8 @@ func setupMultipleNetworkTest(c cluster.TestCluster, primaryMac, secondaryMac st
 	var m platform.Machine
 	var err error
 
-	options := platform.QemuMachineOptions{
-		MachineOptions: platform.MachineOptions{
-			AdditionalNics: 2,
-		},
+	options := platform.MachineOptions{
+		AdditionalNics: 2,
 	}
 	// On s390x, multiple NICs are ordered by the CCW device number. Use classic ethX names to ensure consistent and ordered naming.
 	if runtime.GOARCH == "s390x" {
@@ -539,16 +538,7 @@ func setupMultipleNetworkTest(c cluster.TestCluster, primaryMac, secondaryMac st
 		}
 	}`, base64.StdEncoding.EncodeToString([]byte(captureMacsScript))))
 
-	switch pc := c.Cluster.(type) {
-	// These cases have to be separated because when put together to the same case statement
-	// the golang compiler no longer checks that the individual types in the case have the
-	// NewMachineWithQemuOptions function, but rather whether platform.Cluster
-	// does which fails
-	case *qemu.Cluster:
-		m, err = pc.NewMachineWithQemuOptions(userdata, options)
-	default:
-		panic("unreachable")
-	}
+	m, err = c.Cluster.NewMachineWithOptions(userdata, options)
 	if err != nil {
 		c.Fatal(err)
 	}

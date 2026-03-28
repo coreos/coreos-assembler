@@ -74,7 +74,7 @@ func setupTangMachine(c cluster.TestCluster) ut.TangServer {
 	var thumbprint []byte
 	var tangAddress string
 
-	options := platform.QemuMachineOptions{
+	options := platform.MachineOptions{
 		HostForwardPorts: []platform.HostForwardPort{
 			{Service: "ssh", HostPort: 0, GuestPort: 22},
 			{Service: "tang", HostPort: 0, GuestPort: 80},
@@ -87,20 +87,16 @@ func setupTangMachine(c cluster.TestCluster) ut.TangServer {
 		}
 	}`)
 
-	switch pc := c.Cluster.(type) {
-	// These cases have to be separated because when put together to the same case statement
-	// the golang compiler no longer checks that the individual types in the case have the
-	// NewMachineWithQemuOptions function, but rather whether platform.Cluster
-	// does which fails
+	switch c.Cluster.(type) {
 	case *qemu.Cluster:
-		m, err = pc.NewMachineWithQemuOptions(ignition, options)
+		m, err = c.Cluster.NewMachineWithOptions(ignition, options)
 		for _, hfp := range options.HostForwardPorts {
 			if hfp.Service == "tang" {
 				tangAddress = fmt.Sprintf("10.0.2.2:%d", hfp.HostPort)
 			}
 		}
 	default:
-		m, err = pc.NewMachine(ignition)
+		m, err = c.Cluster.NewMachine(ignition)
 		tangAddress = fmt.Sprintf("%s:80", m.PrivateIP())
 	}
 	if err != nil {
@@ -234,19 +230,14 @@ func runCexTest(c cluster.TestCluster) {
 		}
 	}`)
 
-	opts := platform.QemuMachineOptions{
-		Cex: true,
+	opts := platform.MachineOptions{
+		Cex:       true,
+		MinMemory: 8192,
 	}
-	opts.MinMemory = 8192
 
-	switch pc := c.Cluster.(type) {
-	case *qemu.Cluster:
-		m, err = pc.NewMachineWithQemuOptions(ignition, opts)
-		if err != nil {
-			c.Fatalf("Unable to create test machine: %v", err)
-		}
-	default:
-		panic("Unsupported cluster type")
+	m, err = c.Cluster.NewMachineWithOptions(ignition, opts)
+	if err != nil {
+		c.Fatalf("Unable to create test machine: %v", err)
 	}
 
 	// copy over kolet into the machine

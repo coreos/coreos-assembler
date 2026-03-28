@@ -1238,18 +1238,20 @@ ExecStart=%s
 		DependencyDir: destDirs,
 		Tags:          []string{"external"},
 
-		AdditionalDisks:           targetMeta.AdditionalDisks,
-		PrimaryDisk:               targetMeta.PrimaryDisk,
-		InjectContainer:           targetMeta.InjectContainer,
-		MinMemory:                 targetMeta.MinMemory,
-		NumaNodes:                 targetMeta.NumaNodes,
-		MinDiskSize:               targetMeta.MinDiskSize,
-		AdditionalNics:            targetMeta.AdditionalNics,
-		AppendKernelArgs:          targetMeta.AppendKernelArgs,
-		AppendFirstbootKernelArgs: targetMeta.AppendFirstbootKernelArgs,
-		InstanceType:              targetMeta.InstanceType,
-		NonExclusive:              !targetMeta.Exclusive,
-		Conflicts:                 targetMeta.Conflicts,
+		MachineOptions: platform.MachineOptions{
+			AdditionalDisks:           targetMeta.AdditionalDisks,
+			PrimaryDisk:               targetMeta.PrimaryDisk,
+			MinMemory:                 targetMeta.MinMemory,
+			NumaNodes:                 targetMeta.NumaNodes,
+			MinDiskSize:               targetMeta.MinDiskSize,
+			AdditionalNics:            targetMeta.AdditionalNics,
+			AppendKernelArgs:          targetMeta.AppendKernelArgs,
+			AppendFirstbootKernelArgs: targetMeta.AppendFirstbootKernelArgs,
+			InstanceType:              targetMeta.InstanceType,
+		},
+		InjectContainer: targetMeta.InjectContainer,
+		NonExclusive:    !targetMeta.Exclusive,
+		Conflicts:       targetMeta.Conflicts,
 
 		Run: func(c cluster.TestCluster) {
 			mach := c.Machines()[0]
@@ -1620,7 +1622,7 @@ func makeNonExclusiveTest(bucket int, tests []*register.Test, flight platform.Fl
 		if test.HasFlag(register.AllowConfigWarnings) {
 			plog.Fatalf("Non-exclusive test %v cannot have AllowConfigWarnings flag", test.Name)
 		}
-		if test.AppendKernelArgs != "" {
+		if test.MachineOptions.AppendKernelArgs != "" {
 			plog.Fatalf("Non-exclusive test %v cannot have AppendKernelArgs", test.Name)
 		}
 		if !internetAccess && testRequiresInternet(test) {
@@ -1759,11 +1761,11 @@ func waitForMemory(h *harness.H, flight platform.Flight, t *register.Test) {
 // pool. This should be called after the test's QEMU VM has been started and
 // the memory allocated for the VM.
 func releaseMemoryCount(flight platform.Flight, t *register.Test) {
+	reservedMemoryCountMutex.Lock()
+	defer reservedMemoryCountMutex.Unlock()
 	if t.ReservedMemoryCountMiB == 0 {
 		return // memory count already released
 	}
-	reservedMemoryCountMutex.Lock()
-	defer reservedMemoryCountMutex.Unlock()
 	reservedMemoryCountMiB -= t.ReservedMemoryCountMiB
 	t.ReservedMemoryCountMiB = 0
 	if reservedMemoryCountMiB < 0 {
@@ -1782,8 +1784,8 @@ func getNeededMemoryMiB(t *register.Test) int {
 		}
 	}
 	// If the test specifies MinMemory, use that.
-	if t.MinMemory != 0 {
-		return t.MinMemory
+	if t.MachineOptions.MinMemory != 0 {
+		return t.MachineOptions.MinMemory
 	}
 	// Fall back to architecture-specific defaults from the QEMU platform.
 	return platform.DefaultMemoryMiB(Options.CosaBuildArch)
@@ -1811,6 +1813,7 @@ func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flig
 		SSHOnTestFailure:   Options.SSHOnTestFailure,
 		WarningsAction:     conf.FailWarnings,
 		EarlyRelease:       h.Release,
+		TestExecTimeout:    h.TimeoutContext(),
 	}
 	if t.HasFlag(register.AllowConfigWarnings) {
 		rconf.WarningsAction = conf.IgnoreWarnings
@@ -1823,6 +1826,8 @@ func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flig
 	}
 	defer func() {
 		h.StopExecTimer()
+		// give some time for the remote journal to be flushed before we Destroy()
+		time.Sleep(2 * time.Second)
 		c.Destroy()
 		// Release the memory reservation (if there was one) now that the VM is gone.
 		releaseMemoryCount(flight, t)
@@ -1858,19 +1863,7 @@ func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flig
 	if t.ClusterSize > 0 {
 		var userdata *conf.UserData = t.UserData
 
-		options := platform.MachineOptions{
-			MultiPathDisk:             t.MultiPathDisk,
-			PrimaryDisk:               t.PrimaryDisk,
-			AdditionalDisks:           t.AdditionalDisks,
-			MinMemory:                 t.MinMemory,
-			MinDiskSize:               t.MinDiskSize,
-			NumaNodes:                 t.NumaNodes,
-			AdditionalNics:            t.AdditionalNics,
-			AppendKernelArgs:          t.AppendKernelArgs,
-			AppendFirstbootKernelArgs: t.AppendFirstbootKernelArgs,
-			SkipStartMachine:          true,
-			InstanceType:              t.InstanceType,
-		}
+		options := t.MachineOptions
 
 		if testSecureBoot(t) {
 			options.Firmware = "uefi-secure"
@@ -1913,32 +1906,19 @@ func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flig
 		tcluster.H.WarningOnFailure()
 	}
 
-	// Note that we passed in SkipStartMachine=true in our machine
-	// options. This means NewMachines() didn't block on the machines
-	// being up with SSH access before returning; i.e. it skipped running
-	// platform.StartMachines(). The machines should now be booting.
-	// Let's start the test execution timer and then run mach.Start()
-	// (wrapper for platform.StartMachine()) which sets up the journal
-	// forwarding and runs machine checks, both of which require SSH
-	// to be up, which implies Ignition has completed successfully.
-	//
-	// We do all of this so that the time it takes to run Ignition can
-	// be included in our test execution timeout.
-	h.StartExecTimer()
-	for _, mach := range tcluster.Machines() {
-		plog.Debugf("Trying to StartMachine() %v", mach.ID())
-		var err error
-		tcluster.RunWithExecTimeoutCheck(func() {
-			err = mach.Start()
-		}, fmt.Sprintf("SSH unsuccessful within allotted timeframe for %v.", mach.ID()))
-		if err != nil {
-			h.Fatal(errors.Wrapf(err, "mach.Start() failed"))
+	// Machines may be created directly by the test (not via the
+	// harness with NewMachines above), so we poll asynchronously
+	// via a goroutine until at least one shows up and then release
+	// the temporary memory reservation.
+	go func() {
+		// Wait for at least one machine in the cluster to exist.
+		// At the point machines show up in tcluster.Machines() they've
+		// already been contacted successfully via SSH in StartMachine().
+		for len(tcluster.Machines()) == 0 {
+			time.Sleep(1 * time.Second)
 		}
-	}
-
-	// Release the temporary memory reservation now that the VM is up and should
-	// be using it's allotted memory (preallocation). Applicable on qemu only.
-	releaseMemoryCount(flight, t)
+		releaseMemoryCount(flight, t)
+	}()
 
 	// drop kolet binary on machines
 	if t.ExternalTest != "" || t.NativeFuncs != nil {
@@ -1998,12 +1978,6 @@ func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flig
 			}
 		}
 	}
-
-	defer func() {
-		// give some time for the remote journal to be flushed so it can be read
-		// before we run the deferred machine destruction
-		time.Sleep(2 * time.Second)
-	}()
 
 	// run test
 	t.Run(tcluster)

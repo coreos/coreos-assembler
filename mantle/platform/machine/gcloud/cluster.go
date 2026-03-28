@@ -37,17 +37,8 @@ func (gc *cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error)
 }
 
 func (gc *cluster) NewMachineWithOptions(userdata *conf.UserData, options platform.MachineOptions) (platform.Machine, error) {
-	if options.MultiPathDisk {
-		return nil, errors.New("platform gcp does not support multipathed disks")
-	}
-	if options.AdditionalNics > 0 {
-		return nil, errors.New("platform gcp does not support additional nics")
-	}
-	if options.AppendKernelArgs != "" {
-		return nil, errors.New("platform gcp does not support appending kernel arguments")
-	}
-	if options.AppendFirstbootKernelArgs != "" {
-		return nil, errors.New("platform gcp does not support appending firstboot kernel arguments")
+	if err := options.EnsureNoQEMUOnlyOptions("gcp"); err != nil {
+		return nil, err
 	}
 	if options.InstanceType != "" {
 		return nil, errors.New("platform gcp does not support changing instance types")
@@ -101,12 +92,10 @@ func (gc *cluster) NewMachineWithOptions(userdata *conf.UserData, options platfo
 	}
 
 	// Run StartMachine, which blocks on the machine being booted up enough
-	// for SSH access, but only if the caller didn't tell us not to.
-	if !options.SkipStartMachine {
-		if err := platform.StartMachine(gm, gm.journal); err != nil {
-			gm.Destroy()
-			return nil, err
-		}
+	// for SSH access.
+	if err := platform.StartMachine(gm, gm.journal); err != nil {
+		gm.Destroy()
+		return nil, err
 	}
 
 	gc.AddMach(gm)

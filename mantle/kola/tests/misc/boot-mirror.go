@@ -26,7 +26,6 @@ import (
 	"github.com/coreos/coreos-assembler/mantle/kola/tests/util"
 	"github.com/coreos/coreos-assembler/mantle/platform"
 	"github.com/coreos/coreos-assembler/mantle/platform/conf"
-	"github.com/coreos/coreos-assembler/mantle/platform/machine/qemu"
 	ut "github.com/coreos/coreos-assembler/mantle/util"
 )
 
@@ -94,11 +93,9 @@ func init() {
 func runBootMirrorTest(c cluster.TestCluster) {
 	var m platform.Machine
 	var err error
-	options := platform.QemuMachineOptions{
-		MachineOptions: platform.MachineOptions{
-			AdditionalDisks: []string{"5G", "5G"},
-			MinMemory:       4096,
-		},
+	options := platform.MachineOptions{
+		AdditionalDisks: []string{"5G", "5G"},
+		MinMemory:       4096,
 	}
 	// ppc64le uses 64K pages; see similar logic in harness.go and luks.go
 	switch coreosarch.CurrentRpmArch() {
@@ -108,7 +105,7 @@ func runBootMirrorTest(c cluster.TestCluster) {
 	// FIXME: for QEMU tests kola currently assumes the host CPU architecture
 	// matches the one under test
 	userdata := bootmirror.Subst("LAYOUT", coreosarch.CurrentRpmArch())
-	m, err = c.Cluster.(*qemu.Cluster).NewMachineWithQemuOptions(userdata, options)
+	m, err = c.Cluster.NewMachineWithOptions(userdata, options)
 	if err != nil {
 		c.Fatal(err)
 	}
@@ -146,11 +143,9 @@ func runBootMirrorTest(c cluster.TestCluster) {
 func runBootMirrorLUKSTest(c cluster.TestCluster) {
 	var m platform.Machine
 	var err error
-	options := platform.QemuMachineOptions{
-		MachineOptions: platform.MachineOptions{
-			AdditionalDisks: []string{"5G"},
-			MinMemory:       4096,
-		},
+	options := platform.MachineOptions{
+		AdditionalDisks: []string{"5G"},
+		MinMemory:       4096,
 	}
 	// ppc64le uses 64K pages; see similar logic in harness.go and luks.go
 	switch coreosarch.CurrentRpmArch() {
@@ -160,7 +155,7 @@ func runBootMirrorLUKSTest(c cluster.TestCluster) {
 	// FIXME: for QEMU tests kola currently assumes the host CPU architecture
 	// matches the one under test
 	userdata := bootmirrorluks.Subst("LAYOUT", coreosarch.CurrentRpmArch())
-	m, err = c.Cluster.(*qemu.Cluster).NewMachineWithQemuOptions(userdata, options)
+	m, err = c.Cluster.NewMachineWithOptions(userdata, options)
 	if err != nil {
 		c.Fatal(err)
 	}

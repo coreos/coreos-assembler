@@ -205,14 +205,14 @@ func rhcosUpgradeBasic(c cluster.TestCluster) {
 // no downgraded packages
 func rhcosUpgradeFromOcpRhcos(c cluster.TestCluster) {
 	var m platform.Machine
-	options := platform.QemuMachineOptions{}
+	options := platform.MachineOptions{}
 	ignition := conf.Ignition(`{
 		"ignition": {
 			"version": "3.0.0"
 		}
 	}`)
 
-	switch pc := c.Cluster.(type) {
+	switch c.Cluster.(type) {
 	case *qemu.Cluster:
 		ostreeCommit := kola.CosaBuild.Meta.OstreeCommit
 		temp := os.TempDir()
@@ -228,7 +228,7 @@ func rhcosUpgradeFromOcpRhcos(c cluster.TestCluster) {
 		defer os.Remove(rhcosQcow2)
 
 		options.OverrideBackingFile = rhcosQcow2
-		m, err = pc.NewMachineWithQemuOptions(ignition, options)
+		m, err = c.Cluster.NewMachineWithOptions(ignition, options)
 		if err != nil {
 			c.Fatal(err)
 		}

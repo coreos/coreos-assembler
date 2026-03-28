@@ -157,18 +157,71 @@ type Flight interface {
 }
 
 type MachineOptions struct {
+	AdditionalDisks []string
+	MinDiskSize     int
+	InstanceType    string
+
+	// Fields below are only supported on QEMU-based platforms.
+	// Non-QEMU platforms call EnsureNoQEMUOnlyOptions() to reject them.
 	MultiPathDisk             bool
 	PrimaryDisk               string
-	AdditionalDisks           []string
 	MinMemory                 int
-	MinDiskSize               int
 	NumaNodes                 bool
 	AdditionalNics            int
 	AppendKernelArgs          string
 	AppendFirstbootKernelArgs string
-	SkipStartMachine          bool // Skip platform.StartMachine on machine bringup
-	InstanceType              string
 	Firmware                  string
+	HostForwardPorts          []HostForwardPort
+	DisablePDeathSig          bool
+	OverrideBackingFile       string
+	Nvme                      bool
+	Cex                       bool
+}
+
+// EnsureNoQEMUOnlyOptions returns an error if any QEMU-only options
+// are set. Non-QEMU platforms should call this to reject unsupported
+// options early.
+func (m *MachineOptions) EnsureNoQEMUOnlyOptions(platformName string) error {
+	if m.MultiPathDisk {
+		return fmt.Errorf("platform %s does not support multipathed disks", platformName)
+	}
+	if m.PrimaryDisk != "" {
+		return fmt.Errorf("platform %s does not support custom primary disks", platformName)
+	}
+	if m.MinMemory != 0 {
+		return fmt.Errorf("platform %s does not support setting minimum memory", platformName)
+	}
+	if m.NumaNodes {
+		return fmt.Errorf("platform %s does not support NUMA node simulation", platformName)
+	}
+	if m.AdditionalNics > 0 {
+		return fmt.Errorf("platform %s does not support additional NICs", platformName)
+	}
+	if m.AppendKernelArgs != "" {
+		return fmt.Errorf("platform %s does not support appending kernel arguments", platformName)
+	}
+	if m.AppendFirstbootKernelArgs != "" {
+		return fmt.Errorf("platform %s does not support appending firstboot kernel arguments", platformName)
+	}
+	if m.Firmware != "" {
+		return fmt.Errorf("platform %s does not support setting firmware", platformName)
+	}
+	if len(m.HostForwardPorts) > 0 {
+		return fmt.Errorf("platform %s does not support host forward ports", platformName)
+	}
+	if m.DisablePDeathSig {
+		return fmt.Errorf("platform %s does not support DisablePDeathSig", platformName)
+	}
+	if m.OverrideBackingFile != "" {
+		return fmt.Errorf("platform %s does not support OverrideBackingFile", platformName)
+	}
+	if m.Nvme {
+		return fmt.Errorf("platform %s does not support NVMe", platformName)
+	}
+	if m.Cex {
+		return fmt.Errorf("platform %s does not support Cex", platformName)
+	}
+	return nil
 }
 
 // SystemdDropin is a userdata type agnostic struct representing a systemd dropin
@@ -221,6 +274,12 @@ type RuntimeConfig struct {
 
 	// whether a Manhole into a machine should be created on detected failure
 	SSHOnTestFailure bool
+
+	// TestExecTimeout is a context that is cancelled when the test
+	// execution timeout fires. BaseCluster.SSH uses it to terminate
+	// in-flight SSH commands when the test times out. If nil,
+	// context.Background() is used (no timeout).
+	TestExecTimeout context.Context
 }
 
 // Wrap a StdoutPipe as a io.ReadCloser
