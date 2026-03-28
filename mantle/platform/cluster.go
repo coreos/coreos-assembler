@@ -17,6 +17,7 @@ package platform
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"fmt"
 	"net"
 	"os"
@@ -91,6 +92,11 @@ func (bc *BaseCluster) PasswordSSHClient(ip string, user string, password string
 // SSH executes the given command, cmd, on the given Machine, m. It returns the
 // stdout and stderr of the command and an error.
 // Leading and trailing whitespace is trimmed from each.
+//
+// If the cluster's RuntimeConfig has a TestExecTimeout context set
+// (e.g. by the test harness), SSH commands will be cancelled when that
+// context is done. This allows the test execution timeout to kill hung
+// SSH sessions without requiring callers to pass a context explicitly.
 func (bc *BaseCluster) SSH(m Machine, cmd string) ([]byte, []byte, error) {
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
@@ -108,7 +114,31 @@ func (bc *BaseCluster) SSH(m Machine, cmd string) ([]byte, []byte, error) {
 
 	session.Stdout = &stdout
 	session.Stderr = &stderr
-	err = session.Run(cmd)
+
+	ctx := bc.rconf.TestExecTimeout
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	// Use Start()+Wait() so we can select on context cancellation.
+	if err := session.Start(cmd); err != nil {
+		return nil, nil, err
+	}
+
+	done := make(chan error, 1)
+	go func() { done <- session.Wait() }()
+
+	select {
+	case err = <-done:
+		// Command finished normally (or with an error).
+	case <-ctx.Done():
+		// Context cancelled/timed out. Close the session to
+		// kill the remote command, then drain the Wait goroutine.
+		session.Close()
+		<-done
+		err = ctx.Err()
+	}
+
 	plog.Debugf("Running cmd=%v res=%v", cmd, err)
 	outBytes := bytes.TrimSpace(stdout.Bytes())
 	errBytes := bytes.TrimSpace(stderr.Bytes())

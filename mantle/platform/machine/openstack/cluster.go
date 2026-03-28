@@ -94,12 +94,10 @@ func (oc *cluster) NewMachineWithOptions(userdata *conf.UserData, options platfo
 	}
 
 	// Run StartMachine, which blocks on the machine being booted up enough
-	// for SSH access, but only if the caller didn't tell us not to.
-	if !options.SkipStartMachine {
-		if err := platform.StartMachine(mach, mach.journal); err != nil {
-			mach.Destroy()
-			return nil, err
-		}
+	// for SSH access.
+	if err := platform.StartMachine(mach, mach.journal); err != nil {
+		mach.Destroy()
+		return nil, err
 	}
 
 	oc.AddMach(mach)

@@ -1759,11 +1759,11 @@ func waitForMemory(h *harness.H, flight platform.Flight, t *register.Test) {
 // pool. This should be called after the test's QEMU VM has been started and
 // the memory allocated for the VM.
 func releaseMemoryCount(flight platform.Flight, t *register.Test) {
+	reservedMemoryCountMutex.Lock()
+	defer reservedMemoryCountMutex.Unlock()
 	if t.ReservedMemoryCountMiB == 0 {
 		return // memory count already released
 	}
-	reservedMemoryCountMutex.Lock()
-	defer reservedMemoryCountMutex.Unlock()
 	reservedMemoryCountMiB -= t.ReservedMemoryCountMiB
 	t.ReservedMemoryCountMiB = 0
 	if reservedMemoryCountMiB < 0 {
@@ -1811,6 +1811,7 @@ func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flig
 		SSHOnTestFailure:   Options.SSHOnTestFailure,
 		WarningsAction:     conf.FailWarnings,
 		EarlyRelease:       h.Release,
+		TestExecTimeout:    h.TimeoutContext(),
 	}
 	if t.HasFlag(register.AllowConfigWarnings) {
 		rconf.WarningsAction = conf.IgnoreWarnings
@@ -1823,6 +1824,8 @@ func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flig
 	}
 	defer func() {
 		h.StopExecTimer()
+		// give some time for the remote journal to be flushed before we Destroy()
+		time.Sleep(2 * time.Second)
 		c.Destroy()
 		// Release the memory reservation (if there was one) now that the VM is gone.
 		releaseMemoryCount(flight, t)
@@ -1868,7 +1871,6 @@ func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flig
 			AdditionalNics:            t.AdditionalNics,
 			AppendKernelArgs:          t.AppendKernelArgs,
 			AppendFirstbootKernelArgs: t.AppendFirstbootKernelArgs,
-			SkipStartMachine:          true,
 			InstanceType:              t.InstanceType,
 		}
 
@@ -1913,32 +1915,19 @@ func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flig
 		tcluster.H.WarningOnFailure()
 	}
 
-	// Note that we passed in SkipStartMachine=true in our machine
-	// options. This means NewMachines() didn't block on the machines
-	// being up with SSH access before returning; i.e. it skipped running
-	// platform.StartMachines(). The machines should now be booting.
-	// Let's start the test execution timer and then run mach.Start()
-	// (wrapper for platform.StartMachine()) which sets up the journal
-	// forwarding and runs machine checks, both of which require SSH
-	// to be up, which implies Ignition has completed successfully.
-	//
-	// We do all of this so that the time it takes to run Ignition can
-	// be included in our test execution timeout.
-	h.StartExecTimer()
-	for _, mach := range tcluster.Machines() {
-		plog.Debugf("Trying to StartMachine() %v", mach.ID())
-		var err error
-		tcluster.RunWithExecTimeoutCheck(func() {
-			err = mach.Start()
-		}, fmt.Sprintf("SSH unsuccessful within allotted timeframe for %v.", mach.ID()))
-		if err != nil {
-			h.Fatal(errors.Wrapf(err, "mach.Start() failed"))
+	// Machines may be created directly by the test (not via the
+	// harness with NewMachines above), so we poll asynchronously
+	// via a goroutine until at least one shows up and then release
+	// the temporary memory reservation.
+	go func() {
+		// Wait for at least one machine in the cluster to exist.
+		// At the point machines show up in tcluster.Machines() they've
+		// already been contacted successfully via SSH in StartMachine().
+		for len(tcluster.Machines()) == 0 {
+			time.Sleep(1 * time.Second)
 		}
-	}
-
-	// Release the temporary memory reservation now that the VM is up and should
-	// be using it's allotted memory (preallocation). Applicable on qemu only.
-	releaseMemoryCount(flight, t)
+		releaseMemoryCount(flight, t)
+	}()
 
 	// drop kolet binary on machines
 	if t.ExternalTest != "" || t.NativeFuncs != nil {
@@ -1998,12 +1987,6 @@ func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flig
 			}
 		}
 	}
-
-	defer func() {
-		// give some time for the remote journal to be flushed so it can be read
-		// before we run the deferred machine destruction
-		time.Sleep(2 * time.Second)
-	}()
 
 	// run test
 	t.Run(tcluster)
