@@ -1824,6 +1824,8 @@ func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flig
 	}
 	defer func() {
 		h.StopExecTimer()
+		// give some time for the remote journal to be flushed before we Destroy()
+		time.Sleep(2 * time.Second)
 		c.Destroy()
 		// Release the memory reservation (if there was one) now that the VM is gone.
 		releaseMemoryCount(flight, t)
@@ -1999,12 +2001,6 @@ func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flig
 			}
 		}
 	}
-
-	defer func() {
-		// give some time for the remote journal to be flushed so it can be read
-		// before we run the deferred machine destruction
-		time.Sleep(2 * time.Second)
-	}()
 
 	// run test
 	t.Run(tcluster)
