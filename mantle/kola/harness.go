@@ -1915,9 +1915,19 @@ func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flig
 		tcluster.H.WarningOnFailure()
 	}
 
-	// Release the temporary memory reservation now that the VM is up and should
-	// be using it's allotted memory (preallocation). Applicable on qemu only.
-	releaseMemoryCount(flight, t)
+	// Machines may be created directly by the test (not via the
+	// harness with NewMachines above), so we poll asynchronously
+	// via a goroutine until at least one shows up and then release
+	// the temporary memory reservation.
+	go func() {
+		// Wait for at least one machine in the cluster to exist.
+		// At the point machines show up in tcluster.Machines() they've
+		// already been contacted successfully via SSH in StartMachine().
+		for len(tcluster.Machines()) == 0 {
+			time.Sleep(1 * time.Second)
+		}
+		releaseMemoryCount(flight, t)
+	}()
 
 	// drop kolet binary on machines
 	if t.ExternalTest != "" || t.NativeFuncs != nil {
