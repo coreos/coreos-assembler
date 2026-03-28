@@ -1871,7 +1871,6 @@ func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flig
 			AdditionalNics:            t.AdditionalNics,
 			AppendKernelArgs:          t.AppendKernelArgs,
 			AppendFirstbootKernelArgs: t.AppendFirstbootKernelArgs,
-			SkipStartMachine:          true,
 			InstanceType:              t.InstanceType,
 		}
 
@@ -1914,29 +1913,6 @@ func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flig
 
 	if IsWarningOnFailure(t.Name) {
 		tcluster.H.WarningOnFailure()
-	}
-
-	// Note that we passed in SkipStartMachine=true in our machine
-	// options. This means NewMachines() didn't block on the machines
-	// being up with SSH access before returning; i.e. it skipped running
-	// platform.StartMachines(). The machines should now be booting.
-	// Let's start the test execution timer and then run mach.Start()
-	// (wrapper for platform.StartMachine()) which sets up the journal
-	// forwarding and runs machine checks, both of which require SSH
-	// to be up, which implies Ignition has completed successfully.
-	//
-	// We do all of this so that the time it takes to run Ignition can
-	// be included in our test execution timeout.
-	h.StartExecTimer()
-	for _, mach := range tcluster.Machines() {
-		plog.Debugf("Trying to StartMachine() %v", mach.ID())
-		var err error
-		tcluster.RunWithExecTimeoutCheck(func() {
-			err = mach.Start()
-		}, fmt.Sprintf("SSH unsuccessful within allotted timeframe for %v.", mach.ID()))
-		if err != nil {
-			h.Fatal(errors.Wrapf(err, "mach.Start() failed"))
-		}
 	}
 
 	// Release the temporary memory reservation now that the VM is up and should
