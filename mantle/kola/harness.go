@@ -1759,11 +1759,11 @@ func waitForMemory(h *harness.H, flight platform.Flight, t *register.Test) {
 // pool. This should be called after the test's QEMU VM has been started and
 // the memory allocated for the VM.
 func releaseMemoryCount(flight platform.Flight, t *register.Test) {
+	reservedMemoryCountMutex.Lock()
+	defer reservedMemoryCountMutex.Unlock()
 	if t.ReservedMemoryCountMiB == 0 {
 		return // memory count already released
 	}
-	reservedMemoryCountMutex.Lock()
-	defer reservedMemoryCountMutex.Unlock()
 	reservedMemoryCountMiB -= t.ReservedMemoryCountMiB
 	t.ReservedMemoryCountMiB = 0
 	if reservedMemoryCountMiB < 0 {
