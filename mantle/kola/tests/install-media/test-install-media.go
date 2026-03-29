@@ -337,6 +337,7 @@ func init() {
 			Description: "The %s install test",
 			Run:         runTestInstall,
 			ClusterSize: 0,
+			Tags:        []string{"reprovision"},
 			Platforms:   []string{"qemu"},
 			Timeout:     installTimeoutMins * time.Minute,
 		})
