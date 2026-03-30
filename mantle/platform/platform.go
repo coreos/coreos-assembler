@@ -176,6 +176,7 @@ type MachineOptions struct {
 	OverrideBackingFile       string
 	Nvme                      bool
 	Cex                       bool
+	BindMountHostRO           []string
 }
 
 // EnsureNoQEMUOnlyOptions returns an error if any QEMU-only options
@@ -220,6 +221,9 @@ func (m *MachineOptions) EnsureNoQEMUOnlyOptions(platformName string) error {
 	}
 	if m.Cex {
 		return fmt.Errorf("platform %s does not support Cex", platformName)
+	}
+	if len(m.BindMountHostRO) > 0 {
+		return fmt.Errorf("platform %s does not support bind mounting host paths", platformName)
 	}
 	return nil
 }

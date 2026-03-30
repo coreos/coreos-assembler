@@ -86,7 +86,14 @@ func (qc *Cluster) NewMachineWithOptions(userdata *conf.UserData, options platfo
 	}
 
 	// If requested, bind mount Host (COSA) directories into the machine for use.
-	for _, mountpair := range qc.flight.opts.BindRO {
+	// These could either come in as MachineOptions OR via the flight options
+	// (CLI --qemu-bind-ro option).
+	//
+	// One example where this is useful is using the host environment (COSA)
+	// as a read-only rootfs for quickly starting a container. This use was originally
+	// pioneered in testiso in [1].
+	// [1] https://github.com/coreos/coreos-assembler/commit/8dbfe3ea8b8f571e732e8cc0ab307e983a0be1f3
+	for _, mountpair := range append(qc.flight.opts.BindRO, options.BindMountHostRO...) {
 		src, dest, err := platform.ParseBindOpt(mountpair)
 		if err != nil {
 			return nil, err

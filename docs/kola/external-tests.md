@@ -228,6 +228,7 @@ Here's an example `kola.json`:
     "additionalNics": 2,
     "appendKernelArgs": "enforcing=0"
     "appendFirstbootKernelArgs": "ip=bond0:dhcp bond=bond0:ens5,ens6:mode=active-backup,miimon=100"
+    "bindMountHostRO": ["/,/var/cosaroot"],
     "timeoutMin": 8,
     "exclusive": true,
     "conflicts": ["ext.config.some-test", "podman.some-other-test"],

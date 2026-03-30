@@ -1016,6 +1016,7 @@ type externalTestMeta struct {
 	NoInstanceCreds           bool     `json:"noInstanceCreds"                     yaml:"noInstanceCreds"`
 	InstanceType              string   `json:"instanceType"                        yaml:"instanceType"`
 	Description               string   `json:"description"                         yaml:"description"`
+	BindMountHostRO           []string `json:"bindMountHostRO,omitempty"           yaml:"bindMountHostRO,omitempty"`
 }
 
 // metadataFromTestBinary extracts JSON-in-comment like:
@@ -1240,6 +1241,7 @@ ExecStart=%s
 		Tags:          []string{"external"},
 
 		MachineOptions: platform.MachineOptions{
+			BindMountHostRO:           targetMeta.BindMountHostRO,
 			AdditionalDisks:           targetMeta.AdditionalDisks,
 			PrimaryDisk:               targetMeta.PrimaryDisk,
 			MinMemory:                 targetMeta.MinMemory,
