@@ -152,7 +152,7 @@ func init() {
 	bv(&kola.QEMUOptions.Disk512e, "qemu-512e", false, "Force 512e layout for main disk")
 	bv(&kola.QEMUOptions.Nvme, "qemu-nvme", false, "Use NVMe for main disk")
 	bv(&kola.QEMUOptions.Swtpm, "qemu-swtpm", true, "Create temporary software TPM")
-	ssv(&kola.QEMUOptions.BindRO, "qemu-bind-ro", nil, "Inject a host directory; this does not automatically mount in the guest")
+	ssv(&kola.QEMUOptions.BindRO, "qemu-bind-ro", nil, "Mount $hostpath,$guestpath readonly; for example --qemu-bind-ro=/path/on/host,/var/mnt/guest)")
 
 	sv(&kola.QEMUIsoOptions.IsoPath, "qemu-iso", "", "path to CoreOS ISO image")
 	bv(&kola.QEMUIsoOptions.AsDisk, "qemu-iso-as-disk", false, "attach ISO image as regular disk")

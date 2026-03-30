@@ -149,6 +149,15 @@ func ParseDisk(spec string, allowNoSize bool) (*Disk, error) {
 	}, nil
 }
 
+// Parse the src/dest for BindRO and BindRW options
+func ParseBindOpt(spec string) (string, string, error) {
+	parts := strings.SplitN(spec, ",", 2)
+	if len(parts) == 1 {
+		return "", "", fmt.Errorf("malformed bind option, required: SRC,DEST")
+	}
+	return parts[0], parts[1], nil
+}
+
 // bootIso is an internal struct used by AddIso() and setupIso()
 type bootIso struct {
 	path      string
