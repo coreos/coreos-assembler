@@ -16,7 +16,8 @@ logging.basicConfig(level=logging.INFO,
 
 
 def build_container_image(labels, buildDir, containerfile, fromimage, cacheTTL,
-                          repo, tag, secret, mount_ca, security_opt):
+                          repo, tag, secret, mount_ca, security_opt,
+                          build_args=None, build_arg_files=None):
     '''
     Build the image  using podman remote and push to the registry
     @param labels list labels to add to image
@@ -26,6 +27,8 @@ def build_container_image(labels, buildDir, containerfile, fromimage, cacheTTL,
     @param cacheTTL str value to pass to `podman build --cache-ttl=`
     @param repo str registry repository
     @param tag  str image tag
+    @param build_args list of key=value build args
+    @param build_arg_files list of file paths for build args
     '''
     cmd = ["podman", "build", f"--cache-ttl={cacheTTL}", f"--tag={repo}:{tag}", buildDir]
     for label in labels:
@@ -37,6 +40,12 @@ def build_container_image(labels, buildDir, containerfile, fromimage, cacheTTL,
     if secret:
         for s in secret:
             cmd.append(f"--secret={s}")
+    if build_args:
+        for arg in build_args:
+            cmd.extend([f"--build-arg={arg}"])
+    if build_arg_files:
+        for argfile in build_arg_files:
+            cmd.extend([f"--build-arg-file={argfile}"])
     if mount_ca:
         cmd.extend(["-v", "/etc/pki/ca-trust:/etc/pki/ca-trust:ro"])
     if security_opt:
@@ -195,10 +204,13 @@ def main():
         if needbuild:
             logging.info("Building container via podman")
             builddir = os.path.join(gitdir, args.git_sub_dir)
+            # Resolve build-arg-file paths relative to the git repo root
+            build_arg_files = [os.path.join(gitdir, f) for f in args.build_arg_files]
             build_container_image(args.labels, builddir, args.git_containerfile,
                                   args.fromimage, args.cache_ttl,
                                   args.repo, args.tag, args.secret,
-                                  args.mount_host_ca_certs, args.security_opt)
+                                  args.mount_host_ca_certs, args.security_opt,
+                                  args.build_args, build_arg_files)
 
     # Push to the registry if needed, else save the image to a file
     if args.push_to_registry:
@@ -257,6 +269,12 @@ Examples:
     parser.add_argument(
         '--git-containerfile', default='', required=False,
         help='Path to Containerfile (relative to git clone and sub dir, if specified)')
+    parser.add_argument(
+        '--build-arg', dest="build_args", default=[], action='append',
+        required=False, help='Pass build arg(s) to podman build (KEY=VALUE)')
+    parser.add_argument(
+        '--build-arg-file', dest="build_arg_files", default=[], action='append',
+        required=False, help='Pass build arg file to podman build (path relative to git repo root)')
     parser.add_argument(
         '--label', dest="labels", default=[], action='append',
         required=False, help='Add image label(s)')
