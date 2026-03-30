@@ -19,7 +19,6 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
-	"strings"
 	"sync/atomic"
 	"time"
 
@@ -86,6 +85,17 @@ func (qc *Cluster) NewMachineWithOptions(userdata *conf.UserData, options platfo
 		}
 	}
 
+	// If requested, bind mount Host (COSA) directories into the machine for use.
+	for _, mountpair := range qc.flight.opts.BindRO {
+		src, dest, err := platform.ParseBindOpt(mountpair)
+		if err != nil {
+			return nil, err
+		}
+		readonly := true
+		builder.MountHost(src, dest, readonly)
+		config.MountHost(dest, readonly)
+	}
+
 	builder.SetConfig(config)
 	defer builder.Close()
 	builder.UUID = qm.id
@@ -100,13 +110,6 @@ func (qc *Cluster) NewMachineWithOptions(userdata *conf.UserData, options platfo
 	builder.Swtpm = qc.flight.opts.Swtpm
 	builder.Hostname = fmt.Sprintf("qemu%d", qc.BaseCluster.AllocateMachineSerial())
 	builder.ConsoleFile = qm.consolePath
-
-	// This one doesn't support configuring the path because we can't
-	// reliably change the Ignition config here...
-	for _, path := range qc.flight.opts.BindRO {
-		destpathrel := strings.TrimLeft(path, "/")
-		builder.MountHost(path, "/kola/host/"+destpathrel, true)
-	}
 
 	if qc.flight.opts.Memory != "" {
 		memory, err := strconv.ParseInt(qc.flight.opts.Memory, 10, 32)

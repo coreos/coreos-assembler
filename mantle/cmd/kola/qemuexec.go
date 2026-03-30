@@ -125,14 +125,6 @@ func renderFragments(fragments []string, c *conf.Conf) error {
 	return nil
 }
 
-func parseBindOpt(s string) (string, string, error) {
-	parts := strings.SplitN(s, ",", 2)
-	if len(parts) == 1 {
-		return "", "", fmt.Errorf("malformed bind option, required: SRC,DEST")
-	}
-	return parts[0], parts[1], nil
-}
-
 // buildDiskFromOptions generates a disk image template using the process-global
 // defaults that were parsed from command line arguments.
 func buildDiskFromOptions() *platform.Disk {
@@ -304,7 +296,7 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 	}
 
 	for _, b := range bindro {
-		src, dest, err := parseBindOpt(b)
+		src, dest, err := platform.ParseBindOpt(b)
 		if err != nil {
 			return err
 		}
@@ -313,7 +305,7 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 		config.MountHost(dest, true)
 	}
 	for _, b := range bindrw {
-		src, dest, err := parseBindOpt(b)
+		src, dest, err := platform.ParseBindOpt(b)
 		if err != nil {
 			return err
 		}
