@@ -117,3 +117,7 @@ vim-enhanced
 
 # For reading build-args.conf (environment file)
 python3-dotenv
+
+# For testing numad
+# https://github.com/coreos/fedora-coreos-config/pull/4051
+stress-ng
