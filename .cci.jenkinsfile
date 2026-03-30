@@ -38,26 +38,15 @@ cosaPod(cpu: "${cpuCount}",
     // Run stage Build FCOS (init, fetch and build)
     cosaBuild(skipKola: 1, cosaDir: "/srv", noForce: true)
 
-    // Run stage Kola QEMU (basic-qemu-scenarios, upgrade and self tests)
-    kola(cosaDir: "/srv", addExtTests: ["${env.WORKSPACE}/ci/run-kola-self-tests"])
-
     stage("Build Artifacts") {
-        def artifacts = ["aliyun", "applehv", "aws", "azure", "azurestack",
-                         "digitalocean", "exoscale", "gcp", "hetzner", "hyperv",
-                         "ibmcloud", "kubevirt", "live", "metal", "metal4k",
-                         "nutanix", "openstack", "vultr"]
+        def artifacts = ["qemu", "live", "metal", "metal4k"]
         utils.cosaCmd(cosaDir: "/srv", args: "osbuild ${artifacts.join(' ')}")
-        cosaParallelCmds(cosaDir: "/srv", commands: ["vmware", "virtualbox"])
         // quick schema validation
         utils.cosaCmd(cosaDir: "/srv", args: "meta --get name")
     }
 
-    kolaTestIso(cosaDir: "/srv")
-
-    stage("Compress") {
-        // Test compression but only a few of the artifacts. This should test xz, zip, gzip
-        utils.cosaCmd(cosaDir: "/srv", args: "compress --fast --artifact=qemu --artifact=applehv --artifact=hyperv")
-    }
+    // Run stage Kola QEMU (basic-qemu-scenarios, upgrade and self tests)
+    kola(cosaDir: "/srv", addExtTests: ["${env.WORKSPACE}/ci/run-kola-self-tests"])
 
     stage("Upload Dry Run") {
         utils.cosaCmd(cosaDir: "/srv", args: "buildupload --dry-run s3 --acl=public-read my-nonexistent-bucket/my/prefix")

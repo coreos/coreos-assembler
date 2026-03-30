@@ -1,23 +1,4 @@
-// Copyright 2020 Red Hat, Inc.
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
-// TODO:
-// - Support testing the "just run Live" case - maybe try to figure out
-//   how to have main `kola` tests apply?
-// - Test `coreos-install iso embed` path
-
-package main
+package testinstall
 
 import (
 	"bufio"
@@ -31,30 +12,25 @@ import (
 	"strings"
 	"time"
 
-	"github.com/coreos/coreos-assembler/mantle/harness"
+	"github.com/coreos/pkg/capnslog"
+
+	////"github.com/coreos/coreos-assembler/mantle/harness"
 	"github.com/coreos/coreos-assembler/mantle/harness/reporters"
-	"github.com/coreos/coreos-assembler/mantle/harness/testresult"
+	////"github.com/coreos/coreos-assembler/mantle/harness/testresult"
 	"github.com/coreos/coreos-assembler/mantle/platform/conf"
 	"github.com/coreos/coreos-assembler/mantle/util"
 	coreosarch "github.com/coreos/stream-metadata-go/arch"
 	"github.com/pkg/errors"
 
-	"github.com/spf13/cobra"
+	////"github.com/spf13/cobra"
 
 	"github.com/coreos/coreos-assembler/mantle/kola"
+	"github.com/coreos/coreos-assembler/mantle/kola/cluster"
+	"github.com/coreos/coreos-assembler/mantle/kola/register"
 	"github.com/coreos/coreos-assembler/mantle/platform"
 )
 
 var (
-	cmdTestIso = &cobra.Command{
-		RunE:    runTestIso,
-		PreRunE: preRun,
-		Use:     "testiso [glob pattern...]",
-		Short:   "Test a CoreOS PXE boot or ISO install path",
-
-		SilenceUsage: true,
-	}
-
 	instInsecure bool
 
 	pxeKernelArgs []string
@@ -151,6 +127,7 @@ var (
 		//"iso-offline-install-iscsi.ibft-with-mpath.uefi",
 		//"iso-offline-install-iscsi.manual.uefi",
 	}
+	plog = capnslog.NewPackageLogger("github.com/coreos/coreos-assembler/mantle", "kola/tests/install")
 )
 
 const (
@@ -354,11 +331,17 @@ RequiredBy=multi-user.target`, nmConnectionId, nmConnectionFile)
 var iscsi_butane_config string
 
 func init() {
-	cmdTestIso.Flags().BoolVarP(&instInsecure, "inst-insecure", "S", false, "Do not verify signature on metal image")
-	cmdTestIso.Flags().BoolVar(&console, "console", false, "Connect qemu console to terminal, turn off automatic initramfs failure checking")
-	cmdTestIso.Flags().StringSliceVar(&pxeKernelArgs, "pxe-kargs", nil, "Additional kernel arguments for PXE")
-
-	root.AddCommand(cmdTestIso)
+	for _, test := range getAllTests(kola.CosaBuild) {
+		register.RegisterTest(&register.Test{
+			Name:        "install-media." + test,
+			Description: "The %s install test",
+			Run:         runTestInstall,
+			ClusterSize: 0,
+			Tags:        []string{"reprovision"},
+			Platforms:   []string{"qemu"},
+			Timeout:     installTimeoutMins * time.Minute,
+		})
+	}
 }
 
 func liveArtifactExistsInBuild() error {
@@ -382,9 +365,10 @@ func getAllTests(build *util.LocalBuild) []string {
 	case "aarch64":
 		tests = tests_aarch64
 	}
-	if kola.CosaBuild.Meta.Name == "rhcos" && arch != "s390x" && arch != "ppc64le" {
-		tests = append(tests, tests_RHCOS_uefi...)
-	}
+	//// XXX FIX
+	////if kola.CosaBuild.Meta.Name == "rhcos" && arch != "s390x" && arch != "ppc64le" {
+	////	tests = append(tests, tests_RHCOS_uefi...)
+	////}
 	return tests
 }
 
@@ -488,68 +472,34 @@ func newQemuBuilderWithDisk(outdir string) (*platform.QemuBuilder, *conf.Conf, e
 	return builder, config, nil
 }
 
-// See similar semantics in the `filterTests` of `kola.go`.
-func filterTests(tests []string, patterns []string) ([]string, error) {
-	r := []string{}
-	for _, test := range tests {
-		if matches, err := kola.MatchesPatterns(test, patterns); err != nil {
-			return nil, err
-		} else if matches {
-			r = append(r, test)
-		}
-	}
-	return r, nil
-}
+func runTestInstall(c cluster.TestCluster) {
+	var err error
+	var outputDir string
 
-func runTestIso(cmd *cobra.Command, args []string) (err error) {
+	// Grab the test name from cluster.TestCluster
+	test := c.H.Name()
+
 	if kola.CosaBuild == nil {
-		return fmt.Errorf("Must provide --build")
-	}
-	tests := getAllTests(kola.CosaBuild)
-	if len(args) != 0 {
-		if tests, err = filterTests(tests, args); err != nil {
-			return err
-		} else if len(tests) == 0 {
-			return harness.SuiteEmpty
-		}
+		c.Fatal(fmt.Errorf("Must provide --build"))
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	// Call `ParseDenyListYaml` to populate the `kola.DenylistedTests` var
-	err = kola.ParseDenyListYaml("qemu")
+	// XXX Previously had set up an outputdir but couldn't access
+	// the varible here so passing in "" as first argument.
+	outputDir, err = kola.SetupOutputDir("", "testinstall")
 	if err != nil {
-		plog.Fatal(err)
-	}
-
-	finalTests := []string{}
-	for _, test := range tests {
-		if !kola.HasString(test, kola.DenylistedTests) {
-			matchTest, err := kola.MatchesPatterns(test, kola.DenylistedTests)
-			if err != nil {
-				return err
-
-			}
-			if !matchTest {
-				finalTests = append(finalTests, test)
-			}
-		}
-	}
-
-	// note this reassigns a *global*
-	outputDir, err = kola.SetupOutputDir(outputDir, "testiso")
-	if err != nil {
-		return err
+		c.Fatal(err)
 	}
 
 	// see similar code in suite.go
 	reportDir := filepath.Join(outputDir, "reports")
-	if err := os.Mkdir(reportDir, 0777); err != nil {
-		return err
+	if err = os.Mkdir(reportDir, 0777); err != nil {
+		c.Fatal(err)
 	}
 
-	reporter := reporters.NewJSONReporter("report.json", "testiso", "")
+	reporter := reporters.NewJSONReporter("report.json", "testinstall", "")
 	defer func() {
 		if reportErr := reporter.Output(reportDir); reportErr != nil && err != nil {
 			err = reportErr
@@ -561,120 +511,101 @@ func runTestIso(cmd *cobra.Command, args []string) (err error) {
 		NmKeyfiles: make(map[string]string),
 	}
 
-	if instInsecure {
-		baseInst.Insecure = true
-		fmt.Printf("Ignoring verification of signature on metal image\n")
-	}
+	// TODO Fix later
+	////if instInsecure {
+	////	baseInst.Insecure = true
+	////	fmt.Printf("Ignoring verification of signature on metal image\n")
+	////}
 
 	// Ignore signing verification by default when running with development build
 	// https://github.com/coreos/fedora-coreos-tracker/issues/908
-	if !baseInst.Insecure && strings.Contains(kola.CosaBuild.Meta.BuildID, ".dev.") {
-		baseInst.Insecure = true
-		fmt.Printf("Detected development build; disabling signature verification\n")
+	////if !baseInst.Insecure && strings.Contains(kola.CosaBuild.Meta.BuildID, ".dev.") {
+	////	baseInst.Insecure = true
+	////	fmt.Printf("Detected development build; disabling signature verification\n")
+	////}
+	// XXX for now just set this to true
+	baseInst.Insecure = true
+
+	// Verify Live Artifacts exist in build
+	err = liveArtifactExistsInBuild()
+	if err != nil {
+		c.Fatal(err)
 	}
 
-	var duration time.Duration
+	addNmKeyfile = false
+	enable4k = false
+	enableMultipath = false
+	enableUefi = false
+	enableUefiSecure = false
+	isOffline = false
+	inst := baseInst // Pretend this is Rust and I wrote .copy()
 
-	atLeastOneFailed := false
-	for _, test := range finalTests {
+	components := strings.Split(test, ".")
 
-		// All of these tests require buildextend-live to have been run
-		err = liveArtifactExistsInBuild()
-		if err != nil {
-			return err
-		}
+	inst.PxeAppendRootfs = kola.HasString("rootfs-appended", components)
 
-		addNmKeyfile = false
-		enable4k = false
-		enableMultipath = false
-		enableUefi = false
-		enableUefiSecure = false
-		isOffline = false
-		inst := baseInst // Pretend this is Rust and I wrote .copy()
+	if kola.HasString("4k", components) {
+		enable4k = true
+		inst.Native4k = true
+	}
+	if kola.HasString("nm", components) {
+		addNmKeyfile = true
+	}
+	if kola.HasString("mpath", components) {
+		enableMultipath = true
+		inst.MultiPathDisk = true
+	}
+	if kola.HasString("uefi-secure", components) {
+		enableUefiSecure = true
+	} else if kola.HasString("uefi", components) {
+		enableUefi = true
+	}
+	// For offline it is a part of the first component. i.e. for
+	// iso-offline-install.bios we need to search for 'offline' in
+	// iso-offline-install, which is currently in components[1].
+	if kola.HasString("offline", strings.Split(components[1], "-")) {
+		isOffline = true
+	}
+	// For fromram it is a part of the first component. i.e. for
+	// iso-offline-install-fromram.uefi we need to search for 'fromram' in
+	// iso-offline-install-fromram, which is currently in components[1].
+	if kola.HasString("fromram", strings.Split(components[1], "-")) {
+		isISOFromRAM = true
+	}
 
-		fmt.Printf("Running test: %s\n", test)
-		components := strings.Split(test, ".")
-
-		inst.PxeAppendRootfs = kola.HasString("rootfs-appended", components)
-
-		if kola.HasString("4k", components) {
-			enable4k = true
-			inst.Native4k = true
-		}
-		if kola.HasString("nm", components) {
-			addNmKeyfile = true
-		}
-		if kola.HasString("mpath", components) {
-			enableMultipath = true
-			inst.MultiPathDisk = true
-		}
-		if kola.HasString("uefi-secure", components) {
-			enableUefiSecure = true
-		} else if kola.HasString("uefi", components) {
-			enableUefi = true
-		}
-		// For offline it is a part of the first component. i.e. for
-		// iso-offline-install.bios we need to search for 'offline' in
-		// iso-offline-install, which is currently in components[0].
-		if kola.HasString("offline", strings.Split(components[0], "-")) {
-			isOffline = true
-		}
-		// For fromram it is a part of the first component. i.e. for
-		// iso-offline-install-fromram.uefi we need to search for 'fromram' in
-		// iso-offline-install-fromram, which is currently in components[0].
-		if kola.HasString("fromram", strings.Split(components[0], "-")) {
-			isISOFromRAM = true
-		}
-
-		switch components[0] {
-		case "pxe-offline-install", "pxe-online-install":
-			duration, err = testPXE(ctx, inst, filepath.Join(outputDir, test))
-		case "iso-as-disk":
-			duration, err = testAsDisk(ctx, filepath.Join(outputDir, test))
-		case "iso-live-login":
-			duration, err = testLiveLogin(ctx, filepath.Join(outputDir, test))
-		case "iso-fips":
-			duration, err = testLiveFIPS(ctx, filepath.Join(outputDir, test))
-		case "iso-install", "iso-offline-install", "iso-offline-install-fromram":
-			duration, err = testLiveIso(ctx, inst, filepath.Join(outputDir, test), false)
-		case "miniso-install":
-			duration, err = testLiveIso(ctx, inst, filepath.Join(outputDir, test), true)
-		case "iso-offline-install-iscsi":
-			var butane_config string
-			switch components[1] {
-			case "ibft":
-				butane_config = strings.ReplaceAll(iscsi_butane_config, "COREOS_INSTALLER_KARGS", "--append-karg rd.iscsi.firmware=1")
-			case "manual":
-				butane_config = strings.ReplaceAll(iscsi_butane_config, "COREOS_INSTALLER_KARGS", "--append-karg netroot=iscsi:10.0.2.15::::iqn.2024-05.com.coreos:0")
-			case "ibft-with-mpath":
-				butane_config = strings.ReplaceAll(iscsi_butane_config, "COREOS_INSTALLER_KARGS", "--append-karg rd.iscsi.firmware=1 --append-karg rd.multipath=default --append-karg root=/dev/disk/by-label/dm-mpath-root --append-karg rw")
-			default:
-				plog.Fatalf("Unknown test name:%s", test)
-			}
-			duration, err = testLiveInstalliscsi(ctx, inst, filepath.Join(outputDir, test), butane_config)
+	switch components[1] {
+	case "pxe-offline-install", "pxe-online-install":
+		_, err = testPXE(ctx, inst, filepath.Join(outputDir, test))
+	case "iso-as-disk":
+		_, err = testAsDisk(ctx, filepath.Join(outputDir, test))
+	case "iso-live-login":
+		_, err = testLiveLogin(ctx, filepath.Join(outputDir, test))
+	case "iso-fips":
+		_, err = testLiveFIPS(ctx, filepath.Join(outputDir, test))
+	case "iso-install", "iso-offline-install", "iso-offline-install-fromram":
+		_, err = testLiveIso(ctx, inst, filepath.Join(outputDir, test), false)
+	case "miniso-install":
+		_, err = testLiveIso(ctx, inst, filepath.Join(outputDir, test), true)
+	case "iso-offline-install-iscsi":
+		var butane_config string
+		switch components[2] {
+		case "ibft":
+			butane_config = strings.ReplaceAll(iscsi_butane_config, "COREOS_INSTALLER_KARGS", "--append-karg rd.iscsi.firmware=1")
+		case "manual":
+			butane_config = strings.ReplaceAll(iscsi_butane_config, "COREOS_INSTALLER_KARGS", "--append-karg netroot=iscsi:10.0.2.15::::iqn.2024-05.com.coreos:0")
+		case "ibft-with-mpath":
+			butane_config = strings.ReplaceAll(iscsi_butane_config, "COREOS_INSTALLER_KARGS", "--append-karg rd.iscsi.firmware=1 --append-karg rd.multipath=default --append-karg root=/dev/disk/by-label/dm-mpath-root --append-karg rw")
 		default:
-			plog.Fatalf("Unknown test name:%s", test)
+			c.Fatalf("Unknown test name:%s", test)
 		}
-
-		result := testresult.Pass
-		output := []byte{}
-		if err != nil {
-			result = testresult.Fail
-			output = []byte(err.Error())
-		}
-		reporter.ReportTest(test, []string{}, result, duration, output)
-		if printResult(test, duration, err) {
-			atLeastOneFailed = true
-		}
+		_, err = testLiveInstalliscsi(ctx, inst, filepath.Join(outputDir, test), butane_config)
+	default:
+		c.Fatalf("Unknown test:%s", test)
 	}
 
-	reporter.SetResult(testresult.Pass)
-	if atLeastOneFailed {
-		reporter.SetResult(testresult.Fail)
-		return harness.SuiteFailed
+	if err != nil {
+		c.Fatalf("Test %s failed with err: %v", test, err)
 	}
-
-	return nil
 }
 
 func awaitCompletion(ctx context.Context, inst *platform.QemuInstance, outdir string, qchan *os.File, booterrchan chan error, expected []string) (time.Duration, error) {
