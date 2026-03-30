@@ -23,6 +23,7 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
@@ -1622,8 +1623,8 @@ func makeNonExclusiveTest(bucket int, tests []*register.Test, flight platform.Fl
 		if test.HasFlag(register.AllowConfigWarnings) {
 			plog.Fatalf("Non-exclusive test %v cannot have AllowConfigWarnings flag", test.Name)
 		}
-		if test.MachineOptions.AppendKernelArgs != "" {
-			plog.Fatalf("Non-exclusive test %v cannot have AppendKernelArgs", test.Name)
+		if !reflect.DeepEqual(test.MachineOptions, platform.MachineOptions{}) {
+			plog.Fatalf("Non-exclusive test %v cannot have MachineOptions set", test.Name)
 		}
 		if !internetAccess && testRequiresInternet(test) {
 			tags = append(tags, NeedsInternetTag)
