@@ -194,7 +194,10 @@ def main():
                                             prune_container(tag, args.dry_run, container_repo, args.registry_auth_file)
                                     else:
                                         print(f"\t\t\tNo container tags to prune for build {build_id}.")
-                    actions_completed.append(action)  # Append action to completed list
+                    # Append action to completed list. This does prematurely append an action
+                    # to the list after only one architecture has run, but if we encounter a
+                    # failure we don't ever update builds.json anyway so it doesn't matter.
+                    actions_completed.append(action)
         # Only add policy-cleanup for the build in builds.json if any
         # of the cleanup actions were completed.
         if actions_completed:
