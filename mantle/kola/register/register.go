@@ -71,6 +71,7 @@ type Test struct {
 	Timeout              time.Duration // the duration for which a test will be allowed to run
 	RequiredTag          string        // if specified, test is filtered by default unless tag is provided -- defaults to none
 	Description          string        // test description
+	CreationDate         string        // the date when the test was created, if this parameter is set, then errors will be treated as warnings for the first 30 days
 
 	// MachineOptions contains options for machine creation (disks, memory,
 	// kernel args, etc.). The test harness passes these to

@@ -306,6 +306,10 @@ This key can only be specified if `exclusive` is marked `false` since
 `exclusive: true` tests are run exclusively in their own VM.  At runtime,
 this test will be separated from the tests it is conflicting with.
 
+If a test specifies a `creationDate`, kola will treat failures as warnings for 30 days
+after that date. This allows for new tests to be monitored without blocking CI. This
+date should be formatted as `YYYY-MM-DD`.
+
 More recently, you can also (useful for shell scripts) include the JSON file
 inline per test, like this:
 
