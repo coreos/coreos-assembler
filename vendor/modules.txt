@@ -350,8 +350,8 @@ github.com/containers/image/v5/docker/reference
 # github.com/containers/storage v1.57.2
 ## explicit; go 1.22.0
 github.com/containers/storage/pkg/regexp
-# github.com/coreos/butane v0.25.1
-## explicit; go 1.23.0
+# github.com/coreos/butane v0.27.0
+## explicit; go 1.24.0
 github.com/coreos/butane/base/util
 github.com/coreos/butane/base/v0_1
 github.com/coreos/butane/base/v0_2
@@ -359,7 +359,8 @@ github.com/coreos/butane/base/v0_3
 github.com/coreos/butane/base/v0_4
 github.com/coreos/butane/base/v0_5
 github.com/coreos/butane/base/v0_6
-github.com/coreos/butane/base/v0_7_exp
+github.com/coreos/butane/base/v0_7
+github.com/coreos/butane/base/v0_8_exp
 github.com/coreos/butane/config
 github.com/coreos/butane/config/common
 github.com/coreos/butane/config/fcos/v1_0
@@ -369,7 +370,8 @@ github.com/coreos/butane/config/fcos/v1_3
 github.com/coreos/butane/config/fcos/v1_4
 github.com/coreos/butane/config/fcos/v1_5
 github.com/coreos/butane/config/fcos/v1_6
-github.com/coreos/butane/config/fcos/v1_7_exp
+github.com/coreos/butane/config/fcos/v1_7
+github.com/coreos/butane/config/fcos/v1_8_exp
 github.com/coreos/butane/config/fiot/v1_0
 github.com/coreos/butane/config/fiot/v1_1_exp
 github.com/coreos/butane/config/flatcar/v1_0
@@ -397,8 +399,10 @@ github.com/coreos/butane/config/openshift/v4_19
 github.com/coreos/butane/config/openshift/v4_19/result
 github.com/coreos/butane/config/openshift/v4_20
 github.com/coreos/butane/config/openshift/v4_20/result
-github.com/coreos/butane/config/openshift/v4_21_exp
-github.com/coreos/butane/config/openshift/v4_21_exp/result
+github.com/coreos/butane/config/openshift/v4_21
+github.com/coreos/butane/config/openshift/v4_21/result
+github.com/coreos/butane/config/openshift/v4_22_exp
+github.com/coreos/butane/config/openshift/v4_22_exp/result
 github.com/coreos/butane/config/openshift/v4_8
 github.com/coreos/butane/config/openshift/v4_8/result
 github.com/coreos/butane/config/openshift/v4_9
@@ -423,7 +427,7 @@ github.com/coreos/go-systemd/unit
 github.com/coreos/go-systemd/v22/dbus
 github.com/coreos/go-systemd/v22/journal
 github.com/coreos/go-systemd/v22/unit
-# github.com/coreos/ignition/v2 v2.25.0
+# github.com/coreos/ignition/v2 v2.26.0
 ## explicit; go 1.24.0
 github.com/coreos/ignition/v2/config/merge
 github.com/coreos/ignition/v2/config/shared/errors
@@ -448,9 +452,12 @@ github.com/coreos/ignition/v2/config/v3_4/types
 github.com/coreos/ignition/v2/config/v3_5
 github.com/coreos/ignition/v2/config/v3_5/translate
 github.com/coreos/ignition/v2/config/v3_5/types
-github.com/coreos/ignition/v2/config/v3_6_experimental
-github.com/coreos/ignition/v2/config/v3_6_experimental/translate
-github.com/coreos/ignition/v2/config/v3_6_experimental/types
+github.com/coreos/ignition/v2/config/v3_6
+github.com/coreos/ignition/v2/config/v3_6/translate
+github.com/coreos/ignition/v2/config/v3_6/types
+github.com/coreos/ignition/v2/config/v3_7_experimental
+github.com/coreos/ignition/v2/config/v3_7_experimental/translate
+github.com/coreos/ignition/v2/config/v3_7_experimental/types
 github.com/coreos/ignition/v2/config/validate
 # github.com/coreos/pkg v0.0.0-20240122114842-bbd7aa9bf6fb
 ## explicit
