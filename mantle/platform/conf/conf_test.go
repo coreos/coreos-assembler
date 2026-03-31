@@ -35,13 +35,14 @@ func TestConfCopyKey(t *testing.T) {
 
 	tests := []*UserData{
 		Butane(""),
-		Ignition(`{ "ignitionVersion": 1 }`),
+		Ignition(`{ "ignition": { "version": "1.0.0" } }`),
 		Ignition(`{ "ignition": { "version": "2.0.0" } }`),
 		Ignition(`{ "ignition": { "version": "2.1.0" } }`),
 		Ignition(`{ "ignition": { "version": "2.2.0" } }`),
 		Ignition(`{ "ignition": { "version": "2.3.0" } }`),
 		Ignition(`{ "ignition": { "version": "2.4.0" } }`),
-		Ignition(`{ "ignition": { "version": "3.7.0" } }`),
+		Ignition(`{ "ignition": { "version": "3.6.0-experimental" } }`),
+		Ignition(`{ "ignition": { "version": "3.8.0" } }`),
 	}
 
 	for _, tt := range tests {
@@ -60,9 +61,10 @@ func TestConfCopyKey(t *testing.T) {
 		Ignition(`{ "ignition": { "version": "3.3.0" } }`),
 		Ignition(`{ "ignition": { "version": "3.4.0" } }`),
 		Ignition(`{ "ignition": { "version": "3.5.0" } }`),
-		Ignition(`{ "ignition": { "version": "3.6.0-experimental" } }`),
-		// special-case handling of next stable spec
 		Ignition(`{ "ignition": { "version": "3.6.0" } }`),
+		Ignition(`{ "ignition": { "version": "3.7.0-experimental" } }`),
+		// special-case handling of next stable spec
+		Ignition(`{ "ignition": { "version": "3.7.0" } }`),
 	}
 
 	for i, tt := range tests {
