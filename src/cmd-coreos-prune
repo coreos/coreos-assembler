@@ -181,7 +181,9 @@ def main():
                             # Our containers are manifest listed, which means deleting the container tag
                             # for one architecture deletes it for all of them. We'll choose to only prune
                             # for x86_64 since it is the one architecture that exists for all builds.
-                            if arch == "x86_64":
+                            if arch != "x86_64":
+                                continue  # So we only update actions_completed on the x86_64 run
+                            else:
                                 if build_id in barrier_releases:
                                     # Since containers are used for updates we need to keep around containers for barrier releases.
                                     print(f"\t\t\tRelease {build_id} is a barrier release. Skipping container prune.")
