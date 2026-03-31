@@ -95,8 +95,13 @@ const defaultPlatformIndependentPlatform = "qemu"
 // Don't e.g. check console for kernel errors, SELinux AVCs, etc.
 const SkipBaseChecksTag = "skip-base-checks"
 
-// Date format for snooze date specified in kola-denylist.yaml (YYYY-MM-DD)
-const snoozeFormat = "2006-01-02"
+// Date format (YYYY-MM-DD) for:
+// - snooze date specified in kola-denylist.yaml
+// - creation date in register.Test
+const dateFormat = "2006-01-02"
+
+// By default test will have a 30 day grace period
+const gracePeriod = time.Hour * 24 * 30
 
 // SkipConsoleWarningsTag will cause kola not to check console for kernel errors.
 // This overlaps with SkipBaseChecksTag above, but is really a special flag for kola-denylist.yaml.
@@ -438,7 +443,7 @@ func ParseDenyListYaml(pltfrm string) error {
 		}
 
 		if obj.SnoozeDate != "" {
-			snoozeDate, err := time.Parse(snoozeFormat, obj.SnoozeDate)
+			snoozeDate, err := time.Parse(dateFormat, obj.SnoozeDate)
 			if err != nil {
 				return err
 			}
@@ -661,6 +666,25 @@ func filterDenylistedTests(tests map[string]*register.Test) (map[string]*registe
 	return r, nil
 }
 
+func applyGracePeriodWarnings(tests map[string]*register.Test) error {
+	today := time.Now()
+	for name, test := range tests {
+		if test.CreationDate == "" {
+			continue
+		}
+		testCreationDate, err := time.Parse(dateFormat, test.CreationDate)
+		if err != nil {
+			return fmt.Errorf("Error parsing CreationDate for %s: %w", name, err)
+		}
+		gracePeriodEnds := testCreationDate.Add(gracePeriod)
+		if today.Before(gracePeriodEnds) {
+			fmt.Printf("⏳ Kola test \"%s\" is in grace period (created: %s, expires: %s), failures will be warnings.\n", name, test.CreationDate, gracePeriodEnds.Format(dateFormat))
+			WarnOnErrorTests = append(WarnOnErrorTests, name)
+		}
+	}
+	return nil
+}
+
 // runProvidedTests is a harness for running multiple tests in parallel.
 // Filters tests based on a glob pattern and by platform. Has access to all
 // tests either registered in this package or by imported packages that
@@ -710,6 +734,11 @@ func runProvidedTests(testsBank map[string]*register.Test, patterns []string, mu
 	if len(tests) == 0 {
 		fmt.Printf("There are no tests to run because all tests are denylisted. Output in %v\n", outputDir)
 		return nil
+	}
+
+	err = applyGracePeriodWarnings(tests)
+	if err != nil {
+		plog.Fatal(err)
 	}
 
 	flight, err := NewFlight(pltfrm)
@@ -1017,6 +1046,7 @@ type externalTestMeta struct {
 	InstanceType              string   `json:"instanceType"                        yaml:"instanceType"`
 	Description               string   `json:"description"                         yaml:"description"`
 	BindMountHostRO           []string `json:"bindMountHostRO,omitempty"           yaml:"bindMountHostRO,omitempty"`
+	CreationDate              string   `json:"creationDate,omitempty"              yaml:"creationDate,omitempty"`
 }
 
 // metadataFromTestBinary extracts JSON-in-comment like:
@@ -1255,6 +1285,7 @@ ExecStart=%s
 		InjectContainer: targetMeta.InjectContainer,
 		NonExclusive:    !targetMeta.Exclusive,
 		Conflicts:       targetMeta.Conflicts,
+		CreationDate:    targetMeta.CreationDate,
 
 		Run: func(c cluster.TestCluster) {
 			mach := c.Machines()[0]
