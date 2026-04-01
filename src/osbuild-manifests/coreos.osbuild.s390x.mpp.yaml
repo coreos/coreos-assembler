@@ -224,6 +224,23 @@ pipelines:
               filename: disk.img
         options:
           mpp-format-json: '{image.layout}'
+      # Create EFI filesystem on EFI architectures
+      - mpp-if: arch in ['x86_64', 'aarch64', 'riscv64']
+        then:
+          type: org.osbuild.mkfs.fat
+          devices:
+            device:
+              type: org.osbuild.loopback
+              options:
+                filename: disk.img
+                start:
+                  mpp-format-int: '{image.layout[''EFI-SYSTEM''].start}'
+                size:
+                  mpp-format-int: '{image.layout[''EFI-SYSTEM''].size}'
+                lock: true
+          options:
+            label: EFI-SYSTEM
+            volid: 7B7795E7
       - type: org.osbuild.mkfs.ext4
         devices:
           device:
@@ -274,6 +291,11 @@ pipelines:
           paths:
             - path: mount://root/boot
               mode: 493
+            # Create /boot/efi mountpoint on EFI architectures
+            - mpp-if: arch in ['x86_64', 'aarch64', 'riscv64']
+              then:
+                path: mount://boot/efi
+                mode: 493
         devices:
           disk:
             type: org.osbuild.loopback
@@ -287,6 +309,15 @@ pipelines:
             partition:
               mpp-format-int: '{image.layout[''root''].partnum}'
             target: /root-mount-point
+          # Mount boot partition on EFI architectures for /boot/efi creation
+          - mpp-if: arch in ['x86_64', 'aarch64', 'riscv64']
+            then:
+              name: boot
+              type: org.osbuild.ext4
+              source: disk
+              partition:
+                mpp-format-int: '{image.layout[''boot''].partnum}'
+              target: /boot-mount-point
       - type: org.osbuild.selinux
         options:
           file_contexts: input://tree/etc/selinux/targeted/contexts/files/file_contexts
@@ -369,6 +400,61 @@ pipelines:
             partition:
               mpp-format-int: '{image.layout[''boot''].partnum}'
             target: /boot
+          # Mount EFI partition on EFI architectures
+          - mpp-if: arch in ['x86_64', 'aarch64', 'riscv64']
+            then:
+              name: efi
+              type: org.osbuild.fat
+              source: disk
+              partition:
+                mpp-format-int: '{image.layout[''EFI-SYSTEM''].partnum}'
+              target: /boot/efi
+      # Install bootloader (not on s390x which uses zipl)
+      - mpp-if: arch != 's390x'
+        then:
+          type: org.osbuild.bootupd
+          options:
+            # Install BIOS bootloader on x86_64 and ppc64le
+            bios:
+              mpp-if: arch in ['x86_64', 'ppc64le']
+              then:
+                device: disk
+                # ppc64le installs to the PReP partition, not the root of the disk
+                partition:
+                  mpp-if: arch == 'ppc64le'
+                  then:
+                    mpp-format-int: '{image.layout[''PowerPC-PReP-boot''].partnum}'
+            static-configs: true
+            deployment:
+              default: true
+          devices:
+            disk:
+              type: org.osbuild.loopback
+              options:
+                filename: disk.img
+                partscan: true
+          mounts:
+            - name: root
+              type: org.osbuild.xfs
+              source: disk
+              partition:
+                mpp-format-int: '{image.layout[''root''].partnum}'
+              target: /
+            - name: boot
+              type: org.osbuild.ext4
+              source: disk
+              partition:
+                mpp-format-int: '{image.layout[''boot''].partnum}'
+              target: /boot
+            # Mount EFI partition on EFI architectures
+            - mpp-if: arch in ['x86_64', 'aarch64', 'riscv64']
+              then:
+                name: efi
+                type: org.osbuild.fat
+                source: disk
+                partition:
+                  mpp-format-int: '{image.layout[''EFI-SYSTEM''].partnum}'
+                target: /boot/efi
       - type: org.osbuild.chattr
         options:
           items:
@@ -412,6 +498,25 @@ pipelines:
                   mpp-format-int: "{four_k_sector_size}"
         options:
           mpp-format-json: '{image4k.layout}'
+      # Create EFI filesystem on EFI architectures
+      - mpp-if: arch in ['x86_64', 'aarch64', 'riscv64']
+        then:
+          type: org.osbuild.mkfs.fat
+          devices:
+            device:
+              type: org.osbuild.loopback
+              options:
+                filename: disk.img
+                start:
+                  mpp-format-int: '{image4k.layout[''EFI-SYSTEM''].start}'
+                size:
+                  mpp-format-int: '{image4k.layout[''EFI-SYSTEM''].size}'
+                lock: true
+                sector-size:
+                    mpp-format-int: "{four_k_sector_size}"
+          options:
+            label: EFI-SYSTEM
+            volid: 7B7795E7
       - type: org.osbuild.mkfs.ext4
         devices:
           device:
@@ -466,6 +571,11 @@ pipelines:
           paths:
             - path: mount://root/boot
               mode: 493
+            # Create /boot/efi mountpoint on EFI architectures
+            - mpp-if: arch in ['x86_64', 'aarch64', 'riscv64']
+              then:
+                path: mount://boot/efi
+                mode: 493
         devices:
           disk:
             type: org.osbuild.loopback
@@ -481,6 +591,15 @@ pipelines:
             partition:
               mpp-format-int: '{image4k.layout[''root''].partnum}'
             target: /root-mount-point
+          # Mount boot partition on EFI architectures for /boot/efi creation
+          - mpp-if: arch in ['x86_64', 'aarch64', 'riscv64']
+            then:
+              name: boot
+              type: org.osbuild.ext4
+              source: disk
+              partition:
+                mpp-format-int: '{image4k.layout[''boot''].partnum}'
+              target: /boot-mount-point
       - type: org.osbuild.selinux
         options:
           file_contexts: input://tree/etc/selinux/targeted/contexts/files/file_contexts
@@ -569,6 +688,61 @@ pipelines:
             partition:
               mpp-format-int: '{image4k.layout[''boot''].partnum}'
             target: /boot
+          # Mount EFI partition on EFI architectures
+          - mpp-if: arch in ['x86_64', 'aarch64', 'riscv64']
+            then:
+              name: efi
+              type: org.osbuild.fat
+              source: disk
+              partition:
+                mpp-format-int: '{image4k.layout[''EFI-SYSTEM''].partnum}'
+              target: /boot/efi
+      # Install bootloader (not on s390x which uses zipl)
+      - mpp-if: arch != 's390x'
+        then:
+          type: org.osbuild.bootupd
+          options:
+            # Install BIOS bootloader on ppc64le (x86_64 does not use BIOS on 4k disks)
+            bios:
+              mpp-if: arch == 'ppc64le'
+              then:
+                device: disk
+                # ppc64le installs to the PReP partition, not the root of the disk
+                partition:
+                  mpp-format-int: '{image4k.layout[''PowerPC-PReP-boot''].partnum}'
+            static-configs: true
+            deployment:
+              default: true
+          devices:
+            disk:
+              type: org.osbuild.loopback
+              options:
+                filename: disk.img
+                partscan: true
+                sector-size:
+                    mpp-format-int: "{four_k_sector_size}"
+          mounts:
+            - name: root
+              type: org.osbuild.xfs
+              source: disk
+              partition:
+                mpp-format-int: '{image4k.layout[''root''].partnum}'
+              target: /
+            - name: boot
+              type: org.osbuild.ext4
+              source: disk
+              partition:
+                mpp-format-int: '{image4k.layout[''boot''].partnum}'
+              target: /boot
+            # Mount EFI partition on EFI architectures
+            - mpp-if: arch in ['x86_64', 'aarch64', 'riscv64']
+              then:
+                name: efi
+                type: org.osbuild.fat
+                source: disk
+                partition:
+                  mpp-format-int: '{image4k.layout[''EFI-SYSTEM''].partnum}'
+                target: /boot/efi
       - type: org.osbuild.chattr
         options:
           items:
