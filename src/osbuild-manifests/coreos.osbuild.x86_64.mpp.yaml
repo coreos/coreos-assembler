@@ -143,44 +143,29 @@ pipelines:
               mode: 493
       - type: org.osbuild.ignition
       # Deploy via ociarchive or container
-      - mpp-if: ociarchive != ''
-        then:
-          type: org.osbuild.ostree.deploy.container
-          options:
-            osname:
-              mpp-format-string: '{osname}'
-            target_imgref:
-              mpp-format-string: '{container_imgref}'
-            mounts:
-              - /boot
-              - /boot/efi
-            kernel_opts:
-              - rw
-              - '$ignition_firstboot'
-              - mpp-format-string: '{extra_kargs}'
-          inputs:
-            images:
+      - type: org.osbuild.ostree.deploy.container
+        options:
+          osname:
+            mpp-format-string: '{osname}'
+          target_imgref:
+            mpp-format-string: '{container_imgref}'
+          mounts:
+            - /boot
+            - /boot/efi
+          kernel_opts:
+            - rw
+            - '$ignition_firstboot'
+            - mpp-format-string: '{extra_kargs}'
+        inputs:
+          images:
+            mpp-if: ociarchive != ''
+            then:
               type: org.osbuild.containers
               origin: org.osbuild.pipeline
               references:
                 name:oci-archive:
                   name: coreos.ociarchive
-        else:
-          type: org.osbuild.ostree.deploy.container
-          options:
-            osname:
-              mpp-format-string: '{osname}'
-            target_imgref:
-              mpp-format-string: '{container_imgref}'
-            mounts:
-              - /boot
-              - /boot/efi
-            kernel_opts:
-              - rw
-              - '$ignition_firstboot'
-              - mpp-format-string: '{extra_kargs}'
-          inputs:
-            images:
+            else:
               type: org.osbuild.containers-storage
               origin: org.osbuild.source
               mpp-resolve-images:
