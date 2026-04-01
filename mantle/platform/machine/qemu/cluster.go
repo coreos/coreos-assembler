@@ -129,8 +129,10 @@ func (qc *Cluster) NewMachineWithBuilder(userdata any, options platform.MachineO
 	}
 	qm.inst = inst
 
-	if err := qc.waitForSSHAddress(qm, inst); err != nil {
-		return nil, err
+	if qemuBuilder.UsermodeNetworking {
+		if err := qc.waitForSSHAddress(qm, inst); err != nil {
+			return nil, err
+		}
 	}
 
 	// Run StartMachine, which blocks on the machine being booted up enough
