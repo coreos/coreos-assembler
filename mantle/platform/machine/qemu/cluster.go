@@ -335,3 +335,13 @@ func (qc *Cluster) SetupDefaultNetwork(options platform.MachineOptions, builder 
 	}
 	return nil
 }
+
+// Instance returns the underlying QemuInstance for a given Machine.
+// This allows tests to access QEMU-specific functionality.
+func (qc *Cluster) Instance(m platform.Machine) *platform.QemuInstance {
+	qm, ok := m.(*machine)
+	if !ok {
+		return nil
+	}
+	return qm.inst
+}
