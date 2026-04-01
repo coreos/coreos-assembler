@@ -117,16 +117,26 @@ pipelines:
           config:
             sysroot:
               readonly: true
-              # on s390x 'none' for now, will set it to `zipl` in the later stage
               bootloader: none
-             ## no grub_users="" on s390x
-             #bls-append-except-default: grub_users=""
+              # https://github.com/coreos/fedora-coreos-tracker/issues/1333
+              # no grub_users="" on s390x
+              bls-append-except-default:
+                mpp-if: arch != 's390x'
+                then: 'grub_users=""'
               # Opt-in to https://github.com/ostreedev/ostree/pull/2705 which will
               # add /boot as the prefix on top of BLS config entries. This is OK
               # because there is a symlink that is created in the root of the boot
               # filesystem by OSTree (boot -> .) that makes it so that /boot paths
               # will always work.
               bootprefix: true
+      # Create /boot/efi mountpoint on EFI architectures
+      - mpp-if: arch in ['x86_64', 'aarch64', 'riscv64']
+        then:
+          type: org.osbuild.mkdir
+          options:
+            paths:
+              - path: /boot/efi
+                mode: 493
       - type: org.osbuild.ignition
       # Deploy via ociarchive or container
       - type: org.osbuild.ostree.deploy.container
@@ -137,10 +147,14 @@ pipelines:
             mpp-format-string: '{container_imgref}'
           mounts:
             - /boot
+            # Mount /boot/efi on EFI architectures
+            - mpp-if: arch in ['x86_64', 'aarch64', 'riscv64']
+              then: /boot/efi
           kernel_opts:
             - rw
-           ## '$ignition_firstboot' only works with GRUB, not available on s390x
-           #- '$ignition_firstboot'
+            # '$ignition_firstboot' only works with GRUB, not available on s390x
+            - mpp-if: arch != 's390x'
+              then: '$ignition_firstboot'
             - mpp-format-string: '{extra_kargs}'
         inputs:
           images:
@@ -160,26 +174,30 @@ pipelines:
                     tag: $container_tag
       # Drop the immutable bit here (we add it back later) because it
       # causes failures when cleaning up tmp dirs.
-      - type: org.osbuild.chattr
-        options:
-          items:
-            tree:///:
-              immutable: false
-        mounts:
-          - name: ostree.deployment
-            type: org.osbuild.ostree.deployment
-            options:
-              deployment:
-                default: true
+      - mpp-if: arch in ['ppc64le', 's390x']
+        then:
+          type: org.osbuild.chattr
+          options:
+            items:
+              tree:///:
+                immutable: false
+          mounts:
+            - name: ostree.deployment
+              type: org.osbuild.ostree.deployment
+              options:
+                deployment:
+                  default: true
       # On s390x set the bootloader to zipl. We need to do it here
       # rather than in the ostree.config stage above because we don't want
       # OSTree to invoke zipl during the deploy. It's done later in zipl.inst.
-      - type: org.osbuild.ostree.config
-        options:
-          repo: /ostree/repo
-          config:
-            sysroot:
-               bootloader: zipl
+      - mpp-if: arch == 's390x'
+        then:
+          type: org.osbuild.ostree.config
+          options:
+            repo: /ostree/repo
+            config:
+              sysroot:
+                bootloader: zipl
       - type: org.osbuild.ostree.aleph
         options:
           coreos_compat: true
