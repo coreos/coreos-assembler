@@ -612,6 +612,14 @@ func (builder *QemuBuilder) TempFile(pattern string) (*os.File, error) {
 	return os.CreateTemp(builder.tempdir, pattern)
 }
 
+// Returns the path where the Ignition config will be written.
+func (builder *QemuBuilder) IgnitionPath() (string, error) {
+	if err := builder.ensureTempdir(); err != nil {
+		return "", err
+	}
+	return filepath.Join(builder.tempdir, "config.ign"), nil
+}
+
 // renderIgnition lazily renders a parsed config if one is set
 func (builder *QemuBuilder) renderIgnition() error {
 	if !builder.ignitionSet || builder.ignitionRendered {
@@ -621,10 +629,11 @@ func (builder *QemuBuilder) renderIgnition() error {
 		panic("Both ConfigFile and ignition set")
 	}
 
-	if err := builder.ensureTempdir(); err != nil {
+	var err error
+	builder.ConfigFile, err = builder.IgnitionPath()
+	if err != nil {
 		return err
 	}
-	builder.ConfigFile = filepath.Join(builder.tempdir, "config.ign")
 	if err := builder.ignition.WriteFile(builder.ConfigFile); err != nil {
 		return err
 	}
