@@ -350,6 +350,11 @@ ExecStart=/bin/sh -c '/usr/bin/echo %s >/dev/virtio-ports/testisocompletion && s
 [Install]
 RequiredBy=multi-user.target`, signalCompleteString)
 
+// signalFailureUnit also ensures that the journal is dumped to the virtio port if the system
+// enters emergency.target. This is needed when running from the live ISO and coreos-installer
+// fails, because ignition-virtio-dump-journal.service is no longer enabled in that context:
+// after switch root occurs, coreos-installer runs from the real root filesystem rather than
+// the initramfs. Using this unit guarantees we can still catch errors in platform.StartMachine.
 var signalEmergencyString = "coreos-installer-test-entered-emergency-target"
 var signalFailureUnit = fmt.Sprintf(`
 [Unit]
@@ -359,7 +364,11 @@ DefaultDependencies=false
 [Service]
 Type=oneshot
 RemainAfterExit=yes
-ExecStart=/bin/sh -c '/usr/bin/echo %s >/dev/virtio-ports/testisocompletion && systemctl poweroff'
+ExecStart=/bin/sh -c '/usr/bin/echo %s >/dev/virtio-ports/testisocompletion'
+ExecStart=/bin/bash -c '\
+if ! systemctl is-enabled ignition-virtio-dump-journal.service >/dev/null 2>&1; then \
+  exec /usr/lib/dracut/modules.d/99emergency-shell-setup/ignition-virtio-dump-journal.sh; \
+fi'
 [Install]
 RequiredBy=emergency.target`, signalEmergencyString)
 
