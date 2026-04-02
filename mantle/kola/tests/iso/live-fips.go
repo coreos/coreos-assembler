@@ -85,9 +85,9 @@ func testLiveFIPS(c cluster.TestCluster, opts IsoTestOpts) {
 		return nil
 	}
 
-	options := platform.MachineOptions{AppendKernelArgs: "fips=1"}
-	if opts.enableUefi {
-		options.Firmware = "uefi"
+	options := platform.MachineOptions{
+		AppendKernelArgs: "fips=1",
+		Firmware:         opts.firmware,
 	}
 
 	machineBuilder := &qemu.MachineBuilder{

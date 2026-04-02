@@ -179,9 +179,9 @@ func isoInstalliScsi(c cluster.TestCluster, opts IsoTestOpts) {
 	}
 
 	// We need more memory to start another VM within !
-	options := platform.MachineOptions{MinMemory: 2048}
-	if opts.enableUefi {
-		options.Firmware = "uefi"
+	options := platform.MachineOptions{
+		MinMemory: 2048,
+		Firmware:  opts.firmware,
 	}
 	machineBuilder := &qemu.MachineBuilder{
 		SetupDisks: setupDisks,

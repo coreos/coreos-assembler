@@ -79,18 +79,17 @@ type IsoTestOpts struct {
 	// Flags().BoolVarP(&instInsecure, "inst-insecure", "S", false, "Do not verify signature on metal image")
 	instInsecure bool
 	// Flags().BoolVar(&console, "console", false, "Connect qemu console to terminal, turn off automatic initramfs failure checking")
-	console          bool
-	addNmKeyfile     bool
-	enable4k         bool
-	enableMultipath  bool
-	isOffline        bool
-	isISOFromRAM     bool
-	isMiniso         bool
-	enableUefi       bool
-	enableUefiSecure bool
-	enableIbft       bool
-	manual           bool
-	pxeAppendRootfs  bool
+	console         bool
+	addNmKeyfile    bool
+	enable4k        bool
+	enableMultipath bool
+	isOffline       bool
+	isISOFromRAM    bool
+	isMiniso        bool
+	enableIbft      bool
+	manual          bool
+	pxeAppendRootfs bool
+	firmware        string
 }
 
 func getIsoTestOpts(testName string) IsoTestOpts {
@@ -101,9 +100,9 @@ func getIsoTestOpts(testName string) IsoTestOpts {
 		opts.enable4k = true
 	}
 	if strings.Contains(testName, "uefi-secure") {
-		opts.enableUefiSecure = true
+		opts.firmware = "uefi-secure"
 	} else if strings.Contains(testName, "uefi") {
-		opts.enableUefi = true
+		opts.firmware = "uefi"
 	}
 	if strings.Contains(testName, "mpath") {
 		opts.enableMultipath = true
