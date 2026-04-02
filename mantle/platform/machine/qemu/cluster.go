@@ -165,6 +165,9 @@ func (qc *Cluster) Destroy() {
 }
 
 func (qc *Cluster) RenderUserDataIfNeeded(userdata any) (*conf.Conf, error) {
+	if userdata == nil {
+		return nil, nil
+	}
 	var config *conf.Conf
 	var err error
 	// Some callers provide the config directly rather than something
