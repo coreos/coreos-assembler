@@ -72,14 +72,7 @@ func isoTestAsDisk(c cluster.TestCluster, opts IsoTestOpts) {
 		return nil
 	}
 
-	options := platform.MachineOptions{}
-	switch {
-	case opts.enableUefiSecure:
-		options.Firmware = "uefi-secure"
-	case opts.enableUefi:
-		options.Firmware = "uefi"
-	}
-
+	options := platform.MachineOptions{Firmware: opts.firmware}
 	machineBuilder := &qemu.MachineBuilder{
 		SetupDisks: setupDisks,
 	}

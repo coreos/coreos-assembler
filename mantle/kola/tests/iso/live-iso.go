@@ -330,9 +330,7 @@ func runIsoTest(qc *qemu.Cluster, opts IsoTestOpts, tempdir string) error {
 		MinMemory:        4096,
 		MultiPathDisk:    opts.enableMultipath,
 		AppendKernelArgs: strings.Join(kargs, " "),
-	}
-	if opts.enableUefi {
-		options.Firmware = "uefi"
+		Firmware:         opts.firmware,
 	}
 
 	machineBuilder := &qemu.MachineBuilder{
