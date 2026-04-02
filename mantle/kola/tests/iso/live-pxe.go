@@ -214,10 +214,9 @@ func testPXE(c cluster.TestCluster, opts IsoTestOpts) {
 
 	options := platform.MachineOptions{
 		MinMemory: 4096,
+		Firmware:  opts.firmware,
 	}
-	if opts.enableUefi {
-		options.Firmware = "uefi"
-	}
+
 	// increase the memory for pxe tests with appended rootfs in the initrd
 	// we were bumping up into the 4GiB limit in RHCOS/c9s
 	if opts.pxeAppendRootfs {
@@ -382,7 +381,7 @@ func (pxe *PXE) setupArchDefaults(opts IsoTestOpts) error {
 	switch coreosarch.CurrentRpmArch() {
 	case "x86_64":
 		pxe.networkdevice = "e1000"
-		if opts.enableUefi {
+		if opts.firmware == "uefi" {
 			pxe.boottype = "grub"
 			pxe.bootfile = "/boot/grub2/grubx64.efi"
 			pxe.pxeimagepath = "/boot/efi/EFI/fedora/grubx64.efi"
