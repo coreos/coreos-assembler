@@ -593,6 +593,9 @@ func (builder *QemuBuilder) ensureTempdir() error {
 
 // SetConfig injects Ignition; this can be used in place of ConfigFile.
 func (builder *QemuBuilder) SetConfig(config *conf.Conf) {
+	if config == nil {
+		return
+	}
 	if builder.ignitionRendered {
 		panic("SetConfig called after config rendered")
 	}
