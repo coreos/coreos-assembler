@@ -1,0 +1,32 @@
+apiVersion: appstudio.redhat.com/v1beta2
+kind: IntegrationTestScenario
+metadata:
+  labels:
+    test.appstudio.openshift.io/optional: "true"
+  name: coreos-assembler-testing-x86-64
+spec:
+  application: coreos-assembler-main
+  contexts:
+  - name: component_coreos-assembler-main
+  params:
+  - name: COMPOSE
+    value: Fedora-43
+  - name: ARCH
+    value: x86_64
+  - name: IMAGE_TAG
+    value: v3.16
+  - name: GIT_URL
+    value: https://github.com/Roshan-R/coreos-assembler
+  - name: GIT_REF
+    value: tmt-testing
+  - name: TMT_PLAN
+    value: tmt
+  resolverRef:
+    params:
+    - name: url
+      value: https://gitlab.com/testing-farm/integrations-konflux
+    - name: revision
+      value: v3.16
+    - name: pathInRepo
+      value: pipeline/tmt-via-testing-farm/tmt-via-testing-farm.yaml
+    resolver: git
