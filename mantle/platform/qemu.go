@@ -57,6 +57,13 @@ import (
 var (
 	// ErrInitramfsEmergency is the marker error returned upon node blocking in emergency mode in initramfs.
 	ErrInitramfsEmergency = errors.New("entered emergency.target in initramfs")
+
+	ConsoleKernelArgument = map[string]string{
+		"x86_64":  "ttyS0,115200n8",
+		"ppc64le": "hvc0",
+		"aarch64": "ttyAMA0",
+		"s390x":   "ttysclp0",
+	}
 )
 
 // HostForwardPort contains details about port-forwarding for the VM.
@@ -586,6 +593,9 @@ func (builder *QemuBuilder) ensureTempdir() error {
 
 // SetConfig injects Ignition; this can be used in place of ConfigFile.
 func (builder *QemuBuilder) SetConfig(config *conf.Conf) {
+	if config == nil {
+		return
+	}
 	if builder.ignitionRendered {
 		panic("SetConfig called after config rendered")
 	}
@@ -605,6 +615,14 @@ func (builder *QemuBuilder) TempFile(pattern string) (*os.File, error) {
 	return os.CreateTemp(builder.tempdir, pattern)
 }
 
+// Returns the path where the Ignition config will be written.
+func (builder *QemuBuilder) IgnitionPath() (string, error) {
+	if err := builder.ensureTempdir(); err != nil {
+		return "", err
+	}
+	return filepath.Join(builder.tempdir, "config.ign"), nil
+}
+
 // renderIgnition lazily renders a parsed config if one is set
 func (builder *QemuBuilder) renderIgnition() error {
 	if !builder.ignitionSet || builder.ignitionRendered {
@@ -614,10 +632,11 @@ func (builder *QemuBuilder) renderIgnition() error {
 		panic("Both ConfigFile and ignition set")
 	}
 
-	if err := builder.ensureTempdir(); err != nil {
+	var err error
+	builder.ConfigFile, err = builder.IgnitionPath()
+	if err != nil {
 		return err
 	}
-	builder.ConfigFile = filepath.Join(builder.tempdir, "config.ign")
 	if err := builder.ignition.WriteFile(builder.ConfigFile); err != nil {
 		return err
 	}
@@ -1612,7 +1631,7 @@ func (builder *QemuBuilder) setupIso() error {
 	if kargsSupported, err := coreosInstallerSupportsISOKargs(); err != nil {
 		return err
 	} else if kargsSupported {
-		allargs := fmt.Sprintf("console=%s %s", consoleKernelArgument[coreosarch.CurrentRpmArch()], builder.AppendKernelArgs)
+		allargs := fmt.Sprintf("console=%s %s", ConsoleKernelArgument[coreosarch.CurrentRpmArch()], builder.AppendKernelArgs)
 		instCmdKargs := exec.Command("coreos-installer", "iso", "kargs", "modify", "--append", allargs, isoEmbeddedPath)
 		var stderrb bytes.Buffer
 		instCmdKargs.Stderr = &stderrb
