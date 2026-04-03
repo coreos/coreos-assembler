@@ -34,6 +34,7 @@ type Options struct {
 	Location          string
 	AvailabilityZone  string
 	ManagedIdentityID string
+	GalleryProfile    string
 
 	SubscriptionName string
 	SubscriptionID   string

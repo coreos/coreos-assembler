@@ -17,32 +17,121 @@ package azure
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"net/http"
+	"net/url"
 	"runtime"
-	"time"
+	"strings"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
-	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute"
-
-	"github.com/coreos/coreos-assembler/mantle/util"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v4"
 )
 
-func (a *API) CreateGalleryImage(name, galleryName, resourceGroup, sourceImageID, architecture string) (armcompute.GalleryImageVersion, error) {
+// truncateFCOSVersion converts an FCOS version like 42.20250526.2.1
+// into an Azure-compatible gallery image version string like 42.20250526.1.
+// The mapping is:
+//
+//	<major>.<yyyymmdd>.<stream>.<rev> -> <major>.<yyyymmdd>.<rev>
+//
+// See: https://github.com/coreos/fedora-coreos-tracker/issues/148#issuecomment-2963690654
+func truncateFCOSVersion(version string) (string, error) {
+	parts := strings.Split(version, ".")
+	if len(parts) != 4 {
+		return "", fmt.Errorf("unexpected FCOS version format %q", version)
+	}
+	return parts[0] + "." + parts[1] + "." + parts[3], nil
+}
+
+type GalleryProfileConfig struct {
+	Version string
+	Tags    map[string]*string
+}
+
+func (a *API) resolveGalleryProfile(galleryProfile, version string) (GalleryProfileConfig, error) {
+	cfg := GalleryProfileConfig{
+		Version: version,
+	}
+
+	switch galleryProfile {
+	case "":
+		return cfg, nil
+	case "fedora-community":
+		truncated, err := truncateFCOSVersion(version)
+		if err != nil {
+			return GalleryProfileConfig{}, err
+		}
+		cfg.Version = truncated
+		// Tag the image with the full build ID (pre-truncated). Images uploaded to the
+		// Fedora community gallery need to be tagged with, at least, `owner: CoreOS`.
+		// The `delete: never` tag is added so we can manage when these images are deleted.
+		// https://github.com/coreos/fedora-coreos-tracker/issues/148#issuecomment-3612864751
+		cfg.Tags = map[string]*string{
+			"real_version": to.Ptr(version),
+			"owner":        to.Ptr("CoreOS"),
+			"delete":       to.Ptr("never"),
+		}
+		return cfg, nil
+	default:
+		return GalleryProfileConfig{}, fmt.Errorf("unsupported gallery profile %q", galleryProfile)
+	}
+}
+
+// isNotFound returns true if the error is an Azure API error with a 404 status code
+// This is helpful when trying to determine if Azure resources already exist since a 404
+// error on Get() means the resource does not exist.
+func isNotFound(err error) bool {
+	var respErr *azcore.ResponseError
+	if errors.As(err, &respErr) {
+		return respErr.StatusCode == http.StatusNotFound
+	}
+	return false
+}
+
+// storageAccountIDFromBlobURL parses the blob URL, extracts the storage account name
+// and returns the corresponding storage account resource ID
+func (a *API) storageAccountIDFromBlobURL(blobURL, resourceGroup string) (*string, error) {
+	u, err := url.Parse(blobURL)
+	if err != nil {
+		return nil, fmt.Errorf("parsing blob URL %q: %w", blobURL, err)
+	}
+
+	hostParts := strings.Split(u.Hostname(), ".")
+	if len(hostParts) < 1 || hostParts[0] == "" {
+		return nil, fmt.Errorf("extracting storage account from blob URL %q", blobURL)
+	}
+
+	storageAccountName := hostParts[0]
+	resp, err := a.accClient.GetProperties(context.Background(), resourceGroup, storageAccountName, nil)
+	if err != nil {
+		return nil, err
+	}
+	if resp.ID == nil {
+		return nil, fmt.Errorf("storage account %q in resource group %q returned nil ID", storageAccountName, resourceGroup)
+	}
+	return resp.ID, nil
+}
+
+func (a *API) CreateGalleryImage(name, galleryName, resourceGroup, sourceBlobURI, architecture, version, galleryProfile string) (armcompute.GalleryImageVersion, error) {
 	ctx := context.Background()
 
-	// Ensure the Azure Shared Image Gallery exists. BeginCreateOrUpdate will create the gallery
-	// in the specified resource group if it doesn't already exist, or update it if it does.
-	// Since no properties are being changed here, this acts as a no-op if the gallery does exist.
-	// Note: the gallery's location is immutable. If a gallery with the same name exists in a different
-	// location within the same resource group, the operation will fail.
-	galleryPoller, err := a.galClient.BeginCreateOrUpdate(ctx, resourceGroup, galleryName, armcompute.Gallery{
-		Location: &a.opts.Location,
-	}, nil)
-	if err != nil {
-		return armcompute.GalleryImageVersion{}, err
-	}
-	_, err = galleryPoller.PollUntilDone(context.Background(), nil)
-	if err != nil {
+	_, err := a.galClient.Get(ctx, resourceGroup, galleryName, nil)
+	if err == nil {
+		plog.Infof("gallery %q already exists in resource group %q; skipping creation", galleryName, resourceGroup)
+	} else if isNotFound(err) {
+		// Create the Image Gallery if it doesn't already exist.
+		galleryPoller, err := a.galClient.BeginCreateOrUpdate(ctx, resourceGroup, galleryName, armcompute.Gallery{
+			Location: &a.opts.Location,
+		}, nil)
+		if err != nil {
+			return armcompute.GalleryImageVersion{}, err
+		}
+		_, err = galleryPoller.PollUntilDone(context.Background(), nil)
+		if err != nil {
+			return armcompute.GalleryImageVersion{}, err
+		}
+	} else {
 		return armcompute.GalleryImageVersion{}, err
 	}
 
@@ -68,41 +157,70 @@ func (a *API) CreateGalleryImage(name, galleryName, resourceGroup, sourceImageID
 		return armcompute.GalleryImageVersion{}, fmt.Errorf("unsupported azure architecture %q", architecture)
 	}
 
-	// Create a Gallery Image Definition with the specified Hyper-V generation (V1 or V2).
-	galleryImagePoller, err := a.galImgClient.BeginCreateOrUpdate(ctx, resourceGroup, galleryName, name, armcompute.GalleryImage{
-		Location: &a.opts.Location,
-		Properties: &armcompute.GalleryImageProperties{
-			OSState:          to.Ptr(armcompute.OperatingSystemStateTypesGeneralized),
-			OSType:           to.Ptr(armcompute.OperatingSystemTypesLinux),
-			HyperVGeneration: to.Ptr(armcompute.HyperVGeneration(armcompute.HyperVGenerationV2)),
-			Identifier: &armcompute.GalleryImageIdentifier{
-				Publisher: &a.opts.Publisher,
-				Offer:     to.Ptr(name),
-				SKU:       to.Ptr(util.RandomName("sku")),
-			},
-			Features:     galleryImageFeatures,
-			Architecture: &azureArch,
-		},
-	}, nil)
+	profileCfg, err := a.resolveGalleryProfile(galleryProfile, version)
 	if err != nil {
 		return armcompute.GalleryImageVersion{}, err
 	}
-	_, err = galleryImagePoller.PollUntilDone(context.Background(), nil)
+
+	_, err = a.galImgClient.Get(ctx, resourceGroup, galleryName, name, nil)
+	if err == nil {
+		plog.Infof("gallery image definition %q already exists in gallery %q; skipping creation", name, galleryName)
+	} else if isNotFound(err) {
+		// Create a Gallery Image Definition if it doesn't already exist.
+		galleryImagePoller, err := a.galImgClient.BeginCreateOrUpdate(ctx, resourceGroup, galleryName, name, armcompute.GalleryImage{
+			Location: &a.opts.Location,
+			Properties: &armcompute.GalleryImageProperties{
+				OSState:          to.Ptr(armcompute.OperatingSystemStateTypesGeneralized),
+				OSType:           to.Ptr(armcompute.OperatingSystemTypesLinux),
+				HyperVGeneration: to.Ptr(armcompute.HyperVGeneration(armcompute.HyperVGenerationV2)),
+				Identifier: &armcompute.GalleryImageIdentifier{
+					Publisher: &a.opts.Publisher,
+					Offer:     &a.opts.Offer,
+					SKU:       to.Ptr(name),
+				},
+				Features:     galleryImageFeatures,
+				Architecture: &azureArch,
+			},
+		}, nil)
+		if err != nil {
+			return armcompute.GalleryImageVersion{}, err
+		}
+		_, err = galleryImagePoller.PollUntilDone(context.Background(), nil)
+		if err != nil {
+			return armcompute.GalleryImageVersion{}, err
+		}
+	} else {
+		return armcompute.GalleryImageVersion{}, err
+	}
+
+	_, err = a.galImgVerClient.Get(ctx, resourceGroup, galleryName, name, profileCfg.Version, nil)
+	if err == nil {
+		// The gallery image version already exists, we can't create it again.
+		return armcompute.GalleryImageVersion{}, fmt.Errorf("gallery image version %q already exists for image %q", profileCfg.Version, name)
+	}
+	if !isNotFound(err) {
+		return armcompute.GalleryImageVersion{}, err
+	}
+
+	storageAccountID, err := a.storageAccountIDFromBlobURL(sourceBlobURI, resourceGroup)
 	if err != nil {
 		return armcompute.GalleryImageVersion{}, err
 	}
 
 	// Create a Gallery Image Version
-	versionName := "1.0.0"
-	imageVersionPoller, err := a.galImgVerClient.BeginCreateOrUpdate(ctx, resourceGroup, galleryName, name, versionName, armcompute.GalleryImageVersion{
+	imageVersionPoller, err := a.galImgVerClient.BeginCreateOrUpdate(ctx, resourceGroup, galleryName, name, profileCfg.Version, armcompute.GalleryImageVersion{
 		Location: &a.opts.Location,
 		Properties: &armcompute.GalleryImageVersionProperties{
 			StorageProfile: &armcompute.GalleryImageVersionStorageProfile{
-				Source: &armcompute.GalleryArtifactVersionSource{
-					ID: to.Ptr(sourceImageID),
+				OSDiskImage: &armcompute.GalleryOSDiskImage{
+					Source: &armcompute.GalleryDiskImageSource{
+						StorageAccountID: storageAccountID,
+						URI:              to.Ptr(sourceBlobURI),
+					},
 				},
 			},
 		},
+		Tags: profileCfg.Tags,
 	}, nil)
 	if err != nil {
 		return armcompute.GalleryImageVersion{}, err
@@ -115,37 +233,17 @@ func (a *API) CreateGalleryImage(name, galleryName, resourceGroup, sourceImageID
 	return imageVersionResponse.GalleryImageVersion, nil
 }
 
-func (a *API) DeleteGalleryImage(imageName, resourceGroup, galleryName string) error {
+func (a *API) DeleteGalleryImageVersion(imageName, version, resourceGroup, galleryName, galleryProfile string, deleteDefinition bool) error {
 	ctx := context.Background()
 
-	timeout := 5 * time.Minute
-	delay := 5 * time.Second
-	// There is sometimes a delay in the azure backend where deleted gallery images versions
-	// still show within the image definition causing a failure during image deletion. We'll
-	// retry the delete command again until a specified timeout to ensure the image is deleted.
-	err := util.RetryUntilTimeout(timeout, delay, func() error {
-		// Find all image versions in the image definition and delete them.
-		// Gallery images can only be deleted if they have no nested resources.
-		versionPager := a.galImgVerClient.NewListByGalleryImagePager(resourceGroup, galleryName, imageName, nil)
-		for versionPager.More() {
-			versionPage, err := versionPager.NextPage(ctx)
-			if err != nil {
-				return fmt.Errorf("failed to list image versions for %s: %v", imageName, err)
-			}
-			for _, version := range versionPage.Value {
-				poller, err := a.galImgVerClient.BeginDelete(ctx, resourceGroup, galleryName, imageName, *version.Name, nil)
-				if err != nil {
-					return err
-				}
-				_, err = poller.PollUntilDone(ctx, nil)
-				if err != nil {
-					return err
-				}
-			}
-		}
+	profileCfg, err := a.resolveGalleryProfile(galleryProfile, version)
+	if err != nil {
+		return err
+	}
 
-		// delete the gallery image
-		poller, err := a.galImgClient.BeginDelete(ctx, resourceGroup, galleryName, imageName, nil)
+	_, err = a.galImgVerClient.Get(ctx, resourceGroup, galleryName, imageName, profileCfg.Version, nil)
+	if err == nil {
+		poller, err := a.galImgVerClient.BeginDelete(ctx, resourceGroup, galleryName, imageName, profileCfg.Version, nil)
 		if err != nil {
 			return err
 		}
@@ -154,51 +252,36 @@ func (a *API) DeleteGalleryImage(imageName, resourceGroup, galleryName string) e
 			return err
 		}
 
-		return nil
-	})
+		plog.Printf("Gallery image version %q for image %q in gallery %q in resource group %q removed", profileCfg.Version, imageName, galleryName, resourceGroup)
 
-	return err
+	} else if isNotFound(err) {
+		plog.Printf("Gallery image version %q for image %q not found in gallery %q in resource group %q; nothing to delete", profileCfg.Version, imageName, galleryName, resourceGroup)
+	} else {
+		return err
+	}
 
-}
-
-func (a *API) DeleteGallery(galleryName, resourceGroup string) error {
-	ctx := context.Background()
-
-	timeout := 10 * time.Minute
-	delay := 5 * time.Second
-	// There is sometimes a delay in the azure backend where deleted gallery images still show
-	// within the gallery causing a failure during gallery deletion. We'll retry the delete
-	// command again until a specified timeout to ensure the gallery is deleted.
-	err := util.RetryUntilTimeout(timeout, delay, func() error {
-		// Find all images in the gallery and delete them.
-		// Galleries can only be deleted if they have no nested resources.
-		imagePager := a.galImgClient.NewListByGalleryPager(resourceGroup, galleryName, nil)
-		for imagePager.More() {
-			page, err := imagePager.NextPage(ctx)
+	// Delete the gallery image definition if requested.
+	// Gallery images definitions can only be deleted if they have no nested versions.
+	if deleteDefinition {
+		_, err = a.galImgClient.Get(ctx, resourceGroup, galleryName, imageName, nil)
+		if err == nil {
+			poller, err := a.galImgClient.BeginDelete(ctx, resourceGroup, galleryName, imageName, nil)
 			if err != nil {
-				return fmt.Errorf("failed to get image definitions")
+				return err
 			}
-			for _, image := range page.Value {
-				err := a.DeleteGalleryImage(*image.Name, resourceGroup, galleryName)
-				if err != nil {
-					return fmt.Errorf("Couldn't delete gallery image: %v\n", err)
-				}
+			_, err = poller.PollUntilDone(ctx, nil)
+			if err != nil {
+				return err
 			}
-		}
 
-		// delete the gallery
-		poller, err := a.galClient.BeginDelete(ctx, resourceGroup, galleryName, nil)
-		if err != nil {
+			plog.Printf("Gallery image definition %q in gallery %q in resource group %q removed", imageName, galleryName, resourceGroup)
+
+		} else if isNotFound(err) {
+			plog.Printf("Gallery image definition %q not found in gallery %q in resource group %q; nothing to delete", imageName, galleryName, resourceGroup)
+		} else {
 			return err
 		}
-		_, err = poller.PollUntilDone(ctx, nil)
-		if err != nil {
-			return err
-		}
+	}
 
-		return nil
-	})
-
-	return err
-
+	return nil
 }
