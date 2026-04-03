@@ -95,8 +95,13 @@ const defaultPlatformIndependentPlatform = "qemu"
 // Don't e.g. check console for kernel errors, SELinux AVCs, etc.
 const SkipBaseChecksTag = "skip-base-checks"
 
-// Date format for snooze date specified in kola-denylist.yaml (YYYY-MM-DD)
-const snoozeFormat = "2006-01-02"
+// Date format (YYYY-MM-DD) for:
+// - snooze date specified in kola-denylist.yaml
+// - creation date in externalTestMeta
+const dateFormat = "2006-01-02"
+
+// By default test will have a one week grace period
+const gracePeriod = time.Hour * 24 * 7
 
 // SkipConsoleWarningsTag will cause kola not to check console for kernel errors.
 // This overlaps with SkipBaseChecksTag above, but is really a special flag for kola-denylist.yaml.
@@ -438,7 +443,7 @@ func ParseDenyListYaml(pltfrm string) error {
 		}
 
 		if obj.SnoozeDate != "" {
-			snoozeDate, err := time.Parse(snoozeFormat, obj.SnoozeDate)
+			snoozeDate, err := time.Parse(dateFormat, obj.SnoozeDate)
 			if err != nil {
 				return err
 			}
@@ -1017,6 +1022,7 @@ type externalTestMeta struct {
 	InstanceType              string   `json:"instanceType"                        yaml:"instanceType"`
 	Description               string   `json:"description"                         yaml:"description"`
 	BindMountHostRO           []string `json:"bindMountHostRO,omitempty"           yaml:"bindMountHostRO,omitempty"`
+	CreationDate              string   `json:"creationDate,omitempty"              yaml:"creationDate,omitempty"`
 }
 
 // metadataFromTestBinary extracts JSON-in-comment like:
@@ -1304,6 +1310,18 @@ ExecStart=%s
 	}
 	if targetMeta.NoInstanceCreds {
 		t.Flags = append(t.Flags, register.NoInstanceCreds)
+	}
+	if targetMeta.CreationDate != "" {
+		today := time.Now()
+		testCreationDate, err := time.Parse(dateFormat, targetMeta.CreationDate)
+		if err != nil {
+			return err
+		}
+		gracePeriodEnds := testCreationDate.Add(gracePeriod)
+		if today.Before(gracePeriodEnds) {
+			fmt.Printf("⏳ Kola test \"%s\" is in grace period (created: %s, expires: %s), failures will be warnings.\n", t.Name, targetMeta.CreationDate, gracePeriodEnds.Format(dateFormat))
+			WarnOnErrorTests = append(WarnOnErrorTests, t.Name)
+		}
 	}
 	t.Tags = append(t.Tags, strings.Fields(targetMeta.Tags)...)
 	// TODO validate tags here
