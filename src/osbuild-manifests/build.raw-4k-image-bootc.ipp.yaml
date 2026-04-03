@@ -1,7 +1,7 @@
-# This file defines the raw-image pipeline.
+# This file defines the raw-4k-image pipeline that leverages bootc install.
 version: '2'
 pipelines:
-  - name: raw-image
+  - name: raw-4k-image
     build:
       mpp-format-string: '{buildroot}'
     stages:
@@ -9,15 +9,17 @@ pipelines:
         options:
           filename: disk.img
           size:
-            mpp-format-string: '{image.size}'
+            mpp-format-string: '{image4k.size}'
       - type: org.osbuild.sfdisk
         devices:
           device:
             type: org.osbuild.loopback
             options:
               filename: disk.img
+              sector-size:
+                  mpp-format-int: "{four_k_sector_size}"
         options:
-          mpp-format-json: '{image.layout}'
+          mpp-format-json: '{image4k.layout}'
       # Create EFI filesystem on EFI architectures
       - mpp-if: arch in ['x86_64', 'aarch64', 'riscv64']
         then:
@@ -28,10 +30,12 @@ pipelines:
               options:
                 filename: disk.img
                 start:
-                  mpp-format-int: '{image.layout[''EFI-SYSTEM''].start}'
+                  mpp-format-int: '{image4k.layout[''EFI-SYSTEM''].start}'
                 size:
-                  mpp-format-int: '{image.layout[''EFI-SYSTEM''].size}'
+                  mpp-format-int: '{image4k.layout[''EFI-SYSTEM''].size}'
                 lock: true
+                sector-size:
+                    mpp-format-int: "{four_k_sector_size}"
           options:
             label: EFI-SYSTEM
             volid: 7B7795E7
@@ -42,10 +46,12 @@ pipelines:
             options:
               filename: disk.img
               start:
-                mpp-format-int: '{image.layout[''boot''].start}'
+                mpp-format-int: '{image4k.layout[''boot''].start}'
               size:
-                mpp-format-int: '{image.layout[''boot''].size}'
+                mpp-format-int: '{image4k.layout[''boot''].size}'
               lock: true
+              sector-size:
+                  mpp-format-int: "{four_k_sector_size}"
         options:
           uuid:
             mpp-format-string: '{boot_fs_uuid}'
@@ -63,10 +69,12 @@ pipelines:
             options:
               filename: disk.img
               start:
-                mpp-format-int: '{image.layout[''root''].start}'
+                mpp-format-int: '{image4k.layout[''root''].start}'
               size:
-                mpp-format-int: '{image.layout[''root''].size}'
+                mpp-format-int: '{image4k.layout[''root''].size}'
               lock: true
+              sector-size:
+                  mpp-format-int: "{four_k_sector_size}"
         options:
           agcount:
             mpp-format-int: '{root_fs_agcount}'
@@ -96,12 +104,14 @@ pipelines:
             options:
               filename: disk.img
               partscan: true
+              sector-size:
+                  mpp-format-int: "{four_k_sector_size}"
         mounts:
           - name: root
             type: org.osbuild.xfs
             source: disk
             partition:
-              mpp-format-int: '{image.layout[''root''].partnum}'
+              mpp-format-int: '{image4k.layout[''root''].partnum}'
             target: /root-mount-point
           # Mount boot partition on EFI architectures for /boot/efi creation
           - mpp-if: arch in ['x86_64', 'aarch64', 'riscv64']
@@ -110,7 +120,7 @@ pipelines:
               type: org.osbuild.ext4
               source: disk
               partition:
-                mpp-format-int: '{image.layout[''boot''].partnum}'
+                mpp-format-int: '{image4k.layout[''boot''].partnum}'
               target: /boot-mount-point
       # Set the context of the root of disk so that we avoid unlabeled_t files.
       # Here we make sure to not mount the boot partition because we want to label
@@ -132,12 +142,14 @@ pipelines:
             options:
               filename: disk.img
               partscan: true
+              sector-size:
+                  mpp-format-int: "{four_k_sector_size}"
         mounts:
           - name: root
             type: org.osbuild.xfs
             source: disk
             partition:
-              mpp-format-int: '{image.layout[''root''].partnum}'
+              mpp-format-int: '{image4k.layout[''root''].partnum}'
             target: /
       # Then we mount the boot parition and label again so the /boot/efi
       # mount point is labeled properly
@@ -157,48 +169,78 @@ pipelines:
             options:
               filename: disk.img
               partscan: true
+              sector-size:
+                  mpp-format-int: "{four_k_sector_size}"
         mounts:
           - name: root
             type: org.osbuild.xfs
             source: disk
             partition:
-              mpp-format-int: '{image.layout[''root''].partnum}'
+              mpp-format-int: '{image4k.layout[''root''].partnum}'
             target: /
           - name: boot
             type: org.osbuild.ext4
             source: disk
             partition:
-              mpp-format-int: '{image.layout[''boot''].partnum}'
+              mpp-format-int: '{image4k.layout[''boot''].partnum}'
             target: /boot
-      - type: org.osbuild.copy
-        inputs:
-          tree:
-            type: org.osbuild.tree
-            origin: org.osbuild.pipeline
-            references:
-              - name:tree
+      # Use bootc install to-filesystem to install the ostree content from the container image
+      # inside our disc image
+      - type: org.osbuild.bootc.install-to-filesystem
+        inputs: 
+          images:
+            mpp-if: ociarchive != ''
+            then:
+              type: org.osbuild.containers
+              origin: org.osbuild.pipeline
+              references:
+                name:oci-archive:
+                  name: coreos.ociarchive
+            else:
+              type: org.osbuild.containers-storage
+              origin: org.osbuild.source
+              mpp-resolve-images:
+                images:
+                  - source: $container_repo
+                    tag: $container_tag
         options:
-          paths:
-            - from: input://tree/
-              to: mount://root/
+          kernel-args:
+            # '$ignition_firstboot' only works with GRUB, not available on s390x
+            - mpp-if: arch != 's390x'
+              then: '$ignition_firstboot'
+            - mpp-format-string: '{extra_kargs}'
+          target-imgref:
+            mpp-format-string: '{container_imgref}'
+          stateroot:
+            mpp-format-string: '{osname}'
+          # Empty strings mean mount spec kargs are ommited entirely.
+          # See github.com/bootc-dev/bootc/issues/1441
+          boot-mount-spec: ""
+          root-mount-spec: ""
+          # We don't want bootupd to stamp the boot and UEFI paritions
+          # with the boot uuid because these will change at first boot.
+          # See https://github.com/coreos/fedora-coreos-config/pull/3898
+          bootupd-skip-boot-uuid: true
         devices:
           disk:
             type: org.osbuild.loopback
             options:
               filename: disk.img
               partscan: true
+              sector-size:
+                  mpp-format-int: "{four_k_sector_size}"
         mounts:
           - name: root
             type: org.osbuild.xfs
             source: disk
             partition:
-              mpp-format-int: '{image.layout[''root''].partnum}'
+              mpp-format-int: '{image4k.layout[''root''].partnum}'
             target: /
           - name: boot
             type: org.osbuild.ext4
             source: disk
             partition:
-              mpp-format-int: '{image.layout[''boot''].partnum}'
+              mpp-format-int: '{image4k.layout[''boot''].partnum}'
             target: /boot
           # Mount EFI partition on EFI architectures
           - mpp-if: arch in ['x86_64', 'aarch64', 'riscv64']
@@ -207,75 +249,59 @@ pipelines:
               type: org.osbuild.fat
               source: disk
               partition:
-                mpp-format-int: '{image.layout[''EFI-SYSTEM''].partnum}'
+                mpp-format-int: '{image4k.layout[''EFI-SYSTEM''].partnum}'
               target: /boot/efi
-      # Install bootloader (not on s390x which uses zipl)
-      - mpp-if: arch != 's390x'
-        then:
-          type: org.osbuild.bootupd
-          options:
-            # Install BIOS bootloader on x86_64 and ppc64le
-            bios:
-              mpp-if: arch in ['x86_64', 'ppc64le']
-              then:
-                device: disk
-                # ppc64le installs to the PReP partition, not the root of the disk
-                partition:
-                  mpp-if: arch == 'ppc64le'
-                  then:
-                    mpp-format-int: '{image.layout[''PowerPC-PReP-boot''].partnum}'
-            static-configs: true
-            deployment:
-              default: true
-          devices:
-            disk:
-              type: org.osbuild.loopback
-              options:
-                filename: disk.img
-                partscan: true
-          mounts:
-            - name: root
-              type: org.osbuild.xfs
-              source: disk
-              partition:
-                mpp-format-int: '{image.layout[''root''].partnum}'
-              target: /
-            - name: boot
-              type: org.osbuild.ext4
-              source: disk
-              partition:
-                mpp-format-int: '{image.layout[''boot''].partnum}'
-              target: /boot
-            # Mount EFI partition on EFI architectures
-            - mpp-if: arch in ['x86_64', 'aarch64', 'riscv64']
-              then:
-                name: efi
-                type: org.osbuild.fat
-                source: disk
-                partition:
-                  mpp-format-int: '{image.layout[''EFI-SYSTEM''].partnum}'
-                target: /boot/efi
-      - type: org.osbuild.chattr
+      # set up the `ignition.firstboot` stamp at the end because
+      # bootc want empty filesystems
+      - type: org.osbuild.ignition
         options:
-          items:
-            mount://root/:
-              immutable: true
+          target: mount://boot/
         devices:
           disk:
             type: org.osbuild.loopback
             options:
               filename: disk.img
               partscan: true
+              sector-size:
+                  mpp-format-int: "{four_k_sector_size}"
         mounts:
           - name: root
             type: org.osbuild.xfs
             source: disk
             partition:
-              mpp-format-int: '{image.layout[''root''].partnum}'
+              mpp-format-int: '{image4k.layout[''root''].partnum}'
             target: /
-          - name: ostree.deployment
-            type: org.osbuild.ostree.deployment
+          - name: boot
+            type: org.osbuild.ext4
+            source: disk
+            partition:
+              mpp-format-int: '{image4k.layout[''boot''].partnum}'
+            target: /boot
+      # We historically created an aleph file named .coreos-aleph-version.json
+      # in the sysroot partition, for debugging purposes. bootc create it's
+      # own that is mostly the same content. Let's make a symlink to it
+      # for backward compatibility.
+      - type: org.osbuild.ln
+        options:
+          paths:
+            - target: ".bootc-aleph.json"
+              link_name: "mount://root/.coreos-aleph-version.json"
+              symbolic: true
+            - target: ".bootc-aleph.json"
+              link_name: "mount://root/.aleph-version.json"
+              symbolic: true
+        devices:
+          disk:
+            type: org.osbuild.loopback
             options:
-              source: mount
-              deployment:
-                default: true
+              filename: disk.img
+              partscan: true
+              sector-size:
+                  mpp-format-int: "{four_k_sector_size}"
+        mounts:
+          - name: root
+            type: org.osbuild.xfs
+            source: disk
+            partition:
+              mpp-format-int: '{image4k.layout[''root''].partnum}'
+            target: /
