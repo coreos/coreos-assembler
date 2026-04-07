@@ -11,6 +11,7 @@ import (
 
 	"github.com/pborman/uuid"
 
+	"github.com/coreos/coreos-assembler/mantle/kola"
 	"github.com/coreos/coreos-assembler/mantle/kola/register"
 	"github.com/coreos/coreos-assembler/mantle/platform"
 )
@@ -57,6 +58,7 @@ func init() {
 		Run:         LocalTests,
 		ClusterSize: 1,
 		NativeFuncs: nativeFuncs,
+		Tags:        []string{kola.BootcBaseTag},
 	})
 	register.RegisterTest(&register.Test{
 		Name:          "basic.uefi",
@@ -69,6 +71,7 @@ func init() {
 		MachineOptions: platform.MachineOptions{
 			Firmware: uefi,
 		},
+		Tags: []string{kola.BootcBaseTag},
 	})
 	register.RegisterTest(&register.Test{
 		Name:          "basic.uefi-secure",
@@ -81,6 +84,7 @@ func init() {
 		MachineOptions: platform.MachineOptions{
 			Firmware: uefiSecure,
 		},
+		Tags: []string{kola.BootcBaseTag},
 	})
 	register.RegisterTest(&register.Test{
 		Name:        "basic.nvme",
@@ -95,6 +99,7 @@ func init() {
 		MachineOptions: platform.MachineOptions{
 			Nvme: true,
 		},
+		Tags: []string{kola.BootcBaseTag},
 	})
 	register.RegisterTest(&register.Test{
 		Name:        "rootfs.uuid",
@@ -106,6 +111,7 @@ func init() {
 		},
 		// FIXME run on RHCOS once it has https://github.com/coreos/ignition-dracut/pull/93
 		Distros: []string{"fcos"},
+		Tags:    []string{kola.BootcBaseTag},
 	})
 	register.RegisterTest(&register.Test{
 		Name:        "rhcos.services-disabled",
@@ -116,6 +122,7 @@ func init() {
 			"ServicesDisabled": register.CreateNativeFuncWrap(TestServicesDisabledRHCOS),
 		},
 		Distros: []string{"rhcos"},
+		Tags:    []string{kola.BootcBaseTag},
 	})
 }
 
