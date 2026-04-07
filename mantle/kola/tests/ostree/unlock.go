@@ -31,7 +31,7 @@ func init() {
 		Name:        "ostree.unlock",
 		Description: "Verify installing an rpm does not persist when using `ostree admin unlock`.",
 		FailFast:    true,
-		Tags:        []string{"ostree", kola.NeedsInternetTag}, // need network to pull RPM
+		Tags:        []string{"ostree", kola.NeedsInternetTag, kola.BootcBaseTag}, // need network to pull RPM
 	})
 	register.RegisterTest(&register.Test{
 		Run:         ostreeHotfixTest,
@@ -39,7 +39,7 @@ func init() {
 		Name:        "ostree.hotfix",
 		Description: "Verify that the deployment can be put into hotfix mode where RPMs installed with persist across reboots.",
 		FailFast:    true,
-		Tags:        []string{"ostree", kola.NeedsInternetTag}, // need network to pull RPM
+		Tags:        []string{"ostree", kola.NeedsInternetTag, kola.BootcBaseTag}, // need network to pull RPM
 	})
 }
 
