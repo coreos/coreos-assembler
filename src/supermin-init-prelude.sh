@@ -97,3 +97,14 @@ cat > /usr/lib/ostree/prepare-root.conf <<EOF
 [composefs]
 enabled = true
 EOF
+
+# Tell bootc to enforce that `/etc/containers/policy.json` include a default
+# policy that verify our images signature.
+# When moving to image-builder, this config can be moved into the container itself
+# but as long as we are using osbuild manually we have to carry this in the buildroot.
+# TODO: uncomment this when https://github.com/bootc-dev/bootc/pull/2116
+# is merged and released
+# cat > usr/lib/bootc/install/10-sigpolicy.toml <<EOF
+# [install]
+# enforce-container-sigpolicy = true
+# EOF
