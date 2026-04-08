@@ -83,7 +83,7 @@ fi
 touch /etc/cosa-supermin
 
 # /usr/sbin/ip{,6}tables is installed as a symlink to /etc/alternatives/ip{,6}tables but
-# the /etc/alternatives symlink to /usr/sbin/ip{,6}tables-legacy is missing.  This recreates
-# the missing link.  Hehe.
-update-alternatives --install /etc/alternatives/iptables iptables /usr/sbin/iptables-legacy 1
-update-alternatives --install /etc/alternatives/ip6tables ip6tables /usr/sbin/ip6tables-legacy 1
+# the /etc/alternatives symlink to /usr/sbin/ip{,6}tables-nft is missing. This recreates
+# the missing link.
+update-alternatives --install /etc/alternatives/iptables iptables /usr/sbin/iptables-nft 1
+update-alternatives --install /etc/alternatives/ip6tables ip6tables /usr/sbin/ip6tables-nft 1
