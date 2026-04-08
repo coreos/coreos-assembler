@@ -92,28 +92,15 @@ func (a *API) CreateImage(spec *ImageSpec, overwrite bool) (*compute.Operation, 
 		{
 			Type: "VIRTIO_SCSI_MULTIQUEUE",
 		},
-		// RHEL supports this since 8.4; TODO share logic here with
-		// https://github.com/osbuild/osbuild-composer/blob/c6570f6c94149b47f2f8e2f82d7467d6b96755bb/internal/cloud/gcp/compute.go#L16
-		{
-			Type: "SEV_CAPABLE",
-		},
 		{
 			Type: "GVNIC",
 		},
 		{
 			Type: "UEFI_COMPATIBLE",
 		},
-		// https://cloud.google.com/blog/products/identity-security/rsa-snp-vm-more-confidential
-		{
-			Type: "SEV_SNP_CAPABLE",
-		},
 		// https://cloud.google.com/compute/docs/networking/using-idpf
 		{
 			Type: "IDPF",
-		},
-		// https://cloud.google.com/blog/products/identity-security/confidential-vms-on-intel-cpus-your-datas-new-intelligent-defense
-		{
-			Type: "TDX_CAPABLE",
 		},
 	}
 
@@ -123,9 +110,17 @@ func (a *API) CreateImage(spec *ImageSpec, overwrite bool) (*compute.Operation, 
 	switch spec.Architecture {
 	case "amd64", "x86_64":
 		spec.Architecture = "X86_64"
-		// Enables support for live migration of AMD SEV SNP capable images in GCP.
-		// See: https://git.kernel.org/pub/scm/linux/kernel/git/tip/tip.git/commit/?id=ac3f9c9f1b37edaa7d1a9b908bc79d843955a1a2
-		features = append(features, &compute.GuestOsFeature{Type: "SEV_LIVE_MIGRATABLE_V2"})
+		// The following are x86_64 specific features.
+		features = append(features,
+			// https://cloud.google.com/blog/products/identity-security/rsa-snp-vm-more-confidential
+			&compute.GuestOsFeature{Type: "SEV_CAPABLE"},
+			&compute.GuestOsFeature{Type: "SEV_SNP_CAPABLE"},
+			// https://cloud.google.com/blog/products/identity-security/confidential-vms-on-intel-cpus-your-datas-new-intelligent-defense
+			&compute.GuestOsFeature{Type: "TDX_CAPABLE"},
+			// Enables support for live migration of AMD SEV SNP capable images in GCP.
+			// See: https://git.kernel.org/pub/scm/linux/kernel/git/tip/tip.git/commit/?id=ac3f9c9f1b37edaa7d1a9b908bc79d843955a1a2
+			&compute.GuestOsFeature{Type: "SEV_LIVE_MIGRATABLE_V2"},
+		)
 	case "arm64", "aarch64":
 		spec.Architecture = "ARM64"
 	default:
