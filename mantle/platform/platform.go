@@ -177,6 +177,8 @@ type MachineOptions struct {
 	Nvme                      bool
 	Cex                       bool
 	BindMountHostRO           []string
+	CloudInitType             string // kubevirt-only: "configdrive" or "nocloud"
+	NetworkData               string // kubevirt-only: network config passed to cloud-init volume
 }
 
 // EnsureNoQEMUOnlyOptions returns an error if any QEMU-only options
