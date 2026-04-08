@@ -524,16 +524,6 @@ def cmdlib_sh(script):
     '''])
 
 
-def generate_image_json(srcfile):
-    return flatten_image_yaml(srcfile)
-
-
-def write_image_json(srcfile, outfile):
-    r = generate_image_json(srcfile)
-    with open(outfile, 'w') as f:
-        json.dump(r, f, sort_keys=True)
-
-
 # Merge two lists, avoiding duplicates. Exact duplicate kargs could be valid
 # but we have no use case for them right now in our official images.
 def merge_lists(x, y, k):
