@@ -92,7 +92,7 @@ packages:
         - ppc64le
         - x86_64
   - iproute
-  - iptables
+  - iptables-nft
   - iptables-libs
   - jq
   - kernel-modules
