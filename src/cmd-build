@@ -7,11 +7,10 @@ dn=$(dirname "$0")
 
 print_help() {
     cat 1>&2 <<'EOF'
-Usage: coreos-assembler build-with-buildah
-       coreos-assembler build-with-buildah [OPTIONS]...
+Usage: coreos-assembler build
+       coreos-assembler build [OPTIONS]...
 
   Build bootable container (ostree) and image base artifacts using the container runtime (buildah).
-  `cosa build` will pivot to this script when the environment variable `COREOS_ASSEMBLER_BUILD_WITH_BUILDAH` is set.
 
   The following options are supported:
   --version=VERSION      Use the given version instead of using versionary.
@@ -99,7 +98,7 @@ build_with_buildah() {
     echo "Building with container runtime (buildah) with VERSION=${VERSION}"
 
     # Allocate temporary space for this build
-    tempdir="$(pwd)/tmp/build-with-buildah"
+    tempdir="$(pwd)/tmp/build"
     rm "${tempdir}" -rf
     mkdir "${tempdir}"
 
@@ -229,7 +228,7 @@ build_with_buildah() {
             export REGISTRY_AUTH_FILE="${tempdir}/registry-auth-file.json"
         fi
     fi
-    cat <<EOF > "${tempdir}/build-with-buildah-script.sh"
+    cat <<EOF > "${tempdir}/build-script.sh"
         set -euxo pipefail
         if [ -n "${REGISTRY_AUTH_FILE:-}" ]; then
             # Since we are changing dirs below let's make it an absolute path
@@ -238,8 +237,8 @@ build_with_buildah() {
         env -C ${tempdir}/src TMPDIR=$(realpath cache) buildah $@
         skopeo copy --quiet "${final_ref}" "${tmp_oci_archive}"
 EOF
-    chmod +x "${tempdir}/build-with-buildah-script.sh"
-    $cmd "${tempdir}/build-with-buildah-script.sh"
+    chmod +x "${tempdir}/build-script.sh"
+    $cmd "${tempdir}/build-script.sh"
 
     new_inputhash=$(skopeo inspect "${tmp_oci_archive}" | jq -r '.Labels."com.coreos.inputhash"')
     if [ -n "${previous_inputhash}" ] && [ "$previous_inputhash" = "$new_inputhash" ]; then
