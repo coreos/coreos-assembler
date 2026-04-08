@@ -18,12 +18,6 @@ fatal() {
     exit 1
 }
 
-# Execute a command, also writing the cmdline to stdout
-runv() {
-    echo "Running: " "$@"
-    "$@"
-}
-
 # Get target base architecture
 basearch=$(python3 -c '
 import gi
@@ -126,344 +120,11 @@ preflight_checks() {
     preflight_kvm
 }
 
-# Use this for things like disabling fsync.
-# For more information, see the docs of `cosa init --transient`.
-is_transient() {
-    test -f "${workdir}"/tmp/cosa-transient
-}
-
-# Picks between yaml or json based on which version exists. Errors out if both
-# exists. If neither exist, prefers the extension in ${2}, or otherwise YAML.
-pick_yaml_or_else_json() {
-    local f=$1; shift
-    local default=${1:-yaml}; shift
-    if [ -f "${f}.json" ] && [ -f "${f}.yaml" ]; then
-        fatal "Found both ${f}.json and ${f}.yaml"
-    elif [ -f "${f}.json" ]; then
-        echo "${f}.json"
-    elif [ -f "${f}.yaml" ]; then
-        echo "${f}.yaml"
-    else
-        echo "${f}.${default}"
-    fi
-}
-
 # Given a YAML file at first path, write it as JSON to file at second path
 yaml2json() {
     python3 -c 'import sys, json, yaml; json.dump(yaml.safe_load(sys.stdin), sys.stdout, sort_keys=True)' < "$1" > "$2"
 }
 
-commit_overlay() {
-    local name path respath
-    name=$1
-    path=$2
-    respath=$(realpath "${path}")
-    # Only keep write bit for owner for all overlay files/dirs. We copy it over
-    # but with the umask we want so the perms are dropped. This is easier than
-    # using ostree's --statoverride when dealing with executable files. See:
-    # https://github.com/ostreedev/ostree/issues/2368
-    rm -rf "${TMPDIR}/overlay" && (umask 0022 && cp -r "${respath}" "${TMPDIR}/overlay")
-    # Make sure there are no setgid/setuid bits in the overlays.
-    # See e.g. https://github.com/coreos/fedora-coreos-tracker/issues/1003.
-    chmod -R gu-s "${TMPDIR}/overlay"
-    # Apply statoverrides from a file in the root of the overlay, which may
-    # or may not exist.  ostree doesn't support comments in statoverride
-    # files, but we do.
-    touch "${TMPDIR}/overlay/statoverride"
-    echo -n "Committing ${name}: ${path} ... "
-    ostree commit --repo="${tmprepo}" \
-        --tree=dir="${TMPDIR}/overlay" -b "overlay/${name}" \
-        --owner-uid 0 --owner-gid 0 --no-xattrs --no-bindings --parent=none \
-        --mode-ro-executables --timestamp "${git_timestamp}" \
-        --statoverride <(sed -e '/^#/d' "${TMPDIR}/overlay/statoverride") \
-        --skip-list <(echo /statoverride)
-}
-
-create_content_manifest(){
-    local source_file=$1
-    local destination=$2
-    mkdir -p "${workdir}"/tmp/buildinfo
-    base_repos=$(jq .repos "${flattened_manifest}")
-
-    # Get the data form content_sets.yaml and map the repo names given in '$base_repos' to their corresponding
-    # pulp repository IDs provided in https://www.redhat.com/security/data/metrics/repository-to-cpe.json
-    python3 -c "
-import json, yaml;
-
-# Open the yaml and load the data
-f = open('$source_file')
-data = yaml.safe_load(f);
-f.close();
-repos=[];
-
-for base_repo in $base_repos:
-    if base_repo in data['repo_mapping']:
-        if data['repo_mapping'][base_repo]['name'] != '':
-            repo_name = data['repo_mapping'][base_repo]['name'].replace('\$ARCH', '$(arch)');
-            repos.append(repo_name)
-        else:
-            print('Warning: No corresponding repo in repository-to-cpe.json for ' + base_repo)
-    else:
-        # Warning message for repositories with no entry in content_sets.yaml
-        print('Warning: No corresponding entry in content_sets.yaml for ' + base_repo)
-
-content_manifest_data = json.dumps({
-    'metadata': {
-        'icm_version': 1,
-        'icm_spec': 'https://raw.githubusercontent.com/containerbuildsystem/atomic-reactor/master/atomic_reactor/schemas/content_manifest.json',
-        'image_layer_index': 1
-    },
-    'content_sets': repos,
-    'image_contents': []
-    });
-with open('$destination', 'w') as outfile:
-    outfile.write(content_manifest_data)
-    "
-}
-
-# Implement support for automatic local overrides:
-# https://github.com/coreos/coreos-assembler/issues/118
-#
-# This function commits the contents of overlay.d/ as well
-# as overrides/{rootfs} to OSTree commits, and also handles
-# overrides/rpm and fast-track repos.
-prepare_compose_overlays() {
-    local with_cosa_overrides=1
-    while [ $# -gt 0 ]; do
-        flag="${1}"; shift;
-        case "${flag}" in
-            --ignore-cosa-overrides) with_cosa_overrides=;;
-             *) echo "${flag} is not understood."; exit 1;;
-         esac;
-    done
-
-    local overridesdir=${workdir}/overrides
-    local tmp_overridesdir=${TMPDIR}/override
-    local override_manifest="${tmp_overridesdir}"/coreos-assembler-override-manifest.yaml
-    local ovld="${configdir}/overlay.d"
-    local git_timestamp="January 1 1970"
-    local layers=""
-    if [ -d "${configdir_gitrepo}/.git" ]; then
-        git_timestamp=$(git -C "${configdir_gitrepo}" show -s --format=%ci HEAD)
-    fi
-
-    if [ -d "${configdir}/overlay" ]; then
-        (echo "ERROR: overlay/ directory is no longer supported, use overlay.d/"
-         echo "ERROR: https://github.com/coreos/coreos-assembler/pull/639") 1>&2
-        exit 1
-    fi
-
-    if [ -d "${overridesdir}" ] || [ -d "${ovld}" ] || [ -d "${workdir}/src/yumrepos" ] || [ -e "${configdir}/fast-tracks.yaml" ]; then
-        rm -rf "${tmp_overridesdir}"
-        mkdir  "${tmp_overridesdir}"
-        cat > "${override_manifest}" <<EOF
-include: ${manifest}
-EOF
-        # Because right now rpm-ostree doesn't look for .repo files in
-        # each included dir.
-        # https://github.com/projectatomic/rpm-ostree/issues/1628
-        find "${configdir}/" -maxdepth 1 -type f -name '*.repo' -exec cp -t "${tmp_overridesdir}" {} +
-        if [ -d "${workdir}/src/yumrepos" ]; then
-            find "${workdir}/src/yumrepos/" -maxdepth 1 -type f -name '*.repo' -exec cp -t "${tmp_overridesdir}" {} +
-        fi
-        if ! ls "${tmp_overridesdir}"/*.repo; then
-            echo "ERROR: no yum repo files were found"
-            exit 1
-        fi
-        manifest=${override_manifest}
-    fi
-
-    if [ -d "${ovld}" ]; then
-        for n in "${ovld}"/*; do
-            if ! [ -d "${n}" ]; then
-                continue
-            fi
-            commit_overlay "$(basename "${n}")" "${n}"
-        done
-    fi
-
-    # Store the fully rendered disk image config (image.json)
-    # and the platform (platforms.json) if it exists inside
-    # the ostree commit, so it can later be extracted by disk image
-    # builds. Also the full contents of the live/ directory.
-    local usr_share_cosa="${tmp_overridesdir}/usr-share-cosa"
-    mkdir -p "${usr_share_cosa}/usr/share/coreos-assembler/"
-    cp "${image_json}" "${usr_share_cosa}/usr/share/coreos-assembler/"
-    if [ -f "${platforms_json}" ]; then
-        cp "${platforms_json}" "${usr_share_cosa}/usr/share/coreos-assembler/"
-    fi
-    cp -r "${configdir}/live" "${usr_share_cosa}/usr/share/coreos-assembler/live"
-    commit_overlay usr-share-cosa "${usr_share_cosa}"
-    layers="${layers} overlay/usr-share-cosa"
-
-    local_overrides_lockfile="${tmp_overridesdir}/local-overrides.json"
-    if [ -n "${with_cosa_overrides}" ] && [[ -n $(ls "${overridesdir}/rpm/"*.rpm 2> /dev/null) ]]; then
-        (cd "${overridesdir}"/rpm && rm -rf .repodata && createrepo_c .)
-        # synthesize an override lockfile to force rpm-ostree to pick up our
-        # override RPMS -- we try to be nice here and allow multiple versions of
-        # the same RPMs: the `dnf repoquery` below is to pick the latest one
-        dnf repoquery  --repofrompath=tmp,"file://${overridesdir}/rpm" \
-            --disablerepo '*' --enablerepo tmp --refresh --latest-limit 1 \
-            --arch "$arch,noarch" --qf 'pkg: %{name} %{evr} %{arch}\n' \
-            --quiet > "${tmp_overridesdir}/pkgs.txt"
-
-        # shellcheck disable=SC2002
-        cat "${tmp_overridesdir}/pkgs.txt" | python3 -c '
-import sys, json
-lockfile = {"packages": {}}
-for line in sys.stdin:
-    if not line.startswith("pkg: "):
-        continue
-    _, name, evr, arch = line.strip().split()
-    lockfile["packages"][name] = {"evra": f"{evr}.{arch}"}
-json.dump(lockfile, sys.stdout)' > "${local_overrides_lockfile}"
-
-        # for all the repo packages in the manifest for which we have an
-        # override, create a new repo-packages entry to make sure our overrides
-        # win.
-        # shellcheck disable=SC2002
-        cat "${tmp_overridesdir}/pkgs.txt" | python3 -c "
-import sys, yaml
-flattened = yaml.safe_load(open('${flattened_manifest}'))
-all_overrides = set()
-for line in sys.stdin:
-    all_overrides.add(line.strip().split('\t')[0])
-repo_overrides = set()
-for repopkg in flattened.get('repo-packages', []):
-    repo_overrides.update(all_overrides.intersection(set(repopkg['packages'])))
-manifest = {
-    'repos': ['coreos-assembler-local-overrides'],
-    'repo-packages': [{
-        'repo': 'coreos-assembler-local-overrides',
-        'packages': list(repo_overrides)
-    }]
-}
-yaml.dump(manifest, sys.stdout)" >> "${override_manifest}"
-        rm "${tmp_overridesdir}/pkgs.txt"
-
-        echo "Using RPM overrides from: ${overridesdir}/rpm"
-        touch "${overrides_active_stamp}"
-        cat > "${tmp_overridesdir}"/coreos-assembler-local-overrides.repo <<EOF
-[coreos-assembler-local-overrides]
-name=coreos-assembler-local-overrides
-baseurl=file://${workdir}/overrides/rpm
-gpgcheck=0
-cost=500
-module_hotfixes=true
-EOF
-    else
-        rm -vf "${local_overrides_lockfile}"
-    fi
-
-    if [ -f "${configdir}/fast-tracks.yaml" ]; then
-        cat "${tmp_overridesdir}"/*.repo > "${tmp_overridesdir}/all.repo"
-        # shellcheck disable=SC2002
-        cat "${configdir}/fast-tracks.yaml" | python3 -c "
-import sys, yaml, subprocess, glob, re
-fast_tracks = yaml.safe_load(sys.stdin)
-for (repo, spec) in fast_tracks.items():
-    with open(f'${tmp_overridesdir}/{repo}.repo', 'w') as f:
-        # yeah this is technically wasteful that we're reopening and scanning on each iteration. meh...
-        with open('${tmp_overridesdir}/all.repo') as g:
-            passthrough = False
-            for line in g:
-                line = line.strip()
-                if line == f'[{spec['from']}]':
-                    line = f'[{repo}]'
-                    # we're in the repo definition
-                    passthrough = True
-                elif passthrough and re.match(r'^(\s*#.*)?$', line):
-                    # Skip blank lines and comment lines
-                    continue
-                elif passthrough and line.startswith('name='):
-                    line = f'name={repo}'
-                elif line.startswith('['):
-                    # we left the repo definition
-                    if passthrough:
-                        break
-                if passthrough:
-                    f.write(line + '\n')
-        f.write('includepkgs=' + ','.join(spec['packages']) + '\n')
-"
-        rm "${tmp_overridesdir}/all.repo"
-    fi
-
-
-    contentset_path=""
-    if [ -e "${configdir}/content_sets.yaml" ]; then
-        contentset_path="${configdir}/content_sets.yaml"
-    elif [ -e "${workdir}/src/yumrepos/content_sets.yaml" ]; then
-        contentset_path="${workdir}/src/yumrepos/content_sets.yaml"
-    fi
-
-    if [ -n "${contentset_path}" ]; then
-        mkdir -p "${tmp_overridesdir}"/contentsetrootfs/usr/share/buildinfo/
-        # create_content_manifest takes in the base repos and maps them to their pulp repository IDs
-        # available in content_sets.yaml. The mapped repos are then available in content_manifest.json
-        # Feature: https://issues.redhat.com/browse/GRPA-3731
-        create_content_manifest "${contentset_path}" "${tmp_overridesdir}/contentsetrootfs/usr/share/buildinfo/content_manifest.json"
-        # adjust permissions to appease the ext.config.shared.files.file-directory-permissions test
-        chmod 0644 "${tmp_overridesdir}/contentsetrootfs/usr/share/buildinfo/content_manifest.json"
-
-        echo -n "Committing ${tmp_overridesdir}/contentsetrootfs... "
-        commit_overlay contentset "${tmp_overridesdir}/contentsetrootfs"
-        layers="${layers} overlay/contentset"
-    fi
-
-    if [ -n "${layers}" ]; then
-        echo "ostree-layers:" >> "${override_manifest}"
-        for layer in ${layers}; do
-            echo "  - ${layer}" >> "${override_manifest}"
-        done
-    fi
-
-    rootfs_overrides="${overridesdir}/rootfs"
-    if [[ -d "${rootfs_overrides}" && -n $(ls -A "${rootfs_overrides}") ]]; then
-        touch "${overrides_active_stamp}"
-        commit_overlay cosa-overrides-rootfs "${rootfs_overrides}"
-          cat >> "${override_manifest}" << EOF
-ostree-override-layers:
-  - overlay/cosa-overrides-rootfs
-EOF
-    fi
-}
-
-# Wrapper for `rpm-ostree compose tree` which adds some default options
-# such as `--repo` (which is auto-derived from the builddir) and
-# `--unified-core` that we always want.  Also dispatches to supermin if
-# we're running without support for nested containerization.
-runcompose_tree() {
-    local tmp_overridesdir=${TMPDIR}/override
-    if [ -f "${tmp_overridesdir}/local-overrides.json" ]; then
-        # we need our overrides to be at the end of the list
-        set - "$@" --ex-lockfile="${tmp_overridesdir}/local-overrides.json"
-    fi
-
-    local workdir=${workdir:-$(pwd)}
-    local repo=${tmprepo:-${workdir}/tmp/repo}
-
-    rm -f "${changed_stamp}"
-    # shellcheck disable=SC2086
-    set - ${COSA_RPMOSTREE_GDB:-} rpm-ostree compose tree \
-            --touch-if-changed "${changed_stamp}" --cachedir="${workdir}"/cache \
-            ${COSA_RPMOSTREE_ARGS:-} --unified-core "${manifest}" "$@"
-
-    echo "Running: $*"
-
-    # this is the heart of the privs vs no privs dual path
-    if has_privileges; then
-        set - "$@" --repo "${repo}" --write-composejson-to "${composejson}"
-        # we hardcode a umask of 0022 here to make sure that composes are run
-        # with a consistent value, regardless of the environment
-        (umask 0022 && sudo -E "$@")
-        sudo chown -R -h "${USER}":"${USER}" "${tmprepo}"
-        if [ -f "${composejson}" ]; then
-            sudo chown "${USER}":"${USER}" "${composejson}"
-        fi
-    else
-        runvm_with_cache -- "$@" --repo "${repo}" --write-composejson-to "${composejson}"
-    fi
-}
 
 # Run with cache disk.
 runvm_with_cache() {
@@ -482,13 +143,6 @@ runvm_with_cache() {
     cache_args+=("-drive" "if=none,id=cache,discard=unmap,file=${workdir}/cache/cache2.qcow2" \
                         "-device" "virtio-blk,drive=cache")
     runvm "${cache_args[@]}" "$@"
-}
-
-# Strips out the digest field from lockfiles since they subtly conflict with
-# various workflows.
-strip_out_lockfile_digests() {
-    jq 'del(.packages[].digest)' "$1" > "$1.tmp"
-    mv "$1.tmp" "$1"
 }
 
 # Strip out the arch field from lockfiles to make them archless.
@@ -559,8 +213,7 @@ runvm() {
         esac
     done
 
-    # tmp_builddir is set in prepare_build, but some stages may not
-    # know that it exists.
+    # tmp_builddir may or may not already be set by the caller.
     # shellcheck disable=SC2086
     if [ -z "${tmp_builddir:-}" ]; then
         tmp_builddir="$(mktemp -p ${workdir}/tmp -d supermin.XXXX)"
@@ -724,60 +377,6 @@ EOF
     return "${rc}"
 }
 
-openshift_git_hack() {
-    # When OPENSHIFT_GIT_HACK is defined as a build environment variable,
-    # this will fetch the missing .git into the directory where its expected.
-
-    # Some versions of Openshift do not include the GIT repo in the checkout.
-    # This may be needed for Openshift versions 3.9 and earlier.
-    # See https://github.com/coreos/coreos-assembler/issues/320 and
-    #      https://github.com/coreos/coreos-assembler/pull/341
-    #
-    # Due to limitations in RHEL 7, using "GIT_WORK_TREE" options does not work with
-    # submodules. As a result, a new checkout is done, which is rsynced into the
-    # source; rsync is less than ideal, but it allows a work-around for the combination
-    # of RHEL 7 and problematic Openshift versions.
-
-    # This hack SHOULD ONLY BE HIT WHEN RUNNING IN A CI SITUATION, under
-    # the following assumptions:
-    #  - The source being built originated from a clean git checkout.
-    #  - The `.git` repository has been stripped out by CI.
-    #  - The envVar parameters of $OPENSHIFT_GIT_HACK, $GIT_REF, and $GIT_URL are
-    #    defined, signalling that this code is intended to run. See
-    #    https://github.com/coreos/coreos-assembler/pull/324 for an example.
-
-    local gitd=${1}; shift;
-
-    if [ "${OPENSHIFT_GIT_HACK:-x}" == "x" ]; then
-        return
-    fi
-
-    if [ -d "${gitd}/.git" ]; then
-        return
-    fi
-
-    info "NOTICE: using workaround for Openshift missing .git"
-
-    if [ "${GIT_URL:-x}" == "x" ] ||  [ "${GIT_REF:-x}" ]; then
-        tmpgit="$(mktemp -d)"
-        trap 'rm -rf ${tmpgit}; unset tmpgit;' EXIT
-
-        info "Re-creating git tree in ${gitd} from ${GIT_URL}, ref ${GIT_REF}"
-        git clone --depth 1 -b "${GIT_REF}" "${GIT_URL}" "${tmpgit}/clone"
-
-        if test -f "${gitd}/.gitmodules"; then
-            pushd "${tmpgit}/clone"
-            info "Ensuring git modules exists too"
-            git submodule update --init --force
-            popd
-        fi
-
-        # For more context see the discussion in https://github.com/coreos/coreos-assembler/pull/341
-        rsync -av --ignore-existing "${tmpgit}/clone/" "${gitd}"/
-    fi
-}
-
-
 prepare_git_artifacts() {
     # prepare_git_artifacts prepares two artifacts from a GIT repo:
     #   1. JSON describing the GIT tree.
@@ -785,8 +384,6 @@ prepare_git_artifacts() {
     local gitd="${1:?first argument must be the git directory}"; shift;
     local json="${1:?second argument must be the json file name to emit}"; shift;
     local tarball="${1:-}"
-
-    openshift_git_hack "${gitd}"
 
     local is_dirty="false"
     local head_ref="unknown"
@@ -863,13 +460,6 @@ EOC
     chmod 0444 "${json}"
 }
 
-jq_git() {
-    # jq_git extracts JSON elements generated using prepare_git_artifacts.
-    # ARG1 is the element name, and ARG2 is the location of the
-    # json document.
-    jq -rM ".git.$1" "${2}"
-}
-
 sha256sum_str() {
     sha256sum | cut -f 1 -d ' '
 }
@@ -878,18 +468,6 @@ get_latest_build() {
     if [ -L "${workdir:-$(pwd)}/builds/latest" ]; then
         readlink "${workdir:-$(pwd)}/builds/latest"
     fi
-}
-
-get_latest_build_for_arch() {
-    local arch=$1; shift
-    # yup, this is happening
-    (python3 -c "
-import sys
-sys.path.insert(0, '${DIR}')
-from cosalib.builds import Builds
-buildid = Builds('${workdir:-$(pwd)}').get_latest_for_arch('${arch}')
-if buildid:
-    print(buildid)")
 }
 
 get_build_dir() {
@@ -902,51 +480,6 @@ from cosalib.builds import Builds
 print(Builds('${workdir:-$(pwd)}').get_build_dir('${buildid}'))")
 }
 
-init_build_meta_json() {
-    local ostree_commit=$1; shift
-    local parent_build=$1; shift
-    local dir=$1; shift
-    (python3 -c "
-import sys
-sys.path.insert(0, '${DIR}')
-from cosalib.builds import Builds
-print(Builds('${workdir:-$(pwd)}').init_build_meta_json('${ostree_commit}', '${parent_build}', '${dir}'))")
-}
-
-get_latest_qemu() {
-    local latest builddir
-    latest=$(get_latest_build)
-    builddir=$(get_build_dir "$latest")
-    if [ -n "$latest" ]; then
-        # shellcheck disable=SC2086
-        ls ${builddir}/*-qemu.qcow2*
-    fi
-}
-
-insert_build() {
-    local buildid=$1; shift
-    local workdir=$1; shift
-    local arch=${1:-}
-    (python3 -c "
-import sys
-sys.path.insert(0, '${DIR}')
-from cosalib.builds import Builds
-builds = Builds('${workdir:-$(pwd)}')
-builds.insert_build('${buildid}', basearch='${arch:-}')
-builds.bump_timestamp()
-print('Build ${buildid} was inserted ${arch:+for $arch}')")
-}
-
-# Prepare the image.json as part of an ostree image build
-write_image_json() {
-    local srcfile=$1; shift
-    local outfile=$1; shift
-    (python3 -c "
-import sys
-sys.path.insert(0, '${DIR}')
-from cosalib import cmdlib
-cmdlib.write_image_json('${srcfile}', '${outfile}')")
-}
 
 # API to prepare image builds.
 # Ensures that the tmp/repo ostree repo is initialized,
@@ -967,12 +500,3 @@ cmdlib.import_ostree_commit(workdir, builddir, buildmeta, extract_json=('${extra
 ")
 }
 
-# Extract the value of NAME from os-release
-extract_osrelease_name() {
-    local buildid=$1; shift
-    local out="$workdir/tmp/osrelease"
-    rm "${out}" -rf
-    ostree checkout --repo "${tmprepo}" --user-mode --subpath=/usr/lib/os-release "${buildid}" "$out"
-    # shellcheck disable=SC1091,SC2153
-    (. "$out/os-release" && echo "${NAME}")
-}
