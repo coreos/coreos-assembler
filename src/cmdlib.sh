@@ -480,6 +480,19 @@ from cosalib.builds import Builds
 print(Builds('${workdir:-$(pwd)}').get_build_dir('${buildid}'))")
 }
 
+insert_build() {
+    local buildid=$1; shift
+    local workdir=$1; shift
+    local arch=${1:-}
+    (python3 -c "
+import sys
+sys.path.insert(0, '${DIR}')
+from cosalib.builds import Builds
+builds = Builds('${workdir:-$(pwd)}')
+builds.insert_build('${buildid}', basearch='${arch:-}')
+builds.bump_timestamp()
+print('Build ${buildid} was inserted ${arch:+for $arch}')")
+}
 
 # API to prepare image builds.
 # Ensures that the tmp/repo ostree repo is initialized,
@@ -499,4 +512,3 @@ buildmeta = builds.get_build_meta('${buildid}')
 cmdlib.import_ostree_commit(workdir, builddir, buildmeta, extract_json=('${extractjson}' == '1'))
 ")
 }
-
