@@ -568,6 +568,10 @@ def diff_metal_helper(diff_from, diff_to):
                 # in filenames with XXXXXXXXXXXXXXXX so that we can get a real diff between
                 # two of the same files in different builds.
                 runcmd(['tar', '-xf', tmp_tar.name, '-C', diff_dir,
+                       # bootc install is leaving a block device in the resulting image
+                       # This is a bug and is tracked in:
+                       # https://github.com/bootc-dev/bootc/issues/2130
+                        '--exclude', '*backingFsBlockDev',
                         '--transform', 's|[[:xdigit:]]{64}|XXXXXXXXXXXXXXXX|gx'])
 
         except Exception as e:
