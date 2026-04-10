@@ -1,6 +1,5 @@
 # For grub install when creating images without anaconda
 grub2
-bootupd
 
 # For generating ISO images
 syslinux-nonlinux
