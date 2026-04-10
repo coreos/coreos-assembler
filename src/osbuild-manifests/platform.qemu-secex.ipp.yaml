@@ -185,60 +185,172 @@ pipelines:
             partition:
               mpp-format-int: '{image_secex.layout[''boot''].partnum}'
             target: /boot
-      - type: org.osbuild.copy
-        inputs:
-          tree:
-            type: org.osbuild.tree
-            origin: org.osbuild.pipeline
-            references:
-              - name:tree
-        options:
-          paths:
-            - from: input://tree/
-              to: mount://root/
-        devices:
-          disk:
-            type: org.osbuild.loopback
-            options:
-              filename: disk.img
-              partscan: true
-        mounts:
-          - name: root
-            type: org.osbuild.xfs
-            source: disk
-            partition:
-              mpp-format-int: '{image_secex.layout[''root''].partnum}'
-            target: /
-          - name: boot
-            type: org.osbuild.ext4
-            source: disk
-            partition:
-              mpp-format-int: '{image_secex.layout[''boot''].partnum}'
-            target: /boot
-      - type: org.osbuild.chattr
-        options:
-          items:
-            mount://root/:
-              immutable: true
-        devices:
-          disk:
-            type: org.osbuild.loopback
-            options:
-              filename: disk.img
-              partscan: true
-        mounts:
-          - name: root
-            type: org.osbuild.xfs
-            source: disk
-            partition:
-              mpp-format-int: '{image_secex.layout[''root''].partnum}'
-            target: /
-          - name: ostree.deployment
-            type: org.osbuild.ostree.deployment
-            options:
-              source: mount
-              deployment:
-                default: true
+      # Copy the tree content to the disk (non-bootc path) or use bootc
+      # install-to-filesystem (bootc path)
+      - mpp-if: use_bootc_install != 'true'
+        then:
+          type: org.osbuild.copy
+          inputs:
+            tree:
+              type: org.osbuild.tree
+              origin: org.osbuild.pipeline
+              references:
+                - name:tree
+          options:
+            paths:
+              - from: input://tree/
+                to: mount://root/
+          devices:
+            disk:
+              type: org.osbuild.loopback
+              options:
+                filename: disk.img
+                partscan: true
+          mounts:
+            - name: root
+              type: org.osbuild.xfs
+              source: disk
+              partition:
+                mpp-format-int: '{image_secex.layout[''root''].partnum}'
+              target: /
+            - name: boot
+              type: org.osbuild.ext4
+              source: disk
+              partition:
+                mpp-format-int: '{image_secex.layout[''boot''].partnum}'
+              target: /boot
+      - mpp-if: use_bootc_install != 'true'
+        then:
+          type: org.osbuild.chattr
+          options:
+            items:
+              mount://root/:
+                immutable: true
+          devices:
+            disk:
+              type: org.osbuild.loopback
+              options:
+                filename: disk.img
+                partscan: true
+          mounts:
+            - name: root
+              type: org.osbuild.xfs
+              source: disk
+              partition:
+                mpp-format-int: '{image_secex.layout[''root''].partnum}'
+              target: /
+            - name: ostree.deployment
+              type: org.osbuild.ostree.deployment
+              options:
+                source: mount
+                deployment:
+                  default: true
+        else:
+          type: org.osbuild.bootc.install-to-filesystem
+          inputs:
+            images:
+              mpp-if: ociarchive != ''
+              then:
+                type: org.osbuild.containers
+                origin: org.osbuild.pipeline
+                references:
+                  name:oci-archive:
+                    name: coreos.ociarchive
+              else:
+                type: org.osbuild.containers-storage
+                origin: org.osbuild.source
+                mpp-resolve-images:
+                  images:
+                    - source: $container_repo
+                      tag: $container_tag
+          options:
+            kernel-args:
+              - mpp-format-string: '{extra_kargs}'
+            target-imgref:
+              mpp-format-string: '{container_imgref}'
+            stateroot:
+              mpp-format-string: '{osname}'
+            # Empty strings mean mount spec kargs are ommited entirely.
+            # See github.com/bootc-dev/bootc/issues/1441
+            boot-mount-spec: ""
+            root-mount-spec: ""
+            # We don't want bootupd to stamp the boot and UEFI paritions
+            # with the boot uuid because these will change at first boot.
+            # See https://github.com/coreos/fedora-coreos-config/pull/3898
+            bootupd-skip-boot-uuid: true
+          devices:
+            disk:
+              type: org.osbuild.loopback
+              options:
+                filename: disk.img
+                partscan: true
+          mounts:
+            - name: root
+              type: org.osbuild.xfs
+              source: disk
+              partition:
+                mpp-format-int: '{image_secex.layout[''root''].partnum}'
+              target: /
+            - name: boot
+              type: org.osbuild.ext4
+              source: disk
+              partition:
+                mpp-format-int: '{image_secex.layout[''boot''].partnum}'
+              target: /boot
+      # set up the `ignition.firstboot` stamp at the end because
+      # bootc wants empty filesystems
+      - mpp-if: use_bootc_install == 'true'
+        then:
+          type: org.osbuild.ignition
+          options:
+            target: mount://boot/
+          devices:
+            disk:
+              type: org.osbuild.loopback
+              options:
+                filename: disk.img
+                partscan: true
+          mounts:
+            - name: root
+              type: org.osbuild.xfs
+              source: disk
+              partition:
+                mpp-format-int: '{image_secex.layout[''root''].partnum}'
+              target: /
+            - name: boot
+              type: org.osbuild.ext4
+              source: disk
+              partition:
+                mpp-format-int: '{image_secex.layout[''boot''].partnum}'
+              target: /boot
+      # We historically created an aleph file named .coreos-aleph-version.json
+      # in the sysroot partition, for debugging purposes. bootc creates its
+      # own that is mostly the same content. Let's make a symlink to it
+      # for backward compatibility.
+      - mpp-if: use_bootc_install == 'true'
+        then:
+          type: org.osbuild.ln
+          options:
+            paths:
+              - target: ".bootc-aleph.json"
+                link_name: "mount://root/.coreos-aleph-version.json"
+                symbolic: true
+              - target: ".bootc-aleph.json"
+                link_name: "mount://root/.aleph-version.json"
+                symbolic: true
+          devices:
+            disk:
+              type: org.osbuild.loopback
+              options:
+                filename: disk.img
+                partscan: true
+          mounts:
+            - name: root
+              type: org.osbuild.xfs
+              source: disk
+              partition:
+                mpp-format-int: '{image_secex.layout[''root''].partnum}'
+              target: /
       # For secex mkdir for filesytem labeled `se`, where `sdboot` image gets stored
       - type: org.osbuild.mkdir
         options:
