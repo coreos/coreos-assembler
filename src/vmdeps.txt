@@ -11,6 +11,9 @@ genisoimage squashfs-tools erofs-utils
 # for composes
 rpm-ostree distribution-gpg-keys jq
 
+# to create disk images with bootc install to-filesystem
+bootc bootupd
+
 # for clean reboot
 systemd
 
