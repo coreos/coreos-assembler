@@ -33,7 +33,7 @@ func init() {
 		Name:        "rpmostree.upgrade-rollback",
 		Description: "Verify an upgrade and rollback with a simulated update works.",
 		FailFast:    true,
-		Tags:        []string{"rpm-ostree", "upgrade"},
+		Tags:        []string{"rpm-ostree", "upgrade", kola.BootcBaseTag},
 	})
 	register.RegisterTest(&register.Test{
 		Run:         rpmOstreeInstallUninstall,
