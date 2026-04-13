@@ -12,12 +12,14 @@ sudo
 # libvirt forking qemu and assuming the process gets reaped on shutdown.
 dumb-init
 
-# For composes
-rpm-ostree createrepo_c openssh-clients python3-createrepo_c composefs
-dnf-utils
+# For connectivity
+openssh-clients
 
 # Standard build tools
-make git rpm-build
+make git rpm-build dnf-utils
+
+# For cmd-build
+createrepo_c
 
 # virt dependencies
 libguestfs-tools libguestfs-tools-c virtiofsd /usr/bin/qemu-img qemu-kvm swtpm
