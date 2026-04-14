@@ -15,6 +15,7 @@
 package util
 
 import (
+	"context"
 	"fmt"
 	"time"
 )
@@ -48,18 +49,13 @@ func RetryConditional(attempts int, delay time.Duration, shouldRetry func(err er
 	return err
 }
 
-// RetryUntilTimeout calls function f until it succeeds or until
-// the given timeout is reached. It will wait a given amount of time
-// between each try based on the given delay.
-func RetryUntilTimeout(timeout, delay time.Duration, f func() error) error {
+// RetryUntilTimeoutWithContext calls function f until it succeeds, until
+// the given timeout is reached, or the context is done. It will wait
+// a given amount of time between each try based on the given delay.
+func RetryUntilTimeoutWithContext(ctx context.Context, timeout, delay time.Duration, f func() error) error {
 	after := time.After(timeout)
 	deadline := time.Now().Add(timeout)
 	for {
-		select {
-		case <-after:
-			return fmt.Errorf("time limit exceeded")
-		default:
-		}
 		// Log how long it took the function to run. This will help gather information about
 		// how long it takes remote network requests to finish.
 		start := time.Now()
@@ -70,9 +66,22 @@ func RetryUntilTimeout(timeout, delay time.Duration, f func() error) error {
 		} else {
 			plog.Debugf("RetryUntilTimeout: f() returned error: %s", err)
 		}
-		time.Sleep(delay)
+		select {
+		case <-after:
+			return fmt.Errorf("time limit exceeded")
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(delay):
+		}
 	}
 	return nil
+}
+
+// RetryUntilTimeout calls function f until it succeeds or until
+// the given timeout is reached. It will wait a given amount of time
+// between each try based on the given delay.
+func RetryUntilTimeout(timeout, delay time.Duration, f func() error) error {
+	return RetryUntilTimeoutWithContext(context.Background(), timeout, delay, f)
 }
 
 func WaitUntilReady(timeout, delay time.Duration, checkFunction func() (bool, error)) error {
