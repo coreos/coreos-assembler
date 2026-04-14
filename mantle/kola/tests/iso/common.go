@@ -130,6 +130,13 @@ func getIsoTestOpts(testName string) IsoTestOpts {
 	return opts
 }
 
+func CheckLiveArtifactsExist() error {
+	if kola.CosaBuild.Meta.BuildArtifacts.LiveIso == nil || kola.CosaBuild.Meta.BuildArtifacts.LiveKernel == nil || kola.CosaBuild.Meta.BuildArtifacts.LiveInitramfs == nil || kola.CosaBuild.Meta.BuildArtifacts.LiveRootfs == nil {
+		return fmt.Errorf("Build %s is missing live artifacts\n", kola.CosaBuild.Meta.Name)
+	}
+	return nil
+}
+
 func IsDevBuild() bool {
 	// Ignore signing verification by default when running with development build
 	// https://github.com/coreos/fedora-coreos-tracker/issues/908

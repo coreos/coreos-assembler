@@ -94,6 +94,9 @@ RequiredBy=coreos-installer.target
 `
 
 func testPXE(c cluster.TestCluster, opts IsoTestOpts) {
+	if err := CheckLiveArtifactsExist(); err != nil {
+		c.Fatal(err)
+	}
 	qc, ok := c.Cluster.(*qemu.Cluster)
 	if !ok {
 		c.Fatalf("Unsupported cluster type")

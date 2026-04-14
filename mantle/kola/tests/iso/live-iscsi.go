@@ -106,6 +106,9 @@ var iscsi_butane_config string
 //   - when the system is booted, write a success string to /dev/virtio-ports/testisocompletion
 //   - as this serial device is mapped to the host serial device, the test concludes
 func isoInstalliScsi(c cluster.TestCluster, opts IsoTestOpts) {
+	if err := CheckLiveArtifactsExist(); err != nil {
+		c.Fatal(err)
+	}
 	qc, ok := c.Cluster.(*qemu.Cluster)
 	if !ok {
 		c.Fatalf("Unsupported cluster type")

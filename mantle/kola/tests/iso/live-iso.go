@@ -100,6 +100,9 @@ func init() {
 }
 
 func runLiveIsoInstallTest(c cluster.TestCluster, opts IsoTestOpts) {
+	if err := CheckLiveArtifactsExist(); err != nil {
+		c.Fatal(err)
+	}
 	if opts.isMiniso && opts.isOffline { // ideally this'd be one enum parameter
 		c.Fatal("Can't run minimal install offline")
 	}
