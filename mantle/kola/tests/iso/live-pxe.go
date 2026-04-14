@@ -159,20 +159,17 @@ func testPXE(c cluster.TestCluster, opts IsoTestOpts) {
 	}
 
 	setupNet := func(o platform.MachineOptions, builder *platform.QemuBuilder) error {
-		netdev := fmt.Sprintf("%s,netdev=mynet0,mac=52:54:00:12:34:56", pxe.networkdevice)
-		if pxe.bootindex == "" {
-			builder.Append("-boot", "once=n")
-		} else {
-			netdev += fmt.Sprintf(",bootindex=%s", pxe.bootindex)
-		}
-		builder.Append("-device", netdev)
-		usernetdev := fmt.Sprintf("user,id=mynet0,tftp=%s,bootfile=%s", pxe.tftpdir, pxe.bootfile)
+		usernetdev := ""
 		if pxe.tftpipaddr != "10.0.2.2" {
-			usernetdev += ",net=192.168.76.0/24,dhcpstart=192.168.76.9"
+			usernetdev = "192.168.76.0/24,dhcpstart=192.168.76.9"
 		}
-		builder.Append("-netdev", usernetdev)
-		// for SSH access
-		return qc.SetupDefaultNetwork(o, builder)
+		h := []platform.HostForwardPort{
+			{Service: "ssh", HostPort: 0, GuestPort: 22},
+		}
+		builder.SetNetbootP(pxe.bootfile, pxe.tftpdir)
+		builder.SetNetbootIndex(pxe.bootindex)
+		builder.EnableUsermodeNetworking(h, usernetdev)
+		return nil
 	}
 
 	errchan := make(chan error)
@@ -286,13 +283,12 @@ func getPXEConfig(insecure bool, offline bool) (*conf.Conf, error) {
 }
 
 type PXE struct {
-	tftpdir       string
-	tftpipaddr    string
-	boottype      string
-	networkdevice string
-	bootindex     string
-	pxeimagepath  string
-	bootfile      string
+	tftpdir      string
+	tftpipaddr   string
+	boottype     string
+	bootindex    string
+	pxeimagepath string
+	bootfile     string
 }
 
 func createPXE(tempdir string, opts IsoTestOpts) (*PXE, *http.Server, error) {
@@ -380,7 +376,6 @@ func (pxe *PXE) setupArchDefaults(opts IsoTestOpts) error {
 	pxe.tftpipaddr = "192.168.76.2"
 	switch coreosarch.CurrentRpmArch() {
 	case "x86_64":
-		pxe.networkdevice = "e1000"
 		if opts.firmware == "uefi" {
 			pxe.boottype = "grub"
 			pxe.bootfile = "/boot/grub2/grubx64.efi"
@@ -394,17 +389,14 @@ func (pxe *PXE) setupArchDefaults(opts IsoTestOpts) error {
 		}
 	case "aarch64":
 		pxe.boottype = "grub"
-		pxe.networkdevice = "virtio-net-pci"
 		pxe.bootfile = "/boot/grub2/grubaa64.efi"
 		pxe.pxeimagepath = "/boot/efi/EFI/fedora/grubaa64.efi"
 		pxe.bootindex = "1"
 	case "ppc64le":
 		pxe.boottype = "grub"
-		pxe.networkdevice = "virtio-net-pci"
 		pxe.bootfile = "/boot/grub2/powerpc-ieee1275/core.elf"
 	case "s390x":
 		pxe.boottype = "pxe"
-		pxe.networkdevice = "virtio-net-ccw"
 		pxe.bootindex = "1"
 		pxe.tftpipaddr = "10.0.2.2"
 	default:
