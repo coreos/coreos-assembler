@@ -71,9 +71,7 @@ func init() {
 }
 
 func testLiveLogin(c cluster.TestCluster, firmware string) {
-	if kola.CosaBuild.Meta.BuildArtifacts.LiveIso == nil || kola.CosaBuild.Meta.BuildArtifacts.LiveKernel == nil {
-		c.Fatalf("Build %s is missing live artifacts\n", kola.CosaBuild.Meta.Name)
-	}
+	EnsureLiveArtifactsExist(c)
 
 	butane := conf.Butane(`
 variant: fcos

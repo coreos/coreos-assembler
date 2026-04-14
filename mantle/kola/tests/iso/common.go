@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/coreos/coreos-assembler/mantle/kola"
+	"github.com/coreos/coreos-assembler/mantle/kola/cluster"
 	"github.com/pkg/errors"
 )
 
@@ -128,6 +129,12 @@ func getIsoTestOpts(testName string) IsoTestOpts {
 
 	opts.instInsecure = kola.QEMUOptions.InstInsecure || IsDevBuild()
 	return opts
+}
+
+func EnsureLiveArtifactsExist(c cluster.TestCluster) {
+	if kola.CosaBuild.Meta.BuildArtifacts.LiveIso == nil || kola.CosaBuild.Meta.BuildArtifacts.LiveKernel == nil || kola.CosaBuild.Meta.BuildArtifacts.LiveInitramfs == nil || kola.CosaBuild.Meta.BuildArtifacts.LiveRootfs == nil {
+		c.Skipf("Build %s is missing live artifacts", kola.CosaBuild.Meta.BuildID)
+	}
 }
 
 func IsDevBuild() bool {
