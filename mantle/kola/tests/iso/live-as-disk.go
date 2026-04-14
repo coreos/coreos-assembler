@@ -44,6 +44,8 @@ func init() {
 }
 
 func isoTestAsDisk(c cluster.TestCluster, opts IsoTestOpts) {
+	EnsureLiveArtifactsExist(c)
+
 	qc, ok := c.Cluster.(*qemu.Cluster)
 	if !ok {
 		c.Fatalf("Unsupported cluster type")

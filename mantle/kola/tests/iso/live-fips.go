@@ -51,6 +51,8 @@ ExecStart=grep FIPS etc/crypto-policies/config
 RequiredBy=fips-signal-ok.service`
 
 func testLiveFIPS(c cluster.TestCluster, opts IsoTestOpts) {
+	EnsureLiveArtifactsExist(c)
+
 	qc, ok := c.Cluster.(*qemu.Cluster)
 	if !ok {
 		c.Fatalf("Unsupported cluster type")
