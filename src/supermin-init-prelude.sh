@@ -90,34 +90,3 @@ touch /etc/cosa-supermin
 # the missing link.
 update-alternatives --install /etc/alternatives/iptables iptables /usr/sbin/iptables-nft 1
 update-alternatives --install /etc/alternatives/ip6tables ip6tables /usr/sbin/ip6tables-nft 1
-
-# To build the disk image using osbuild and bootc install to-filesystem we need to
-# have a prepare-root config in the build environnement for bootc to read.
-# This workaround can be removed when https://github.com/bootc-dev/bootc/issues/1410
-# is fixed or we have python in all streams which allows us to use the OCI image as the buildroot.
-# Note that RHCOS and SCOS use the OCI as buildroot so they should not be affected by this.
-cat > /usr/lib/ostree/prepare-root.conf <<EOF
-[composefs]
-enabled = true
-EOF
-
-# Tell bootc to enforce that `/etc/containers/policy.json` include a default
-# policy that verify our images signature.
-# When moving to image-builder, this config can be moved into the container itself
-# but as long as we are using osbuild manually we have to carry this in the buildroot.
-# TODO: uncomment this when https://github.com/bootc-dev/bootc/pull/2116
-# is merged and released
-# cat > usr/lib/bootc/install/10-sigpolicy.toml <<EOF
-# [install]
-# enforce-container-sigpolicy = true
-# EOF
-
-# TODO move this to an overlay in fedora-coreos-config
-# so it get baked into the container at build time. We
-# want the container to be the source of truth as much as possible.
-# Same as the entries above, we need to have this in cosa until
-# we move to image builder
-cat <<EOF > /usr/lib/bootc/install/10-grub-users.toml
-[install.ostree]
-bls-append-except-default = 'grub_users=""'
-EOF
