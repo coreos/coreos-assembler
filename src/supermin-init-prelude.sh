@@ -8,6 +8,10 @@ mount -t sysfs /sys /sys
 mount -t cgroup2 cgroup2 -o rw,nosuid,nodev,noexec,relatime,seclabel,nsdelegate,memory_recursiveprot /sys/fs/cgroup
 mount -t devtmpfs devtmpfs /dev
 
+# /dev/fd is needed for things like process substitution
+# https://www.gnu.org/software/bash/manual/bash.html#Process-Substitution
+ln -s /proc/self/fd /dev/fd
+
 # this is also normally set up by systemd in early boot
 ln -s /proc/self/fd/0 /dev/stdin
 ln -s /proc/self/fd/1 /dev/stdout
@@ -19,7 +23,6 @@ mount -t tmpfs tmpfs /dev/shm
 
 # load selinux policy
 LANG=C /sbin/load_policy  -i
-
 
 # need fuse module for rofiles-fuse/bwrap during post scripts run
 /sbin/modprobe fuse
