@@ -542,6 +542,7 @@ type QemuBuilder struct {
 	additionalNics            int
 	netbootP                  string
 	netbootDir                string
+	netbootIndex              string
 
 	finalized bool
 	diskID    uint
@@ -682,6 +683,10 @@ func (builder *QemuBuilder) SetNetbootP(filename, dir string) {
 	builder.netbootDir = dir
 }
 
+func (builder *QemuBuilder) SetNetbootIndex(index string) {
+	builder.netbootIndex = index
+}
+
 func (builder *QemuBuilder) AddAdditionalNics(additionalNics int) {
 	builder.additionalNics = additionalNics
 }
@@ -735,10 +740,17 @@ func (builder *QemuBuilder) setupNetworking() error {
 			relpath = builder.netbootP
 		}
 		netdev += fmt.Sprintf(",tftp=%s,bootfile=/%s", tftpDir, relpath)
-		builder.Append("-boot", "order=n")
+		// It does not make sense to use the bootindex together with the -boot order=... (or -boot once=...).
+		// The guest firmware implementations normally either support the one or the other.
+		if builder.netbootIndex == "" {
+			builder.Append("-boot", "order=n")
+		}
 	}
-
-	builder.Append("-netdev", netdev, "-device", virtio(builder.architecture, "net", "netdev=eth0"))
+	args := "netdev=eth0"
+	if builder.netbootIndex != "" {
+		args += fmt.Sprintf(",bootindex=%s", builder.netbootIndex)
+	}
+	builder.Append("-netdev", netdev, "-device", virtio(builder.architecture, "net", args))
 	return nil
 }
 
