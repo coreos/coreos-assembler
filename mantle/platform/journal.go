@@ -89,11 +89,15 @@ func NewJournal(dir string) (*Journal, error) {
 }
 
 // Start begins/resumes streaming the system journal to journal.txt.
-func (j *Journal) Start(ctx context.Context, m Machine, oldBootId string) error {
+func (j *Journal) Start(m Machine, oldBootId string) error {
 	if j.cancel != nil {
 		j.cancel()
 		j.cancel = nil
 		_ = j.recorder.Wait() // Just need to consume the status.
+	}
+	ctx := m.RuntimeConf().TestExecTimeout
+	if ctx == nil {
+		ctx = context.Background()
 	}
 	ctx, cancel := context.WithCancel(ctx)
 
@@ -117,7 +121,7 @@ func (j *Journal) Start(ctx context.Context, m Machine, oldBootId string) error 
 
 	// Retry for a while because the machine is likely still booting
 	// and some Ignition configs take a long time to apply.
-	if err := util.RetryUntilTimeout(10*time.Minute, 10*time.Second, start); err != nil {
+	if err := util.RetryUntilTimeoutWithContext(ctx, 10*time.Minute, 10*time.Second, start); err != nil {
 		cancel()
 		return errors.Wrapf(err, "ssh journalctl failed")
 	}

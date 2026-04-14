@@ -15,7 +15,6 @@
 package platform
 
 import (
-	"context"
 	"crypto/rand"
 	"crypto/rsa"
 	"fmt"
@@ -177,10 +176,10 @@ func WaitForMachineReboot(m Machine, j *Journal, timeout time.Duration, oldBootI
 }
 
 func StartMachineAfterReboot(m Machine, j *Journal, oldBootId string) error {
-	if err := j.Start(context.TODO(), m, oldBootId); err != nil {
+	if err := j.Start(m, oldBootId); err != nil {
 		return fmt.Errorf("machine %q failed to start: %v", m.ID(), err)
 	}
-	if err := CheckMachine(context.TODO(), m); err != nil {
+	if err := CheckMachine(m); err != nil {
 		return fmt.Errorf("machine %q failed basic checks: %v", m.ID(), err)
 	}
 	return nil
@@ -265,7 +264,7 @@ func WaitForMachineSoftReboot(m Machine, j *Journal, timeout time.Duration, oldS
 		}
 		// Give it a moment for systemd to stabilize after soft-reboot
 		time.Sleep(2 * time.Second)
-		if err := CheckMachine(context.TODO(), m); err != nil {
+		if err := CheckMachine(m); err != nil {
 			return fmt.Errorf("machine %q failed basic checks after soft-reboot: %v", m.ID(), err)
 		}
 		return nil
