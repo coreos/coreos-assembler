@@ -122,10 +122,22 @@ def main():
         # Verify we got some data. Otherwise there was an issue
         assert len(barrier_releases) > 0
 
+    # These builds are marked as non-standard version exceptions.
+    #  - We let a few `dev` builds get in.
+    #    Fixed by https://github.com/coreos/fedora-coreos-pipeline/pull/1333
+    build_exceptions = {
+        '44.20260411.10.dev0': datetime.datetime.strptime('20260411', '%Y%m%d'),
+        '43.20260411.20.dev0': datetime.datetime.strptime('20260411', '%Y%m%d'),
+    }
     # Iterate through builds from oldest to newest
     for build in reversed(builds):
         build_id = build["id"]
-        build_date = parse_fcos_version_to_timestamp(build_id)
+
+        try:
+            build_date = build_exceptions[build_id]
+        except KeyError:
+            build_date = parse_fcos_version_to_timestamp(build_id)
+
         actions_completed = []
         print(f"Processing build {build_id}")
 
