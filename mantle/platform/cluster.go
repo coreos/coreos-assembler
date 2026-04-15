@@ -100,6 +100,15 @@ func (bc *BaseCluster) PasswordSSHClient(ip string, user string, password string
 func (bc *BaseCluster) SSH(m Machine, cmd string) ([]byte, []byte, error) {
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
+
+	ctx := bc.rconf.TestExecTimeout
+	if ctx == nil {
+		ctx = context.Background()
+	} else if err := ctx.Err(); err != nil {
+		// context has already been canceled
+		return nil, nil, err
+	}
+
 	client, err := bc.SSHClient(m.IP())
 	if err != nil {
 		return nil, nil, err
@@ -114,11 +123,6 @@ func (bc *BaseCluster) SSH(m Machine, cmd string) ([]byte, []byte, error) {
 
 	session.Stdout = &stdout
 	session.Stderr = &stderr
-
-	ctx := bc.rconf.TestExecTimeout
-	if ctx == nil {
-		ctx = context.Background()
-	}
 
 	// Use Start()+Wait() so we can select on context cancellation.
 	if err := session.Start(cmd); err != nil {
