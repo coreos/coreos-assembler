@@ -73,6 +73,33 @@ container_tag=$(getconfig_def "container-tag" "")
 extra_kargs=$(getconfig "extra-kargs-string" "")
 use_bootc_install=$(getconfig_def "use-bootc-install" "false")
 
+# If we're on fedora-coreos there is no python in the OS itself so in
+# order to use the OS as the buildroot (which is good for tightly
+# coupling versions of userspace tools used to create the disk images,
+# like mkfs.xfs, to the versions actually in the disk images) we need
+# to generate a thin python layer tarball to layer on top of the OS
+# for the buildroot. This solves a long standing problem we have where
+# using COSA as the buildroot has caused issues over time.
+python_layer_tarball=""
+if [ "${osname}" == 'fedora-coreos' ]; then
+    echo "Adding python layer for ${osname} to support OSBuild"
+    # Store the python layer in the cache and name it based on
+    # the build_version. If the file already exists we use that
+    # instead of generating a new one because creating reproducible
+    # tarballs is hard and we want the deployed-tree in OSBuild to be
+    # cached across successive runs against the same build. Use an
+    # absolute path here. OSBuild can't handle a relative path.
+    python_layer_tarball="$(readlink -f ./cache)/python-layer-${build_version}.tar.gz"
+    if [ ! -f "${python_layer_tarball}" ]; then
+        # Cleanup any old ones.
+        rm -f cache/python-layer*tar.gz
+        # Create the tarball; ignore missing files because supermin wouldn't
+        # have included things like docs into the filesystem here.
+        tar -cz --ignore-failed-read --warning=no-failed-read \
+            --files-from=<(rpm -ql python3 python3-libs) --file="${python_layer_tarball}"
+    fi
+fi
+
 # Since the underlying osbuild manifests will prefer the ociarchive
 # if it exists then let's check here to see if the container exists
 # in local container storage. If it does then we'll just pass that
@@ -118,6 +145,7 @@ set -x; osbuild-mpp                                       \
     -D container_tag=\""${container_tag}"\"               \
     -D extra_kargs=\""${extra_kargs}"\"                   \
     -D use_bootc_install=\""${use_bootc_install}"\"       \
+    -D python_layer_tarball=\""${python_layer_tarball}"\" \
     -D metal_image_size_mb="${metal_image_size_mb}"       \
     -D cloud_image_size_mb="${cloud_image_size_mb}"       \
     -D rootfs_size_mb="${rootfs_size_mb}"                 \

@@ -102,17 +102,6 @@ install_rpms() {
     chmod 755 /usr/lib/containers/storage/overlay-images
     chmod 755 /usr/lib/containers/storage/overlay-layers
 
-    # Symlink the CentOS Stream GPG keys to /etc to make it easier to build
-    # CentOS-based artifacts.
-    if [ ! -e "/etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial" ]; then
-        ln -s /usr/share/distribution-gpg-keys/centos/RPM-GPG-KEY-CentOS-Official /etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial
-        ln -s /usr/share/distribution-gpg-keys/centos/RPM-GPG-KEY-CentOS-Official-SHA256 /etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial-SHA256
-        ln -s {/usr/share/distribution-gpg-keys/centos,/etc/pki/rpm-gpg}/RPM-GPG-KEY-CentOS-SIG-Cloud
-        ln -s {/usr/share/distribution-gpg-keys/centos,/etc/pki/rpm-gpg}/RPM-GPG-KEY-CentOS-SIG-Extras-SHA512
-        ln -s {/usr/share/distribution-gpg-keys/centos,/etc/pki/rpm-gpg}/RPM-GPG-KEY-CentOS-SIG-NFV
-        ln -s {/usr/share/distribution-gpg-keys/centos,/etc/pki/rpm-gpg}/RPM-GPG-KEY-CentOS-SIG-Virtualization
-    fi
-
     # Further cleanup
     yum clean all
 }
@@ -242,7 +231,6 @@ else
     write_archive_info
     make_and_makeinstall
     install_ocp_tools
-    trust_redhat_gpg_keys
     configure_user
     patch_osbuild
     fixup_file_permissions
