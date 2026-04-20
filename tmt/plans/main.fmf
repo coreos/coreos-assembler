@@ -1,0 +1,12 @@
+discover:
+  how: fmf
+
+prepare:
+  - how: install
+    package:
+      - wget
+      - jq
+      - git
+execute:
+  how: tmt
+
