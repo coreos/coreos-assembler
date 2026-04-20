@@ -8,8 +8,8 @@ cosa ()
 {
     set -x
     podman run --rm --security-opt=label=disable --privileged \
-    -v=${COSA_DIR}:/srv/ --device=/dev/kvm \
-    --device=/dev/fuse --tmpfs=/tmp -v=/var/tmp:/var/tmp --name=cosa ${COREOS_ASSEMBLER_CONTAINER} "$@";
+    -v="${COSA_DIR}":/srv/ --device=/dev/kvm \
+    --device=/dev/fuse --tmpfs=/tmp -v=/var/tmp:/var/tmp --name=cosa "${COREOS_ASSEMBLER_CONTAINER}" "$@";
 }
 
 cosa init --force https://github.com/coreos/fedora-coreos-config --branch testing-devel
