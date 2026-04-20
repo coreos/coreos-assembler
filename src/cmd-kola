@@ -19,6 +19,53 @@ from cosalib import cmdlib
 
 basearch = cmdlib.get_basearch()
 
+
+def translate_testiso_args(kolaargs, subargs, unknown_args):
+    """
+    Translate legacy 'kola testiso' command to 'kola run iso.*' format.
+    Modifies kolaargs in place.
+    """
+    if not subargs or subargs[0] != 'testiso':
+        return
+
+    # Find and replace 'testiso' with 'run'
+    testiso_idx = kolaargs.index('testiso')
+    kolaargs[testiso_idx] = 'run'
+
+    # Collect test patterns from unknown_args (non-flag arguments)
+    # Need to skip flag values by tracking when we see a flag that takes a value
+    test_patterns = []
+    skip_next = False
+    flags_with_values = {'--denylist-test', '--tag', '--platform', '-p', '--parallel', '-j'}
+
+    for arg in unknown_args:
+        if skip_next:
+            skip_next = False
+            continue
+        if arg.startswith('-'):
+            # Check if this flag takes a value
+            if any(arg.startswith(f) for f in flags_with_values):
+                skip_next = True
+            continue
+        # This is a test pattern
+        test_patterns.append(arg)
+
+    if not test_patterns:
+        # No test pattern specified, default to all iso tests
+        kolaargs.append('iso.*')
+    else:
+        # Prepend 'iso.' to test patterns if not already present
+        for i in range(testiso_idx + 1, len(kolaargs)):
+            arg = kolaargs[i]
+            # Add 'iso.' prefix if this is a test pattern and doesn't have it
+            if arg in test_patterns and not arg.startswith('iso.'):
+                kolaargs[i] = f'iso.{arg}'
+
+    # Add parallel flag if not already specified
+    if not any(arg in kolaargs for arg in ['--parallel', '-j']):
+        kolaargs.extend(['--parallel', '4'])
+
+
 # Parse args and dispatch
 parser = argparse.ArgumentParser()
 parser.add_argument("--build", help="Build ID")
@@ -54,6 +101,8 @@ subargs = args.subargs or [default_cmd]
 kolaargs.extend(subargs)
 kolaargs.extend(unknown_args)
 
+# Translation wrapper: convert old "kola testiso" to new "kola run iso.*"
+translate_testiso_args(kolaargs, subargs, unknown_args)
 
 if args.upgrades:
     kolaargs.extend(['--output-dir', outputdir])
