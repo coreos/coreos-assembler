@@ -86,7 +86,7 @@ func init() {
 		register.RegisterTest(&register.Test{
 			Run: func(c cluster.TestCluster) {
 				opts := getIsoTestOpts(testName)
-				runLiveIsoInstallTest(c, opts)
+				testLiveIso(c, opts)
 			},
 			ClusterSize: 0,
 			Name:        "iso." + testName,
@@ -99,7 +99,7 @@ func init() {
 	}
 }
 
-func runLiveIsoInstallTest(c cluster.TestCluster, opts IsoTestOpts) {
+func testLiveIso(c cluster.TestCluster, opts IsoTestOpts) {
 	EnsureLiveArtifactsExist(c)
 
 	if opts.isMiniso && opts.isOffline { // ideally this'd be one enum parameter

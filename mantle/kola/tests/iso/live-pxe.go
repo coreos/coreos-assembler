@@ -65,7 +65,7 @@ func init() {
 		register.RegisterTest(&register.Test{
 			Run: func(c cluster.TestCluster) {
 				opts := getIsoTestOpts(testName)
-				testPXE(c, opts)
+				testLivePXE(c, opts)
 			},
 			ClusterSize: 0,
 			Name:        "iso." + testName,
@@ -93,7 +93,7 @@ ExecStart=/bin/sh -c "/usr/bin/jq -er '.[\"build\"]? + .[\"version\"]? == \"%s\"
 RequiredBy=coreos-installer.target
 `
 
-func testPXE(c cluster.TestCluster, opts IsoTestOpts) {
+func testLivePXE(c cluster.TestCluster, opts IsoTestOpts) {
 	EnsureLiveArtifactsExist(c)
 
 	qc, ok := c.Cluster.(*qemu.Cluster)
