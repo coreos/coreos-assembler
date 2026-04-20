@@ -31,7 +31,7 @@ func init() {
 		register.RegisterTest(&register.Test{
 			Run: func(c cluster.TestCluster) {
 				opts := getIsoTestOpts(testName)
-				isoTestAsDisk(c, opts)
+				testLiveAsDisk(c, opts)
 			},
 			ClusterSize: 0,
 			Name:        "iso." + testName,
@@ -43,7 +43,7 @@ func init() {
 	}
 }
 
-func isoTestAsDisk(c cluster.TestCluster, opts IsoTestOpts) {
+func testLiveAsDisk(c cluster.TestCluster, opts IsoTestOpts) {
 	EnsureLiveArtifactsExist(c)
 
 	qc, ok := c.Cluster.(*qemu.Cluster)
