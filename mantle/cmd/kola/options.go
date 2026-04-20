@@ -121,7 +121,7 @@ func init() {
 	// gcp-specific options
 	sv(&kola.GCPOptions.Image, "gcp-image", "", "GCP image, full api endpoints names are accepted if resource is in a different project")
 	sv(&kola.GCPOptions.Project, "gcp-project", "fedora-coreos-devel", "GCP project name")
-	sv(&kola.GCPOptions.Zone, "gcp-zone", "us-central1-a", "GCP zone name")
+	sv(&kola.GCPOptions.Zone, "gcp-zone", "us-central1-a", "Preferred GCP zone name, if the resources to this zone are depleted, we will fallback to another zone in the same region")
 	sv(&kola.GCPOptions.MachineType, "gcp-machinetype", "", "GCP machine type")
 	sv(&kola.GCPOptions.DiskType, "gcp-disktype", "", "GCP disk type (default pd-ssd)")
 	sv(&kola.GCPOptions.Network, "gcp-network", "default", "GCP network")
