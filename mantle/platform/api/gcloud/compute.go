@@ -16,7 +16,10 @@ package gcloud
 
 import (
 	"crypto/rand"
+	"errors"
 	"fmt"
+	"net/url"
+	"regexp"
 	"strings"
 	"time"
 
@@ -24,6 +27,7 @@ import (
 	"github.com/coreos/coreos-assembler/mantle/util"
 	"golang.org/x/crypto/ssh/agent"
 	"google.golang.org/api/compute/v1"
+	"google.golang.org/api/googleapi"
 )
 
 func (a *API) vmname() string {
@@ -69,7 +73,7 @@ func ParseDisk(spec string, zone string) (*compute.AttachedDisk, error) {
 }
 
 // Taken from: https://github.com/golang/build/blob/master/buildlet/gce.go
-func (a *API) mkinstance(userdata, name string, keys []*agent.Key, opts platform.MachineOptions, useServiceAcct bool) (*compute.Instance, error) {
+func (a *API) mkinstance(userdata, name, zone string, keys []*agent.Key, opts platform.MachineOptions, useServiceAcct bool) (*compute.Instance, error) {
 	mantle := "mantle"
 	metadataItems := []*compute.MetadataItems{
 		{
@@ -95,7 +99,7 @@ func (a *API) mkinstance(userdata, name string, keys []*agent.Key, opts platform
 
 	instance := &compute.Instance{
 		Name:        name,
-		MachineType: instancePrefix + "/zones/" + a.options.Zone + "/machineTypes/" + a.options.MachineType,
+		MachineType: instancePrefix + "/zones/" + zone + "/machineTypes/" + a.options.MachineType,
 		Metadata: &compute.Metadata{
 			Items: metadataItems,
 		},
@@ -113,7 +117,7 @@ func (a *API) mkinstance(userdata, name string, keys []*agent.Key, opts platform
 				InitializeParams: &compute.AttachedDiskInitializeParams{
 					DiskName:    name,
 					SourceImage: a.options.Image,
-					DiskType:    "/zones/" + a.options.Zone + "/diskTypes/" + a.options.DiskType,
+					DiskType:    "/zones/" + zone + "/diskTypes/" + a.options.DiskType,
 					DiskSizeGb:  16,
 				},
 			},
@@ -171,7 +175,7 @@ func (a *API) mkinstance(userdata, name string, keys []*agent.Key, opts platform
 	// attach aditional disk
 	for _, spec := range opts.AdditionalDisks {
 		plog.Debugf("Parsing disk spec %q\n", spec)
-		disk, err := ParseDisk(spec, a.options.Zone)
+		disk, err := ParseDisk(spec, zone)
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse spec %q: %w", spec, err)
 		}
@@ -180,71 +184,126 @@ func (a *API) mkinstance(userdata, name string, keys []*agent.Key, opts platform
 	return instance, nil
 }
 
-// CreateInstance creates a Google Compute Engine instance.
-func (a *API) CreateInstance(userdata string, keys []*agent.Key, opts platform.MachineOptions, useServiceAcct bool) (*compute.Instance, error) {
-	name := a.vmname()
-	inst, err := a.mkinstance(userdata, name, keys, opts, useServiceAcct)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create instance %q: %w", name, err)
-	}
+var zoneUnavailableErrorPattern = regexp.MustCompile("is currently unavailable in the .+ zone")
 
-	plog.Debugf("Creating instance %q", name)
-
-	op, err := a.compute.Instances.Insert(a.options.Project, a.options.Zone, inst).Do()
-	if err != nil {
-		return nil, fmt.Errorf("failed to request new GCP instance: %v\n", err)
-	}
-
-	doable := a.compute.ZoneOperations.Get(a.options.Project, a.options.Zone, op.Name)
-	if err := a.NewPending(op.Name, doable).Wait(); err != nil {
-		return nil, err
-	}
-
-	err = util.WaitUntilReady(10*time.Minute, 10*time.Second, func() (bool, error) {
-		var err error
-		inst, err = a.compute.Instances.Get(a.options.Project, a.options.Zone, name).Do()
-		if err != nil {
-			return false, err
-		}
-		return inst.Status == "RUNNING", nil
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed getting instance %s details after creation: %v", name, err)
-	}
-
-	plog.Debugf("Created instance %q", name)
-
-	return inst, nil
+// isZoneError returns true if the error is due to the zone (i.e. zone has no resources) and false
+// if the error is not due to zone issues.
+// See: https://docs.cloud.google.com/compute/docs/troubleshooting/troubleshooting-resource-availability
+func isZoneError(errorMessage string) bool {
+	return strings.Contains(errorMessage, "does not have enough resources available") ||
+		zoneUnavailableErrorPattern.MatchString(errorMessage)
 }
 
-func (a *API) TerminateInstance(name string) error {
+// isRetriableError returns true if it could be a flake / network error that may be worth retrying
+// The error codes that are considered transient are those defined in: https://docs.cloud.google.com/storage/docs/retry-strategy
+func isRetriableError(err error) bool {
+	var urlErr *url.Error
+	if errors.As(err, &urlErr) {
+		return true
+	}
+
+	// If we got a googleapi error, then we will retry on 408, 429, and 5xx response codes.
+	var apiErr *googleapi.Error
+	if errors.As(err, &apiErr) {
+		return apiErr.Code == 408 || apiErr.Code == 429 ||
+			(apiErr.Code >= 500 && apiErr.Code <= 599)
+	}
+
+	return false
+}
+
+// CreateInstance creates a Google Compute Engine instance. It will first attempt to create it in the zone given by a.options.PreferredZone, if
+// that fails (due to for example a capacity error) it will fall back to other zones in the same region.
+func (a *API) CreateInstance(userdata string, keys []*agent.Key, opts platform.MachineOptions, useServiceAcct bool) (*compute.Instance, error) {
+	var lastError error
+	for _, zone := range a.zones {
+		name := a.vmname() // we need a different name for each try
+		inst, err := a.mkinstance(userdata, name, zone, keys, opts, useServiceAcct)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create instance %q: %w", name, err)
+		}
+
+		plog.Debugf("Creating instance %q in zone %s", name, zone)
+
+		// Lets try to insert the instance, and retry if we get a network issue
+		var op *compute.Operation
+		err = util.RetryConditional(3, 10*time.Second, isRetriableError, func() error {
+			op, err = a.compute.Instances.Insert(a.options.Project, zone, inst).Do()
+			if err != nil {
+				return fmt.Errorf("failed to request new GCP instance: %w", err)
+			}
+			return nil
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		doable := a.compute.ZoneOperations.Get(a.options.Project, zone, op.Name)
+		if err := a.NewPending(op.Name, doable).Wait(); err != nil {
+			plog.Warningf("Failed to create instance %q in zone %s: %v", name, zone, err)
+			lastError = err
+			// If the error is caused by the zone we chose, then lets continue and try a different zone
+			if isZoneError(err.Error()) {
+				continue
+			} else {
+				break
+			}
+		}
+
+		err = util.WaitUntilReady(10*time.Minute, 10*time.Second, func() (bool, error) {
+			var err error
+			inst, err = a.compute.Instances.Get(a.options.Project, zone, name).Do()
+			if err != nil {
+				if isRetriableError(err) {
+					plog.Warningf("error getting instance %s in zone %s, will retry: %v", name, zone, err)
+					return false, nil
+				}
+				return false, err
+			}
+			return inst.Status == "RUNNING", nil
+		})
+
+		if err != nil {
+			return nil, fmt.Errorf("failed getting instance %s details after creation: %w", name, err)
+		}
+
+		plog.Debugf("Created instance %q in zone %s", name, zone)
+		return inst, nil
+	}
+
+	return nil, fmt.Errorf("failed to create instance in all zones: %w", lastError)
+}
+
+func (a *API) TerminateInstance(name, zone string) error {
 	plog.Debugf("Terminating instance %q", name)
 
-	_, err := a.compute.Instances.Delete(a.options.Project, a.options.Zone, name).Do()
+	_, err := a.compute.Instances.Delete(a.options.Project, zone, name).Do()
 	return err
 }
 
 func (a *API) ListInstances(prefix string) ([]*compute.Instance, error) {
 	var instances []*compute.Instance
 
-	list, err := a.compute.Instances.List(a.options.Project, a.options.Zone).Do()
-	if err != nil {
-		return nil, err
-	}
-
-	for _, inst := range list.Items {
-		if !strings.HasPrefix(inst.Name, prefix) {
-			continue
+	for _, zone := range a.zones {
+		list, err := a.compute.Instances.List(a.options.Project, zone).Do()
+		if err != nil {
+			return nil, err
 		}
 
-		instances = append(instances, inst)
+		for _, inst := range list.Items {
+			if !strings.HasPrefix(inst.Name, prefix) {
+				continue
+			}
+
+			instances = append(instances, inst)
+		}
 	}
 
 	return instances, nil
 }
 
-func (a *API) GetConsoleOutput(name string) (string, error) {
-	out, err := a.compute.Instances.GetSerialPortOutput(a.options.Project, a.options.Zone, name).Do()
+func (a *API) GetConsoleOutput(name, zone string) (string, error) {
+	out, err := a.compute.Instances.GetSerialPortOutput(a.options.Project, zone, name).Do()
 	if err != nil {
 		return "", fmt.Errorf("failed to retrieve console output for %q: %v", name, err)
 	}
@@ -266,10 +325,10 @@ func InstanceIPs(inst *compute.Instance) (intIP, extIP string) {
 	return
 }
 
-func (a *API) gcInstances(gracePeriod time.Duration) error {
+func (a *API) gcInstances(gracePeriod time.Duration, zone string) error {
 	threshold := time.Now().Add(-gracePeriod)
 
-	list, err := a.compute.Instances.List(a.options.Project, a.options.Zone).Do()
+	list, err := a.compute.Instances.List(a.options.Project, zone).Do()
 	if err != nil {
 		return err
 	}
@@ -303,7 +362,7 @@ func (a *API) gcInstances(gracePeriod time.Duration) error {
 			continue
 		}
 
-		if err := a.TerminateInstance(instance.Name); err != nil {
+		if err := a.TerminateInstance(instance.Name, zone); err != nil {
 			return fmt.Errorf("couldn't terminate instance %q: %v", instance.Name, err)
 		}
 	}

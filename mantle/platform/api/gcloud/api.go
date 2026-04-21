@@ -38,7 +38,7 @@ var (
 type Options struct {
 	Image            string
 	Project          string
-	Zone             string
+	PreferredZone    string
 	MachineType      string
 	DiskType         string
 	Network          string
@@ -72,7 +72,7 @@ func extractRegionFromZone(zone string) (string, error) {
 
 func getAvailableZones(computeService *compute.Service, opts *Options) ([]string, error) {
 	if opts.MachineType == "" {
-		return []string{opts.Zone}, nil
+		return []string{opts.PreferredZone}, nil
 	}
 
 	list, err := computeService.MachineTypes.AggregatedList(opts.Project).
@@ -82,9 +82,9 @@ func getAvailableZones(computeService *compute.Service, opts *Options) ([]string
 		return nil, err
 	}
 
-	targetRegion, err := extractRegionFromZone(opts.Zone)
+	targetRegion, err := extractRegionFromZone(opts.PreferredZone)
 	if err != nil {
-		return nil, fmt.Errorf("could not extract region from zone %q: %w", opts.Zone, err)
+		return nil, fmt.Errorf("could not extract region from zone %q: %w", opts.PreferredZone, err)
 	}
 
 	zones := []string{}
@@ -103,7 +103,7 @@ func getAvailableZones(computeService *compute.Service, opts *Options) ([]string
 		if region, err := extractRegionFromZone(zone); err == nil && region == targetRegion {
 			// If the preferred zone can be used, it should be the first zone that we use,
 			// so we will make add it to the start of the list, rather than the end.
-			if zone == opts.Zone {
+			if zone == opts.PreferredZone {
 				zones = append([]string{zone}, zones...)
 			} else {
 				zones = append(zones, zone)
@@ -150,8 +150,8 @@ func New(opts *Options) (*API, error) {
 
 	zones, err := getAvailableZones(computeService, opts)
 	if err != nil {
-		plog.Warningf("Failed to discover available zones: %v. Falling back to preferred zone (%s) only.", err, opts.Zone)
-		zones = []string{opts.Zone}
+		plog.Warningf("Failed to discover available zones: %v. Falling back to preferred zone (%s) only.", err, opts.PreferredZone)
+		zones = []string{opts.PreferredZone}
 	}
 
 	if opts.ServiceAcct == "" {
@@ -177,5 +177,10 @@ func (a *API) Client() *http.Client {
 }
 
 func (a *API) GC(gracePeriod time.Duration) error {
-	return a.gcInstances(gracePeriod)
+	for _, zone := range a.zones {
+		if err := a.gcInstances(gracePeriod, zone); err != nil {
+			return err
+		}
+	}
+	return nil
 }
