@@ -48,7 +48,7 @@ spec:
   pipelineRef:
     params:
     - name: bundle
-      value: quay.io/konflux-ci/tekton-catalog/pipeline-docker-build-multi-platform-oci-ta@sha256:39a1abd4657035029db5e1e215333aba0cf094c3984df58e12cb157f4cb62207
+      value: quay.io/konflux-ci/tekton-catalog/pipeline-docker-build-multi-platform-oci-ta@sha256:3b40c829ea489ac866149094157e3b8532896b9f150a4f15b5aaba9d0e2e6be2
     - name: name
       value: docker-build-multi-platform-oci-ta
     - name: kind
@@ -60,4 +60,13 @@ spec:
   - name: git-auth
     secret:
       secretName: '{{ git_auth_secret }}'
+  taskRunSpecs:
+  - pipelineTaskName: build-images
+    stepSpecs:
+    - name: prepare-sboms
+      computeResources:
+        requests:
+          memory: 2Gi
+        limits:
+          memory: 2Gi
 status: {}
