@@ -1,0 +1,29 @@
+discover:
+  how: fmf
+
+adjust+:
+  - when: arch == x86_64 or arch == aarch64
+    provision:
+      hardware:
+        cpu:
+          processors: ">= 4"
+        memory: ">= 8 GB"
+        disk:
+          - size: ">= 10 GB"
+        virtualization:
+          is-supported: true
+
+prepare:
+  - how: install
+    package:
+      - libvirt
+      - qemu-kvm
+      - qemu-img
+      - virt-install
+      - wget
+      - jq
+      - git
+      - podman
+execute:
+  how: tmt
+
