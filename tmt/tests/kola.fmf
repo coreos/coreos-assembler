@@ -1,0 +1,31 @@
+test: ./entrypoint.sh
+
+/init:
+  duration: 1h
+  order: 50
+  environment:
+    TEST_CASE: init
+
+/build-fcos:
+  duration: 1h
+  order: 60
+  environment:
+    TEST_CASE: build-fcos
+
+/build-qemu:
+  duration: 1h
+  order: 70
+  environment:
+    TEST_CASE: build-qemu
+
+/test-qemu:
+  duration: 2h
+  order: 80
+  environment:
+    TEST_CASE: test-qemu
+
+/test-kola-upgrade:
+  duration: 1h
+  order: 90
+  environment:
+    TEST_CASE: test-kola-upgrade

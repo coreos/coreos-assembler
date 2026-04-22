@@ -1,0 +1,45 @@
+adjust+:
+  - when: arch == x86_64 or arch == aarch64
+    provision:
+      hardware:
+        cpu:
+          processors: ">= 4"
+        memory: ">= 8 GB"
+        disk:
+          - size: ">= 50 GB"
+        virtualization:
+          is-supported: true
+prepare:
+  - how: install
+    package:
+      - libvirt
+      - qemu-kvm
+      - qemu-img
+      - virt-install
+      - jq
+      - git-core
+      - skopeo
+      - podman
+execute:
+  how: tmt
+  exit-first: true
+
+/kola-qemu:
+  summary: run kola qemu tests
+  discover+:
+    how: fmf
+    test:
+      - init
+      - build-fcos
+      - build-qemu
+      - test-qemu
+
+/kola-test-upgrade:
+  summary: run kola upgrade test
+  discover+:
+    how: fmf
+    test:
+      - init
+      - build-fcos
+      - build-qemu
+      - test-kola-upgrade
