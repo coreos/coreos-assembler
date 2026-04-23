@@ -104,7 +104,7 @@ EOF
 # but as long as we are using osbuild manually we have to carry this in the buildroot.
 # TODO: uncomment this when https://github.com/bootc-dev/bootc/pull/2116
 # is merged and released
-# cat > usr/lib/bootc/install/10-sigpolicy.toml <<EOF
+# cat > /usr/lib/bootc/install/10-sigpolicy.toml <<EOF
 # [install]
 # enforce-container-sigpolicy = true
 # EOF

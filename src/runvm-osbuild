@@ -73,6 +73,27 @@ container_tag=$(getconfig_def "container-tag" "")
 extra_kargs=$(getconfig "extra-kargs-string" "")
 use_bootc_install=$(getconfig_def "use-bootc-install" "false")
 
+# On fedora-coreos there is no python so in order to use the FCOS image
+# as the buildroot (which offers tighter coupling of userspace tools
+# used to create the disk images like mkfs.xfs, and bootc)
+# we build a temporary container that layers python on top of the FCOS
+# container.
+# This container will be used as the deployed-tree in the
+# osbuild manifest, enabling it to serve as the buildroot.
+buildroot_container_tag=""
+if [ "${osname}" == 'fedora-coreos' ]; then
+    echo "Building FCOS buildroot container"
+    buildroot_container_tag="${build_version}-python"
+    if ! podman image exists "${container_repo}:${buildroot_container_tag}"; then
+        containerfile="/usr/lib/coreos-assembler/Containerfile-osbuild-buildroot"
+        podman build \
+            --build-arg-file src/config/build-args.conf \
+            --build-arg "FCOS_IMAGE=oci-archive:${ostree_container}" \
+            -t "${container_repo}:${buildroot_container_tag}" \
+            -f "${containerfile}" /
+    fi
+fi
+
 # Since the underlying osbuild manifests will prefer the ociarchive
 # if it exists then let's check here to see if the container exists
 # in local container storage. If it does then we'll just pass that
@@ -107,20 +128,21 @@ processed_json=$(mktemp -t osbuild-XXXX.json)
 
 # Run through the preprocessor
 # Note: don't quote the size arguements since they are numbers, not strings
-set -x; osbuild-mpp                                       \
-    -D arch=\""$(arch)"\"                                 \
-    -D artifact_name_prefix=\""${artifact_name_prefix}"\" \
-    -D build_version=\""${build_version}"\"               \
-    -D ociarchive=\""${ostree_container}"\"               \
-    -D osname=\""${osname}"\"                             \
-    -D container_imgref=\""${container_imgref}"\"         \
-    -D container_repo=\""${container_repo}"\"             \
-    -D container_tag=\""${container_tag}"\"               \
-    -D extra_kargs=\""${extra_kargs}"\"                   \
-    -D use_bootc_install=\""${use_bootc_install}"\"       \
-    -D metal_image_size_mb="${metal_image_size_mb}"       \
-    -D cloud_image_size_mb="${cloud_image_size_mb}"       \
-    -D rootfs_size_mb="${rootfs_size_mb}"                 \
+set -x; osbuild-mpp                                               \
+    -D arch=\""$(arch)"\"                                         \
+    -D artifact_name_prefix=\""${artifact_name_prefix}"\"         \
+    -D build_version=\""${build_version}"\"                       \
+    -D ociarchive=\""${ostree_container}"\"                       \
+    -D osname=\""${osname}"\"                                     \
+    -D container_imgref=\""${container_imgref}"\"                 \
+    -D container_repo=\""${container_repo}"\"                     \
+    -D container_tag=\""${container_tag}"\"                       \
+    -D extra_kargs=\""${extra_kargs}"\"                           \
+    -D use_bootc_install=\""${use_bootc_install}"\"               \
+    -D buildroot_container_tag=\""${buildroot_container_tag}"\"   \
+    -D metal_image_size_mb="${metal_image_size_mb}"               \
+    -D cloud_image_size_mb="${cloud_image_size_mb}"               \
+    -D rootfs_size_mb="${rootfs_size_mb}"                         \
     "${mppyaml}" "${processed_json}"
 set +x
 

@@ -1,0 +1,12 @@
+# Overridden by build-args.conf. The value here is invalid on purpose.
+ARG BUILDER_IMG=overridden
+ARG FCOS_IMAGE=overridden
+
+FROM ${BUILDER_IMG} as builder
+RUN tar -c --ignore-failed-read --warning=no-failed-read \
+    --files-from=<(rpm -ql python3 python3-libs) --file=/python-tarball.tar
+
+ARG FCOS_IMAGE
+FROM ${FCOS_IMAGE} as fcos-python
+
+RUN --mount=type=bind,from=builder,source=/python-tarball.tar,target=/var/builder/python.tar tar xf /var/builder/python.tar -C /
