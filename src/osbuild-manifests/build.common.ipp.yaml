@@ -29,22 +29,17 @@ pipelines:
   # allows for this pipeline to be used as a buildroot for some stages
   # or as inputs for others (i.e. file_context input to the org.osbuild.selinux
   # stages). This pipeline isn't actually used for built artifacts but
-  # to help during build.
+  # to help during build as a buildroot or as inputs for some stages.
   #
-  # NOTE: this is only used as a buildroot on RHCOS (FCOS doesn't ship python).
+  # When a buildroot container is provided (for FCOS where we
+  # build a container with python on top of FCOS)
+  # it will be used as the source for this pipeline.
+  # For RHCOS/SCOS, the target container is used, as it already
+  # have python.
   - name: deployed-tree
     stages:
-      - mpp-if: ociarchive != ''
+      - mpp-if: buildroot_container_tag != ''
         then:
-          type: org.osbuild.container-deploy
-          inputs:
-            images:
-              type: org.osbuild.containers
-              origin: org.osbuild.pipeline
-              references:
-                name:oci-archive:
-                  name: coreos.ociarchive
-        else:
           type: org.osbuild.container-deploy
           inputs:
             images:
@@ -53,7 +48,28 @@ pipelines:
               mpp-resolve-images:
                 images:
                   - source: $container_repo
-                    tag: $container_tag
+                    tag: $buildroot_container_tag
+        else:
+          mpp-if: ociarchive != ''
+          then:
+            type: org.osbuild.container-deploy
+            inputs:
+              images:
+                type: org.osbuild.containers
+                origin: org.osbuild.pipeline
+                references:
+                  name:oci-archive:
+                    name: coreos.ociarchive
+          else:
+            type: org.osbuild.container-deploy
+            inputs:
+              images:
+                type: org.osbuild.containers-storage
+                origin: org.osbuild.source
+                mpp-resolve-images:
+                  images:
+                    - source: $container_repo
+                      tag: $container_tag
   # Build up the filesystem tree used to construct disk images later.
   # This is only needed for the non-bootc path; when using bootc install
   # the tree construction is handled by bootc install-to-filesystem.
