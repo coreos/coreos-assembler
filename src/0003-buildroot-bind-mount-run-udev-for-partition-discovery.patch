@@ -1,0 +1,53 @@
+From 1fa76b28f5f5715893830367022e7bb29cc8dd81 Mon Sep 17 00:00:00 2001
+From: Joel Capitao <jcapitao@redhat.com>
+Date: Thu, 23 Apr 2026 14:01:06 +0200
+Subject: [PATCH] buildroot: bind mount /run/udev for partition discovery
+
+Bind mount /run/udev into the bwrap sandbox so that lsblk can access the
+udev database to find partition information for loop devices.
+
+This fixes bootc install-to-filesystem on architectures that need to
+find specific partitions by GUID (e.g., PReP partition on ppc64le).
+
+Without this, bootupd fails with:
+"Failed to find PReP partition with GUID 9E1A2D38-C612-4316-AA26-8B49521E5A8B"
+
+The root cause is that bootupd 0.2.33 (via bootc-internal-blockdev
+0.2.0 [1]) switched from using sfdisk (which reads the partition table
+directly) to lsblk (which depends on udev database in /run/udev/data/)
+[2].
+
+When osbuild's bwrap creates a fresh tmpfs on /run, the udev database
+from the host is not accessible, causing lsblk to return no partition
+children for loop devices.
+
+Using --ro-bind-try ensures the build doesn't fail if /run/udev doesn't
+exist (e.g., in environments without udevd running).
+
+[1] https://github.com/bootc-dev/bootc/pull/2000
+[2] https://github.com/coreos/bootupd/commit/46ec982
+
+Assisted-by: OpenCode (Claude Opus 4)
+---
+ osbuild/buildroot.py | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/osbuild/buildroot.py b/osbuild/buildroot.py
+index dff733a9..05ce2600 100644
+--- a/osbuild/buildroot.py
++++ b/osbuild/buildroot.py
+@@ -217,6 +217,11 @@ class BuildRoot(contextlib.AbstractContextManager):
+         # Setup temporary/data file-systems.
+         mounts += ["--dir", "/etc"]
+         mounts += ["--tmpfs", "/run"]
++        # Bind mount /run/udev so that lsblk can access udev database for
++        # partition info. This is needed for bootc install-to-filesystem on
++        # architectures that need to find specific partitions (e.g., PReP
++        # partition on ppc64le).
++        mounts += ["--ro-bind-try", "/run/udev", "/run/udev"]
+         mounts += ["--tmpfs", "/tmp"]
+         mounts += ["--bind", self.var, "/var"]
+ 
+-- 
+2.53.0
+
