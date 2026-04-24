@@ -127,6 +127,21 @@ func (qc *Cluster) NewMachineWithBuilder(userdata any, options platform.MachineO
 		}
 	}
 
+	// Since we are on qemu let's just use non-network based journal
+	// (if we have a config to add it to) so that we'll get it even
+	// if offline OR if networking for some reason doesn't come up.
+	if config != nil {
+		journalPipe, err := qemuBuilder.VirtioJournal(config, "--output=export --lines=all")
+		if err != nil {
+			qm.Destroy()
+			return nil, err
+		}
+		if err := qm.journal.StartVirtioJournal(journalPipe); err != nil {
+			qm.Destroy()
+			return nil, err
+		}
+	}
+
 	inst, err := qemuBuilder.Exec()
 	if err != nil {
 		return nil, err

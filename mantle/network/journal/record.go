@@ -114,6 +114,15 @@ func (r *Recorder) StartSSH(ctx context.Context, client *ssh.Client) error {
 	return nil
 }
 
+func (r *Recorder) StartFile(journalInputPipe io.Reader) error {
+	go func() {
+		err := r.record(journalInputPipe)
+		r.status <- err
+	}()
+
+	return nil
+}
+
 func (r *Recorder) StartLocal(ctx context.Context) error {
 	cmd := r.journalctl()
 	journal := exec.CommandContext(ctx, cmd[0], cmd[1:]...)

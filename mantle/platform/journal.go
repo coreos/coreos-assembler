@@ -31,11 +31,15 @@ import (
 
 // Journal manages recording the journal of a Machine.
 type Journal struct {
-	journal     io.WriteCloser
-	journalRaw  io.WriteCloser
-	journalPath string
-	recorder    *journal.Recorder
-	cancel      context.CancelFunc
+	// journalInputPipe, when non-nil, indicates journal recording is
+	// handled via a virtio pipe rather than SSH. Once set and started,
+	// the recorder goroutine persists across guest reboots.
+	journalInputPipe io.ReadCloser
+	journal          io.WriteCloser
+	journalRaw       io.WriteCloser
+	journalPath      string
+	recorder         *journal.Recorder
+	cancel           context.CancelFunc
 }
 
 // wrapper that also closes the underlying file
@@ -87,8 +91,22 @@ func NewJournal(dir string) (*Journal, error) {
 	}, nil
 }
 
+// StartVirtioJournal begins recording the journal from a virtio pipe.
+// The pipe persists across guest reboots, so this only needs to be
+// called once. Subsequent calls to Start() will be no-ops.
+func (j *Journal) StartVirtioJournal(pipe io.ReadCloser) error {
+	j.journalInputPipe = pipe
+	return j.recorder.StartFile(pipe)
+}
+
 // Start begins/resumes streaming the system journal to journal.txt.
 func (j *Journal) Start(m Machine) error {
+	// If a virtio pipe journal is active, it persists across reboots
+	// and there is nothing to do.
+	if j.journalInputPipe != nil {
+		return nil
+	}
+
 	if j.cancel != nil {
 		j.cancel()
 		j.cancel = nil
@@ -133,6 +151,17 @@ func (j *Journal) Read() ([]byte, error) {
 func (j *Journal) Destroy() {
 	if j.cancel != nil {
 		j.cancel()
+		if err := j.recorder.Wait(); err != nil {
+			plog.Errorf("j.recorder.Wait() failed: %v", err)
+		}
+	}
+	if j.journalInputPipe != nil {
+		if err := j.journalInputPipe.Close(); err != nil {
+			plog.Errorf("Failed to close journal input pipe: %v", err)
+		}
+		// Wait for the recorder goroutine to exit after closing the virtio
+		// journal input pipe. Without this, the goroutine may still be writing
+		// to j.journal when j.journal.Close() is called.
 		if err := j.recorder.Wait(); err != nil {
 			plog.Errorf("j.recorder.Wait() failed: %v", err)
 		}
