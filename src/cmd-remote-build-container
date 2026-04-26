@@ -57,13 +57,18 @@ def build_container_image(labels, buildDir, containerfile, fromimage, cacheTTL,
     runcmd(cmd)
 
 
-def push_container_image(repo, tag, digestfile):
+def push_container_image(repo, tag, digestfile, retry='5', retry_delay=None):
     '''
     Push image to registry
     @param repo str registry repository
     @param tag str image tag
+    @param digestfile str path to write digest to
+    @param retry str number of times to retry on failure
+    @param retry_delay str duration between retries (e.g. "10s")
     '''
-    cmd = ["podman", "push", f"{repo}:{tag}"]
+    cmd = ["podman", "push", "--retry", retry, f"{repo}:{tag}"]
+    if retry_delay is not None:
+        cmd.extend(["--retry-delay", retry_delay])
     if digestfile is not None:
         cmd.extend(["--digestfile", digestfile])
     # Long running command. Send output to stdout for logging
@@ -215,7 +220,8 @@ def main():
     # Push to the registry if needed, else save the image to a file
     if args.push_to_registry:
         logging.info("Pushing to remote registry")
-        push_container_image(args.repo, args.tag, args.write_digest_to_file)
+        push_container_image(args.repo, args.tag, args.write_digest_to_file,
+                             args.push_retry, args.push_retry_delay)
     else:
         logging.info("Archiving build container image from remote")
         pull_oci_archive_from_remote(args.repo, args.tag, args.write_to_file)
@@ -296,6 +302,13 @@ Examples:
     parser.add_argument(
         '--tag', required=False,
         help='Force image tag. The default is arch-commit')
+    parser.add_argument(
+        '--push-retry', default='5', required=False,
+        help='Number of times to retry podman push on failure (default: 5)')
+    parser.add_argument(
+        '--push-retry-delay', required=False,
+        help='Duration of delay between push retry attempts (e.g. "10s"). '
+             'Default is exponential backoff starting at 2 seconds.')
     parser.add_argument(
         '--write-digest-to-file', required=False,
         help='Write digest of pushed image to named file')
