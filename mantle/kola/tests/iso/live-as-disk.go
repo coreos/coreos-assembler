@@ -39,6 +39,9 @@ func init() {
 			Timeout:     installTimeoutMins * time.Minute,
 			Flags:       []register.Flag{},
 			Platforms:   []string{"qemu"},
+			// Skip base checks (looks at journal for failures) until bootupd fix lands
+			// https://github.com/coreos/fedora-coreos-tracker/issues/2136
+			Tags: []string{kola.SkipBaseChecksTag},
 		})
 	}
 }
