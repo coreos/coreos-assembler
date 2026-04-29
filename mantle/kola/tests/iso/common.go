@@ -140,7 +140,7 @@ func EnsureLiveArtifactsExist(c cluster.TestCluster) {
 func IsDevBuild() bool {
 	// Ignore signing verification by default when running with development build
 	// https://github.com/coreos/fedora-coreos-tracker/issues/908
-	if kola.CosaBuild != nil && strings.Contains(kola.CosaBuild.Meta.BuildID, ".dev.") {
+	if kola.CosaBuild != nil && strings.Contains(kola.CosaBuild.Meta.BuildID, "dev") {
 		fmt.Printf("Detected development build; disabling signature verification\n")
 		return true
 	}
