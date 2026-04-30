@@ -47,10 +47,22 @@ func init() {
 		Name:                 `luks.sss.t2`,
 		Description:          "Verify that the rootfs is encrypted with SSS with t=2.",
 		Flags:                []register.Flag{},
-		Distros:              []string{"rhcos"},
+		Distros:              []string{"fcos"},
 		Platforms:            []string{"qemu"},
 		ExcludeArchitectures: []string{"s390x"}, // no TPM backend support for s390x
 		Tags:                 []string{"luks", "tpm", "tang", "sss", kola.NeedsInternetTag, "reprovision"},
+	})
+	register.RegisterTest(&register.Test{
+		Run:                  luksSSST2FipsTest,
+		ClusterSize:          0,
+		Name:                 `luks.sss.t2.fips`,
+		Description:          "Verify that the rootfs is encrypted with SSS with t=2 and FIPS mode enabled.",
+		CreationDate:         "2026-05-01",
+		Flags:                []register.Flag{},
+		Distros:              []string{"rhcos"},
+		Platforms:            []string{"qemu"},
+		ExcludeArchitectures: []string{"s390x"}, // no TPM backend support for s390x
+		Tags:                 []string{"luks", "tpm", "tang", "sss", kola.NeedsInternetTag, "fips", "reprovision"},
 	})
 	register.RegisterTest(&register.Test{
 		Run:           runCexTest,
@@ -132,7 +144,7 @@ func setupTangMachine(c cluster.TestCluster) ut.TangServer {
 	}
 }
 
-func runTest(c cluster.TestCluster, tpm2 bool, threshold int, killTangAfterFirstBoot bool) {
+func runTest(c cluster.TestCluster, tpm2 bool, threshold int, killTangAfterFirstBoot bool, fips bool) {
 	tangd := setupTangMachine(c)
 	ignition := conf.Ignition(fmt.Sprintf(`{
 		"ignition": {
@@ -164,9 +176,9 @@ func runTest(c cluster.TestCluster, tpm2 bool, threshold int, killTangAfterFirst
 					"wipeFilesystem": true,
 					"label": "root"
 				}
-			]
+			]%s
 		}
-	}`, tpm2, tangd.Address, tangd.Thumbprint, threshold))
+	}`, tpm2, tangd.Address, tangd.Thumbprint, threshold, fipsFileSection(fips)))
 
 	opts := platform.MachineOptions{
 		MinMemory: 4096,
@@ -186,6 +198,10 @@ func runTest(c cluster.TestCluster, tpm2 bool, threshold int, killTangAfterFirst
 		rootPart = "/dev/disk/by-id/virtio-primary-disk-part4"
 	}
 	ut.LUKSSanityTest(c, tangd, m, tpm2, killTangAfterFirstBoot, rootPart)
+	if fips {
+		c.AssertCmdOutputContains(m, `cat /proc/sys/crypto/fips_enabled`, "1")
+		c.AssertCmdOutputContains(m, `update-crypto-policies --show`, "FIPS")
+	}
 }
 
 func runCexTest(c cluster.TestCluster) {
@@ -251,15 +267,39 @@ func runCexTest(c cluster.TestCluster) {
 
 // Verify that the rootfs is encrypted with Tang
 func luksTangTest(c cluster.TestCluster) {
-	runTest(c, false, 1, false)
+	runTest(c, false, 1, false, false)
 }
 
 // Verify that the rootfs is encrypted with SSS with t=1
 func luksSSST1Test(c cluster.TestCluster) {
-	runTest(c, true, 1, true)
+	runTest(c, true, 1, true, false)
 }
 
 // Verify that the rootfs is encrypted with SSS with t=2
 func luksSSST2Test(c cluster.TestCluster) {
-	runTest(c, true, 2, false)
+	runTest(c, true, 2, false, false)
+}
+
+// Verify that the rootfs is encrypted with SSS with t=2 and FIPS mode enabled
+func luksSSST2FipsTest(c cluster.TestCluster) {
+	runTest(c, true, 2, false, true)
+}
+
+// fipsFileSection returns the Ignition files section to enable FIPS mode
+// via the encapsulated MachineConfig, or an empty string if FIPS is not requested.
+func fipsFileSection(fips bool) string {
+	if !fips {
+		return ""
+	}
+	return `,
+			"files": [
+				{
+					"path": "/etc/ignition-machine-config-encapsulated.json",
+					"overwrite": true,
+					"contents": {
+						"source": "data:,%7B%22spec%22%3A%7B%22fips%22%3Atrue%7D%7D"
+					},
+					"mode": 420
+				}
+			]`
 }
