@@ -1,29 +1,15 @@
-discover:
-  how: fmf
+/kola:
+  plan:
+    import:
+      url: https://github.com/coreos/fedora-coreos-pipeline
+      name: /tmt/plans/(kola-qemu|kola-test-upgrade)
+      scope: all-plans
+      importing: become-parent
 
-adjust+:
-  - when: arch == x86_64 or arch == aarch64
-    provision:
-      hardware:
-        cpu:
-          processors: ">= 4"
-        memory: ">= 8 GB"
-        disk:
-          - size: ">= 10 GB"
-        virtualization:
-          is-supported: true
-
-prepare:
-  - how: install
-    package:
-      - libvirt
-      - qemu-kvm
-      - qemu-img
-      - virt-install
-      - wget
-      - jq
-      - git
-      - podman
-execute:
-  how: tmt
-
+/cosa-build:
+  summary: Build FCOS with the newly built COSA container
+  discover:
+    how: fmf
+    test: /tmt/tests/kola
+  execute:
+    how: tmt
