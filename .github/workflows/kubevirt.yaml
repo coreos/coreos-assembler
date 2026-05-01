@@ -1,0 +1,150 @@
+---
+name: KubeVirt
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  kubevirt:
+    name: KubeVirt
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Enable KVM access
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Build KubeVirt image
+        run: |
+          set -euxo pipefail
+
+          builddir=$(mktemp -d)
+          echo "BUILDDIR=${builddir}" >> "$GITHUB_ENV"
+
+          cosa() {
+            env | sort > /tmp/cosa-env
+            podman run --rm \
+              --security-opt=label=disable --privileged \
+              --uidmap=1000:0:1 --uidmap=0:1:1000 --uidmap=1001:1001:64536 \
+              -v="${builddir}:/srv/" --device=/dev/kvm --device=/dev/fuse \
+              --tmpfs=/tmp -v=/var/tmp:/var/tmp \
+              --env-file=/tmp/cosa-env \
+              ${COREOS_ASSEMBLER_CONTAINER} "$@"
+            rc=$?; return $rc
+          }
+
+          export COREOS_ASSEMBLER_CONTAINER="${COREOS_ASSEMBLER_CONTAINER:-quay.io/coreos-assembler/coreos-assembler:latest}"
+
+          cosa init https://github.com/coreos/fedora-coreos-config
+          cosa fetch
+          cosa build
+          cosa buildextend-kubevirt
+
+      - name: Create Kind cluster
+        run: |
+          cat <<EOF | kind create cluster --wait 120s --config=-
+          kind: Cluster
+          apiVersion: kind.x-k8s.io/v1alpha4
+          nodes:
+            - role: control-plane
+              extraMounts:
+                - hostPath: /dev/kvm
+                  containerPath: /dev/kvm
+          EOF
+
+      - name: Install KubeVirt
+        run: |
+          set -euxo pipefail
+
+          KUBEVIRT_VERSION=v1.8.0
+          KUBEVIRT_RELEASE_URL="https://github.com/kubevirt/kubevirt/releases/download/${KUBEVIRT_VERSION}"
+
+          # Bump inotify limits on Kind nodes
+          for node in $(kubectl get node --no-headers -o custom-columns=":metadata.name"); do
+            docker exec -t "${node}" bash -c "echo 'fs.inotify.max_user_watches=1048576' >> /etc/sysctl.conf"
+            docker exec -t "${node}" bash -c "echo 'fs.inotify.max_user_instances=512' >> /etc/sysctl.conf"
+            docker exec -i "${node}" bash -c "sysctl -p /etc/sysctl.conf"
+          done
+
+          # Deploy KubeVirt operator and CR
+          kubectl apply -f "${KUBEVIRT_RELEASE_URL}/kubevirt-operator.yaml"
+          kubectl apply -f "${KUBEVIRT_RELEASE_URL}/kubevirt-cr.yaml"
+
+          # Wait for KubeVirt to be ready
+          if ! kubectl wait -n kubevirt kv kubevirt --for=condition=Available --timeout=15m; then
+            kubectl get pod -n kubevirt || true
+            kubectl describe pod -n kubevirt || true
+            for p in $(kubectl get pod -n kubevirt -o name | sed "s#pod/##"); do
+              kubectl logs -p --all-containers=true -n kubevirt "$p" || true
+              kubectl logs --all-containers=true -n kubevirt "$p" || true
+            done
+            exit 1
+          fi
+
+      - name: Load image into Kind
+        run: |
+          set -euxo pipefail
+          ociarchive=$(find "${BUILDDIR}/builds/" -name '*-kubevirt.*.ociarchive' | head -1)
+          skopeo copy "oci-archive:${ociarchive}" "docker-archive:/tmp/fcos-kubevirt.tar:localhost/fcos-kubevirt:latest"
+          kind load image-archive /tmp/fcos-kubevirt.tar
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Build kola
+        run: go build -o bin/kola ./mantle/cmd/kola
+
+      - name: Verify KubeVirt readiness
+        run: |
+          set -euxo pipefail
+          # Check KVM device is available in Kind node
+          docker exec kind-control-plane ls -la /dev/kvm
+          # Check KubeVirt device plugin allocated kvm
+          kubectl get node -o jsonpath='{.items[0].status.allocatable}' | jq .
+          # Check virt components are running
+          kubectl get pods -n kubevirt
+
+      - name: Run kola tests
+        run: |
+          set -euxo pipefail
+          ./bin/kola run -p kubevirt \
+            --kubevirt-image localhost/fcos-kubevirt:latest \
+            --output-dir "${BUILDDIR}/tmp/kola" \
+            -v \
+            'fcos.metadata.kubevirt.configdrive'
+
+      - name: Debug on failure
+        if: failure()
+        run: |
+          set +e
+          echo "=== VMs ==="
+          kubectl get vm,vmi -A
+          echo "=== VM details ==="
+          kubectl describe vmi -A
+          echo "=== Pods ==="
+          kubectl get pods -A
+          echo "=== virt-launcher logs ==="
+          for p in $(kubectl get pod -l kubevirt.io=virt-launcher -o name 2>/dev/null); do
+            echo "--- $p ---"
+            kubectl logs "$p" --all-containers=true 2>/dev/null | tail -50
+          done
+
+      - name: Upload KubeVirt artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fcos-kubevirt-image
+          path: builds/latest/**/fedora-coreos-*-kubevirt.*.ociarchive
+          if-no-files-found: warn
