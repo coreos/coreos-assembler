@@ -44,14 +44,8 @@ mpp-vars:
   host_as_buildroot: ""
   # Set the buildroot string to use for most operations here. We create
   # the buildroot from the target OSTree contents so we have version
-  # matches. Unfortunately for FCOS there is no python so we can't
-  # really use FCOS as the buildroot so we'll use the host as the
-  # buildroot there.
-  buildroot:
-    mpp-if: osname in ['rhcos', 'scos']
-    then: "name:deployed-tree"
-    else:
-      mpp-format-string: '{host_as_buildroot}'
+  # matches.
+  buildroot: "name:deployed-tree"
   # Set the names of the files to use to import raw and raw4k pipelines
   raw_image_pipeline_file:
     mpp-if: use_bootc_install == 'true'

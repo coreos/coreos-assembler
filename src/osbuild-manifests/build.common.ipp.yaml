@@ -29,9 +29,7 @@ pipelines:
   # allows for this pipeline to be used as a buildroot for some stages
   # or as inputs for others (i.e. file_context input to the org.osbuild.selinux
   # stages). This pipeline isn't actually used for built artifacts but
-  # to help during build.
-  #
-  # NOTE: this is only used as a buildroot on RHCOS (FCOS doesn't ship python).
+  # to help during build as a buildroot or as inputs for some stages.
   - name: deployed-tree
     stages:
       - mpp-if: ociarchive != ''
@@ -54,6 +52,19 @@ pipelines:
                 images:
                   - source: $container_repo
                     tag: $container_tag
+      - mpp-if: python_layer_tarball != ''
+        then:
+          type: org.osbuild.untar
+          inputs:
+            file:
+              type: org.osbuild.files
+              origin: org.osbuild.source
+              mpp-embed:
+                id: coreos.python_layer_tarball
+                url:
+                  mpp-format-string: 'file://{python_layer_tarball}'
+          options:
+            prefix: /
   # Build up the filesystem tree used to construct disk images later.
   # This is only needed for the non-bootc path; when using bootc install
   # the tree construction is handled by bootc install-to-filesystem.
