@@ -32,6 +32,7 @@ type machine struct {
 	dir     string
 	journal *platform.Journal
 	console string
+	zone    string
 }
 
 func (gm *machine) ID() string {
@@ -87,7 +88,7 @@ func (gm *machine) Destroy() {
 		plog.Errorf("Error saving console for instance %v: %v", gm.ID(), err)
 	}
 
-	if err := gm.gc.flight.api.TerminateInstance(gm.name); err != nil {
+	if err := gm.gc.flight.api.TerminateInstance(gm.name, gm.zone); err != nil {
 		plog.Errorf("Error terminating instance %v: %v", gm.ID(), err)
 	}
 
@@ -104,7 +105,7 @@ func (gm *machine) ConsoleOutput() string {
 
 func (gm *machine) saveConsole() error {
 	var err error
-	gm.console, err = gm.gc.flight.api.GetConsoleOutput(gm.name)
+	gm.console, err = gm.gc.flight.api.GetConsoleOutput(gm.name, gm.zone)
 	if err != nil {
 		return err
 	}
