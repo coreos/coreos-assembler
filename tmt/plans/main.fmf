@@ -1,0 +1,15 @@
+/kola:
+  plan:
+    import:
+      url: https://github.com/coreos/fedora-coreos-pipeline
+      name: /tmt/plans/(kola-qemu|kola-test-upgrade)
+      scope: all-plans
+      importing: become-parent
+
+/cosa-build:
+  summary: Build FCOS with the newly built COSA container
+  discover:
+    how: fmf
+    test: /tmt/tests/kola
+  execute:
+    how: tmt
