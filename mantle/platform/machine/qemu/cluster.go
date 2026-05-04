@@ -42,6 +42,17 @@ type Cluster struct {
 	tearingDown atomic.Bool
 }
 
+// MachineBuilder provides hooks to customize machine creation.
+// All fields are optional; if nil, default implementations will be used.
+type MachineBuilder struct {
+	// InitBuilder configures the QemuBuilder with architecture, firmware, memory, etc.
+	InitBuilder func(options platform.MachineOptions, builder *platform.QemuBuilder) error
+	// SetupDisks configures the primary disk and any additional disks.
+	SetupDisks func(options platform.MachineOptions, builder *platform.QemuBuilder) error
+	// SetupNetwork configures networking including port forwarding and additional NICs.
+	SetupNetwork func(options platform.MachineOptions, builder *platform.QemuBuilder) error
+}
+
 func (qc *Cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error) {
 	return qc.NewMachineWithOptions(userdata, platform.MachineOptions{})
 }
@@ -50,39 +61,25 @@ func (qc *Cluster) NewMachineWithOptions(userdata *conf.UserData, options platfo
 	if options.InstanceType != "" {
 		return nil, errors.New("platform qemu does not support changing instance types")
 	}
-	id := uuid.New()
+	return qc.NewMachineWithBuilder(userdata, options, nil)
+}
 
-	dir := filepath.Join(qc.RuntimeConf().OutputDir, id)
-	if err := os.Mkdir(dir, 0777); err != nil {
-		return nil, err
-	}
+// NewMachineWithBuilder creates a new machine with custom builder hooks.
+// If builder is nil or any of its fields are nil, default implementations are used.
+func (qc *Cluster) NewMachineWithBuilder(userdata any, options platform.MachineOptions, builder *MachineBuilder) (platform.Machine, error) {
+	// Use default builder if none provided
+	builder = qc.ensureBuilderDefaults(builder)
 
-	config, err := qc.RenderUserDataIfNeeded(userdata)
+	qm, config, err := qc.createMachine(userdata)
 	if err != nil {
 		return nil, err
 	}
 
-	journal, err := platform.NewJournal(dir)
-	if err != nil {
+	qemuBuilder := platform.NewQemuBuilder()
+	qemuBuilder.SetConfig(config)
+	defer qemuBuilder.Close()
+	if err := builder.InitBuilder(options, qemuBuilder); err != nil {
 		return nil, err
-	}
-
-	qm := &machine{
-		qc:          qc,
-		id:          id,
-		journal:     journal,
-		consolePath: filepath.Join(dir, "console.txt"),
-	}
-
-	builder := platform.NewQemuBuilder()
-	if options.DisablePDeathSig {
-		builder.Pdeathsig = false
-	}
-
-	if qc.flight.opts.SecureExecution {
-		if err := builder.SetSecureExecution(qc.flight.opts.SecureExecutionIgnitionPubKey, qc.flight.opts.SecureExecutionHostKey, config); err != nil {
-			return nil, err
-		}
 	}
 
 	// If requested, bind mount Host (COSA) directories into the machine for use.
@@ -99,122 +96,43 @@ func (qc *Cluster) NewMachineWithOptions(userdata *conf.UserData, options platfo
 			return nil, err
 		}
 		readonly := true
-		builder.MountHost(src, dest, readonly)
+		qemuBuilder.MountHost(src, dest, readonly)
 		config.MountHost(dest, readonly)
 	}
 
-	builder.SetConfig(config)
-	defer builder.Close()
-	builder.UUID = qm.id
-	if qc.flight.opts.Arch != "" {
-		if err := builder.SetArchitecture(qc.flight.opts.Arch); err != nil {
+	qemuBuilder.UUID = qm.id
+	qemuBuilder.ConsoleFile = qm.consolePath
+	qemuBuilder.NumaNodes = options.NumaNodes
+
+	if err := builder.SetupDisks(options, qemuBuilder); err != nil {
+		return nil, err
+	}
+	if err := builder.SetupNetwork(options, qemuBuilder); err != nil {
+		return nil, err
+	}
+
+	// S390x specific stuff
+	if qc.flight.opts.SecureExecution {
+		if err := qemuBuilder.SetSecureExecution(qc.flight.opts.SecureExecutionIgnitionPubKey, qc.flight.opts.SecureExecutionHostKey, config); err != nil {
 			return nil, err
 		}
 	}
-	if qc.flight.opts.Firmware != "" {
-		builder.Firmware = qc.flight.opts.Firmware
-	}
-	builder.Swtpm = qc.flight.opts.Swtpm
-	builder.Hostname = fmt.Sprintf("qemu%d", qc.BaseCluster.AllocateMachineSerial())
-	builder.ConsoleFile = qm.consolePath
-
-	if qc.flight.opts.Memory != "" {
-		memory, err := strconv.ParseInt(qc.flight.opts.Memory, 10, 32)
-		if err != nil {
-			return nil, errors.Wrapf(err, "parsing memory option")
-		}
-		builder.MemoryMiB = int(memory)
-	} else if options.MinMemory != 0 {
-		builder.MemoryMiB = options.MinMemory
-	} else if qc.flight.opts.SecureExecution {
-		builder.MemoryMiB = 4096 // SE needs at least 4GB
-	}
-
-	builder.NumaNodes = options.NumaNodes
-	var primaryDisk platform.Disk
-	if options.PrimaryDisk != "" {
-		var diskp *platform.Disk
-		if diskp, err = platform.ParseDisk(options.PrimaryDisk, true); err != nil {
-			return nil, errors.Wrapf(err, "parsing primary disk spec '%s'", options.PrimaryDisk)
-		}
-		primaryDisk = *diskp
-	}
-
 	if qc.flight.opts.Cex || options.Cex {
-		if err := builder.AddCexDevice(); err != nil {
+		if err := qemuBuilder.AddCexDevice(); err != nil {
 			return nil, err
 		}
 	}
 
-	if qc.flight.opts.Nvme || options.Nvme {
-		primaryDisk.Channel = "nvme"
-	}
-	if qc.flight.opts.Native4k {
-		primaryDisk.SectorSize = 4096
-	} else if qc.flight.opts.Disk512e {
-		primaryDisk.SectorSize = 4096
-		primaryDisk.LogicalSectorSize = 512
-	}
-	if options.MultiPathDisk || qc.flight.opts.MultiPathDisk {
-		primaryDisk.MultiPathDisk = true
-	}
-	if options.MinDiskSize > 0 {
-		primaryDisk.Size = fmt.Sprintf("%dG", options.MinDiskSize)
-	} else if qc.flight.opts.DiskSize != "" {
-		primaryDisk.Size = qc.flight.opts.DiskSize
-	}
-	primaryDisk.BackingFile = qc.flight.opts.DiskImage
-	if options.OverrideBackingFile != "" {
-		primaryDisk.BackingFile = options.OverrideBackingFile
-	}
-
-	if err = builder.AddBootDisk(&primaryDisk); err != nil {
-		return nil, err
-	}
-	if err = builder.AddDisksFromSpecs(options.AdditionalDisks); err != nil {
-		return nil, err
-	}
-
-	if len(options.HostForwardPorts) > 0 {
-		builder.EnableUsermodeNetworking(options.HostForwardPorts, "")
-	} else {
-		h := []platform.HostForwardPort{
-			{Service: "ssh", HostPort: 0, GuestPort: 22},
-		}
-		builder.EnableUsermodeNetworking(h, "")
-	}
-	if options.AdditionalNics > 0 {
-		builder.AddAdditionalNics(options.AdditionalNics)
-	}
-	if options.AppendKernelArgs != "" {
-		builder.AppendKernelArgs = options.AppendKernelArgs
-	}
-	if options.AppendFirstbootKernelArgs != "" {
-		builder.AppendFirstbootKernelArgs = options.AppendFirstbootKernelArgs
-	}
-	if !qc.RuntimeConf().InternetAccess {
-		builder.RestrictNetworking = true
-	}
-	if options.Firmware != "" {
-		builder.Firmware = options.Firmware
-	}
-
-	inst, err := builder.Exec()
+	inst, err := qemuBuilder.Exec()
 	if err != nil {
 		return nil, err
 	}
 	qm.inst = inst
 
-	err = util.Retry(6, 5*time.Second, func() error {
-		var err error
-		qm.ip, err = inst.SSHAddress()
-		if err != nil {
-			return err
+	if qemuBuilder.UsermodeNetworking {
+		if err := qc.waitForSSHAddress(qm, inst); err != nil {
+			return nil, err
 		}
-		return nil
-	})
-	if err != nil {
-		return nil, err
 	}
 
 	// Run StartMachine, which blocks on the machine being booted up enough
@@ -247,6 +165,9 @@ func (qc *Cluster) Destroy() {
 }
 
 func (qc *Cluster) RenderUserDataIfNeeded(userdata any) (*conf.Conf, error) {
+	if userdata == nil {
+		return nil, nil
+	}
 	var config *conf.Conf
 	var err error
 	// Some callers provide the config directly rather than something
@@ -264,4 +185,166 @@ func (qc *Cluster) RenderUserDataIfNeeded(userdata any) (*conf.Conf, error) {
 		return nil, fmt.Errorf("unknown config pointer type: %T", c)
 	}
 	return config, nil
+}
+
+// ensures all builder callbacks have default implementations.
+func (qc *Cluster) ensureBuilderDefaults(builder *MachineBuilder) *MachineBuilder {
+	if builder == nil {
+		builder = &MachineBuilder{}
+	}
+
+	if builder.InitBuilder == nil {
+		builder.InitBuilder = qc.InitDefaultBuilder
+	}
+	if builder.SetupDisks == nil {
+		builder.SetupDisks = qc.SetupDefaultDisks
+	}
+	if builder.SetupNetwork == nil {
+		builder.SetupNetwork = qc.SetupDefaultNetwork
+	}
+
+	return builder
+}
+
+// createMachine creates a new machine instance with its directory, config, and journal.
+func (qc *Cluster) createMachine(userdata any) (*machine, *conf.Conf, error) {
+	id := uuid.New()
+
+	dir := filepath.Join(qc.RuntimeConf().OutputDir, id)
+	if err := os.Mkdir(dir, 0777); err != nil {
+		return nil, nil, err
+	}
+
+	config, err := qc.RenderUserDataIfNeeded(userdata)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	journal, err := platform.NewJournal(dir)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	qm := &machine{
+		qc:          qc,
+		id:          id,
+		journal:     journal,
+		consolePath: filepath.Join(dir, "console.txt"),
+	}
+
+	return qm, config, nil
+}
+
+// waitForSSHAddress waits for the machine to provide an SSH address.
+func (qc *Cluster) waitForSSHAddress(qm *machine, inst *platform.QemuInstance) error {
+	return util.Retry(6, 5*time.Second, func() error {
+		var err error
+		qm.ip, err = inst.SSHAddress()
+		return err
+	})
+}
+
+func (qc *Cluster) InitDefaultBuilder(options platform.MachineOptions, builder *platform.QemuBuilder) error {
+	if options.DisablePDeathSig {
+		builder.Pdeathsig = false
+	}
+	if qc.flight.opts.Arch != "" {
+		if err := builder.SetArchitecture(qc.flight.opts.Arch); err != nil {
+			return err
+		}
+	}
+	if qc.flight.opts.Firmware != "" {
+		builder.Firmware = qc.flight.opts.Firmware
+	}
+	if qc.flight.opts.Memory != "" {
+		memory, err := strconv.ParseInt(qc.flight.opts.Memory, 10, 32)
+		if err != nil {
+			return errors.Wrapf(err, "parsing memory option")
+		}
+		builder.MemoryMiB = int(memory)
+	} else if options.MinMemory != 0 {
+		builder.MemoryMiB = options.MinMemory
+	} else if qc.flight.opts.SecureExecution {
+		builder.MemoryMiB = 4096 // SE needs at least 4GB
+	}
+	builder.Swtpm = qc.flight.opts.Swtpm
+	builder.Hostname = fmt.Sprintf("qemu%d", qc.BaseCluster.AllocateMachineSerial())
+	if options.Firmware != "" {
+		builder.Firmware = options.Firmware
+	}
+	if options.AppendKernelArgs != "" {
+		builder.AppendKernelArgs = options.AppendKernelArgs
+	}
+	if options.AppendFirstbootKernelArgs != "" {
+		builder.AppendFirstbootKernelArgs = options.AppendFirstbootKernelArgs
+	}
+
+	return nil
+}
+
+func (qc *Cluster) SetupDefaultDisks(options platform.MachineOptions, builder *platform.QemuBuilder) error {
+	var primaryDisk platform.Disk
+	if options.PrimaryDisk != "" {
+		diskp, err := platform.ParseDisk(options.PrimaryDisk, true)
+		if err != nil {
+			return errors.Wrapf(err, "parsing primary disk spec '%s'", options.PrimaryDisk)
+		}
+		primaryDisk = *diskp
+	}
+	if qc.flight.opts.Nvme || options.Nvme {
+		primaryDisk.Channel = "nvme"
+	}
+	if qc.flight.opts.Native4k {
+		primaryDisk.SectorSize = 4096
+	} else if qc.flight.opts.Disk512e {
+		primaryDisk.SectorSize = 4096
+		primaryDisk.LogicalSectorSize = 512
+	}
+	if options.MultiPathDisk || qc.flight.opts.MultiPathDisk {
+		primaryDisk.MultiPathDisk = true
+	}
+	if options.MinDiskSize > 0 {
+		primaryDisk.Size = fmt.Sprintf("%dG", options.MinDiskSize)
+	} else if qc.flight.opts.DiskSize != "" {
+		primaryDisk.Size = qc.flight.opts.DiskSize
+	}
+	primaryDisk.BackingFile = qc.flight.opts.DiskImage
+	if options.OverrideBackingFile != "" {
+		primaryDisk.BackingFile = options.OverrideBackingFile
+	}
+	if err := builder.AddBootDisk(&primaryDisk); err != nil {
+		return err
+	}
+	if err := builder.AddDisksFromSpecs(options.AdditionalDisks); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (qc *Cluster) SetupDefaultNetwork(options platform.MachineOptions, builder *platform.QemuBuilder) error {
+	if len(options.HostForwardPorts) > 0 {
+		builder.EnableUsermodeNetworking(options.HostForwardPorts, "")
+	} else {
+		h := []platform.HostForwardPort{
+			{Service: "ssh", HostPort: 0, GuestPort: 22},
+		}
+		builder.EnableUsermodeNetworking(h, "")
+	}
+	if options.AdditionalNics > 0 {
+		builder.AddAdditionalNics(options.AdditionalNics)
+	}
+	if !qc.RuntimeConf().InternetAccess {
+		builder.RestrictNetworking = true
+	}
+	return nil
+}
+
+// Instance returns the underlying QemuInstance for a given Machine.
+// This allows tests to access QEMU-specific functionality.
+func (qc *Cluster) Instance(m platform.Machine) *platform.QemuInstance {
+	qm, ok := m.(*machine)
+	if !ok {
+		return nil
+	}
+	return qm.inst
 }
