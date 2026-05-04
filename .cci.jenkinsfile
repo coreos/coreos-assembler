@@ -35,11 +35,8 @@ cosaPod(cpu: "${cpuCount}",
     shwrap("rpm -qa | sort > rpmdb.txt")
     archiveArtifacts artifacts: 'rpmdb.txt'
 
-    // Run stage Build FCOS (init, fetch and build)
+    // Run stage Build FCOS (init, fetch and osbuild qemu)
     cosaBuild(skipKola: 1, cosaDir: "/srv", noForce: true)
-
-    // Run stage Kola QEMU (basic-qemu-scenarios, upgrade and self tests)
-    kola(cosaDir: "/srv", addExtTests: ["${env.WORKSPACE}/ci/run-kola-self-tests"])
 
     stage("Build Artifacts") {
         def artifacts = ["aliyun", "applehv", "aws", "azure", "azurestack",
@@ -52,7 +49,8 @@ cosaPod(cpu: "${cpuCount}",
         utils.cosaCmd(cosaDir: "/srv", args: "meta --get name")
     }
 
-    kolaTestIso(cosaDir: "/srv")
+    // Run stage Kola QEMU (basic-qemu-scenarios, upgrade and self tests)
+    kola(cosaDir: "/srv", addExtTests: ["${env.WORKSPACE}/ci/run-kola-self-tests"])
 
     stage("Compress") {
         // Test compression but only a few of the artifacts. This should test xz, zip, gzip
