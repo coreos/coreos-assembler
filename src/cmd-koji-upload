@@ -298,10 +298,10 @@ class Build(_Build):
         The return is tuple is used if the file is found and a message.
         """
         base = os.path.basename(fname)
-        check_extension = base.split(".")[-1]
-        for extension in COMPRESSION_EXT:
-            if fname.endswith(f".{extension}"):
-                check_extension = base.split(".")[-2]
+        parts = base.split(".")
+        check_extension = parts[-1]
+        if len(parts) > 1 and check_extension in COMPRESSION_EXT:
+            check_extension = parts[-2]
 
         (found, _, arch, _) = KOJI_CG_TYPES.get(
             check_extension, [None, None, None, None])
