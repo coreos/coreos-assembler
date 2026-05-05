@@ -81,7 +81,7 @@ func init() {
 	for _, testName := range getAllLiveIsoTests() {
 		// Skip base checks (looks at journal for failures) until bootupd fix lands
 		// https://github.com/coreos/fedora-coreos-tracker/issues/2136
-		tags := []string{kola.SkipBaseChecksTag}
+		tags := []string{kola.SkipBaseChecksTag, "reprovision"}
 		if !strings.Contains(testName, "offline") {
 			tags = append(tags, kola.NeedsInternetTag)
 		}
