@@ -189,7 +189,7 @@ class Build(_Build):
         :return file
         """
         for x in COMPRESSION_EXT:
-            if not fname.endswith(x):
+            if not fname.endswith(f".{x}"):
                 continue
 
             base_name = os.path.basename(fname)
@@ -300,7 +300,7 @@ class Build(_Build):
         base = os.path.basename(fname)
         check_extension = base.split(".")[-1]
         for extension in COMPRESSION_EXT:
-            if fname.endswith(extension):
+            if fname.endswith(f".{extension}"):
                 check_extension = base.split(".")[-2]
 
         (found, _, arch, _) = KOJI_CG_TYPES.get(
