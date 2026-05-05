@@ -73,7 +73,7 @@ install_rpms() {
     builddeps=$(grep -v '^#' "${srcdir}"/src/build-deps.txt)
 
     # Process our base dependencies + build dependencies and install
-    (echo "${builddeps}" && echo "${frozendeps}" && "${srcdir}"/src/print-dependencies.sh) | xargs yum -y install
+    (echo "${builddeps}" && echo "${frozendeps}" && "${srcdir}"/src/print-dependencies.sh) | xargs yum -y install --skip-unavailable
 
     # Delete file that only exists on ppc64le because it is causing
     # sudo to not work.
