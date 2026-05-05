@@ -72,7 +72,7 @@ func init() {
 			Description: "Verify iSCSI install works.",
 			// Skip base checks (looks at journal for failures) until bootupd fix lands
 			// https://github.com/coreos/fedora-coreos-tracker/issues/2136
-			Tags:      []string{kola.NeedsInternetTag, kola.SkipBaseChecksTag},
+			Tags:      []string{kola.NeedsInternetTag, kola.SkipBaseChecksTag, "reprovision"},
 			Timeout:   installTimeoutMins * time.Minute,
 			Flags:     []register.Flag{},
 			Platforms: []string{"qemu"},
