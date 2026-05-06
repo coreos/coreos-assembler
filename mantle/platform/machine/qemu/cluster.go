@@ -51,6 +51,10 @@ type MachineBuilder struct {
 	SetupDisks func(options platform.MachineOptions, builder *platform.QemuBuilder) error
 	// SetupNetwork configures networking including port forwarding and additional NICs.
 	SetupNetwork func(options platform.MachineOptions, builder *platform.QemuBuilder) error
+	// PostInstanceStart is called after the QEMU instance is started but before waiting for SSH.
+	// This allows tests to perform actions like switching boot order or starting background
+	// monitoring tasks that need access to the running instance.
+	PostInstanceStart func(inst *platform.QemuInstance) error
 }
 
 func (qc *Cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error) {
@@ -129,8 +133,14 @@ func (qc *Cluster) NewMachineWithBuilder(userdata any, options platform.MachineO
 	}
 	qm.inst = inst
 
+	if err := builder.PostInstanceStart(inst); err != nil {
+		qm.Destroy()
+		return nil, err
+	}
+
 	if qemuBuilder.UsermodeNetworking {
 		if err := qc.waitForSSHAddress(qm, inst); err != nil {
+			qm.Destroy()
 			return nil, err
 		}
 	}
@@ -201,6 +211,9 @@ func (qc *Cluster) ensureBuilderDefaults(builder *MachineBuilder) *MachineBuilde
 	}
 	if builder.SetupNetwork == nil {
 		builder.SetupNetwork = qc.SetupDefaultNetwork
+	}
+	if builder.PostInstanceStart == nil {
+		builder.PostInstanceStart = func(_ *platform.QemuInstance) error { return nil }
 	}
 
 	return builder
