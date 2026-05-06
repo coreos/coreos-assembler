@@ -214,6 +214,25 @@ func testLivePXE(c cluster.TestCluster, opts IsoTestOpts) {
 		return nil
 	}
 
+	switchBootOrder := func(inst *platform.QemuInstance) error {
+		// Start a goroutine to monitor installation progress and switch boot order.
+		// We check the boot signal on all architectures, but only aarch64 and s390x
+		// need to switch boot order via QMP because their QEMU firmware doesn't support
+		// the -boot once=n option.
+		go func() {
+			if err := CheckTestOutput(bootStartedOutput, []string{bootStartedSignal}); err != nil {
+				errchan <- err
+				return
+			}
+			// SwitchBootOrder is a no-op on architectures other than aarch64 and s390x
+			if err := inst.SwitchBootOrder(); err != nil {
+				errchan <- errors.Wrapf(err, "switching boot order failed")
+				return
+			}
+		}()
+		return nil
+	}
+
 	options := platform.MachineOptions{
 		MinMemory: 4096,
 		Firmware:  opts.firmware,
@@ -226,31 +245,15 @@ func testLivePXE(c cluster.TestCluster, opts IsoTestOpts) {
 	}
 
 	builder := &qemu.MachineBuilder{
-		InitBuilder:  initBuilder,
-		SetupDisks:   setupDisks,
-		SetupNetwork: setupNet,
+		InitBuilder:       initBuilder,
+		SetupDisks:        setupDisks,
+		SetupNetwork:      setupNet,
+		PostInstanceStart: switchBootOrder,
 	}
-	qm, err := qc.NewMachineWithBuilder(nil, options, builder)
+	_, err = qc.NewMachineWithBuilder(nil, options, builder)
 	if err != nil {
 		c.Fatal(errors.Wrap(err, "unable to create test machine"))
 	}
-	inst := qc.Instance(qm)
-	if inst == nil {
-		c.Fatalf("Failed to get QemuInstance from machine")
-	}
-
-	//check for error when switching boot order
-	go func() {
-		if err := CheckTestOutput(bootStartedOutput, []string{bootStartedSignal}); err != nil {
-			errchan <- err
-			return
-		}
-		if err := inst.SwitchBootOrder(); err != nil {
-			errchan <- errors.Wrapf(err, "switching boot order failed")
-			return
-		}
-	}()
-
 	if err := <-errchan; err != nil {
 		c.Fatal(err)
 	}
