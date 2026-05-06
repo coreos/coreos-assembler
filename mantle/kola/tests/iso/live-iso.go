@@ -335,32 +335,35 @@ func runIsoTest(qc *qemu.Cluster, opts IsoTestOpts, tempdir string) error {
 		Firmware:         opts.firmware,
 	}
 
-	machineBuilder := &qemu.MachineBuilder{
-		SetupDisks:   setupDisks,
-		SetupNetwork: setupNet,
+	switchBootOrder := func(inst *platform.QemuInstance) error {
+		// Start a goroutine to monitor installation progress and switch boot order.
+		// We check the boot signal on all architectures, but only aarch64 and s390x
+		// need to switch boot order via QMP because their QEMU firmware doesn't support
+		// the -boot once=n option.
+		go func() {
+			if err := CheckTestOutput(bootStartedOutput, []string{bootStartedSignal}); err != nil {
+				errchan <- err
+				return
+			}
+			// SwitchBootOrder is a no-op on architectures other than aarch64 and s390x
+			if err := inst.SwitchBootOrder(); err != nil {
+				errchan <- errors.Wrapf(err, "switching boot order failed")
+				return
+			}
+		}()
+		return nil
 	}
 
-	qm, err := qc.NewMachineWithBuilder(liveConfig, options, machineBuilder)
+	machineBuilder := &qemu.MachineBuilder{
+		SetupDisks:        setupDisks,
+		SetupNetwork:      setupNet,
+		PostInstanceStart: switchBootOrder,
+	}
+
+	_, err = qc.NewMachineWithBuilder(liveConfig, options, machineBuilder)
 	if err != nil {
 		return errors.Wrap(err, "unable to create test machine")
 	}
-
-	inst := qc.Instance(qm)
-	if inst == nil {
-		return errors.New("failed to get QemuInstance from machine")
-	}
-
-	//check for error when switching boot order
-	go func() {
-		if err := CheckTestOutput(bootStartedOutput, []string{bootStartedSignal}); err != nil {
-			errchan <- err
-			return
-		}
-		if err := inst.SwitchBootOrder(); err != nil {
-			errchan <- errors.Wrapf(err, "switching boot order failed")
-			return
-		}
-	}()
 
 	return <-errchan
 }
