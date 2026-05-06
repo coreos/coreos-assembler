@@ -1413,9 +1413,7 @@ func registerTestDir(dir, testprefix string, children []os.DirEntry) error {
 			if err != nil {
 				return errors.Wrapf(err, "reading %s", c.Name())
 			}
-			// The .Subst("{{LAYOUT}}") is required for raid1-boot test, see
-			// https://github.com/coreos/fedora-coreos-config/pull/4097
-			userdata = conf.Butane(string(v)).Subst("{{LAYOUT}}", Options.CosaBuildArch)
+			userdata = conf.Butane(string(v))
 		} else if isreg && c.Name() == "kola.json" {
 			f, err := os.Open(fpath)
 			if err != nil {
