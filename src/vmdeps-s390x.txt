@@ -2,3 +2,6 @@ s390utils-base
 
 # for Secure Execution
 veritysetup
+
+# for building iso image (see org.osbuild.coreos.live-artifacts.mono)
+lorax
