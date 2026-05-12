@@ -406,7 +406,7 @@ func ParseDenyListYaml(pltfrm string) error {
 	// Get the stream variable from meta.json since DenylistStream is not specified
 	if len(DenylistStream) > 0 {
 		stream = DenylistStream
-	} else if CosaBuild.Meta.OciLabels != nil {
+	} else if CosaBuild != nil && CosaBuild.Meta != nil && CosaBuild.Meta.OciLabels != nil {
 		s := CosaBuild.Meta.OciLabels["com.coreos.stream"]
 		stream = string(s)
 	}
