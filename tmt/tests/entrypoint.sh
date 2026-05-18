@@ -9,7 +9,7 @@ case "$TEST_CASE" in
     "build-fcos"|"build-qemu")
         ./build.sh
         ;;
-    "test-qemu"|"test-kola-upgrade")
+    "test-qemu"|"test-kola-upgrade"|"test-kola-self")
         ./test.sh
         ;;
     *)

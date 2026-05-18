@@ -29,3 +29,9 @@ test: ./entrypoint.sh
   order: 90
   environment:
     TEST_CASE: test-kola-upgrade
+
+/test-kola-self:
+  duration: 1h
+  order: 100
+  environment:
+    TEST_CASE: test-kola-self

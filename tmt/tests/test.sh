@@ -36,4 +36,16 @@ elif [ "$TEST_CASE" = "test-kola-upgrade" ]; then
     )
     run_kola
     collect_kola_artifacts
+
+elif [ "$TEST_CASE" = "test-kola-self" ]; then
+    REPO_ROOT=$(cd ../.. && pwd)
+    # self test
+    export KOLA_ACTION="run"
+    export KOLA_ID="kola-self"
+    export KOLA_EXTRA_ARGS=(
+        -E "${REPO_ROOT}/tests/kola-ci-self"
+        'ext.kola-ci-self*'
+    )
+    run_kola
+    collect_kola_artifacts
 fi
