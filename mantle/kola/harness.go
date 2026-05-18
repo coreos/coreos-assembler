@@ -411,8 +411,7 @@ func ParseDenyListYaml(pltfrm string) error {
 		stream = string(s)
 	}
 	if stream == "" {
-		// In this case no stream was detected so we'll just continue best effort
-		plog.Warningf("Unable to determine stream from '--denylist-stream' or meta.json. Won't consider denials based on stream.")
+		plog.Warningf("Stream could not be determined from '--denylist-stream' or meta.json. Stream-scoped denylist entries will not be applied (tests will not be skipped).")
 	}
 
 	// Get the current arch & current time
@@ -432,7 +431,7 @@ func ParseDenyListYaml(pltfrm string) error {
 			continue
 		}
 
-		if len(stream) > 0 && len(obj.Streams) > 0 && !HasString(stream, obj.Streams) {
+		if len(obj.Streams) > 0 && !HasString(stream, obj.Streams) {
 			continue
 		}
 
