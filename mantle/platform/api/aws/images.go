@@ -861,6 +861,79 @@ func getImageSnapshotID(image *ec2types.Image) (string, error) {
 	return "", fmt.Errorf("no backing block device for %v", image.ImageId)
 }
 
+// ListProductionImages returns all AMIs owned by this account tagged
+// production=true, including already-deprecated ones.
+func (a *API) ListProductionImages() ([]ec2types.Image, error) {
+	resp, err := a.ec2.DescribeImages(context.Background(), &ec2.DescribeImagesInput{
+		Owners:            []string{"self"},
+		IncludeDeprecated: aws.Bool(true),
+		Filters: []ec2types.Filter{
+			{
+				Name:   aws.String("tag:production"),
+				Values: []string{"true"},
+			},
+		},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("couldn't list production images: %v", err)
+	}
+	return resp.Images, nil
+}
+
+// GetImageByID returns the AMI with the given ID owned by
+// this account, including already-deprecated ones.
+func (a *API) GetImageByID(imageID string) (*ec2types.Image, error) {
+	resp, err := a.ec2.DescribeImages(context.Background(), &ec2.DescribeImagesInput{
+		Owners:            []string{"self"},
+		IncludeDeprecated: aws.Bool(true),
+		ImageIds:          []string{imageID},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("couldn't describe image %v: %v", imageID, err)
+	}
+	if len(resp.Images) == 0 {
+		return nil, nil
+	}
+	return &resp.Images[0], nil
+}
+
+// RestoreImagePublic grants public launch permission on the given AMI.
+// Unlike PublishImage, this only touches the AMI's launch permission and does
+// not modify the underlying snapshot. This is appropriate when AWS has auto-privatized
+// a deprecated AMI, since only the launch permission is removed in that case.
+func (a *API) RestoreImagePublic(imageID string) error {
+	_, err := a.ec2.ModifyImageAttribute(context.Background(), &ec2.ModifyImageAttributeInput{
+		Attribute: aws.String("launchPermission"),
+		ImageId:   aws.String(imageID),
+		LaunchPermission: &ec2types.LaunchPermissionModifications{
+			Add: []ec2types.LaunchPermission{
+				{Group: ec2types.PermissionGroupAll},
+			},
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("couldn't restore public launch permission on %v: %v", imageID, err)
+	}
+	return nil
+}
+
+// IsImagePublic returns true if the AMI has public launch permissions.
+func (a *API) IsImagePublic(imageID string) (bool, error) {
+	resp, err := a.ec2.DescribeImageAttribute(context.Background(), &ec2.DescribeImageAttributeInput{
+		Attribute: ec2types.ImageAttributeNameLaunchPermission,
+		ImageId:   aws.String(imageID),
+	})
+	if err != nil {
+		return false, fmt.Errorf("couldn't describe launch permissions for %v: %v", imageID, err)
+	}
+	for _, p := range resp.LaunchPermissions {
+		if p.Group == ec2types.PermissionGroupAll {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 func (a *API) FindSnapshotDiskSizeGiB(snapshotID string) (uint, error) {
 	result, err := a.ec2.DescribeSnapshots(context.Background(), &ec2.DescribeSnapshotsInput{
 		SnapshotIds: []string{snapshotID},
