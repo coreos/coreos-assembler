@@ -10774,6 +10774,9 @@ type InstanceTypeInfo struct {
 	// [Boot modes]: https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ami-boot.html
 	SupportedBootModes []BootModeType
 
+	// Indicates whether the instance type is supported in the current Region.
+	SupportedInRegion *bool
+
 	// The supported root device types.
 	SupportedRootDeviceTypes []RootDeviceType
 
@@ -11624,6 +11627,9 @@ type IpamPoolAllocation struct {
 
 	// The type of the resource.
 	ResourceType IpamPoolAllocationResourceType
+
+	// The tags for the IPAM pool allocation.
+	Tags []Tag
 
 	noSmithyDocumentSerde
 }

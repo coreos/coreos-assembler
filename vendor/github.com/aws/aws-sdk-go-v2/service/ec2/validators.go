@@ -8230,6 +8230,26 @@ func (m *validateOpModifyIpamPolicyAllocationRules) HandleInitialize(ctx context
 	return next.HandleInitialize(ctx, in)
 }
 
+type validateOpModifyIpamPoolAllocation struct {
+}
+
+func (*validateOpModifyIpamPoolAllocation) ID() string {
+	return "OperationInputValidation"
+}
+
+func (m *validateOpModifyIpamPoolAllocation) HandleInitialize(ctx context.Context, in middleware.InitializeInput, next middleware.InitializeHandler) (
+	out middleware.InitializeOutput, metadata middleware.Metadata, err error,
+) {
+	input, ok := in.Parameters.(*ModifyIpamPoolAllocationInput)
+	if !ok {
+		return out, metadata, fmt.Errorf("unknown input parameters type %T", in.Parameters)
+	}
+	if err := validateOpModifyIpamPoolAllocationInput(input); err != nil {
+		return out, metadata, err
+	}
+	return next.HandleInitialize(ctx, in)
+}
+
 type validateOpModifyIpamPool struct {
 }
 
@@ -8385,6 +8405,26 @@ func (m *validateOpModifyManagedPrefixList) HandleInitialize(ctx context.Context
 		return out, metadata, fmt.Errorf("unknown input parameters type %T", in.Parameters)
 	}
 	if err := validateOpModifyManagedPrefixListInput(input); err != nil {
+		return out, metadata, err
+	}
+	return next.HandleInitialize(ctx, in)
+}
+
+type validateOpModifyManagedResourceVisibility struct {
+}
+
+func (*validateOpModifyManagedResourceVisibility) ID() string {
+	return "OperationInputValidation"
+}
+
+func (m *validateOpModifyManagedResourceVisibility) HandleInitialize(ctx context.Context, in middleware.InitializeInput, next middleware.InitializeHandler) (
+	out middleware.InitializeOutput, metadata middleware.Metadata, err error,
+) {
+	input, ok := in.Parameters.(*ModifyManagedResourceVisibilityInput)
+	if !ok {
+		return out, metadata, fmt.Errorf("unknown input parameters type %T", in.Parameters)
+	}
+	if err := validateOpModifyManagedResourceVisibilityInput(input); err != nil {
 		return out, metadata, err
 	}
 	return next.HandleInitialize(ctx, in)
@@ -12294,6 +12334,10 @@ func addOpModifyIpamPolicyAllocationRulesValidationMiddleware(stack *middleware.
 	return stack.Initialize.Add(&validateOpModifyIpamPolicyAllocationRules{}, middleware.After)
 }
 
+func addOpModifyIpamPoolAllocationValidationMiddleware(stack *middleware.Stack) error {
+	return stack.Initialize.Add(&validateOpModifyIpamPoolAllocation{}, middleware.After)
+}
+
 func addOpModifyIpamPoolValidationMiddleware(stack *middleware.Stack) error {
 	return stack.Initialize.Add(&validateOpModifyIpamPool{}, middleware.After)
 }
@@ -12324,6 +12368,10 @@ func addOpModifyLocalGatewayRouteValidationMiddleware(stack *middleware.Stack) e
 
 func addOpModifyManagedPrefixListValidationMiddleware(stack *middleware.Stack) error {
 	return stack.Initialize.Add(&validateOpModifyManagedPrefixList{}, middleware.After)
+}
+
+func addOpModifyManagedResourceVisibilityValidationMiddleware(stack *middleware.Stack) error {
+	return stack.Initialize.Add(&validateOpModifyManagedResourceVisibility{}, middleware.After)
 }
 
 func addOpModifyNetworkInterfaceAttributeValidationMiddleware(stack *middleware.Stack) error {
@@ -20694,6 +20742,21 @@ func validateOpModifyIpamPolicyAllocationRulesInput(v *ModifyIpamPolicyAllocatio
 	}
 }
 
+func validateOpModifyIpamPoolAllocationInput(v *ModifyIpamPoolAllocationInput) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "ModifyIpamPoolAllocationInput"}
+	if v.IpamPoolAllocationId == nil {
+		invalidParams.Add(smithy.NewErrParamRequired("IpamPoolAllocationId"))
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
 func validateOpModifyIpamPoolInput(v *ModifyIpamPoolInput) error {
 	if v == nil {
 		return nil
@@ -20833,6 +20896,21 @@ func validateOpModifyManagedPrefixListInput(v *ModifyManagedPrefixListInput) err
 		if err := validateRemovePrefixListEntries(v.RemoveEntries); err != nil {
 			invalidParams.AddNested("RemoveEntries", err.(smithy.InvalidParamsError))
 		}
+	}
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	} else {
+		return nil
+	}
+}
+
+func validateOpModifyManagedResourceVisibilityInput(v *ModifyManagedResourceVisibilityInput) error {
+	if v == nil {
+		return nil
+	}
+	invalidParams := smithy.InvalidParamsError{Context: "ModifyManagedResourceVisibilityInput"}
+	if len(v.DefaultVisibility) == 0 {
+		invalidParams.Add(smithy.NewErrParamRequired("DefaultVisibility"))
 	}
 	if invalidParams.Len() > 0 {
 		return invalidParams
