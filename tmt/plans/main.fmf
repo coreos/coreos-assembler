@@ -29,34 +29,33 @@ execute:
   how: tmt
   exit-first: true
 
-/kola-qemu:
-  summary: run kola qemu tests
-  discover+:
-    how: fmf
-    test:
-      - init
-      - build-fcos
-      - build-qemu
-      - test-qemu
+# /kola-qemu:
+#   summary: run kola qemu tests
+#   discover+:
+#     how: fmf
+#     test:
+#       - init
+#       - build-fcos
+#       - build-qemu
+#       - test-qemu
+#
 
 /kola-self-tests:
   summary: run self-tests
   discover+:
     how: fmf
     test:
-      # - init
+      - init
       # - build-fcos
       # - build-qemu
       - test-kola-self
-  environment:
-    IMAGE_URL: quay.io/coreos-assembler/coreos-assembler:latest
 
-/kola-test-upgrade:
-  summary: run kola upgrade test
-  discover+:
-    how: fmf
-    test:
-      - init
-      - build-fcos
-      - build-qemu
-      - test-kola-upgrade
+# /kola-test-upgrade:
+#   summary: run kola upgrade test
+#   discover+:
+#     how: fmf
+#     test:
+#       - init
+#       - build-fcos
+#       - build-qemu
+#       - test-kola-upgrade

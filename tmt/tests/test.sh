@@ -39,14 +39,14 @@ elif [ "$TEST_CASE" = "test-kola-upgrade" ]; then
 
 elif [ "$TEST_CASE" = "test-kola-self" ]; then
     REPO_ROOT=$(cd ../.. && pwd)
-    echo "$REPO_ROOT"
-    ls "$REPO_ROOT"
-    cosa kola list -E "${REPO_ROOT}/tests/kola-ci-self"
+    cp -r "${REPO_ROOT}/tests/kola-ci-self" "${COSA_DIR}/kola-ci-self"
+
+    cosa kola list -E "${COSA_DIR}/kola-ci-self"
     # self test
     export KOLA_ACTION="run"
     export KOLA_ID="kola-self"
     export KOLA_EXTRA_ARGS=(
-        -E "${REPO_ROOT}/tests/kola-ci-self"
+        -E "${COSA_DIR}/kola-ci-self"
         'ext.kola-ci-self*'
     )
     run_kola
