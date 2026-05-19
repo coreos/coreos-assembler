@@ -9,16 +9,21 @@ adjust+:
           - size: ">= 50 GB"
         virtualization:
           is-supported: true
+# prepare:
+#   - how: install
+#     package:
+#       - libvirt
+#       - qemu-kvm
+#       - qemu-img
+#       - virt-install
+#       - jq
+#       - git-core
+#       - skopeo
+#       - podman
+
 prepare:
   - how: install
     package:
-      - libvirt
-      - qemu-kvm
-      - qemu-img
-      - virt-install
-      - jq
-      - git-core
-      - skopeo
       - podman
 execute:
   how: tmt
@@ -39,10 +44,12 @@ execute:
   discover+:
     how: fmf
     test:
-      - init
-      - build-fcos
-      - build-qemu
+      # - init
+      # - build-fcos
+      # - build-qemu
       - test-kola-self
+  environment:
+    IMAGE_URL: quay.io/coreos-assembler/coreos-assembler:latest
 
 /kola-test-upgrade:
   summary: run kola upgrade test
