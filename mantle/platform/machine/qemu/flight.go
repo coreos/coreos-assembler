@@ -29,6 +29,8 @@ const (
 type Options struct {
 	// DiskImage is the full path to the disk image to boot in QEMU.
 	DiskImage string
+	// DiskImageIsUserProvided is true when DiskImage was explicitly set via --qemu-image
+	DiskImageIsUserProvided bool
 	// DiskSize if non-empty will expand the disk
 	DiskSize string
 	// DriveOpts is arbitrary comma-separated list of options

@@ -403,15 +403,21 @@ func ParseDenyListYaml(pltfrm string) error {
 
 	var stream string
 
-	// Get the stream variable from meta.json since DenylistStream is not specified
+	// Get the stream variable from meta.json if DenylistStream is not specified
 	if len(DenylistStream) > 0 {
 		stream = DenylistStream
-	} else if CosaBuild != nil && CosaBuild.Meta != nil && CosaBuild.Meta.OciLabels != nil {
+	} else if !QEMUOptions.DiskImageIsUserProvided &&
+		CosaBuild != nil && CosaBuild.Meta != nil && CosaBuild.Meta.OciLabels != nil {
 		s := CosaBuild.Meta.OciLabels["com.coreos.stream"]
 		stream = string(s)
 	}
 	if stream == "" {
-		plog.Warningf("Stream could not be determined from '--denylist-stream' or meta.json. Stream-scoped denylist entries will not be applied (tests will not be skipped).")
+		commonLog := "Stream-scoped denylist entries will not be applied (tests will not be skipped)."
+		if QEMUOptions.DiskImageIsUserProvided {
+			plog.Warningf("Stream not set. Use '--denylist-stream' when using '--qemu-image'. %s", commonLog)
+		} else {
+			plog.Warningf("Stream could not be determined from '--denylist-stream' or meta.json. %s", commonLog)
+		}
 	}
 
 	// Get the current arch & current time
