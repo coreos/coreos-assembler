@@ -346,6 +346,8 @@ func syncOptionsImpl(useCosa bool) error {
 		}
 	}
 
+	kola.QEMUOptions.DiskImageIsUserProvided = kola.QEMUOptions.DiskImage != ""
+
 	if foundCosa && useCosa {
 		if err := syncCosaOptions(); err != nil {
 			return err
