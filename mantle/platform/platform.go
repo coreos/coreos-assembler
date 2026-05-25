@@ -288,7 +288,7 @@ type RuntimeConfig struct {
 	// NoIgnition skips Ignition when launching QEMU VMs; SSH keys are
 	// provisioned via systemd SMBIOS credentials instead.
 	NoIgnition bool
-	// SSHUser overrides the default SSH user (core) when set.
+	// SSHUser overrides the default SSH user (core) when set (e.g. root with --no-ignition).
 	SSHUser string
 }
 

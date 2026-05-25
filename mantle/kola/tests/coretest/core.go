@@ -111,7 +111,6 @@ func init() {
 		},
 		// FIXME run on RHCOS once it has https://github.com/coreos/ignition-dracut/pull/93
 		Distros: []string{"fcos"},
-		Tags:    []string{kola.BootcBaseTag},
 	})
 	register.RegisterTest(&register.Test{
 		Name:        "rhcos.services-disabled",

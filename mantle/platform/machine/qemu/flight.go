@@ -67,8 +67,6 @@ type Options struct {
 
 	// NoIgnition skips Ignition; SSH keys are provisioned via systemd SMBIOS credentials.
 	NoIgnition bool
-	// SSHUser is the SSH login user when NoIgnition is set (default root).
-	SSHUser string
 
 	*platform.Options
 }

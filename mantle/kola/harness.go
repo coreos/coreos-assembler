@@ -1862,9 +1862,8 @@ func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flig
 		EarlyRelease:       h.Release,
 		TestExecTimeout:    h.TimeoutContext(),
 		NoIgnition:         QEMUOptions.NoIgnition,
-		SSHUser:            QEMUOptions.SSHUser,
 	}
-	if QEMUOptions.NoIgnition && rconf.SSHUser == "" {
+	if QEMUOptions.NoIgnition {
 		rconf.SSHUser = "root"
 	}
 	if t.HasFlag(register.AllowConfigWarnings) {
