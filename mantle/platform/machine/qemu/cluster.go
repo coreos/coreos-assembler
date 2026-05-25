@@ -57,9 +57,23 @@ func (qc *Cluster) NewMachineWithOptions(userdata *conf.UserData, options platfo
 		return nil, err
 	}
 
-	config, err := qc.RenderUserDataIfNeeded(userdata)
-	if err != nil {
-		return nil, err
+	rconf := qc.RuntimeConf()
+	noIgnition := rconf.NoIgnition
+
+	var config *conf.Conf
+	if noIgnition {
+		if qc.flight.opts.SecureExecution {
+			return nil, errors.New("secure execution requires Ignition; not supported with --no-ignition")
+		}
+		if len(append(qc.flight.opts.BindRO, options.BindMountHostRO...)) > 0 {
+			return nil, errors.New("bind mounts require Ignition; not supported with --no-ignition")
+		}
+	} else {
+		var err error
+		config, err = qc.RenderUserDataIfNeeded(userdata)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	journal, err := platform.NewJournal(dir)
@@ -103,7 +117,19 @@ func (qc *Cluster) NewMachineWithOptions(userdata *conf.UserData, options platfo
 		config.MountHost(dest, readonly)
 	}
 
-	builder.SetConfig(config)
+	if noIgnition {
+		keys, err := qc.Keys()
+		if err != nil {
+			return nil, err
+		}
+		smbios, err := platform.SystemdSMBIOSSSHCredential(rconf.SSHUser, keys)
+		if err != nil {
+			return nil, err
+		}
+		builder.Smbios = append(builder.Smbios, smbios)
+	} else {
+		builder.SetConfig(config)
+	}
 	defer builder.Close()
 	builder.UUID = qm.id
 	if qc.flight.opts.Arch != "" {

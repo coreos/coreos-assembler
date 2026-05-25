@@ -66,6 +66,8 @@ func init() {
 	ssv(&kola.Tags, "tag", []string{}, "Test tag to run. Can be specified multiple times.")
 	sv(&kola.Sharding, "sharding", "", "Provide e.g. 'hash:m/n' where m and n are integers, 1 <= m <= n.  Only tests hashing to m will be run.")
 	bv(&kola.Options.SSHOnTestFailure, "ssh-on-test-failure", false, "SSH into a machine when tests fail")
+	bv(&kola.QEMUOptions.NoIgnition, "no-ignition", false, "Run without Ignition; provision SSH via systemd SMBIOS credentials (requires -p qemu and --qemu-image)")
+	sv(&kola.QEMUOptions.SSHUser, "ssh-user", "", "SSH user when using --no-ignition (default: root)")
 	sv(&kola.Options.Stream, "stream", "", "CoreOS stream ID (e.g. for Fedora CoreOS: stable, testing, next)")
 	sv(&kola.Options.CosaWorkdir, "workdir", "", "coreos-assembler working directory")
 	sv(&kola.Options.CosaBuildId, "build", "", "coreos-assembler build ID (or e.g. -1, -2, for previous builds)")
@@ -222,6 +224,15 @@ func syncOptionsImpl(useCosa bool) error {
 
 	if err := validateOption("platform", kolaPlatform, kolaPlatforms); err != nil {
 		return err
+	}
+
+	if kola.QEMUOptions.NoIgnition {
+		if kolaPlatform != "qemu" {
+			return fmt.Errorf("--no-ignition requires -p qemu")
+		}
+		if kola.QEMUOptions.DiskImage == "" {
+			return fmt.Errorf("--no-ignition requires --qemu-image")
+		}
 	}
 
 	// Choose an appropriate AWS instance type for the target architecture
