@@ -74,9 +74,23 @@ func (qc *Cluster) NewMachineWithBuilder(userdata any, options platform.MachineO
 	// Use default builder if none provided
 	builder = qc.ensureBuilderDefaults(builder)
 
-	qm, config, err := qc.createMachine(userdata)
-	if err != nil {
-		return nil, err
+	rconf := qc.RuntimeConf()
+	noIgnition := rconf.NoIgnition
+
+	var config *conf.Conf
+	if noIgnition {
+		if qc.flight.opts.SecureExecution {
+			return nil, errors.New("secure execution requires Ignition; not supported with --no-ignition")
+		}
+		if len(append(qc.flight.opts.BindRO, options.BindMountHostRO...)) > 0 {
+			return nil, errors.New("bind mounts require Ignition; not supported with --no-ignition")
+		}
+	} else {
+		var err error
+		config, err = qc.RenderUserDataIfNeeded(userdata)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	qemuBuilder := platform.NewQemuBuilder()
@@ -104,6 +118,7 @@ func (qc *Cluster) NewMachineWithBuilder(userdata any, options platform.MachineO
 		config.MountHost(dest, readonly)
 	}
 
+<<<<<<< HEAD
 	qemuBuilder.UUID = qm.id
 	qemuBuilder.ConsoleFile = qm.consolePath
 	qemuBuilder.NumaNodes = options.NumaNodes
@@ -118,6 +133,25 @@ func (qc *Cluster) NewMachineWithBuilder(userdata any, options platform.MachineO
 	// S390x specific stuff
 	if qc.flight.opts.SecureExecution {
 		if err := qemuBuilder.SetSecureExecution(qc.flight.opts.SecureExecutionIgnitionPubKey, qc.flight.opts.SecureExecutionHostKey, config); err != nil {
+=======
+	if noIgnition {
+		keys, err := qc.Keys()
+		if err != nil {
+			return nil, err
+		}
+		smbios, err := platform.SystemdSMBIOSSSHCredential(rconf.SSHUser, keys)
+		if err != nil {
+			return nil, err
+		}
+		builder.Smbios = append(builder.Smbios, smbios)
+	} else {
+		builder.SetConfig(config)
+	}
+	defer builder.Close()
+	builder.UUID = qm.id
+	if qc.flight.opts.Arch != "" {
+		if err := builder.SetArchitecture(qc.flight.opts.Arch); err != nil {
+>>>>>>> 567f0ef3f (Add --no-ignition mode with SMBIOS SSH provisioning)
 			return nil, err
 		}
 	}

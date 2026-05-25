@@ -510,6 +510,9 @@ type QemuBuilder struct {
 	Pdeathsig  bool
 	Argv       []string
 
+	// Smbios entries are passed to QEMU as -smbios arguments (e.g. systemd credentials).
+	Smbios []string
+
 	// AppendKernelArgs are appended to the bootloader config
 	AppendKernelArgs string
 
@@ -1561,7 +1564,11 @@ func (builder *QemuBuilder) setupUefi(secureBoot bool) error {
 		fdset := builder.AddFd(vars)
 		builder.Append("-drive", fmt.Sprintf("file=/usr/share/edk2/ovmf/OVMF_CODE%s.fd,if=pflash,format=raw,unit=0,readonly=on,auto-read-only=off", varsVariant))
 		builder.Append("-drive", fmt.Sprintf("file=%s,if=pflash,format=raw,unit=1,readonly=off,auto-read-only=off", fdset))
-		builder.Append("-machine", "q35")
+		machine := "q35"
+		if len(builder.Smbios) > 0 {
+			machine = "q35,smm=on"
+		}
+		builder.Append("-machine", machine)
 	case "aarch64":
 		if secureBoot {
 			return fmt.Errorf("architecture %s doesn't have support for secure boot in kola", coreosarch.CurrentRpmArch())
@@ -1898,6 +1905,9 @@ func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 		"-device", virtio(builder.architecture, "rng", "rng=rng0"))
 	if builder.UUID != "" {
 		argv = append(argv, "-uuid", builder.UUID)
+	}
+	for _, s := range builder.Smbios {
+		argv = append(argv, "-smbios", s)
 	}
 
 	// We never want a popup window
