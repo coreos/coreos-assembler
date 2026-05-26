@@ -125,7 +125,7 @@ var (
 
 	CosaBuild *util.LocalBuild // this is a parsed cosa build
 
-	TestParallelism int    //glue var to set test parallelism from main
+	TestParallelism int    // glue var to set test parallelism from main
 	TAPFile         string // if not "", write TAP results here
 	NoNet           bool   // Disable tests requiring Internet
 
@@ -143,7 +143,7 @@ var (
 	// SkipConsoleWarnings is set via SkipConsoleWarningsTag in kola-denylist.yaml
 	SkipConsoleWarnings bool
 	DenylistedTests     []string // tests which are on the denylist
-	DenylistStream      string   //denylist-stream
+	DenylistStream      string   // denylist-stream
 	WarnOnErrorTests    []string // denylisted tests we are going to run and warn in case of error
 	Tags                []string // tags to be ran
 
@@ -277,8 +277,10 @@ type KoletResult struct {
 	SoftReboot string
 }
 
-const KoletExtTestUnit = "kola-runext"
-const KoletRebootAckFifo = "/run/kolet-reboot-ack"
+const (
+	KoletExtTestUnit   = "kola-runext"
+	KoletRebootAckFifo = "/run/kolet-reboot-ack"
+)
 
 // Records failed tests for reruns
 type protectedTestResults struct {
@@ -940,6 +942,7 @@ func allTestsAllowRerunSuccess(testsToRerun map[string]*register.Test, rerunSucc
 	}
 	return true
 }
+
 func GetBaseTestName(testName string) string {
 	// If this is a non-exclusive wrapper then just return the empty string
 	if nonexclusiveWrapperMatch.MatchString(testName) {
@@ -1541,7 +1544,6 @@ func collectLogsExternalTest(h *harness.H, t *register.Test, tcluster cluster.Te
 }
 
 func createTestBuckets(tests []*register.Test) [][]*register.Test {
-
 	// Make an array of maps. Each entry in the array represents a
 	// test bucket. Each corresponding map is the test.Name -> *register.Test
 	// mapping for tests to be executed
