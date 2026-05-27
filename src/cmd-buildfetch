@@ -193,6 +193,9 @@ def main():
         rm_allow_noent('builds/latest')
         os.symlink(buildid, 'builds/latest')
 
+    if args.decompress:
+        subprocess.check_call(['cosa', 'decompress', '--build', buildid])
+
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -214,6 +217,8 @@ def parse_args():
                         help="Path to AWS config file")
     parser.add_argument("--find-build-for-arch", action='store_true',
                         help="Traverse build history to find latest for given architecture")
+    parser.add_argument("--decompress", action='store_true',
+                        help="Decompress fetched artifacts after downloading")
     return parser.parse_args()
 
 
