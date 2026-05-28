@@ -96,14 +96,15 @@ cosa() {
        fi
    fi
    set -x
-   podman run --rm -ti --security-opt=label=disable --privileged                                    \
-              --userns=keep-id:uid=1000,gid=1000                                                    \
-              -v=${PWD}:/srv/ --device=/dev/kvm --device=/dev/fuse                                  \
-              --tmpfs=/tmp -v=/var/tmp:/var/tmp --name=cosa                                         \
-              ${COREOS_ASSEMBLER_CONFIG_GIT:+-v=$COREOS_ASSEMBLER_CONFIG_GIT:/srv/src/config/:ro}   \
-              ${COREOS_ASSEMBLER_GIT:+-v=$COREOS_ASSEMBLER_GIT/src/:/usr/lib/coreos-assembler/:ro}  \
-              ${COREOS_ASSEMBLER_ADD_CERTS:+-v=/etc/pki/ca-trust:/etc/pki/ca-trust:ro}              \
-              ${COREOS_ASSEMBLER_CONTAINER_RUNTIME_ARGS}                                            \
+   podman run --rm -ti --security-opt=label=disable --privileged                                          \
+              --userns=keep-id:uid=1000,gid=1000                                                          \
+              -v=${PWD}:/srv/ --device=/dev/kvm --device=/dev/fuse                                        \
+              --tmpfs=/tmp -v=/var/tmp:/var/tmp --name=cosa                                               \
+              ${REGISTRY_AUTH_FILE:+-v=$REGISTRY_AUTH_FILE:$REGISTRY_AUTH_FILE:ro -e REGISTRY_AUTH_FILE}  \
+              ${COREOS_ASSEMBLER_CONFIG_GIT:+-v=$COREOS_ASSEMBLER_CONFIG_GIT:/srv/src/config/:ro}         \
+              ${COREOS_ASSEMBLER_GIT:+-v=$COREOS_ASSEMBLER_GIT/src/:/usr/lib/coreos-assembler/:ro}        \
+              ${COREOS_ASSEMBLER_ADD_CERTS:+-v=/etc/pki/ca-trust:/etc/pki/ca-trust:ro}                    \
+              ${COREOS_ASSEMBLER_CONTAINER_RUNTIME_ARGS}                                                  \
               ${COREOS_ASSEMBLER_CONTAINER:-$COREOS_ASSEMBLER_CONTAINER_LATEST} "$@"
    rc=$?; set +x; return $rc
 }
@@ -141,6 +142,13 @@ The environment variables are special purpose:
   signed by an authority outside the default bundle already trusted by the
   host. Alternatively, one can use `cosa shell` as described below to have a
   persistent container in which you can set up the root CA once.
+- `REGISTRY_AUTH_FILE`: Set this to the path of a container registry
+  credentials file (e.g. `${XDG_RUNTIME_DIR}/containers/auth.json`) to
+  mount it into the container so that `buildah` inside can pull from
+  authenticated registries (e.g. `registry.stage.redhat.io`). To populate
+  this file, run `podman login <registry>` on the host and then
+  `export REGISTRY_AUTH_FILE=${XDG_RUNTIME_DIR}/containers/auth.json`
+  before running `cosa`.
 
 See the [Working on CoreOS Assembler](devel.md) page for examples of how
 to use these variables.
