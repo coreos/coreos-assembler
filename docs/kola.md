@@ -31,6 +31,46 @@ By default, kola uses the `qemu` platform with the most recently built image
 1. TOC
 {:toc}
 
+## Running kola via cosa
+
+The recommended way to run kola is through the `cosa kola` wrapper. It handles
+several defaults automatically:
+
+- **Platform:** defaults to `-p qemu` (when not running as root and no
+  `-p`/`--platform` is given).
+- **Output directory:** defaults to `tmp/kola` (or `$ARTIFACT_DIR/kola` if
+  `$ARTIFACT_DIR` is set).
+- **Subcommand:** defaults to `run` if no subcommand is given. For upgrade
+  tests, use `cosa kola --upgrades`.
+- **Build:** uses the latest build in the cosa workdir by default. Use
+  `--build` to select a specific build.
+
+For example, `cosa kola run basic` is equivalent to running:
+
+```
+kola -p qemu run basic --output-dir tmp/kola
+```
+
+## Automatic external test discovery
+
+When running inside a cosa workdir, kola automatically discovers external tests
+from these locations (no `-E` flag required):
+
+1. **`src/config/tests/kola/`** -- tests from the config repo, registered with
+   the prefix `ext.config` (e.g., a test at
+   `src/config/tests/kola/files/aleph-version/test.sh` becomes
+   `ext.config.files.aleph-version`).
+2. **`/usr/lib/coreos-assembler/tests/kola/`** -- tests installed by packages,
+   registered with the prefix `ext`.
+3. **`./tests/kola/`** (current directory) -- if no `-E` flag is given and no
+   cosa build is detected, kola checks the current directory for a
+   `tests/kola/` subdirectory.
+
+The `-E`/`--exttest` flag is only needed for *additional* external test
+directories beyond these defaults. See
+[kola/external-tests.md](kola/external-tests.md) for details on how to write
+external tests.
+
 ## kola run
 
 The run command invokes the main kola test harness. It
@@ -86,6 +126,22 @@ Example format of the file:
 ```
 
 The special pattern `skip-console-warnings` suppresses the default check for kernel errors on the console which would otherwise fail a test.
+
+### Common flags
+
+| Flag | Description |
+|------|-------------|
+| `-j` / `--parallel N` | Run N tests in parallel (default: 1). Use `auto` to match CPU count. |
+| `--tag TAG` | Run only tests with the given tag. May be repeated. Prefix with `!` to exclude. |
+| `--denylist-test PATTERN` | Skip tests matching the pattern. May be repeated. |
+| `-E` / `--exttest DIR` | Add an external test directory (see above for automatic discovery). |
+| `--rerun` | Re-run failed tests once. |
+| `--append-butane PATH` | Merge a Butane config snippet with every test's Ignition config. |
+| `--append-ignition PATH` | Merge an Ignition config snippet with every test's Ignition config. |
+| `--ssh-on-test-failure` | SSH into the machine when a test fails (useful for debugging). |
+| `--multiply N` | Run matched tests N times (useful for finding race conditions). |
+
+Use `cosa kola run -h` for the full list of options.
 
 ## kola list
 
