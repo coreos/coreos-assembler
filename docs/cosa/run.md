@@ -21,7 +21,22 @@ sections discuss a few in more details.
 
 Using `cosa run` is a very effective way to iterate on your Butane or Ignition
 config. Use the `--butane/-B` or `--ignition/-i` switches respectively to pass
-the config path.
+the config path:
+
+```
+$ cosa run -B my-config.bu
+$ cosa run -i my-config.ign
+```
+
+A few things to keep in mind:
+
+- `--butane` and `--ignition` are **mutually exclusive** — you can pass one or
+  the other, but not both.
+- Butane configs are **automatically transpiled** to Ignition, so there is no
+  need to run `butane` manually before passing the file.
+- Your config becomes the **base** Ignition config for the VM. COSA
+  automatically merges its own built-in fragments on top (e.g., autologin when
+  using devshell mode), so your config is never replaced.
 
 ## Using the serial console
 
