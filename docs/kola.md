@@ -207,20 +207,19 @@ After you run the kola test, you can find more information in `tmp/kola/<test-na
 5. For running the likes of metal/metal4k artifacts there's not much difference than running `kola run` from the coreos-assembler
 6. `cd builds/latest/` (This will show your latest build information)
 7. `cosa list` (This will show you the most recent CoreOS builds that have been made and the artifacts that were created)
-8. In the case of the `testiso` command, you can determine what tests are running by looking for the pattern in the test name. It will follow: `test-to-run.disk-type.networking.multipath.firmware`. For example, the `iso-live-login.4k.uefi`, attempts to install FCOS/RHCOS to a disk that uses 4k sector size. If you don't see the 4k pattern, the `testiso` command will attempt to install FCOS/RHCOS to a non 4k disk (512b sector size).
-9. `cosa kola testiso iso-offline-install.mpath.uefi` (This is an example testing the live ISO build with no internet access using multipath and the uefi firmware.)
-
-Example output:
+8. ISO install tests are regular kola tests. The test name pattern tries to indicate what the test is running. For example, `iso.pxe-online-install.4k.uefi` attempts to install FCOS/RHCOS to a disk that uses 4k sector size. If you don't see the `4k` pattern, the test uses a standard 512-byte sector size disk.
+9. `cosa kola run iso.iso-offline-install.mpath.bios` is an example testing the live ISO build with no internet access using multipath and the bios firmware.)
 
 ```
-kola -p qemu testiso --inst-insecure --output-dir tmp/kola
-Ignoring verification of signature on metal image
-Running test: iso-as-disk.bios
-PASS: iso-as-disk.bios (12.408s)
-Running test: iso-as-disk.uefi
-PASS: iso-as-disk.uefi (16.039s)
-Running test: iso-as-disk.uefi-secure
-PASS: iso-as-disk.uefi-secure (16.994s)
+cosa kola run iso.pxe-online-install.4k.uefi iso.iso-offline-install.mpath.bios
+ kola -p qemu run iso.pxe-online-install.4k.uefi iso.iso-offline-install.mpath.bios --output-dir tmp/kola
+ === RUN   iso.pxe-online-install.4k.uefi
+ === RUN   iso.iso-offline-install.mpath.bios
+ Detected development build; disabling signature verification
+ --- PASS: iso.pxe-online-install.4k.uefi (88.66s)
+ Detected development build; disabling signature verification
+ --- PASS: iso.iso-offline-install.mpath.bios (193.72s)
+ PASS, output in tmp/kola
 ```
 
 ## Useful commands
