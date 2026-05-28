@@ -77,9 +77,12 @@ Note: *You should run this command as non-root*
 
 It's also fully supported to use `podman` as root, but some of the arguments
 here need to change for that.
+Save the following shell in /usr/local/bin/cosa and run `sudo chmod 755 /usr/local/bin/cosa`.
 
-{% raw %}
 ```sh
+
+#!/bin/bash
+
 cosa() {
    env | grep COREOS_ASSEMBLER
    local -r COREOS_ASSEMBLER_CONTAINER_LATEST="quay.io/coreos-assembler/coreos-assembler:latest"
@@ -100,6 +103,7 @@ cosa() {
               --userns=keep-id:uid=1000,gid=1000                                                    \
               -v=${PWD}:/srv/ --device=/dev/kvm --device=/dev/fuse                                  \
               --tmpfs=/tmp -v=/var/tmp:/var/tmp --name=cosa                                         \
+              ${NO_KVM:+-e COSA_NO_KVM=$NO_KVM}                                                     \
               ${COREOS_ASSEMBLER_CONFIG_GIT:+-v=$COREOS_ASSEMBLER_CONFIG_GIT:/srv/src/config/:ro}   \
               ${COREOS_ASSEMBLER_GIT:+-v=$COREOS_ASSEMBLER_GIT/src/:/usr/lib/coreos-assembler/:ro}  \
               ${COREOS_ASSEMBLER_ADD_CERTS:+-v=/etc/pki/ca-trust:/etc/pki/ca-trust:ro}              \
@@ -107,8 +111,9 @@ cosa() {
               ${COREOS_ASSEMBLER_CONTAINER:-$COREOS_ASSEMBLER_CONTAINER_LATEST} "$@"
    rc=$?; set +x; return $rc
 }
+
+cosa "$@"
 ```
-{% endraw %}
 
 This is a bit more complicated than a simple alias, but it allows for
 hacking on the assembler or the configs and prints out the environment and
@@ -141,6 +146,7 @@ The environment variables are special purpose:
   signed by an authority outside the default bundle already trusted by the
   host. Alternatively, one can use `cosa shell` as described below to have a
   persistent container in which you can set up the root CA once.
+- `NO_KVM`: If you are running in a virtual machine that doesn't support nested virtualization, set `NO_KVM=1`.
 
 See the [Working on CoreOS Assembler](devel.md) page for examples of how
 to use these variables.
