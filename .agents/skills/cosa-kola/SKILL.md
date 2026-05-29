@@ -26,12 +26,10 @@ Do NOT duplicate these docs. Read them at runtime for command details:
 
 ## Prerequisites
 
-Before running tests you need a QEMU image in the cosa workdir. Either:
-
-- Build one: `cosa build && cosa osbuild qemu`
-- Fetch one: `cosa buildfetch --stream stable --artifact qemu --decompress`
-
-See the cosa-basics skill for details on obtaining a build.
+Before running tests you need a QEMU image in the cosa workdir and the
+`cosa()` bash alias must be set up. Load the **cosa-basics** skill for both
+of these -- it covers container invocation, building from source, and fetching
+published builds.
 
 ## Workflow
 
