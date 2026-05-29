@@ -104,10 +104,16 @@ This downloads a previously published build from the Fedora CoreOS build
 servers. Use this when you want to test or inspect an existing release without
 building from source.
 
-**Default flags:** Always include `--artifact qemu --decompress` unless the
-user specifically asks for a different platform artifact. The published
-artifacts are stored compressed on the server; `--decompress` expands them so
-`cosa run` can use the resulting qcow2 directly.
+**Default flags:** Include `--artifact qemu --decompress` when the user
+needs a local QEMU disk image (e.g. for `cosa run` or QEMU-based kola
+tests). The published artifacts are stored compressed on the server;
+`--decompress` expands them so the resulting qcow2 can be used directly.
+
+If the user only needs to run tests on a cloud platform where images already
+exist (e.g. AMIs in AWS), `--artifact` and `--decompress` are not needed.
+A plain `cosa buildfetch -b <build-id>` fetches only a few small metadata
+files (including `meta.json`), which contain cloud image references that
+kola picks up automatically. See the **cosa-platforms** skill for details.
 
 **Fetch the latest build for a stream:**
 
@@ -133,7 +139,7 @@ is also provided it must match or the command will error.
 
 **If the user wants a non-qemu artifact:** replace `--artifact qemu` with the
 appropriate artifact name (e.g., `metal`, `aws`, `gcp`). But note that cloud
-platform workflows are better served by a dedicated cosa-cloud skill.
+platform workflows are better served by the **cosa-platforms** skill.
 
 ### Step 3: Launch the VM
 
