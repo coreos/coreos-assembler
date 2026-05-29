@@ -254,12 +254,12 @@ After you run the kola test, you can find more information in `tmp/kola/<test-na
 3. `ignition.json`
 4. `journal-raw.txt.gz`
 
-## Extended artifacts
+## Testing platform artifacts
 
-1. Extended artifacts need additional forms of testing (You can pass the ignition and the path to the artifact you want to test)
+1. Platform artifacts need additional forms of testing (You can pass the ignition and the path to the artifact you want to test)
 2. `cosa kola run -h` (this allows you to see the commands yourself and what syntax is needed)
-3. `cosa buildextend-"name_of_artifact"` (An example of building an extended artifact)
-4. `kola run -p <platform>` Is the most generic way of testing extended artifacts, this is mostly useful for the cloud platforms
+3. `cosa osbuild <platform>` (Build a disk image for a specific platform, e.g. `cosa osbuild aws`)
+4. `kola run -p <platform>` Is the most generic way of testing platform artifacts, this is mostly useful for the cloud platforms
 5. For running the likes of metal/metal4k artifacts there's not much difference than running `kola run` from the coreos-assembler
 6. `cd builds/latest/` (This will show your latest build information)
 7. `cosa list` (This will show you the most recent CoreOS builds that have been made and the artifacts that were created)

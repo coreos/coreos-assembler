@@ -159,7 +159,7 @@ api for each cloud provider closely, so the interface for each cloud provider
 is different. See each providers `help` command for the available actions.
 
 Note, when uploading to cloud platforms, be sure to use the image built for
-that particular platform (with `cosa buildextend-...`).
+that particular platform (with `cosa osbuild <platform>`).
 
 ### plume
 Plume is the Container Linux release utility. Releases are done in two stages,
