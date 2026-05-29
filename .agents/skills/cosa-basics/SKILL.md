@@ -122,12 +122,14 @@ If the user does not specify a stream, default to `stable`.
 **Fetch a specific build by ID:**
 
 ```
-cosa buildfetch --stream <stream> -b <build-id> --artifact qemu --decompress
+cosa buildfetch -b <build-id> --artifact qemu --decompress
 ```
 
-The stream can be auto-detected from the build ID's version number (the third
-dotted component maps to a stream), but providing `--stream` explicitly is
-safer. Read `src/cmd-buildfetch` for the version-to-stream mapping.
+When `-b`/`--build` is given, `--stream` is not required -- the stream is
+auto-detected from the build ID's version number (the third dotted component
+maps to a stream, e.g. `.2.` = `testing`, `.3.` = `stable`). Read
+`src/cmd-buildfetch` for the full version-to-stream mapping. If `--stream`
+is also provided it must match or the command will error.
 
 **If the user wants a non-qemu artifact:** replace `--artifact qemu` with the
 appropriate artifact name (e.g., `metal`, `aws`, `gcp`). But note that cloud
