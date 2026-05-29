@@ -37,9 +37,10 @@ commit.
 There is also a `builds/builds.json` which maintains the list of builds.  The
 reason for this is that HTTP doesn't offer a way to enumerate a directory.
 
-After a build is generated there are a variety of `buildextend-$x` commands,
-for example `buildextend-ec2` which can upload to AWS, and `buildextend-metal`
-which generates a bare metal disk image.
+After a build is generated, `cosa osbuild <platform>` creates disk images for
+specific platforms (e.g. `cosa osbuild metal` for bare metal, `cosa osbuild aws`
+for AWS). To upload images to cloud providers, use `cosa imageupload-<platform>`
+(e.g. `cosa imageupload-aws`).
 
 By default, builds are pruned (as is the OSTree repository), although one can
 use `build --no-prune` to prevent this.

@@ -3,9 +3,9 @@ parent: CoreOS Assembler Command Line Reference
 nav_order: 1
 ---
 
-# cosa buildextend-secex
+# cosa osbuild qemu-secex
 
-This buildextend command is used to build QEMU images that are enabled for IBM Secure Execution on IBM Z.
+This command builds QEMU images that are enabled for IBM Secure Execution on IBM Z.
 In order to build a QEMU image protected by IBM Secure Execution, you need to provide a host key to encrypt it.
 
 For more information on IBM Secure Execution on IBM Z, refer to the [IBM Documentation](https://www.ibm.com/docs/en/linux-on-systems?topic=ibmz-secure-execution).
@@ -18,7 +18,7 @@ This results in a few specifics to note:
     - The firstboot service will fail when no host key is provided, as the sdboot-image can not be recreated.
     - Write the host key(s) to: `/etc/se-hostkeys/ibm-z-hostkey-<hostkey-name>.crt`
 
-To facilitate this, `buildextend-secex` can take 2 mutually exclusive additional arguments: `--genprotimgvm <path>` and `--hostkey <path>`.
+To facilitate this, `cosa osbuild qemu-secex` can take 2 mutually exclusive additional arguments: `--genprotimgvm <path>` and `--hostkey <path>`.
 If none is provided, `--genprotimgvm` is used with default values.
 
 ## `--genprotimgvm <path>` (default)

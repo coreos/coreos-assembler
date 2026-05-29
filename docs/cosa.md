@@ -38,6 +38,19 @@ various platforms, such as cloud providers.
 | `osbuild --supported-platforms` | List of all supported platforms
 
 
+## Image upload commands
+
+Upload disk images to cloud providers. Build the platform image first with
+`cosa osbuild <platform>`.
+
+| Name | Description |
+| ---- | ----------- |
+| `imageupload-aliyun` | Upload an image to Alibaba Cloud (Aliyun) |
+| `imageupload-aws` | Upload an image to AWS as an AMI |
+| `imageupload-azure` | Upload an image to Azure |
+| `imageupload-gcp` | Upload an image to Google Cloud Platform |
+| `imageupload-powervs` | Upload an image to IBM Power Virtual Server |
+
 ## Misc commands
 
 Those less commonly used commands are listed here:

@@ -357,7 +357,7 @@ requires access to podman and /dev/kvm.
    # to run the freshly built image
    cosa run
    # to build the live ISO
-   cosa buildextend-metal && cosa buildextend-live
+   cosa osbuild metal live
    # to run the live ISO
    cosa run -p qemu-iso
    ```
