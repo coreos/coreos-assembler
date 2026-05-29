@@ -53,6 +53,28 @@ cosa kola list --json | jq -r '.[] | [.Name, .Description] | @tsv'
 External tests from `src/config/tests/kola/` are discovered automatically
 and named `ext.config.<path>` (e.g., `ext.config.files.aleph-version`).
 
+When you need to inspect or understand a test whose name starts with
+`ext.config.`, find its source under `src/config/tests/kola/` in the cosa
+workdir. The path maps directly from the test name: replace dots with `/`
+after `ext.config.` and look for `test.sh` (and optionally `kola.json` or
+`config.bu`) in that directory. For example:
+
+| Test name | Source path |
+|-----------|-------------|
+| `ext.config.files.aleph-version` | `src/config/tests/kola/files/aleph-version/test.sh` |
+| `ext.config.upgrade.extended` | `src/config/tests/kola/upgrade/extended/test.sh` |
+
+The `src/config/` directory is the cloned config repo (e.g.,
+`fedora-coreos-config`). If it does not exist in the current directory,
+check for it relative to the cosa workdir root.
+
+**Important:** The cosa workdir (created by `cosa init`) is NOT the same as
+the coreos-assembler source repository. The `src/config/` directory only
+exists inside a cosa workdir. Do not search the coreos-assembler source tree
+for `ext.config.*` test files -- they won't be there. If you need to inspect
+these test sources and are not currently in a cosa workdir, either navigate to
+one or clone the config repo (e.g., `fedora-coreos-config`) directly.
+
 ### Step 2: Run the test(s)
 
 Test names are glob patterns:
