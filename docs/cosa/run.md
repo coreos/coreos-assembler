@@ -17,6 +17,21 @@ $ cosa run --qemu-image rhcos-qemu.qcow2
 Many additional options are supported. Use `--help` to see them. The following
 sections discuss a few in more details.
 
+## Running on cloud platforms
+
+`cosa run` only supports local QEMU VMs. To spawn instances on cloud
+platforms, use `kola spawn` with the `-p` flag:
+
+```
+$ cosa kola spawn -p aws --aws-ami <AMI> --aws-region us-east-1
+$ cosa kola spawn -p gcp --gcp-image <image> --gcp-json-key <key>
+```
+
+This launches an instance and opens an SSH shell. Use `--remove=false` to
+keep the instance running after you exit, or `--detach` to spawn in the
+background. See `cosa kola spawn --help` for all options and
+[credentials](../mantle/credentials.md) for platform authentication setup.
+
 ## Testing Butane or Ignition configs
 
 Using `cosa run` is a very effective way to iterate on your Butane or Ignition
