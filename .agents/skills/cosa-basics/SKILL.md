@@ -169,3 +169,5 @@ auto-login as the `core` user.
 - The build directory at `$PWD` is mounted at `/srv/` inside the container.
   Build artifacts persist across container invocations.
 - The workdir's `builds/latest` symlink always points to the most recent build.
+- To run kola tests against a build, load the **cosa-kola** skill. It covers
+  test discovery, `cosa kola run`, upgrade tests, and result inspection.
