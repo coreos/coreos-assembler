@@ -90,6 +90,9 @@ Running `cosa kola run` with no pattern runs all tests (can take a long time).
 Read `docs/kola.md` for flags like `--parallel`, `--tag`, `--rerun`,
 `--denylist-test`, `--ssh-on-test-failure`, `--append-butane`, and others.
 
+For running tests on platforms other than QEMU (e.g. AWS, GCP, Azure, ISO,
+metal), load the **cosa-platforms** skill.
+
 ### Step 3: Check results
 
 Test logs are written to `tmp/kola/<test-name>/`. Key files: `journal.txt`,

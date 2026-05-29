@@ -12,7 +12,7 @@ or by fetching a published build), and launching a local QEMU VM.
 ## Out of scope
 
 Cloud platform image building and uploading (AWS, GCP, Azure, etc.) are not
-covered here. Use a dedicated cosa-cloud skill for those workflows.
+covered here. Load the **cosa-platforms** skill for those workflows.
 
 ## Key documentation references
 
