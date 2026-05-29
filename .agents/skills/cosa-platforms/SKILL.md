@@ -140,10 +140,23 @@ Read `docs/cosa/run.md` ("Running on cloud platforms") for more details.
 - `cosa run` is QEMU-only. For all other platforms, use
   `cosa kola run -p <platform>` (for tests) or
   `cosa kola spawn -p <platform>` (for interactive instances).
-- When a cosa build exists in the workdir, kola auto-fills some platform
-  image references from the build metadata (e.g. AMI for AWS, image name
-  for GCP). This means you may not need to specify `--aws-ami` etc. if the
-  build already has that info in `meta.json`.
+- When a cosa build exists in the workdir, kola auto-fills platform image
+  references from the build metadata (e.g. AMI for AWS, image name for GCP).
+  This means you may not need to specify `--aws-ami` etc. if the build
+  already has that info in `meta.json`. Check `builds/<id>/<arch>/meta.json`
+  to see if the cloud image info is present.
+- If images already exist in the cloud for a build, you can skip both
+  `cosa osbuild` and `cosa imageupload-*` entirely. Just fetch the build
+  metadata with a lightweight `cosa buildfetch` (no `--artifact` or
+  `--decompress` needed):
+  ```
+  cosa buildfetch -b <build-id>
+  ```
+  Without `--artifact`, this only downloads a few small metadata files
+  (`meta.json`, `commitmeta.json`, etc.) -- not any disk images. The
+  `meta.json` contains the cloud image references (AMI IDs, GCP image
+  names, etc.) and kola will pick them up automatically when you run
+  `cosa kola run -p <platform>`.
 - Instance types default to reasonable values per platform and architecture
   (e.g. `m5.large` for AWS x86_64, `c6g.xlarge` for aarch64). Override with
   platform-specific type flags (e.g. `--aws-type`, `--gcp-machinetype`,
