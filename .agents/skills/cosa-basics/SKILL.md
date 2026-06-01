@@ -179,3 +179,7 @@ auto-login as the `core` user.
 - The workdir's `builds/latest` symlink always points to the most recent build.
 - To run kola tests against a build, load the **cosa-kola** skill. It covers
   test discovery, `cosa kola run`, upgrade tests, and result inspection.
+- Fedora infrastructure services (like Bodhi or Koji) are behind Anubis to
+  prevent abuse. When querying APIs or web pages for information set a
+  User-Agent and Accept headers to increase the chance of making it
+  through unchallenged.
