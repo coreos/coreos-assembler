@@ -91,16 +91,59 @@ func (t Tree) Validate(c path.ContextPath) (r report.Report) {
 	return
 }
 
-func (rs Unit) Validate(c path.ContextPath) (r report.Report) {
-	if rs.ContentsLocal != nil && rs.Contents != nil {
+func validateNotTooManySources(contentsLocal, contents *string, c path.ContextPath) (r report.Report) {
+	if contentsLocal != nil && contents != nil {
 		r.AddOnError(c.Append("contents_local"), common.ErrTooManySystemdSources)
 	}
 	return
 }
 
+func (rs Unit) Validate(c path.ContextPath) (r report.Report) {
+	return validateNotTooManySources(rs.ContentsLocal, rs.Contents, c)
+}
+
 func (rs Dropin) Validate(c path.ContextPath) (r report.Report) {
-	if rs.ContentsLocal != nil && rs.Contents != nil {
-		r.AddOnError(c.Append("contents_local"), common.ErrTooManySystemdSources)
+	return validateNotTooManySources(rs.ContentsLocal, rs.Contents, c)
+}
+
+// All accepted extensions by podman-systemd.unit
+func validateQuadletExtension(name string) error {
+	extensionIsSupported := strings.HasSuffix(name, ".container") ||
+		strings.HasSuffix(name, ".volume") ||
+		strings.HasSuffix(name, ".network") ||
+		strings.HasSuffix(name, ".kube") ||
+		strings.HasSuffix(name, ".image") ||
+		strings.HasSuffix(name, ".build") ||
+		strings.HasSuffix(name, ".pod") ||
+		strings.HasSuffix(name, ".artifact")
+
+	if !extensionIsSupported {
+		return common.ErrQuadletBadExtension
 	}
-	return
+
+	return nil
+}
+
+// Validate checks the quadlet name has a valid extension and template instances don't have contents.
+func (rs Quadlet) Validate(c path.ContextPath) (r report.Report) {
+	if err := validateQuadletExtension(rs.Name); err != nil {
+		r.AddOnError(c.Append("name"), err)
+		return r
+	}
+
+	// Template instances cannot have a content as they are symlinks, and non-template instances
+	// can have either a contents or a contents_local, but not both
+	if isTemplate, _ := isTemplateInstance(rs.Name); isTemplate {
+		if rs.Contents != nil {
+			contentPath := c.Append("contents")
+			r.AddOnError(contentPath, common.ErrTemplateInstanceCannotHaveContents)
+		}
+		if rs.ContentsLocal != nil {
+			contentPath := c.Append("contents_local")
+			r.AddOnError(contentPath, common.ErrTemplateInstanceCannotHaveContents)
+		}
+	} else {
+		r.Merge(validateNotTooManySources(rs.ContentsLocal, rs.Contents, c))
+	}
+	return r
 }

@@ -100,9 +100,13 @@ func (c Config) ToIgn3_7Unvalidated(options common.TranslateOptions) (types.Conf
 
 	c.addMountUnits(&ret, &tm)
 
-	tm2, r2 := c.processTrees(&ret, options)
-	tm.Merge(tm2)
-	r.Merge(r2)
+	tmTrees, rTrees := c.processTrees(&ret, options)
+	tmQuadlets, rQuadlets := c.processQuadlets(&ret, options)
+
+	tm.Merge(tmTrees)
+	tm.Merge(tmQuadlets)
+	r.Merge(rTrees)
+	r.Merge(rQuadlets)
 
 	if r.IsFatal() {
 		return types.Config{}, translate.TranslationSet{}, r
@@ -295,6 +299,172 @@ func translateDropin(from Dropin, options common.TranslateOptions) (to types.Dro
 	}
 
 	return
+}
+
+// buildQuadletPath returns the filesystem path for a quadlet.
+// See https://docs.podman.io/en/latest/markdown/podman-systemd.unit.5.html
+func buildQuadletPath(isRoot bool, quadletName string) string {
+	const (
+		adminContainersPath = "/etc/containers/systemd"
+		userContainersPath  = "/etc/containers/systemd/users"
+	)
+	var base string
+	if isRoot {
+		base = adminContainersPath
+	} else {
+		base = userContainersPath
+	}
+	return slashpath.Join(base, quadletName)
+}
+
+// isTemplateInstance checks if a quadlet name is a template instance (e.g. foo@100.container).
+// Returns true and the base template name (e.g. foo@.container) if it is an instance.
+func isTemplateInstance(name string) (bool, string) {
+	splitIndex := strings.Index(name, "@")
+	if splitIndex == -1 {
+		return false, ""
+	}
+	extensionIndex := strings.LastIndex(name, ".")
+	if extensionIndex == -1 || splitIndex+1 == extensionIndex {
+		return false, ""
+	}
+	baseName := name[:splitIndex]
+	extension := name[extensionIndex+1:]
+	templateName := fmt.Sprintf("%s@.%s", baseName, extension)
+	return true, templateName
+}
+
+// readLocalOrInlineContents reads content from either a local file or inline string (see Quadlet and Dropin).
+// Returns the content as bytes, the source path for error reporting, and any errors.
+func readLocalOrInlineContents(contentsLocal, contentsInline *string, ctxPath path.ContextPath, options common.TranslateOptions) (content []byte, contentPath path.ContextPath, err error) {
+	if util.NotEmpty(contentsLocal) {
+		contentPath = ctxPath.Append("contents_local")
+		localContents, err := baseutil.ReadLocalFile(*contentsLocal, options.FilesDir)
+		if err != nil {
+			return content, contentPath, err
+		}
+		content = localContents
+	}
+
+	if util.NotEmpty(contentsInline) {
+		contentPath = ctxPath.Append("contents")
+		content = []byte(*contentsInline)
+	}
+	return
+}
+
+// addFileWithContents reads content (local or inline) and creates a file node in the tracker.
+// Used for both quadlet files and their drop-ins, both of which will have either contentsLocal, or contents, but not both.
+func addFileWithContents(
+	contentsLocal, inlineContents *string,
+	destPath string,
+	ctxPath path.ContextPath,
+	t *nodeTracker,
+	options common.TranslateOptions,
+) (translate.TranslationSet, report.Report) {
+	var r report.Report
+	ts := translate.NewTranslationSet("yaml", "json")
+
+	_, file := t.GetFile(destPath)
+	// If the node already exists, we dont want to over-write, we will just error
+	if (file != nil && util.NotEmpty(file.Contents.Source)) || t.Exists(destPath) {
+		r.AddOnError(ctxPath, common.ErrNodeExists)
+		return ts, r
+	}
+
+	i, file := t.AddFile(types.File{Node: createNode(destPath, NodeUser{}, NodeGroup{})})
+	if i == 0 {
+		ts.AddTranslation(ctxPath, path.New("json", "storage", "files"))
+	}
+	ts.AddFromCommonSource(ctxPath, path.New("json", "storage", "files", i), file)
+	ts.AddTranslation(ctxPath.Append("name"), path.New("json", "storage", "files", i, "path"))
+	contentBytes, contentPath, err := readLocalOrInlineContents(contentsLocal, inlineContents, ctxPath, options)
+	if err != nil {
+		r.AddOnError(contentPath, err)
+		return ts, r
+	}
+	url, compression, err := baseutil.MakeDataURL(contentBytes, file.Contents.Compression, !options.NoResourceAutoCompression)
+	if err != nil {
+		r.AddOnError(ctxPath, err)
+		return ts, r
+	}
+	file.Contents.Source = &url
+	ts.AddTranslation(contentPath, path.New("json", "storage", "files", i, "contents", "source"))
+	if compression != nil {
+		file.Contents.Compression = compression
+		ts.AddTranslation(ctxPath, path.New("json", "storage", "files", i, "contents", "compression"))
+	}
+	ts.AddTranslation(contentPath, path.New("json", "storage", "files", i, "contents"))
+	if file.Mode == nil {
+		mode := 0644
+		file.Mode = &mode
+		ts.AddTranslation(ctxPath, path.New("json", "storage", "files", i, "mode"))
+	}
+
+	return ts, r
+}
+
+// quadletToSymlink creates a symlink node for a template instance pointing to its base template.
+func quadletToSymlink(quadlet Quadlet, quadletPath path.ContextPath, t *nodeTracker, templateName string) (translate.TranslationSet, report.Report) {
+	var r report.Report
+	ts := translate.NewTranslationSet("yaml", "json")
+
+	destPath := buildQuadletPath(quadlet.Rootful, quadlet.Name)
+	_, link := t.GetLink(destPath)
+	// If the node already exists, we don't want to over-write, we will just error
+	if link != nil || t.Exists(destPath) {
+		r.AddOnError(quadletPath, common.ErrNodeExists)
+		return ts, r
+	}
+
+	i, link := t.AddLink(types.Link{Node: types.Node{Path: destPath}, LinkEmbedded1: types.LinkEmbedded1{
+		Target: &templateName,
+	}})
+	if i == 0 {
+		ts.AddTranslation(quadletPath, path.New("json", "storage", "links"))
+	}
+	ts.AddFromCommonSource(quadletPath, path.New("json", "storage", "links", i), link)
+	ts.AddTranslation(quadletPath.Append("name"), path.New("json", "storage", "links", i, "path"))
+	ts.AddTranslation(quadletPath, path.New("json", "storage", "links", i, "target"))
+	return ts, r
+}
+
+func (c Config) processQuadlets(ret *types.Config, options common.TranslateOptions) (translate.TranslationSet, report.Report) {
+	ts := translate.NewTranslationSet("yaml", "json")
+	var r report.Report
+	if len(c.Systemd.Quadlets) == 0 {
+		return ts, r
+	}
+
+	t := newNodeTracker(ret)
+	quadletsPath := path.New("yaml", "systemd", "quadlets")
+	ts.AddTranslation(quadletsPath, path.New("json", "storage")) // quadlets will be translated to storage (files and links)
+	for quadletNum, quadlet := range c.Systemd.Quadlets {
+		quadletPath := quadletsPath.Append(quadletNum)
+
+		// We need to handle `foo@bar.container` differently than `foo@.container`, as the former needs to be a symlink to the latter
+		var tsFile translate.TranslationSet
+		var rFile report.Report
+		if isTemplate, templateName := isTemplateInstance(quadlet.Name); isTemplate {
+			tsFile, rFile = quadletToSymlink(quadlet, quadletPath, t, templateName)
+		} else {
+			destPath := buildQuadletPath(quadlet.Rootful, quadlet.Name)
+			tsFile, rFile = addFileWithContents(quadlet.ContentsLocal, quadlet.Contents, destPath, quadletPath, t, options)
+		}
+
+		ts.Merge(tsFile)
+		r.Merge(rFile)
+
+		for i, dropin := range quadlet.Dropins {
+			dropinPath := quadletPath.Append("dropins").Append(i)
+			destPath := buildQuadletPath(quadlet.Rootful, quadlet.Name) + ".d/" + dropin.Name
+			tsFile, rFile := addFileWithContents(dropin.ContentsLocal, dropin.Contents, destPath, dropinPath, t, options)
+			ts.Merge(tsFile)
+			r.Merge(rFile)
+		}
+	}
+
+	return ts, r
 }
 
 func (c Config) processTrees(ret *types.Config, options common.TranslateOptions) (translate.TranslationSet, report.Report) {
