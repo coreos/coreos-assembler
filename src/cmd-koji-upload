@@ -137,7 +137,7 @@ class Build(_Build):
         else:
             _Build.__init__(self, **kwargs)
             self.version, self.release = self.build_id.split('-')
-            self.name = f"{self.build_name}-{self.basearch}"
+            self.name = f"{self.build_name}-baseimage-{self.basearch}"
             self.source = self.get_meta_key(
                 "meta", self.ckey("container-config-git"))
             self.host_rpms = self.get_rpm_list(RpmListType.HOST)
@@ -543,12 +543,12 @@ class Reserve(_KojiBase):
         log.info("Reserving a unique koji id")
 
         # The koji/brew NVR is constructed like so:
-        # Name = "rhcos-$arch", like `rhcos-x86_64`
+        # Name = "rhcos-$arch" for node images, "rhcos-baseimage-$arch" for base images
         # Version = Everything before `-` in RHCOS version
         # Release = Everything after `-` in RHCOS version
         #
         # Example: RHCOS Build ID: 414.92.202307170903-0 for x86_64
-        #   Name = rhcos-x86_64
+        #   Name = rhcos-x86_64 (node image) or rhcos-baseimage-x86_64 (base image)
         #   Version = 414.92.202307170903
         #   Release = 0
         #   NVR = rhcos-x86_64-414.92.202307170903-0
@@ -778,12 +778,12 @@ class Upload(_KojiBase):
 
         log.debug(f"Preparing manifest for {(len(self.get_image_files(meta=meta)))} files")
         # The koji/brew NVR is constructed like so:
-        # Name = "rhcos-$arch", like `rhcos-x86_64`
+        # Name = "rhcos-$arch" for node images, "rhcos-baseimage-$arch" for base images
         # Version = Everything before `-` in RHCOS version
         # Release = Everything after `-` in RHCOS version
         #
         # Example: RHCOS Build ID: 414.92.202307170903-0 for x86_64
-        #   Name = rhcos-x86_64
+        #   Name = rhcos-x86_64 (node image) or rhcos-baseimage-x86_64 (base image)
         #   Version = 414.92.202307170903
         #   Release = 0
         #   NVR = rhcos-x86_64-414.92.202307170903-0
