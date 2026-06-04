@@ -669,13 +669,6 @@ arches:
     name: gobject-introspection
     evr: 1.84.0-1.fc42
     sourcerpm: gobject-introspection-1.84.0-1.fc42.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/g/golang-github-aliyun-cli-3.0.125-7.fc41.x86_64.rpm
-    repoid: fedora
-    size: 3967699
-    checksum: sha256:74f2846c9bd9138e0f205b71c214ec6daf64bb6417c263a77cc6b999207ac3d6
-    name: golang-github-aliyun-cli
-    evr: 3.0.125-7.fc41
-    sourcerpm: golang-github-aliyun-cli-3.0.125-7.fc41.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/releases/42/Everything/x86_64/os/Packages/g/google-noto-fonts-common-20250301-1.fc42.noarch.rpm
     repoid: fedora
     size: 17482

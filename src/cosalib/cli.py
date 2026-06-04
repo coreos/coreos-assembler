@@ -6,7 +6,6 @@ import logging as log
 import os
 
 from cosalib import (
-    aliyun,
     aws,
     azure,
     digitalocean,
@@ -21,9 +20,6 @@ CLOUD_CLI_TARGET = {
     "aws":          (aws.aws_cli,
                      aws.aws_run_ore,
                      aws.aws_run_ore_replicate),
-    "aliyun":       (aliyun.aliyun_cli,
-                     aliyun.aliyun_run_ore,
-                     aliyun.aliyun_run_ore_replicate),
     "azure":        (azure.azure_cli,
                      azure.azure_run_ore,
                      azure.azure_run_ore_replicate),
