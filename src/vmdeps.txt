@@ -27,7 +27,7 @@ python3-pyyaml python3-botocore python3-flufl-lock python3-tenacity
 ca-certificates
 
 # For running osbuild
-osbuild osbuild-ostree osbuild-selinux osbuild-tools python3-pyrsistent zip
+osbuild osbuild-ostree osbuild-selinux osbuild-tools zip
 
 # For resetting the terminal inside supermin shell
 /usr/bin/reset

@@ -136,7 +136,6 @@ packages:
   - python3-koji
   - python3-koji-cli-plugins
   - python3-libvirt
-  - python3-pyrsistent
   - python3-pytest
   - python3-pytest-cov
   - python3-pyyaml
