@@ -230,7 +230,8 @@ type Storage struct {
 }
 
 type Systemd struct {
-	Units []Unit `yaml:"units"`
+	Units    []Unit    `yaml:"units"`
+	Quadlets []Quadlet `yaml:"quadlets" butane:"auto_skip"` // Added, not in ignition spec
 }
 
 type Tang struct {
@@ -264,6 +265,14 @@ type Unit struct {
 	Enabled       *bool    `yaml:"enabled"`
 	Mask          *bool    `yaml:"mask"`
 	Name          string   `yaml:"name"`
+}
+
+type Quadlet struct {
+	Contents      *string  `yaml:"contents"`       // file contents
+	ContentsLocal *string  `yaml:"contents_local"` // path to the file
+	Name          string   `yaml:"name"`
+	Rootful       bool     `yaml:"rootful,omitempty"`
+	Dropins       []Dropin `yaml:"dropins,omitempty"`
 }
 
 type Verification struct {
