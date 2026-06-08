@@ -113,7 +113,6 @@ pipelines:
             - "console=ttyAMA0"
             - "earlycon=pl011,0x13010000"
             - "initrd=initramfs"
-            - "modprobe.blacklist=mlxbf_pmc"
             - "ignition.firstboot"
             - "ignition.platform.id=nvidiabluefield"
           filename:
