@@ -103,7 +103,7 @@ storage:
           # saves us pulling 4+ GiB COSA container from quay.
           # makes it so we don't have to pull down COSA from quay
           Rootfs=/var/cosaroot
-          Volume=/srv/boot.ipxe:/srv/boot.ipxe
+          Volume=/srv/boot.ipxe:/root/boot.ipxe
           # Add the testisocompletion virtio-serial device. Usually
           # you don't need to explicitly specify devices when running
           # as --privileged, but without this the /dev/virtio-ports/*
@@ -119,7 +119,7 @@ storage:
           PodmanArgs=--privileged
           Network=host
           LogDriver=passthrough
-          Exec=kola qemuexec --netboot /srv/boot.ipxe --qemu-swtpm=false --usernet-addr 10.0.3.0/24 -- -device virtio-serial -chardev file,id=iscsi-completion-virtio,path=/dev/virtio-ports/testisocompletion,append=on -device virtserialport,chardev=iscsi-completion-virtio,name=testisocompletion
+          Exec=kola qemuexec --netboot /root/boot.ipxe --qemu-swtpm=false --usernet-addr 10.0.3.0/24 -- -device virtio-serial -chardev file,id=iscsi-completion-virtio,path=/dev/virtio-ports/testisocompletion,append=on -device virtserialport,chardev=iscsi-completion-virtio,name=testisocompletion
           [Install]
           # Start by default on boot
           WantedBy=multi-user.target
