@@ -313,12 +313,12 @@ func (a *API) CleanupDevice(name string) error {
 	return nil
 }
 
-func (a *API) CreateDevice(name string, conf *conf.Conf) (*ESXMachine, error) {
+func (a *API) CreateDevice(name string, config *conf.Conf) (*ESXMachine, error) {
 	if a.options.BaseVMName == "" {
 		return nil, fmt.Errorf("Base VM Name must be supplied")
 	}
 
-	userdata := base64.StdEncoding.EncodeToString(conf.Bytes())
+	userdata := base64.StdEncoding.EncodeToString(config.Bytes())
 
 	defaults, err := a.getServerDefaults()
 	if err != nil {

@@ -65,7 +65,7 @@ func displayStatusMsg(ontty bool, status, msg string, termMaxWidth int) {
 	fmt.Printf("\033[2K\r%s", s)
 }
 
-func runDevShellSSH(ctx context.Context, builder *platform.QemuBuilder, conf *conf.Conf, sshCommand string) error {
+func runDevShellSSH(ctx context.Context, builder *platform.QemuBuilder, config *conf.Conf, sshCommand string) error {
 	ontty := term.IsTerminal(0)
 	if sshCommand == "" {
 		if !ontty {
@@ -95,8 +95,8 @@ func runDevShellSSH(ctx context.Context, builder *platform.QemuBuilder, conf *co
 		return err
 	}
 
-	conf.CopyKeys(keys)
-	builder.SetConfig(conf)
+	config.CopyKeys(keys)
+	builder.SetConfig(config)
 
 	// errChan communicates errors from go routines
 	errChan := make(chan error)
@@ -105,7 +105,7 @@ func runDevShellSSH(ctx context.Context, builder *platform.QemuBuilder, conf *co
 	// stateChan reports in-instance state such as shutdown, reboot, etc.
 	stateChan := make(chan guestState)
 
-	if err = watchJournal(builder, conf, stateChan, errChan); err != nil {
+	if err = watchJournal(builder, config, stateChan, errChan); err != nil {
 		return err
 	}
 
@@ -400,7 +400,7 @@ const (
 
 // watchJournal watches the virtio journal to monitor for events. This method is NOT 100%
 // reliable as the journal may not have started or stopped in time.
-func watchJournal(builder *platform.QemuBuilder, conf *conf.Conf, stateChan chan<- guestState, errChan chan<- error) error {
+func watchJournal(builder *platform.QemuBuilder, config *conf.Conf, stateChan chan<- guestState, errChan chan<- error) error {
 	checkList := []systemdMessageCheck{
 		{
 			unit:       "sshd.service",
@@ -442,7 +442,7 @@ func watchJournal(builder *platform.QemuBuilder, conf *conf.Conf, stateChan chan
 		},
 	}
 
-	r, err := builder.VirtioJournal(conf, "-o json --system")
+	r, err := builder.VirtioJournal(config, "-o json --system")
 	if err != nil {
 		return err
 	}
