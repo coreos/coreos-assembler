@@ -140,6 +140,7 @@ func runIsoTest(qc *qemu.Cluster, opts IsoTestOpts, tempdir string) error {
 	}
 
 	targetConfig.CopyKeys(keys)
+	targetConfig.AddVirtioJournalUnit() // print journal to virtio in installed system
 	targetConfig.AddSystemdUnit("coreos-test-installer.service", signalCompletionUnit, conf.Enable)
 	targetConfig.AddSystemdUnit("coreos-test-entered-emergency-target.service", signalFailureUnit, conf.Enable)
 	targetConfig.AddSystemdUnit("coreos-test-installer-no-ignition.service", checkNoIgnition, conf.Enable)

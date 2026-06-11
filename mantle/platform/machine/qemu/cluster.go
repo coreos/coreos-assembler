@@ -131,7 +131,7 @@ func (qc *Cluster) NewMachineWithBuilder(userdata any, options platform.MachineO
 	// (if we have a config to add it to) so that we'll get it even
 	// if offline OR if networking for some reason doesn't come up.
 	if config != nil {
-		journalPipe, err := qemuBuilder.VirtioJournal(config, "--output=export --lines=all")
+		journalPipe, err := qemuBuilder.VirtioJournal(config)
 		if err != nil {
 			qm.Destroy()
 			return nil, err
