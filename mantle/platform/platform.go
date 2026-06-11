@@ -160,6 +160,13 @@ type Flight interface {
 	Destroy()
 }
 
+// BootFrom constants for MachineOptions.BootFrom
+const (
+	BootFromDefault   = ""
+	BootFromISO       = "iso"
+	BootFromISOAsDisk = "iso-as-disk"
+)
+
 type MachineOptions struct {
 	AdditionalDisks []string
 	MinDiskSize     int
@@ -181,6 +188,7 @@ type MachineOptions struct {
 	Nvme                      bool
 	Cex                       bool
 	BindMountHostRO           []string
+	BootFrom                  string
 }
 
 // EnsureNoQEMUOnlyOptions returns an error if any QEMU-only options
@@ -228,6 +236,9 @@ func (m *MachineOptions) EnsureNoQEMUOnlyOptions(platformName string) error {
 	}
 	if len(m.BindMountHostRO) > 0 {
 		return fmt.Errorf("platform %s does not support bind mounting host paths", platformName)
+	}
+	if m.BootFrom != BootFromDefault {
+		return fmt.Errorf("platform %s does not support bootFrom option", platformName)
 	}
 	return nil
 }

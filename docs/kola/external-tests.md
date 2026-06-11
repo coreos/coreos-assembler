@@ -232,7 +232,8 @@ Here's an example `kola.json`:
     "timeoutMin": 8,
     "exclusive": true,
     "conflicts": ["ext.config.some-test", "podman.some-other-test"],
-    "description": "test description"
+    "description": "test description",
+    "bootFrom": ""
 }
 ```
 
@@ -305,6 +306,13 @@ The `conflicts` key takes a list of test names that conflict with this test.
 This key can only be specified if `exclusive` is marked `false` since
 `exclusive: true` tests are run exclusively in their own VM.  At runtime,
 this test will be separated from the tests it is conflicting with.
+
+The `bootFrom` string if set will cause the test VM to boot from the
+specified media instead of the default disk image. Supported values are
+`"iso"` (boot from the live ISO as a CD-ROM) and `"iso-as-disk"` (boot
+from the live ISO as if written to a USB stick). The test will be skipped
+if no live ISO artifact is available in the build. It is currently only
+supported on `qemu`.
 
 If a test specifies a `creationDate`, kola will treat failures as
 warnings for a grace period (see `gracePeriod` in

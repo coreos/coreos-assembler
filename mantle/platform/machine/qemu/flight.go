@@ -31,6 +31,9 @@ type Options struct {
 	DiskImage string
 	// DiskImageIsUserProvided is true when DiskImage was explicitly set via --qemu-image
 	DiskImageIsUserProvided bool
+	// IsoImage is the full path to the live ISO image to boot in QEMU.
+	// Used when tests request BootFrom ISO or ISO-as-disk.
+	IsoImage string
 	// DiskSize if non-empty will expand the disk
 	DiskSize string
 	// DriveOpts is arbitrary comma-separated list of options
