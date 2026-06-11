@@ -1752,44 +1752,16 @@ func (builder *QemuBuilder) SerialPipe() (*os.File, error) {
 
 // VirtioJournal configures the OS and VM to stream the systemd journal
 // (post-switchroot) over a virtio-serial channel.
-//   - The first parameter is a poitner to the configuration of the target VM.
-//   - The second parameter is an optional queryArguments to filter the stream -
-//     see `man journalctl` for more information.
+//   - The first parameter is a pointer to the configuration of the target VM.
+//   - The second parameter (optional) is queryArguments to filter the stream -
+//     passed through to AddVirtioJournalUnit(queryArguments...)
 //   - The return value is a file stream which will be newline-separated JSON.
-func (builder *QemuBuilder) VirtioJournal(config *conf.Conf, queryArguments string) (*os.File, error) {
-	stream, err := builder.VirtioChannelRead("mantlejournal")
+func (builder *QemuBuilder) VirtioJournal(config *conf.Conf, queryArguments ...string) (*os.File, error) {
+	stream, err := builder.VirtioChannelRead(conf.VirtioJournalDeviceName)
 	if err != nil {
 		return nil, err
 	}
-	var streamJournalUnit = fmt.Sprintf(`[Unit]
-	Requires=dev-virtio\\x2dports-mantlejournal.device
-	IgnoreOnIsolate=true
-	# DefaultDependencies=false so that Requires=sysinit.target
-	# won't be added to this unit, which would cause it to get
-	# taken down when isolating to emergency.target
-	DefaultDependencies=no
-	After=systemd-journald.socket
-	# Do however ensure we get killed before /var is going to be
-	# unmounted, otherwise we keep it open.
-	After=local-fs.target
-	# Do get killed on shutdown
-	Conflicts=shutdown.target
-	# After systemd-journal-flush because otherwise the journalctl -f
-	# below will stop when the journal is flushed. Not sure if this is
-	# a bug or intended behavior.
-	After=systemd-journal-flush.service
-	[Service]
-	Type=simple
-	StandardOutput=file:/dev/virtio-ports/mantlejournal
-	# Wrap in /bin/bash to hack around SELinux
-	# https://bugzilla.redhat.com/show_bug.cgi?id=1942198
-	ExecStart=/usr/bin/bash -c "journalctl -q -b -f --no-tail %s"
-	[Install]
-	RequiredBy=basic.target
-	`, queryArguments)
-
-	config.AddSystemdUnit("mantle-virtio-journal-stream.service", streamJournalUnit, conf.Enable)
-
+	config.AddVirtioJournalUnit(queryArguments...)
 	return stream, nil
 }
 

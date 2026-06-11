@@ -78,6 +78,10 @@ const (
 	FailWarnings
 )
 
+// VirtioJournalDeviceName is the name of the virtio-serial device used
+// for streaming the systemd journal out of a guest VM.
+const VirtioJournalDeviceName = "mantlejournal"
+
 var plog = capnslog.NewPackageLogger("github.com/coreos/coreos-assembler/mantle", "platform/conf")
 
 // UserData is an immutable, unvalidated configuration for a CoreOS
@@ -1664,6 +1668,47 @@ Options=%s
 WantedBy=multi-user.target
 `, dest, dest, mountType, options)
 	c.AddSystemdUnit(fmt.Sprintf("%s.mount", systemdunit.UnitNameEscape(dest[1:])), content, Enable)
+}
+
+// AddVirtioJournalUnit adds a systemd unit that streams the systemd journal
+// to a virtio-serial device name defined by the VirtioJournalDeviceName constant.
+//   - queryArguments is an optional override for the journalctl arguments.
+//     By default the journal is streamed in systemd export format with all
+//     lines (--output=export --lines=all). See `man journalctl` for more
+//     information.
+func (c *Conf) AddVirtioJournalUnit(queryArguments ...string) {
+	args := "--output=export --lines=all"
+	if len(queryArguments) > 0 {
+		args = strings.Join(queryArguments, " ")
+	}
+	var streamJournalUnit = fmt.Sprintf(`[Unit]
+	Requires=dev-virtio\\x2dports-%s.device
+	IgnoreOnIsolate=true
+	# DefaultDependencies=false so that Requires=sysinit.target
+	# won't be added to this unit, which would cause it to get
+	# taken down when isolating to emergency.target
+	DefaultDependencies=no
+	After=systemd-journald.socket
+	# Do however ensure we get killed before /var is going to be
+	# unmounted, otherwise we keep it open.
+	After=local-fs.target
+	# Do get killed on shutdown
+	Conflicts=shutdown.target
+	# After systemd-journal-flush because otherwise the journalctl -f
+	# below will stop when the journal is flushed. Not sure if this is
+	# a bug or intended behavior.
+	After=systemd-journal-flush.service
+	[Service]
+	Type=simple
+	StandardOutput=file:/dev/virtio-ports/%s
+	# Wrap in /bin/bash to hack around SELinux
+	# https://bugzilla.redhat.com/show_bug.cgi?id=1942198
+	ExecStart=/usr/bin/bash -c "journalctl -q -b -f --no-tail %s"
+	[Install]
+	RequiredBy=basic.target
+	`, VirtioJournalDeviceName, VirtioJournalDeviceName, args)
+
+	c.AddSystemdUnit("mantle-virtio-journal-stream.service", streamJournalUnit, Enable)
 }
 
 func makeGzipDataUrl(data []byte) (string, error) {
