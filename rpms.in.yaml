@@ -132,7 +132,7 @@ packages:
   - python3-flufl-lock
   - python3-gobject-base
   - python3-jsonschema
-  - python3-junit_xml
+  - python3-junitparser
   - python3-koji
   - python3-koji-cli-plugins
   - python3-libvirt
