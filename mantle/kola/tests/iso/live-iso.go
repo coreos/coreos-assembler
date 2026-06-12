@@ -269,11 +269,6 @@ func runIsoTest(qc *qemu.Cluster, opts IsoTestOpts, tempdir string) error {
 		liveConfig.AddFile(nmstateConfigFile, nmstateConfig, 0644)
 	}
 
-	setupNet := func(o platform.MachineOptions, builder *platform.QemuBuilder) error {
-		// for basic network with ssh access
-		return qc.SetupDefaultNetwork(o, builder)
-	}
-
 	errchan := make(chan error)
 	var bootStartedOutput *os.File
 	setupDisks := func(_ platform.MachineOptions, builder *platform.QemuBuilder) error {
@@ -351,7 +346,6 @@ func runIsoTest(qc *qemu.Cluster, opts IsoTestOpts, tempdir string) error {
 
 	machineBuilder := &qemu.MachineBuilder{
 		SetupDisks:        setupDisks,
-		SetupNetwork:      setupNet,
 		PostInstanceStart: switchBootOrder,
 	}
 
