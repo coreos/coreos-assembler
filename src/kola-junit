@@ -30,6 +30,12 @@ def strip_ansi(text):
     return ansi_escape.sub('', text)
 
 
+def strip_control_chars(text):
+    if text is None:
+        return text
+    return re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f]', '', text)
+
+
 # In a {kola_outputdir}/{testname}/ dir, there can be multiple directories; one
 # per host that was brought up. e.g. the Tang test brings up a Tang server in a
 # separate host. We can only report one host, so we choose the one whose dir
@@ -88,7 +94,7 @@ for test in report['tests']:
     # for external tests; we append the kola-runext.service output
     if ext_test_out is not None:
         test['output'] += f"\n---\n{ext_test_out}"
-    test['output'] = strip_ansi(test['output'])
+    test['output'] = strip_control_chars(strip_ansi(test['output']))
 
     tc = TestCase(test['name'])
     tc.classname = args.classname + ".tests"
@@ -104,11 +110,11 @@ for test in report['tests']:
             console_fn = os.path.join(host_dir, "console.txt")
             if os.path.isfile(console_fn):
                 with open(console_fn, encoding='utf-8') as f:
-                    console_txt = strip_ansi(f.read())
+                    console_txt = strip_control_chars(strip_ansi(f.read()))
             journal_fn = os.path.join(host_dir, "journal.txt")
             if os.path.isfile(journal_fn):
                 with open(journal_fn, encoding='utf-8') as f:
-                    journal_txt = f.read()
+                    journal_txt = strip_control_chars(f.read())
 
         tc.system_out = console_txt
         tc.system_err = journal_txt
