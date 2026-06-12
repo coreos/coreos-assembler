@@ -1,7 +1,9 @@
 package iso
 
 import (
+	"crypto/sha256"
 	_ "embed"
+	"encoding/hex"
 	"fmt"
 	"net"
 	"os"
@@ -154,7 +156,6 @@ func runIsoTest(qc *qemu.Cluster, opts IsoTestOpts, tempdir string) error {
 	isopath := filepath.Join(kola.CosaBuild.Dir, kola.CosaBuild.Meta.BuildArtifacts.LiveIso.Path)
 
 	installerConfig := coreosInstallerConfig{
-		IgnitionFile: "/var/opt/pointer.ign",
 		DestDevice:   "/dev/vda",
 		AppendKargs:  renderCosaTestIsoDebugKargs(),
 		Insecure:     opts.instInsecure,
@@ -169,6 +170,7 @@ func runIsoTest(qc *qemu.Cluster, opts IsoTestOpts, tempdir string) error {
 		// we want to test that a full offline install works; that includes the
 		// final installed host booting offline
 		serializedTargetConfig = targetConfig.String()
+		installerConfig.IgnitionFile = "/var/opt/target.ign"
 	} else {
 		listener, err := net.Listen("tcp", ":0")
 		if err != nil {
@@ -213,20 +215,12 @@ func runIsoTest(qc *qemu.Cluster, opts IsoTestOpts, tempdir string) error {
 			installerConfig.AppendKargs = append(installerConfig.AppendKargs, "rd.neednet=1")
 		}
 
-		// In this case; the target config is jut a tiny wrapper that wants to
-		// fetch our hosted target.ign config
-		// TODO also use https://github.com/coreos/coreos-installer/issues/118#issuecomment-585572952
-		// when it arrives
 		if err := targetConfig.WriteFile(filepath.Join(tempdir, "target.ign")); err != nil {
 			return err
 		}
-		// Create a new config that fetches the target config
-		pointerConfig, err := conf.EmptyIgnition().Render(conf.FailWarnings)
-		if err != nil {
-			return err
-		}
-		pointerConfig.AddConfigSource(baseurl + "/target.ign")
-		serializedTargetConfig = pointerConfig.String()
+		installerConfig.IgnitionURL = baseurl + "/target.ign"
+		targetHash := sha256.Sum256([]byte(targetConfig.String()))
+		installerConfig.IgnitionHash = "sha256-" + hex.EncodeToString(targetHash[:])
 
 		server := startHTTPServer(listener, tempdir)
 		defer server.Close()
@@ -259,7 +253,9 @@ func runIsoTest(qc *qemu.Cluster, opts IsoTestOpts, tempdir string) error {
 	volumeIdUnitContents := fmt.Sprintf(verifyIsoVolumeId, kola.CosaBuild.Meta.Name)
 	liveConfig.AddSystemdUnit("verify-iso-volume-id.service", volumeIdUnitContents, conf.Enable)
 	liveConfig.AddSystemdUnit("boot-started.service", bootStartedUnit, conf.Enable)
-	liveConfig.AddFile(installerConfig.IgnitionFile, serializedTargetConfig, mode)
+	if installerConfig.IgnitionFile != "" {
+		liveConfig.AddFile(installerConfig.IgnitionFile, serializedTargetConfig, mode)
+	}
 	liveConfig.AddFile("/etc/coreos/installer.d/mantle.yaml", string(installerConfigData), mode)
 	liveConfig.AddAutoLogin()
 	if opts.enableMultipath {
@@ -274,13 +270,6 @@ func runIsoTest(qc *qemu.Cluster, opts IsoTestOpts, tempdir string) error {
 	}
 
 	setupNet := func(o platform.MachineOptions, builder *platform.QemuBuilder) error {
-		if !opts.isOffline {
-			// also save pointer config into the output dir for debugging
-			path := filepath.Join(qc.RuntimeConf().OutputDir, builder.UUID, "config-target-pointer.ign")
-			if err := targetConfig.WriteFile(path); err != nil {
-				return err
-			}
-		}
 		// for basic network with ssh access
 		return qc.SetupDefaultNetwork(o, builder)
 	}
