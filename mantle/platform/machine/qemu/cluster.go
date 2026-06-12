@@ -74,14 +74,38 @@ func (qc *Cluster) NewMachineWithBuilder(userdata any, options platform.MachineO
 	// Use default builder if none provided
 	builder = qc.ensureBuilderDefaults(builder)
 
+	rconf := qc.RuntimeConf()
+	noIgnition := rconf.NoIgnition
+
+	if noIgnition {
+		if qc.flight.opts.SecureExecution {
+			return nil, errors.New("secure execution requires Ignition; not supported with --no-ignition")
+		}
+		if len(append(qc.flight.opts.BindRO, options.BindMountHostRO...)) > 0 {
+			return nil, errors.New("bind mounts require Ignition; not supported with --no-ignition")
+		}
+	}
+
 	qm, config, err := qc.createMachine(userdata)
 	if err != nil {
 		return nil, err
 	}
 
 	qemuBuilder := platform.NewQemuBuilder()
-	qemuBuilder.SetConfig(config)
 	defer qemuBuilder.Close()
+	if noIgnition {
+		keys, err := qc.Keys()
+		if err != nil {
+			return nil, err
+		}
+		smbios, err := platform.SystemdSMBIOSSSHCredential(rconf.SSHUser, keys)
+		if err != nil {
+			return nil, err
+		}
+		qemuBuilder.Smbios = append(qemuBuilder.Smbios, smbios)
+	} else {
+		qemuBuilder.SetConfig(config)
+	}
 	if err := builder.InitBuilder(options, qemuBuilder); err != nil {
 		return nil, err
 	}
@@ -101,7 +125,9 @@ func (qc *Cluster) NewMachineWithBuilder(userdata any, options platform.MachineO
 		}
 		readonly := true
 		qemuBuilder.MountHost(src, dest, readonly)
-		config.MountHost(dest, readonly)
+		if config != nil {
+			config.MountHost(dest, readonly)
+		}
 	}
 
 	qemuBuilder.UUID = qm.id
@@ -220,6 +246,7 @@ func (qc *Cluster) ensureBuilderDefaults(builder *MachineBuilder) *MachineBuilde
 }
 
 // createMachine creates a new machine instance with its directory, config, and journal.
+// When --no-ignition is set, userdata may be nil and no Ignition config is rendered.
 func (qc *Cluster) createMachine(userdata any) (*machine, *conf.Conf, error) {
 	id := uuid.New()
 
@@ -228,9 +255,13 @@ func (qc *Cluster) createMachine(userdata any) (*machine, *conf.Conf, error) {
 		return nil, nil, err
 	}
 
-	config, err := qc.RenderUserDataIfNeeded(userdata)
-	if err != nil {
-		return nil, nil, err
+	var config *conf.Conf
+	var err error
+	if !qc.RuntimeConf().NoIgnition {
+		config, err = qc.RenderUserDataIfNeeded(userdata)
+		if err != nil {
+			return nil, nil, err
+		}
 	}
 
 	journal, err := platform.NewJournal(dir)

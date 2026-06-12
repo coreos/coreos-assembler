@@ -65,6 +65,9 @@ type Options struct {
 	// Option to create IBM cex based luks encryption
 	Cex bool
 
+	// NoIgnition skips Ignition; SSH keys are provisioned via systemd SMBIOS credentials.
+	NoIgnition bool
+
 	*platform.Options
 }
 
