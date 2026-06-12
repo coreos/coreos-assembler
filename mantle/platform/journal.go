@@ -15,14 +15,12 @@
 package platform
 
 import (
-	"compress/gzip"
 	"context"
 	"io"
 	"os"
 	"path/filepath"
 	"time"
 
-	"github.com/coreos/pkg/multierror"
 	"github.com/pkg/errors"
 
 	"github.com/coreos/coreos-assembler/mantle/network/journal"
@@ -36,31 +34,13 @@ type Journal struct {
 	// the recorder goroutine persists across guest reboots.
 	journalInputPipe io.ReadCloser
 	journal          io.WriteCloser
-	journalRaw       io.WriteCloser
 	journalPath      string
 	recorder         *journal.Recorder
 	cancel           context.CancelFunc
 }
 
-// wrapper that also closes the underlying file
-type gzWriteCloser struct {
-	*gzip.Writer
-	underlying io.Closer
-}
-
-func (g gzWriteCloser) Close() error {
-	var err multierror.Error
-	if e := g.Writer.Close(); e != nil {
-		err = append(err, e)
-	}
-	if e := g.underlying.Close(); e != nil {
-		err = append(err, e)
-	}
-	return err.AsError()
-}
-
 // NewJournal creates a Journal recorder that will log to "journal.txt"
-// and "journal-raw.txt.gz" inside the given output directory.
+// inside the given output directory.
 func NewJournal(dir string) (*Journal, error) {
 	p := filepath.Join(dir, "journal.txt")
 	j, err := os.OpenFile(p, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
@@ -68,25 +48,9 @@ func NewJournal(dir string) (*Journal, error) {
 		return nil, err
 	}
 
-	pr := filepath.Join(dir, "journal-raw.txt.gz")
-	jr, err := os.OpenFile(pr, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0666)
-	if err != nil {
-		return nil, err
-	}
-	// gzip to save space; a single test can generate well over 1M of logs
-	jrz, err := gzip.NewWriterLevel(jr, gzip.BestCompression)
-	if err != nil {
-		return nil, err
-	}
-	jrzc := gzWriteCloser{
-		underlying: jr,
-		Writer:     jrz,
-	}
-
 	return &Journal{
 		journal:     j,
-		journalRaw:  jrzc,
-		recorder:    journal.NewRecorder(journal.ShortWriter(j), jrzc),
+		recorder:    journal.NewRecorder(journal.ShortWriter(j)),
 		journalPath: p,
 	}, nil
 }
@@ -168,8 +132,5 @@ func (j *Journal) Destroy() {
 	}
 	if err := j.journal.Close(); err != nil {
 		plog.Errorf("Failed to close journal: %v", err)
-	}
-	if err := j.journalRaw.Close(); err != nil {
-		plog.Errorf("Failed to close raw journal: %v", err)
 	}
 }

@@ -42,16 +42,6 @@ func (n nullFormatter) WriteEntry(entry Entry) error {
 	return nil
 }
 
-type discardCloser struct{}
-
-func (d discardCloser) Close() error {
-	return nil
-}
-
-func (d discardCloser) Write(b []byte) (int, error) {
-	return io.Discard.Write(b)
-}
-
 // Escapes ; chars in cursor with \
 // May need tweaking if the shellquote library behavior ever changes.
 func journalAfterEsc(cursor string) string {
@@ -72,7 +62,7 @@ func TestRecorderSSH(t *testing.T) {
 		}
 	})
 
-	recorder := NewRecorder(nullFormatter{}, discardCloser{})
+	recorder := NewRecorder(nullFormatter{})
 	if err := recorder.RunSSH(ctx, client); err != nil {
 		t.Fatal(err)
 	}
@@ -127,7 +117,7 @@ func TestRecorderSSHCancel(t *testing.T) {
 		// Skip close, let the connection hang.
 	})
 
-	recorder := NewRecorder(nullFormatter{}, discardCloser{})
+	recorder := NewRecorder(nullFormatter{})
 	if err := recorder.StartSSH(ctx, client); err != nil {
 		t.Fatal(err)
 	}

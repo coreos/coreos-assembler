@@ -196,7 +196,6 @@ After you run the kola test, you can find more information in `tmp/kola/<test-na
 1. `journal.txt`
 2. `console.txt`
 3. `ignition.json`
-4. `journal-raw.txt.gz`
 
 ## Extended artifacts
 
