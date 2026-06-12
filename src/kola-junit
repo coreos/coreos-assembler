@@ -9,9 +9,8 @@ import argparse
 import json
 import os
 import re
-import sys
 
-from junit_xml import TestSuite, TestCase
+from junitparser import TestSuite, TestCase, JUnitXml, Failure, Skipped
 
 
 parser = argparse.ArgumentParser()
@@ -91,9 +90,12 @@ for test in report['tests']:
         test['output'] += f"\n---\n{ext_test_out}"
     test['output'] = strip_ansi(test['output'])
 
+    tc = TestCase(test['name'])
+    tc.classname = args.classname + ".tests"
+    tc.time = test['duration'] / 10**9
+
     if test['result'] == 'PASS':
-        tc = TestCase(test['name'], args.classname + ".tests",
-                      test['duration'] / 10**9, test["output"])
+        tc.system_out = test["output"]
     else:
         # we only add console/journal for failing tests
         console_txt = None
@@ -108,19 +110,25 @@ for test in report['tests']:
                 with open(journal_fn, encoding='utf-8') as f:
                     journal_txt = f.read()
 
-        tc = TestCase(test['name'], args.classname + ".tests",
-                      test['duration'] / 10**9, console_txt, journal_txt)
+        tc.system_out = console_txt
+        tc.system_err = journal_txt
 
         if test["result"] == 'FAIL':
-            tc.add_failure_info(message="Test failed", output=test["output"])
+            fail = Failure("Test failed")
+            fail.text = test["output"]
+            tc.result = [fail]
         elif test["result"] == 'SKIP':
-            tc.add_skipped_info(message="Test skipped", output=test["output"])
+            skip = Skipped("Test skipped")
+            skip.text = test["output"]
+            tc.result = [skip]
 
     test_cases.append(tc)
 
-ts = TestSuite(args.classname, test_cases)
+ts = TestSuite(args.classname)
+ts.add_testcases(test_cases)
+xml = JUnitXml()
+xml.add_testsuite(ts)
 if args.output == '-':
-    TestSuite.to_file(sys.stdout, [ts])
+    xml.write('/dev/stdout')
 else:
-    with open(args.outputxml, "w", encoding='utf-8') as f:
-        TestSuite.to_file(f, [ts])
+    xml.write(args.output)
