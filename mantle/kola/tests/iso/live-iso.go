@@ -122,23 +122,15 @@ func testLiveIso(c cluster.TestCluster, opts IsoTestOpts) {
 	if err != nil {
 		c.Fatal(err)
 	}
-	defer func() {
-		os.RemoveAll(tempdir)
-	}()
+	defer os.RemoveAll(tempdir)
 
-	if err := runIsoTest(qc, opts, tempdir); err != nil {
-		c.Fatal(err)
-	}
-}
-
-func runIsoTest(qc *qemu.Cluster, opts IsoTestOpts, tempdir string) error {
 	targetConfig, err := conf.EmptyIgnition().Render(conf.FailWarnings)
 	if err != nil {
-		return err
+		c.Fatal(err)
 	}
 	keys, err := qc.Keys()
 	if err != nil {
-		return err
+		c.Fatal(err)
 	}
 
 	targetConfig.CopyKeys(keys)
@@ -156,10 +148,10 @@ func runIsoTest(qc *qemu.Cluster, opts IsoTestOpts, tempdir string) error {
 	isopath := filepath.Join(kola.CosaBuild.Dir, kola.CosaBuild.Meta.BuildArtifacts.LiveIso.Path)
 
 	installerConfig := coreosInstallerConfig{
-		DestDevice:   "/dev/vda",
-		AppendKargs:  renderCosaTestIsoDebugKargs(),
-		Insecure:     opts.instInsecure,
-		CopyNetwork:  opts.addNmKeyfile, // force networking on in the initrd to verify the keyfile was used
+		DestDevice:  "/dev/vda",
+		AppendKargs: renderCosaTestIsoDebugKargs(),
+		Insecure:    opts.instInsecure,
+		CopyNetwork: opts.addNmKeyfile, // force networking on in the initrd to verify the keyfile was used
 	}
 
 	var serializedTargetConfig string
@@ -174,7 +166,7 @@ func runIsoTest(qc *qemu.Cluster, opts IsoTestOpts, tempdir string) error {
 	} else {
 		listener, err := net.Listen("tcp", ":0")
 		if err != nil {
-			return err
+			c.Fatal(err)
 		}
 		port := listener.Addr().(*net.TCPAddr).Port
 		baseurl := fmt.Sprintf("http://%s:%d", defaultQemuHostIPv4, port)
@@ -188,7 +180,7 @@ func runIsoTest(qc *qemu.Cluster, opts IsoTestOpts, tempdir string) error {
 		if opts.isMiniso {
 			isopath, err = createMiniso(tempdir, isopath, baseurl)
 			if err != nil {
-				return err
+				c.Fatal(err)
 			}
 		} else {
 			var metalimg string
@@ -199,7 +191,7 @@ func runIsoTest(qc *qemu.Cluster, opts IsoTestOpts, tempdir string) error {
 			}
 			metalname, err := setupMetalImage(kola.CosaBuild.Dir, metalimg, tempdir)
 			if err != nil {
-				return err
+				c.Fatal(err)
 			}
 			installerConfig.ImageURL = fmt.Sprintf("%s/%s", baseurl, metalname)
 		}
@@ -208,7 +200,7 @@ func runIsoTest(qc *qemu.Cluster, opts IsoTestOpts, tempdir string) error {
 			nmKeyfiles := make(map[string]string)
 			nmKeyfiles[nmConnectionFile] = nmConnection
 			if err := embedNmkeyfiles(tempdir, nmKeyfiles, isopath); err != nil {
-				return err
+				c.Fatal(err)
 			}
 			// We verify that the keyfiles get applied in the initramfs so let's
 			// make sure we bring up networking.
@@ -216,7 +208,7 @@ func runIsoTest(qc *qemu.Cluster, opts IsoTestOpts, tempdir string) error {
 		}
 
 		if err := targetConfig.WriteFile(filepath.Join(tempdir, "target.ign")); err != nil {
-			return err
+			c.Fatal(err)
 		}
 		installerConfig.IgnitionURL = baseurl + "/target.ign"
 		targetHash := sha256.Sum256([]byte(targetConfig.String()))
@@ -238,13 +230,13 @@ func runIsoTest(qc *qemu.Cluster, opts IsoTestOpts, tempdir string) error {
 
 	installerConfigData, err := yaml.Marshal(installerConfig)
 	if err != nil {
-		return err
+		c.Fatal(err)
 	}
 	mode := 0644
 
 	liveConfig, err := conf.EmptyIgnition().Render(conf.FailWarnings)
 	if err != nil {
-		return err
+		c.Fatal(err)
 	}
 	liveConfig.AddSystemdUnit("live-signal-ok.service", liveSignalOKUnit, conf.Enable)
 	liveConfig.AddSystemdUnit("verify-no-efi-boot-entry.service", verifyNoEFIBootEntry, conf.Enable)
@@ -351,10 +343,11 @@ func runIsoTest(qc *qemu.Cluster, opts IsoTestOpts, tempdir string) error {
 
 	_, err = qc.NewMachineWithBuilder(liveConfig, options, machineBuilder)
 	if err != nil {
-		return errors.Wrap(err, "unable to create test machine")
+		c.Fatal(errors.Wrap(err, "unable to create test machine"))
 	}
-
-	return <-errchan
+	if err := <-errchan; err != nil {
+		c.Fatal(err)
+	}
 }
 
 func createMiniso(tempd string, isopath string, url string) (string, error) {
