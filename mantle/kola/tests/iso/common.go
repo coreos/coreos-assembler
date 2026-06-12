@@ -27,6 +27,8 @@ const (
 type coreosInstallerConfig struct {
 	ImageURL     string   `yaml:"image-url,omitempty"`
 	IgnitionFile string   `yaml:"ignition-file,omitempty"`
+	IgnitionURL  string   `yaml:"ignition-url,omitempty"`
+	IgnitionHash string   `yaml:"ignition-hash,omitempty"`
 	Insecure     bool     `yaml:"insecure,omitempty"`
 	AppendKargs  []string `yaml:"append-karg,omitempty"`
 	CopyNetwork  bool     `yaml:"copy-network,omitempty"`
