@@ -29,13 +29,11 @@ type Recorder struct {
 	formatter Formatter
 	cursor    string
 	status    chan error
-	rawFile   io.WriteCloser
 }
 
-func NewRecorder(f Formatter, rawFile io.WriteCloser) *Recorder {
+func NewRecorder(f Formatter) *Recorder {
 	return &Recorder{
 		formatter: f,
-		rawFile:   rawFile,
 		status:    make(chan error, 1),
 	}
 }
@@ -52,8 +50,7 @@ func (r *Recorder) journalctl() []string {
 }
 
 func (r *Recorder) record(export io.Reader) error {
-	exportTee := io.TeeReader(export, r.rawFile)
-	src := NewExportReader(exportTee)
+	src := NewExportReader(export)
 	for {
 		entry, err := src.ReadEntry()
 		if err != nil {
