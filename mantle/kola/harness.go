@@ -84,11 +84,6 @@ const NeedsInternetTag = "needs-internet"
 // For more, see the doc in external-tests.md.
 const PlatformIndependentTag = "platform-independent"
 
-// The string for the tag that indicates a test has been marked as allowing rerun success.
-// In some cases the internal test framework will add this tag to a test to indicate if
-// the test passes a rerun to allow the run to succeed.
-const AllowRerunSuccessTag = "allow-rerun-success"
-
 // defaultPlatformIndependentPlatform is the platform where we run tests that claim platform independence
 const defaultPlatformIndependentPlatform = "qemu"
 
@@ -157,18 +152,16 @@ var (
 	nonexclusiveWrapperMatch = regexp.MustCompile(`^non-exclusive-test-bucket-[0-9]$`)
 
 	consoleChecks = []struct {
-		desc              string
-		match             *regexp.Regexp
-		warnOnly          bool
-		allowRerunSuccess bool
-		skipFlag          *register.Flag
+		desc     string
+		match    *regexp.Regexp
+		warnOnly bool
+		skipFlag *register.Flag
 	}{
 		{
-			desc:              "emergency shell",
-			match:             regexp.MustCompile("Press Enter for emergency shell|Starting Emergency Shell|You are in emergency mode"),
-			warnOnly:          false,
-			allowRerunSuccess: false,
-			skipFlag:          &[]register.Flag{register.NoEmergencyShellCheck}[0],
+			desc:     "emergency shell",
+			match:    regexp.MustCompile("Press Enter for emergency shell|Starting Emergency Shell|You are in emergency mode"),
+			warnOnly: false,
+			skipFlag: &[]register.Flag{register.NoEmergencyShellCheck}[0],
 		},
 		{
 			desc:     "dracut fatal",
@@ -353,13 +346,6 @@ func testRequiresInternet(test *register.Test) bool {
 
 func testSecureBoot(test *register.Test) bool {
 	return HasString(secureBoot, test.Tags)
-}
-
-func markTestForRerunSuccess(test *register.Test, msg string) {
-	if !HasString(AllowRerunSuccessTag, test.Tags) {
-		plog.Warningf("%s Adding as candidate for rerun success: %s", msg, test.Name)
-		test.Tags = append(test.Tags, AllowRerunSuccessTag)
-	}
 }
 
 type DenyListObj struct {
@@ -687,7 +673,7 @@ func applyGracePeriodWarnings(tests map[string]*register.Test) error {
 // register tests in their init() function.  outputDir is where various test
 // logs and data will be written for analysis after the test run. If it already
 // exists it will be erased!
-func runProvidedTests(testsBank map[string]*register.Test, patterns []string, multiply int, rerun bool, rerunSuccessTags []string, pltfrm, outputDir string) error {
+func runProvidedTests(testsBank map[string]*register.Test, patterns []string, multiply int, rerun bool, pltfrm, outputDir string) error {
 	var versionStr string
 
 	// Avoid incurring cost of starting machine in getClusterSemver when
@@ -867,14 +853,10 @@ func runProvidedTests(testsBank map[string]*register.Test, patterns []string, mu
 	if len(testsToRerun) > 0 && rerun {
 		newOutputDir := filepath.Join(outputDir, "rerun")
 		fmt.Printf("\n\n======== Re-running failed tests (flake detection) ========\n\n")
-		reRunErr := runProvidedTests(testsToRerun, []string{"*"}, multiply, false, rerunSuccessTags, pltfrm, newOutputDir)
-		if reRunErr == nil && allTestsAllowRerunSuccess(testsToRerun, rerunSuccessTags) {
-			runErr = nil       // reset to success since all tests allowed rerun success
+		runErr = runProvidedTests(testsToRerun, []string{"*"}, multiply, false, pltfrm, newOutputDir)
+		if runErr == nil {
 			numFailedTests = 0 // zero out the tally of failed tests
-		} else {
-			runErr = reRunErr
 		}
-
 	}
 
 	// Return ErrWarnOnTestFail when ONLY tests with warn:true feature failed
@@ -900,36 +882,6 @@ func getWarnTrueFailedTests(tests []*harness.H) []string {
 		}
 	}
 	return warnTrueFailedTests
-}
-
-func allTestsAllowRerunSuccess(testsToRerun map[string]*register.Test, rerunSuccessTags []string) bool {
-	// Always consider the special AllowRerunSuccessTag that is added
-	// by the test harness in some failure scenarios.
-	rerunSuccessTags = append(rerunSuccessTags, AllowRerunSuccessTag)
-	// Build up a map of rerunSuccessTags so that we can easily check
-	// if a given tag is in the map.
-	rerunSuccessTagMap := make(map[string]bool)
-	for _, tag := range rerunSuccessTags {
-		if tag == "all" || tag == "*" {
-			// If `all` or `*` is in rerunSuccessTags then we can return early
-			return true
-		}
-		rerunSuccessTagMap[tag] = true
-	}
-	// Iterate over the tests that were re-ran. If any of them don't
-	// allow rerun success then just exit early.
-	for _, test := range testsToRerun {
-		testAllowsRerunSuccess := false
-		for _, tag := range test.Tags {
-			if rerunSuccessTagMap[tag] {
-				testAllowsRerunSuccess = true
-			}
-		}
-		if !testAllowsRerunSuccess {
-			return false
-		}
-	}
-	return true
 }
 
 func GetBaseTestName(testName string) string {
@@ -1011,12 +963,12 @@ func getRerunnable(testsBank map[string]*register.Test, testResults []*harness.H
 	return testsToRerun
 }
 
-func RunTests(patterns []string, multiply int, rerun bool, rerunSuccessTags []string, pltfrm, outputDir string) error {
-	return runProvidedTests(register.Tests, patterns, multiply, rerun, rerunSuccessTags, pltfrm, outputDir)
+func RunTests(patterns []string, multiply int, rerun bool, pltfrm, outputDir string) error {
+	return runProvidedTests(register.Tests, patterns, multiply, rerun, pltfrm, outputDir)
 }
 
 func RunUpgradeTests(patterns []string, rerun bool, pltfrm, outputDir string) error {
-	return runProvidedTests(register.UpgradeTests, patterns, 0, rerun, nil, pltfrm, outputDir)
+	return runProvidedTests(register.UpgradeTests, patterns, 0, rerun, pltfrm, outputDir)
 }
 
 // externalTestMeta is parsed from kola.json in external tests
@@ -1861,10 +1813,6 @@ func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flig
 		c.Destroy()
 		// Release the memory reservation (if there was one) now that the VM is gone.
 		releaseMemoryCount(flight, t)
-		if h.TimedOut() {
-			// We'll allow tests that time out to succeed on rerun.
-			markTestForRerunSuccess(t, "Test timed out.")
-		}
 		if testSkipBaseChecks(t) {
 			plog.Debugf("Skipping base checks for %s", t.Name)
 			return
@@ -1911,9 +1859,6 @@ func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flig
 			return err
 		})
 		if err != nil {
-			// The platform failed starting machines, which usually isn't *CoreOS
-			// fault. Maybe it will have better luck in the rerun.
-			markTestForRerunSuccess(t, "Platform failed starting machines.")
 			h.Fatalf("Cluster failed starting machines: %v", err)
 		}
 	}
@@ -2059,11 +2004,10 @@ func ScpKolet(machines []platform.Machine) error {
 // descriptions of any bad lines it finds along with a boolean
 // indicating if the configuration has the bad lines marked as
 // warnOnly or not (for things we don't want to error for). If t is
-// specified, its flags are respected and tags possibly updated for
-// rerun success.
+// specified, its flags are respected.
 func CheckConsole(output []byte, t *register.Test) (bool, []string) {
 	var badlines []string
-	warnOnly, allowRerunSuccess := true, true
+	warnOnly := true
 	for _, check := range consoleChecks {
 		if check.skipFlag != nil && t != nil && t.HasFlag(*check.skipFlag) {
 			continue
@@ -2080,13 +2024,7 @@ func CheckConsole(output []byte, t *register.Test) (bool, []string) {
 			if !check.warnOnly {
 				warnOnly = false
 			}
-			if !check.allowRerunSuccess {
-				allowRerunSuccess = false
-			}
 		}
-	}
-	if len(badlines) > 0 && allowRerunSuccess && t != nil {
-		markTestForRerunSuccess(t, "CheckConsole:")
 	}
 	return warnOnly, badlines
 }

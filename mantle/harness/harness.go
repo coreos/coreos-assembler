@@ -79,7 +79,6 @@ type H struct {
 	warningOnFailure         bool
 
 	timeout   time.Duration // Duration for which the test will be allowed to run
-	timedout  bool          // A timeout was reached
 	execTimer *time.Timer   // Used to interrupt the test after timeout
 	// To signal that a timeout has occured to observers
 	timeoutContext context.Context
@@ -102,7 +101,6 @@ func (t *H) runTimeoutCheck(ctx context.Context, timeout time.Duration, f func()
 	// Timeout if call to function f takes too long
 	select {
 	case <-ctx.Done():
-		t.timedout = true
 		t.Fatalf("TIMEOUT[%v]: %s\n", timeout, errMsg)
 	case <-ioCompleted:
 		// Finish the test
@@ -312,11 +310,6 @@ func (c *H) Failed() bool {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	return c.failed
-}
-
-// Reports if the test was stopped because a timeout was reached.
-func (c *H) TimedOut() bool {
-	return c.timedout
 }
 
 // FailNow marks the function as having failed and stops its execution.
