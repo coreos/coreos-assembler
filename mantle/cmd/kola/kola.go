@@ -22,7 +22,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
-	"strings"
 	"text/tabwriter"
 
 	"github.com/coreos/pkg/capnslog"
@@ -134,8 +133,8 @@ func init() {
 	root.AddCommand(cmdRun)
 	cmdRun.Flags().StringArrayVarP(&runExternals, "exttest", "E", nil, "Externally defined tests (will be found in DIR/tests/kola)")
 	cmdRun.Flags().IntVar(&runMultiply, "multiply", 0, "Run the provided tests N times (useful to find race conditions)")
-	cmdRun.Flags().BoolVar(&runRerunFlag, "rerun", false, "re-run failed tests once")
-	cmdRun.Flags().StringVar(&allowRerunSuccess, "allow-rerun-success", "", "Allow kola test run to be successful when tests with given 'tags=...[,...]' pass during re-run")
+	cmdRun.Flags().BoolVar(&runRerunFlag, "rerun", false, "re-run failed tests once (succeeds if tests pass on rerun)")
+	cmdRun.Flags().StringVar(&allowRerunSuccess, "allow-rerun-success", "", "Deprecated: this option is no longer supported and has no effect")
 
 	root.AddCommand(cmdList)
 	cmdList.Flags().StringArrayVarP(&runExternals, "exttest", "E", nil, "Externally defined tests in directory")
@@ -149,8 +148,8 @@ func init() {
 	root.AddCommand(cmdRunUpgrade)
 	cmdRunUpgrade.Flags().BoolVar(&findParentImage, "find-parent-image", false, "automatically find parent image if not provided -- note on qemu, this will download the image")
 	cmdRunUpgrade.Flags().StringVar(&qemuImageDir, "qemu-image-dir", "", "directory in which to cache QEMU images if --fetch-parent-image is enabled")
-	cmdRunUpgrade.Flags().BoolVar(&runRerunFlag, "rerun", false, "re-run failed tests once")
-	cmdRunUpgrade.Flags().StringVar(&allowRerunSuccess, "allow-rerun-success", "", "Allow kola test run to be successful when tests with given 'tags=...[,...]' pass during re-run")
+	cmdRunUpgrade.Flags().BoolVar(&runRerunFlag, "rerun", false, "re-run failed tests once (succeeds if tests pass on rerun)")
+	cmdRunUpgrade.Flags().StringVar(&allowRerunSuccess, "allow-rerun-success", "", "Deprecated: this option is no longer supported and has no effect")
 
 	root.AddCommand(cmdRerun)
 
@@ -237,27 +236,6 @@ func runRerun(cmd *cobra.Command, args []string) error {
 	return kolaRunPatterns(patterns, false)
 }
 
-// parseRerunSuccess converts rerun specification into a tags
-func parseRerunSuccess() ([]string, error) {
-	// In the future we may extend format to something like: <SELECTOR>[:<OPTIONS>]
-	//   SELECTOR
-	//     tags=...,...,...
-	//     tests=...,...,...
-	//   OPTIONS
-	//     n=...
-	//     allow-single=..
-	tags := []string{}
-	if len(allowRerunSuccess) == 0 {
-		return tags, nil
-	}
-	if !strings.HasPrefix(allowRerunSuccess, "tags=") {
-		return nil, fmt.Errorf("invalid rerun spec %s", allowRerunSuccess)
-	}
-	split := strings.TrimPrefix(allowRerunSuccess, "tags=")
-	tags = append(tags, strings.Split(split, ",")...)
-	return tags, nil
-}
-
 func kolaRunPatterns(patterns []string, rerun bool) error {
 	var err error
 	outputDir, err = kola.SetupOutputDir(outputDir, kolaPlatform)
@@ -269,12 +247,7 @@ func kolaRunPatterns(patterns []string, rerun bool) error {
 		return err
 	}
 
-	rerunSuccessTags, err := parseRerunSuccess()
-	if err != nil {
-		return err
-	}
-
-	runErr := kola.RunTests(patterns, runMultiply, rerun, rerunSuccessTags, kolaPlatform, outputDir)
+	runErr := kola.RunTests(patterns, runMultiply, rerun, kolaPlatform, outputDir)
 
 	// needs to be after RunTests() because harness empties the directory
 	if err := writeProps(); err != nil {
