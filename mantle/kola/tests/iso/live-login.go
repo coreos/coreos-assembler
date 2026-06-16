@@ -11,7 +11,6 @@ import (
 
 	"github.com/coreos/coreos-assembler/mantle/kola/cluster"
 	"github.com/coreos/coreos-assembler/mantle/kola/register"
-	"github.com/coreos/coreos-assembler/mantle/platform/conf"
 	"github.com/coreos/coreos-assembler/mantle/platform/machine/qemu"
 )
 
@@ -76,10 +75,6 @@ func init() {
 func testLiveLogin(c cluster.TestCluster, firmware string) {
 	EnsureLiveArtifactsExist(c)
 
-	butane := conf.Butane(`
-variant: fcos
-version: 1.1.0`)
-
 	errchan := make(chan error)
 
 	setupDisks := func(_ platform.MachineOptions, builder *platform.QemuBuilder) error {
@@ -105,7 +100,7 @@ version: 1.1.0`)
 		builder := &qemu.MachineBuilder{
 			SetupDisks: setupDisks,
 		}
-		_, err := pc.NewMachineWithBuilder(butane, options, builder)
+		_, err := pc.NewMachineWithBuilder(nil, options, builder)
 		if err != nil {
 			c.Fatalf("Unable to create test machine: %v", err)
 		}
