@@ -238,13 +238,13 @@ func testLiveIso(c cluster.TestCluster, opts IsoTestOpts) {
 	if err != nil {
 		c.Fatal(err)
 	}
+	liveConfig.CopyKeys(keys)
 	liveConfig.AddSystemdUnit("live-signal-ok.service", liveSignalOKUnit, conf.Enable)
 	liveConfig.AddSystemdUnit("verify-no-efi-boot-entry.service", verifyNoEFIBootEntry, conf.Enable)
 	liveConfig.AddSystemdUnit("iso-not-mounted-when-fromram.service", isoNotMountedUnit, conf.Enable)
 	liveConfig.AddSystemdUnit("coreos-test-entered-emergency-target.service", signalFailureUnit, conf.Enable)
 	volumeIdUnitContents := fmt.Sprintf(verifyIsoVolumeId, kola.CosaBuild.Meta.Name)
 	liveConfig.AddSystemdUnit("verify-iso-volume-id.service", volumeIdUnitContents, conf.Enable)
-	liveConfig.AddSystemdUnit("boot-started.service", bootStartedUnit, conf.Enable)
 	if installerConfig.IgnitionFile != "" {
 		liveConfig.AddFile(installerConfig.IgnitionFile, serializedTargetConfig, mode)
 	}
@@ -261,8 +261,14 @@ func testLiveIso(c cluster.TestCluster, opts IsoTestOpts) {
 		liveConfig.AddFile(nmstateConfigFile, nmstateConfig, 0644)
 	}
 
+	// Drop this when https://github.com/coreos/coreos-installer/pull/1751
+	// is everywhere.
+	liveConfig.AddSystemdUnitDropin("coreos-installer-noreboot.service", "wants-sshd.conf", `
+		[Unit]
+		Wants=sshd.service systemd-user-sessions.service
+	`)
+
 	errchan := make(chan error)
-	var bootStartedOutput *os.File
 	setupDisks := func(_ platform.MachineOptions, builder *platform.QemuBuilder) error {
 		sectorSize := 0
 		if opts.enable4k {
@@ -292,11 +298,6 @@ func testLiveIso(c cluster.TestCluster, opts IsoTestOpts) {
 			errchan <- CheckTestOutput(isoCompletionOutput, []string{liveOKSignal, signalCompleteString})
 		}()
 
-		bootStartedOutput, err = builder.VirtioChannelRead("bootstarted")
-		if err != nil {
-			return errors.Wrap(err, "setting up bootstarted virtio-serial channel")
-		}
-
 		return builder.AddIso(isopath, "bootindex=3", false)
 	}
 	kargs := renderCosaTestIsoDebugKargs()
@@ -310,6 +311,10 @@ func testLiveIso(c cluster.TestCluster, opts IsoTestOpts) {
 		kargs = append(kargs, "rd.neednet=1")
 	}
 
+	// Set coreos.inst.skip_reboot so that we skip the reboot during
+	// install so we can synchronously switch the boot order below.
+	kargs = append(kargs, "coreos.inst.skip_reboot")
+
 	options := platform.MachineOptions{
 		MinMemory:        4096,
 		MultiPathDisk:    opts.enableMultipath,
@@ -317,34 +322,44 @@ func testLiveIso(c cluster.TestCluster, opts IsoTestOpts) {
 		Firmware:         opts.firmware,
 	}
 
-	switchBootOrder := func(inst *platform.QemuInstance) error {
-		// Start a goroutine to monitor installation progress and switch boot order.
-		// We check the boot signal on all architectures, but only aarch64 and s390x
-		// need to switch boot order via QMP because their QEMU firmware doesn't support
-		// the -boot once=n option.
-		go func() {
-			if err := CheckTestOutput(bootStartedOutput, []string{bootStartedSignal}); err != nil {
-				errchan <- err
-				return
-			}
-			// SwitchBootOrder is a no-op on architectures other than aarch64 and s390x
-			if err := inst.SwitchBootOrder(); err != nil {
-				errchan <- errors.Wrapf(err, "switching boot order failed")
-				return
-			}
-		}()
-		return nil
-	}
-
 	machineBuilder := &qemu.MachineBuilder{
-		SetupDisks:        setupDisks,
-		PostInstanceStart: switchBootOrder,
+		SetupDisks: setupDisks,
 	}
 
-	_, err = qc.NewMachineWithBuilder(liveConfig, options, machineBuilder)
+	m, err := qc.NewMachineWithBuilder(liveConfig, options, machineBuilder)
 	if err != nil {
 		c.Fatal(errors.Wrap(err, "unable to create test machine"))
 	}
+
+	// Verify the machine came up (uses SSH)
+	if err := platform.CheckMachine(m); err != nil {
+		c.Fatal(err)
+	}
+
+	// Get the instance (used for SwitchBootOrder() below)
+	inst := qc.Instance(m)
+	if inst == nil {
+		c.Fatal(errors.New("failed to get QemuInstance from machine"))
+	}
+
+	// The machine should be done with the install at this point, but
+	// let's just make sure.
+	c.RunCmdSync(m,
+		"sudo systemd-run --wait --property=After=coreos-installer.service "+
+			"echo 'Waited for coreos-installer.service to finish'",
+	)
+
+	// Now we can switch the boot order. Note that SwitchBootOrder is a
+	// no-op on architectures other than aarch64 and s390x
+	if err := inst.SwitchBootOrder(); err != nil {
+		c.Fatal(errors.Wrapf(err, "switching boot order failed"))
+	}
+
+	// Now we can reboot
+	if err := m.Reboot(); err != nil {
+		c.Fatal(errors.Wrapf(err, "reboot failed"))
+	}
+
 	if err := <-errchan; err != nil {
 		c.Fatal(err)
 	}
