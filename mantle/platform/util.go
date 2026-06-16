@@ -15,6 +15,7 @@
 package platform
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/rsa"
 	"fmt"
@@ -26,6 +27,8 @@ import (
 	"github.com/pkg/errors"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/term"
+
+	"github.com/coreos/coreos-assembler/mantle/util"
 )
 
 // Manhole connects os.Stdin, os.Stdout, and os.Stderr to an interactive shell
@@ -130,7 +133,7 @@ func WaitForMachineReboot(m Machine, j *Journal, timeout time.Duration, oldBootI
 	// we *require* the old boot ID, otherwise there's no way to know if the
 	// machine already rebooted
 	if oldBootId == "" {
-		panic("unreachable: oldBootId empty")
+		return fmt.Errorf("Need to pass in oldBootId to WaitForMachineReboot()")
 	}
 
 	// Run a command that stays blocked until we're killed by the reboot process
@@ -176,8 +179,17 @@ func WaitForMachineReboot(m Machine, j *Journal, timeout time.Duration, oldBootI
 }
 
 func StartMachineAfterReboot(m Machine, j *Journal, oldBootId string) error {
-	if err := j.Start(m, oldBootId); err != nil {
-		return fmt.Errorf("machine %q failed to start: %v", m.ID(), err)
+	if err := WaitForSshAfterReboot(m, oldBootId); err != nil {
+		return fmt.Errorf("machine %q failed waiting for reboot: %v", m.ID(), err)
+	}
+	return startMachineAfterBoot(m, j)
+}
+
+// startMachineAfterBoot starts the journal and runs basic machine checks.
+// It is the common path for both initial boot and reboot.
+func startMachineAfterBoot(m Machine, j *Journal) error {
+	if err := j.Start(m); err != nil {
+		return fmt.Errorf("machine %q failed to start journal: %v", m.ID(), err)
 	}
 	if err := CheckMachine(m); err != nil {
 		return fmt.Errorf("machine %q failed basic checks: %v", m.ID(), err)
@@ -201,8 +213,7 @@ func StartMachine(m Machine, j *Journal) error {
 		}
 	}()
 	go func() {
-		// This one ends up connecting to the journal via ssh
-		errchan <- StartMachineAfterReboot(m, j, "")
+		errchan <- startMachineAfterBoot(m, j)
 	}()
 	return <-errchan
 }
@@ -213,6 +224,35 @@ func GetMachineBootId(m Machine) (string, error) {
 		return "", fmt.Errorf("failed to retrieve boot ID: %s: %s: %s", stdout, err, stderr)
 	}
 	return strings.TrimSpace(string(stdout)), nil
+}
+
+// WaitForSshAfterReboot retries SSH until the machine's boot ID differs from
+// oldBootId, indicating the reboot has completed.
+func WaitForSshAfterReboot(m Machine, oldBootId string) error {
+	if oldBootId == "" {
+		panic("WaitForSshAfterReboot called with empty oldBootId")
+	}
+
+	ctx := m.RuntimeConf().TestExecTimeout
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	check := func() error {
+		bootId, err := GetMachineBootId(m)
+		if err != nil {
+			return err
+		}
+		if bootId == oldBootId {
+			return fmt.Errorf("found old boot ID %s (likely still rebooting)", oldBootId)
+		}
+		return nil
+	}
+
+	if err := util.RetryUntilTimeoutWithContext(ctx, 10*time.Minute, 10*time.Second, check); err != nil {
+		return errors.Wrapf(err, "waiting for SSH after reboot")
+	}
+	return nil
 }
 
 // GetMachineSoftRebootCount retrieves the systemd SoftRebootsCount (for soft-reboot detection)

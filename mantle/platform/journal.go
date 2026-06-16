@@ -17,7 +17,6 @@ package platform
 import (
 	"compress/gzip"
 	"context"
-	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -89,7 +88,7 @@ func NewJournal(dir string) (*Journal, error) {
 }
 
 // Start begins/resumes streaming the system journal to journal.txt.
-func (j *Journal) Start(m Machine, oldBootId string) error {
+func (j *Journal) Start(m Machine) error {
 	if j.cancel != nil {
 		j.cancel()
 		j.cancel = nil
@@ -102,15 +101,6 @@ func (j *Journal) Start(m Machine, oldBootId string) error {
 	ctx, cancel := context.WithCancel(ctx)
 
 	start := func() error {
-		if oldBootId != "" {
-			bootId, err := GetMachineBootId(m)
-			if err != nil {
-				return err
-			} else if bootId == oldBootId {
-				return fmt.Errorf("found old boot ID %s (likely still rebooting)", oldBootId)
-			}
-		}
-
 		client, err := m.SSHClient()
 		if err != nil {
 			return err
