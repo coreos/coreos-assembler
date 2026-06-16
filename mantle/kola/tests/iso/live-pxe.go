@@ -147,6 +147,13 @@ func testLivePXE(c cluster.TestCluster, opts IsoTestOpts) {
 		if err != nil {
 			return err
 		}
+		liveConfig.CopyKeys(keys)
+		// Drop this when https://github.com/coreos/coreos-installer/pull/1751
+		// is everywhere.
+		liveConfig.AddSystemdUnitDropin("coreos-installer-noreboot.service", "wants-sshd.conf", `
+			[Unit]
+			Wants=sshd.service systemd-user-sessions.service
+		`)
 		if err := liveConfig.WriteFile(ignitionPath); err != nil {
 			return err
 		}
@@ -179,7 +186,6 @@ func testLivePXE(c cluster.TestCluster, opts IsoTestOpts) {
 	}
 
 	errchan := make(chan error)
-	var bootStartedOutput *os.File
 	setupDisks := func(_ platform.MachineOptions, builder *platform.QemuBuilder) error {
 		sectorSize := 0
 		if opts.enable4k {
@@ -208,29 +214,6 @@ func testLivePXE(c cluster.TestCluster, opts IsoTestOpts) {
 			errchan <- CheckTestOutput(isoCompletionOutput, []string{liveOKSignal, signalCompleteString})
 		}()
 
-		bootStartedOutput, err = builder.VirtioChannelRead("bootstarted")
-		if err != nil {
-			return errors.Wrap(err, "setting up bootstarted virtio-serial channel")
-		}
-		return nil
-	}
-
-	switchBootOrder := func(inst *platform.QemuInstance) error {
-		// Start a goroutine to monitor installation progress and switch boot order.
-		// We check the boot signal on all architectures, but only aarch64 and s390x
-		// need to switch boot order via QMP because their QEMU firmware doesn't support
-		// the -boot once=n option.
-		go func() {
-			if err := CheckTestOutput(bootStartedOutput, []string{bootStartedSignal}); err != nil {
-				errchan <- err
-				return
-			}
-			// SwitchBootOrder is a no-op on architectures other than aarch64 and s390x
-			if err := inst.SwitchBootOrder(); err != nil {
-				errchan <- errors.Wrapf(err, "switching boot order failed")
-				return
-			}
-		}()
 		return nil
 	}
 
@@ -246,15 +229,44 @@ func testLivePXE(c cluster.TestCluster, opts IsoTestOpts) {
 	}
 
 	builder := &qemu.MachineBuilder{
-		InitBuilder:       initBuilder,
-		SetupDisks:        setupDisks,
-		SetupNetwork:      setupNet,
-		PostInstanceStart: switchBootOrder,
+		InitBuilder:  initBuilder,
+		SetupDisks:   setupDisks,
+		SetupNetwork: setupNet,
 	}
-	_, err = qc.NewMachineWithBuilder(nil, options, builder)
+	m, err := qc.NewMachineWithBuilder(nil, options, builder)
 	if err != nil {
 		c.Fatal(errors.Wrap(err, "unable to create test machine"))
 	}
+
+	// Verify the machine came up (uses SSH)
+	if err := platform.CheckMachine(m); err != nil {
+		c.Fatal(err)
+	}
+
+	// Get the instance (used for SwitchBootOrder() below)
+	inst := qc.Instance(m)
+	if inst == nil {
+		c.Fatal(errors.New("failed to get QemuInstance from machine"))
+	}
+
+	// The machine should be done with the install at this point, but
+	// let's just make sure.
+	c.RunCmdSync(m,
+		"sudo systemd-run --wait --property=After=coreos-installer.service "+
+			"echo 'Waited for coreos-installer.service to finish'",
+	)
+
+	// Now we can switch the boot order. Note that SwitchBootOrder is a
+	// no-op on architectures other than aarch64 and s390x
+	if err := inst.SwitchBootOrder(); err != nil {
+		c.Fatal(errors.Wrapf(err, "switching boot order failed"))
+	}
+
+	// Now we can reboot
+	if err := m.Reboot(); err != nil {
+		c.Fatal(errors.Wrapf(err, "reboot failed"))
+	}
+
 	if err := <-errchan; err != nil {
 		c.Fatal(err)
 	}
@@ -287,7 +299,6 @@ func getPXEConfig(insecure bool, offline bool) (*conf.Conf, error) {
 		liveConfig.AddFile("/etc/coreos/installer.d/mantle.yaml", string(installerConfigData), mode)
 	}
 	liveConfig.AddAutoLogin()
-	liveConfig.AddSystemdUnit("boot-started.service", bootStartedUnit, conf.Enable)
 	return liveConfig, nil
 }
 
@@ -362,6 +373,10 @@ func createPXE(tempdir string, opts IsoTestOpts) (*PXE, *http.Server, error) {
 	if rootfs != "" && !opts.pxeAppendRootfs {
 		kargs = append(kargs, fmt.Sprintf("coreos.live.rootfs_url=%s/%s", baseurl, rootfs))
 	}
+	// Set coreos.inst.skip_reboot so that we skip the reboot during
+	// install so we can synchronously switch the boot order below.
+	kargs = append(kargs, "coreos.inst.skip_reboot")
+
 	kargsStr := strings.Join(kargs, " ")
 
 	switch pxe.boottype {

@@ -377,19 +377,6 @@ RequiredBy=coreos-installer.target
 # for target system
 RequiredBy=multi-user.target`, nmConnectionId, nmConnectionFile)
 
-var bootStartedSignal = "boot-started-OK"
-var bootStartedUnit = fmt.Sprintf(`[Unit]
-Description=TestISO Boot Started
-Requires=dev-virtio\\x2dports-bootstarted.device
-OnFailure=emergency.target
-OnFailureJobMode=isolate
-[Service]
-Type=oneshot
-RemainAfterExit=yes
-ExecStart=/bin/sh -c '/usr/bin/echo %s >/dev/virtio-ports/bootstarted'
-[Install]
-RequiredBy=coreos-installer.target`, bootStartedSignal)
-
 var coreosInstallerMultipathUnit = `[Unit]
 Description=TestISO Enable Multipath
 Before=multipathd.service
