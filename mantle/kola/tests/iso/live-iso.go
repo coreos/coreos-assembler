@@ -208,6 +208,9 @@ func runIsoTest(qc *qemu.Cluster, opts IsoTestOpts, tempdir string) error {
 			if err := embedNmkeyfiles(tempdir, nmKeyfiles, isopath); err != nil {
 				return err
 			}
+			// We verify that the keyfiles get applied in the initramfs so let's
+			// make sure we bring up networking.
+			installerConfig.AppendKargs = append(installerConfig.AppendKargs, "rd.neednet=1")
 		}
 
 		// In this case; the target config is jut a tiny wrapper that wants to
@@ -326,6 +329,8 @@ func runIsoTest(qc *qemu.Cluster, opts IsoTestOpts, tempdir string) error {
 		kargs = append(kargs, "coreos.liveiso.fromram")
 	}
 	if opts.addNmKeyfile {
+		// We verify that the keyfiles get applied in the initramfs so let's
+		// make sure we bring up networking.
 		kargs = append(kargs, "rd.neednet=1")
 	}
 
