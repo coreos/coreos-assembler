@@ -146,10 +146,13 @@ func (qc *Cluster) NewMachineWithBuilder(userdata any, options platform.MachineO
 	}
 
 	// Run StartMachine, which blocks on the machine being booted up enough
-	// for SSH access.
-	if err := platform.StartMachine(qm, qm.journal); err != nil {
-		qm.Destroy()
-		return nil, err
+	// for SSH access, but only if we have a config, else there's no
+	// SSH key for us to use to get in so don't bother.
+	if config != nil {
+		if err := platform.StartMachine(qm, qm.journal); err != nil {
+			qm.Destroy()
+			return nil, err
+		}
 	}
 
 	qc.AddMach(qm)
