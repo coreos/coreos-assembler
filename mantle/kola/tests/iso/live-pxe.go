@@ -243,29 +243,8 @@ func testLivePXE(c cluster.TestCluster, opts IsoTestOpts) {
 		c.Fatal(err)
 	}
 
-	// Get the instance (used for SwitchBootOrder() below)
-	inst := qc.Instance(m)
-	if inst == nil {
-		c.Fatal(errors.New("failed to get QemuInstance from machine"))
-	}
-
-	// The machine should be done with the install at this point, but
-	// let's just make sure.
-	c.RunCmdSync(m,
-		"sudo systemd-run --wait --property=After=coreos-installer.service "+
-			"echo 'Waited for coreos-installer.service to finish'",
-	)
-
-	// Now we can switch the boot order. Note that SwitchBootOrder is a
-	// no-op on architectures other than aarch64 and s390x
-	if err := inst.SwitchBootOrder(); err != nil {
-		c.Fatal(errors.Wrapf(err, "switching boot order failed"))
-	}
-
-	// Now we can reboot
-	if err := m.Reboot(); err != nil {
-		c.Fatal(errors.Wrapf(err, "reboot failed"))
-	}
+	// Wait for install to complete, then switch the boot order and reboot.
+	WaitToSwitchBootOrderAndReboot(c, qc, m)
 
 	if err := <-errchan; err != nil {
 		c.Fatal(err)
