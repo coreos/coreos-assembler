@@ -61,7 +61,16 @@ func (qc *Cluster) NewMachineWithOptions(userdata *conf.UserData, options platfo
 	if options.InstanceType != "" {
 		return nil, errors.New("platform qemu does not support changing instance types")
 	}
-	return qc.NewMachineWithBuilder(userdata, options, nil)
+	// When NoIgnition is set, pass a true nil (untyped) to
+	// NewMachineWithBuilder so that RenderUserDataIfNeeded
+	// returns nil and no Ignition config is generated or
+	// injected. This is needed for tests like live-login that
+	// require booting without any user-provided config.
+	var ud any
+	if !options.NoIgnition {
+		ud = userdata
+	}
+	return qc.NewMachineWithBuilder(ud, options, nil)
 }
 
 // NewMachineWithBuilder creates a new machine with custom builder hooks.
