@@ -17,8 +17,6 @@ package fips
 import (
 	"context"
 	"fmt"
-	"os"
-	"regexp"
 	"time"
 
 	"github.com/pkg/errors"
@@ -30,6 +28,7 @@ import (
 	"github.com/coreos/coreos-assembler/mantle/kola/register"
 	"github.com/coreos/coreos-assembler/mantle/platform"
 	"github.com/coreos/coreos-assembler/mantle/platform/conf"
+	"github.com/coreos/coreos-assembler/mantle/util"
 )
 
 var failConfig = conf.Ignition(`{
@@ -100,24 +99,6 @@ func runFipsFailure(c cluster.TestCluster) {
 	}
 }
 
-// Read file and verify if it contains a pattern
-// 1. Read file, make sure it exists
-// 2. regex for pattern
-func fileContainsPattern(path string, searchPattern string) (bool, error) {
-	file, err := os.ReadFile(path)
-	if err != nil {
-		return false, err
-	}
-	// File has content, but the pattern is not present
-	match := regexp.MustCompile(searchPattern).Match(file)
-	if match {
-		// Pattern found
-		return true, nil
-	}
-	// Pattern not found
-	return false, nil
-}
-
 // Start the VM, take string and grep for it in the temporary console logs
 func verifyError(builder *platform.QemuBuilder, searchPattern string) error {
 	inst, err := builder.Exec()
@@ -137,7 +118,7 @@ func verifyError(builder *platform.QemuBuilder, searchPattern string) error {
 		} else if resultingError == platform.ErrInitramfsEmergency {
 			// Expected initramfs failure, checking the console file to ensure
 			// that it failed the expected way
-			found, err := fileContainsPattern(builder.ConsoleFile, searchPattern)
+			found, err := util.FileContainsPattern(builder.ConsoleFile, searchPattern)
 			if err != nil {
 				resultingError = errors.Wrapf(err, "looking for pattern '%s' in file '%s' failed", searchPattern, builder.ConsoleFile)
 			} else if !found {

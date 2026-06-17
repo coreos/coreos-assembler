@@ -20,6 +20,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -164,6 +165,16 @@ func ParseDiskSpec(spec string, allowNoSize bool) (int64, map[string]string, err
 		}
 	}
 	return size, diskmap, nil
+}
+
+// FileContainsPattern reads a file and returns whether its content
+// matches the given regex pattern.
+func FileContainsPattern(path string, searchPattern string) (bool, error) {
+	file, err := os.ReadFile(path)
+	if err != nil {
+		return false, err
+	}
+	return regexp.MustCompile(searchPattern).Match(file), nil
 }
 
 func RandomName(prefix string) string {
