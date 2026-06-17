@@ -2,7 +2,6 @@ package iso
 
 import (
 	"context"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -10,7 +9,6 @@ import (
 	"github.com/coreos/coreos-assembler/mantle/kola/cluster"
 	"github.com/coreos/coreos-assembler/mantle/kola/register"
 	"github.com/coreos/coreos-assembler/mantle/platform"
-	"github.com/coreos/coreos-assembler/mantle/platform/machine/qemu"
 	"github.com/coreos/coreos-assembler/mantle/util"
 	coreosarch "github.com/coreos/stream-metadata-go/arch"
 )
@@ -58,45 +56,27 @@ func init() {
 		}
 
 		register.RegisterTest(&register.Test{
-			Run: func(c cluster.TestCluster) {
-				testLiveLogin(c, firmware)
-			},
-			ClusterSize: 0,
+			Run:         testLiveLogin,
+			ClusterSize: 1,
 			Name:        "iso." + testName,
 			Description: "Verify ISO live login works.",
+			Timeout:     3 * time.Minute, // Just boots the ISO -> quick
 			Flags:       []register.Flag{},
 			Platforms:   []string{"qemu"},
 			// Skip base checks (looks at journal for failures) until bootupd fix lands
 			// https://github.com/coreos/fedora-coreos-tracker/issues/2136
 			Tags: []string{kola.SkipBaseChecksTag, "reprovision"},
+			MachineOptions: platform.MachineOptions{
+				Firmware:   firmware,
+				BootFrom:   platform.BootFromISO,
+				NoIgnition: true,
+			},
 		})
 	}
 }
 
-func testLiveLogin(c cluster.TestCluster, firmware string) {
-	EnsureLiveArtifactsExist(c)
-
-	setupDisks := func(_ platform.MachineOptions, builder *platform.QemuBuilder) error {
-		isopath := filepath.Join(kola.CosaBuild.Dir, kola.CosaBuild.Meta.BuildArtifacts.LiveIso.Path)
-		// Drop the bootindex bit (applicable to all arches except s390x and ppc64le); we want it to be the default
-		return builder.AddIso(isopath, "", false)
-	}
-
-	var m platform.Machine
-	switch pc := c.Cluster.(type) {
-	case *qemu.Cluster:
-		options := platform.MachineOptions{Firmware: firmware}
-		builder := &qemu.MachineBuilder{
-			SetupDisks: setupDisks,
-		}
-		var err error
-		m, err = pc.NewMachineWithBuilder(nil, options, builder)
-		if err != nil {
-			c.Fatalf("Unable to create test machine: %v", err)
-		}
-	default:
-		c.Fatalf("Unsupported cluster type")
-	}
+func testLiveLogin(c cluster.TestCluster) {
+	m := c.Machines()[0]
 
 	// Wait for the automatic login prompt to appear in the console output
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
