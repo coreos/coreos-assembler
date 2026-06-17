@@ -17,9 +17,7 @@ package ignition
 import (
 	"context"
 	"fmt"
-	"os"
 	"os/exec"
-	"regexp"
 	"time"
 
 	"github.com/pkg/errors"
@@ -81,24 +79,6 @@ func runDualBootfsIgnitionFailure(c cluster.TestCluster) {
 	}
 }
 
-// Read file and verify if it contains a pattern
-// 1. Read file, make sure it exists
-// 2. regex for pattern
-func fileContainsPattern(path string, searchPattern string) (bool, error) {
-	file, err := os.ReadFile(path)
-	if err != nil {
-		return false, err
-	}
-	// File has content, but the pattern is not present
-	match := regexp.MustCompile(searchPattern).Match(file)
-	if match {
-		// Pattern found
-		return true, nil
-	}
-	// Pattern not found
-	return false, nil
-}
-
 // Start the VM, take string and grep for it in the temporary console logs
 func verifyError(builder *platform.QemuBuilder, searchPattern string) error {
 	inst, err := builder.Exec()
@@ -113,7 +93,7 @@ func verifyError(builder *platform.QemuBuilder, searchPattern string) error {
 	checkConsole := func(path string, searchPattern string) error {
 		// Expected initramfs failure, checking the console file to ensure
 		// that it failed the expected way
-		found, err := fileContainsPattern(path, searchPattern)
+		found, err := util.FileContainsPattern(path, searchPattern)
 		if err != nil {
 			return errors.Wrapf(err, "looking for pattern '%s' in file '%s' failed", searchPattern, path)
 		} else if !found {
@@ -150,7 +130,7 @@ func verifyError(builder *platform.QemuBuilder, searchPattern string) error {
 		// we are searching for comes from ignition-virtio-dump-journal
 		// [1] https://github.com/coreos/fedora-coreos-tracker/issues/2019
 		virtioPortSearchPattern := "Didn't find virtio port /dev/virtio-ports/com.coreos.ignition.journal"
-		found, _ := fileContainsPattern(builder.ConsoleFile, virtioPortSearchPattern)
+		found, _ := util.FileContainsPattern(builder.ConsoleFile, virtioPortSearchPattern)
 		if found {
 			plog.Warning("Journal dumping during emergency.target failed. Continuing best effort.")
 			// Check the log even though there was a timeout
