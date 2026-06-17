@@ -15,6 +15,7 @@
 package util
 
 import (
+	"context"
 	"crypto/rand"
 	"fmt"
 	"os"
@@ -175,6 +176,30 @@ func FileContainsPattern(path string, searchPattern string) (bool, error) {
 		return false, err
 	}
 	return regexp.MustCompile(searchPattern).Match(file), nil
+}
+
+// WaitForConsoleOutput polls a console log file every 2 seconds until
+// the target string appears or the context is done. This is useful for
+// tests that need to verify specific output on the serial console while
+// the machine is still running.
+func WaitForConsoleOutput(ctx context.Context, consolePath string, searchString string) error {
+	for {
+		found, err := FileContainsPattern(consolePath, regexp.QuoteMeta(searchString))
+		if err != nil {
+			// File may not exist yet if QEMU hasn't started writing.
+			// Return any other errors than ENOEXIST.
+			if !os.IsNotExist(err) {
+				return err
+			}
+		} else if found {
+			return nil
+		}
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("context canceled waiting for %q in %s: %w", searchString, consolePath, ctx.Err())
+		case <-time.After(2 * time.Second):
+		}
+	}
 }
 
 func RandomName(prefix string) string {

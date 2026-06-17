@@ -105,6 +105,10 @@ func (m *machine) Destroy() {
 	m.qc.DelMach(m)
 }
 
+func (m *machine) ConsolePath() string {
+	return m.consolePath
+}
+
 func (m *machine) ConsoleOutput() string {
 	return m.console
 }

@@ -119,6 +119,10 @@ func (om *machine) Destroy() {
 	om.cluster.DelMach(om)
 }
 
+func (om *machine) ConsolePath() string {
+	return ""
+}
+
 func (om *machine) ConsoleOutput() string {
 	return om.console
 }

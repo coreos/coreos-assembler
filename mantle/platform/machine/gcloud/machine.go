@@ -98,6 +98,10 @@ func (gm *machine) Destroy() {
 	gm.gc.DelMach(gm)
 }
 
+func (gm *machine) ConsolePath() string {
+	return ""
+}
+
 func (gm *machine) ConsoleOutput() string {
 	return gm.console
 }
