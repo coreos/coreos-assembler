@@ -85,6 +85,10 @@ type Machine interface {
 	// any failures; since they are not actionable, it does not return an error.
 	Destroy()
 
+	// ConsolePath returns the path to the machine's console log file,
+	// suitable for live monitoring while the machine is running.
+	ConsolePath() string
+
 	// ConsoleOutput returns the machine's console output if available,
 	// or an empty string.  Only expected to be valid after Destroy().
 	ConsoleOutput() string

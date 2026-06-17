@@ -93,6 +93,10 @@ func (dm *machine) Destroy() {
 	dm.cluster.DelMach(dm)
 }
 
+func (dm *machine) ConsolePath() string {
+	return ""
+}
+
 func (dm *machine) ConsoleOutput() string {
 	// DigitalOcean provides no API for retrieving ConsoleOutput
 	return ""

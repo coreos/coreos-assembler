@@ -1,17 +1,18 @@
 package iso
 
 import (
+	"context"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/coreos/coreos-assembler/mantle/kola"
-	"github.com/coreos/coreos-assembler/mantle/platform"
-	coreosarch "github.com/coreos/stream-metadata-go/arch"
-	"github.com/pkg/errors"
-
 	"github.com/coreos/coreos-assembler/mantle/kola/cluster"
 	"github.com/coreos/coreos-assembler/mantle/kola/register"
+	"github.com/coreos/coreos-assembler/mantle/platform"
 	"github.com/coreos/coreos-assembler/mantle/platform/machine/qemu"
+	"github.com/coreos/coreos-assembler/mantle/util"
+	coreosarch "github.com/coreos/stream-metadata-go/arch"
 )
 
 var (
@@ -75,32 +76,21 @@ func init() {
 func testLiveLogin(c cluster.TestCluster, firmware string) {
 	EnsureLiveArtifactsExist(c)
 
-	errchan := make(chan error)
-
 	setupDisks := func(_ platform.MachineOptions, builder *platform.QemuBuilder) error {
-		// https://github.com/coreos/fedora-coreos-config/blob/testing-devel/overlay.d/05core/usr/lib/systemd/system/coreos-liveiso-success.service
-		output, err := builder.VirtioChannelRead("coreos.liveiso-success")
-		if err != nil {
-			return errors.Wrap(err, "setting up virtio-serial channel")
-		}
-
-		// Read line in a goroutine and send errors to channel
-		go func() {
-			errchan <- CheckTestOutput(output, []string{"coreos-liveiso-success"})
-		}()
-
 		isopath := filepath.Join(kola.CosaBuild.Dir, kola.CosaBuild.Meta.BuildArtifacts.LiveIso.Path)
 		// Drop the bootindex bit (applicable to all arches except s390x and ppc64le); we want it to be the default
 		return builder.AddIso(isopath, "", false)
 	}
 
+	var m platform.Machine
 	switch pc := c.Cluster.(type) {
 	case *qemu.Cluster:
 		options := platform.MachineOptions{Firmware: firmware}
 		builder := &qemu.MachineBuilder{
 			SetupDisks: setupDisks,
 		}
-		_, err := pc.NewMachineWithBuilder(nil, options, builder)
+		var err error
+		m, err = pc.NewMachineWithBuilder(nil, options, builder)
 		if err != nil {
 			c.Fatalf("Unable to create test machine: %v", err)
 		}
@@ -108,7 +98,10 @@ func testLiveLogin(c cluster.TestCluster, firmware string) {
 		c.Fatalf("Unsupported cluster type")
 	}
 
-	if err := <-errchan; err != nil {
-		c.Fatal(err)
+	// Wait for the automatic login prompt to appear in the console output
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
+	if err := util.WaitForConsoleOutput(ctx, m.ConsolePath(), "login: core (automatic login)"); err != nil {
+		c.Fatalf("Failed waiting for automatic login: %v", err)
 	}
 }
