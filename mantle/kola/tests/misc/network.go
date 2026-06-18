@@ -46,7 +46,7 @@ func init() {
 		ClusterSize:    1,
 		Name:           "coreos.network.initramfs.second-boot",
 		Description:    "Verify that networking is not started in the initramfs on the second boot.",
-		ExcludeDistros: []string{"fcos", "rhcos"},
+		ExcludeDistros: []string{"fcos", "rhcos", "scos"},
 	})
 	// This test follows the same network configuration used on https://github.com/RHsyseng/rhcos-slb
 	register.RegisterTest(&register.Test{
