@@ -335,9 +335,11 @@ func runQemuExec(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		// Add a blank disk (this is a disk we can install to)
-		if err := builder.AddBootDisk(buildDiskFromOptions()); err != nil {
-			return err
+		// Add a blank disk (this is a disk we can install to) if the user hasn't set any disks manually
+		if len(addDisks) == 0 && kola.QEMUOptions.DiskImage == "" {
+			if err := builder.AddBootDisk(buildDiskFromOptions()); err != nil {
+				return err
+			}
 		}
 	}
 	builder.Hostname = hostname
