@@ -117,7 +117,7 @@ func RebootMachine(m Machine, j *Journal) error {
 	if err := StartReboot(m); err != nil {
 		return fmt.Errorf("machine %q failed to begin rebooting: %v", m.ID(), err)
 	}
-	return StartMachineAfterReboot(m, j, bootId)
+	return StartMachineAfterReboot(m, j, 10*time.Minute, bootId)
 }
 
 // WaitForMachineReboot will wait for the machine to reboot, i.e. it is assumed
@@ -141,6 +141,7 @@ func WaitForMachineReboot(m Machine, j *Journal, timeout time.Duration, oldBootI
 	// This is intended to be "best effort", there are a wide variety of potential
 	// failure modes.  In the future we should probably have a relatively short
 	// timeout here and not make it fatal, and instead only do a timeout inside StartMachineAfterReboot().
+	started := time.Now()
 	c := make(chan error)
 	go func() {
 		out, stderr, err := m.SSH(fmt.Sprintf("if [ $(cat /proc/sys/kernel/random/boot_id) == '%s' ]; then echo waiting for reboot | logger && sleep infinity; fi", oldBootId))
@@ -172,14 +173,19 @@ func WaitForMachineReboot(m Machine, j *Journal, timeout time.Duration, oldBootI
 		if err != nil {
 			return err
 		}
-		return StartMachineAfterReboot(m, j, oldBootId)
+		elapsed := time.Since(started)
+		remainingTimeout := timeout - elapsed
+		if remainingTimeout <= 0 {
+			return fmt.Errorf("timeout exceeded before starting machine after reboot: elapsed=%v, timeout=%v", elapsed, timeout)
+		}
+		return StartMachineAfterReboot(m, j, remainingTimeout, oldBootId)
 	case <-time.After(timeout):
 		return fmt.Errorf("timed out after %v waiting for machine to reboot", timeout)
 	}
 }
 
-func StartMachineAfterReboot(m Machine, j *Journal, oldBootId string) error {
-	if err := WaitForSshAfterReboot(m, oldBootId); err != nil {
+func StartMachineAfterReboot(m Machine, j *Journal, timeout time.Duration, oldBootId string) error {
+	if err := WaitForSshAfterReboot(m, timeout, oldBootId); err != nil {
 		return fmt.Errorf("machine %q failed waiting for reboot: %v", m.ID(), err)
 	}
 	return startMachineAfterBoot(m, j)
@@ -228,7 +234,7 @@ func GetMachineBootId(m Machine) (string, error) {
 
 // WaitForSshAfterReboot retries SSH until the machine's boot ID differs from
 // oldBootId, indicating the reboot has completed.
-func WaitForSshAfterReboot(m Machine, oldBootId string) error {
+func WaitForSshAfterReboot(m Machine, timeout time.Duration, oldBootId string) error {
 	if oldBootId == "" {
 		panic("WaitForSshAfterReboot called with empty oldBootId")
 	}
@@ -249,7 +255,7 @@ func WaitForSshAfterReboot(m Machine, oldBootId string) error {
 		return nil
 	}
 
-	if err := util.RetryUntilTimeoutWithContext(ctx, 10*time.Minute, 10*time.Second, check); err != nil {
+	if err := util.RetryUntilTimeoutWithContext(ctx, timeout, 10*time.Second, check); err != nil {
 		return errors.Wrapf(err, "waiting for SSH after reboot")
 	}
 	return nil

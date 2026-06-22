@@ -1055,11 +1055,22 @@ func metadataFromTestBinary(executable string) (*externalTestMeta, error) {
 	return meta, nil
 }
 
+// getRemainingTimeout calculates the remaining timeout and returns an error if it's exceeded
+func getRemainingTimeout(started time.Time, timeout time.Duration) (time.Duration, error) {
+	elapsed := time.Since(started)
+	remaining := timeout - elapsed
+	if remaining <= 0 {
+		return 0, fmt.Errorf("timeout exceeded: elapsed=%v, timeout=%v", elapsed, timeout)
+	}
+	return remaining, nil
+}
+
 // runExternalTest is an implementation of the "external" test framework.
 // See README-kola-ext.md as well as the comments in kolet.go for reboot
 // handling.
-func runExternalTest(c cluster.TestCluster, mach platform.Machine, testNum int) error {
+func runExternalTest(c cluster.TestCluster, mach platform.Machine, testNum int, timeout time.Duration) error {
 	var previousRebootState string
+	started := time.Now()
 	for {
 		bootID, err := platform.GetMachineBootId(mach)
 		if err != nil {
@@ -1118,7 +1129,11 @@ func runExternalTest(c cluster.TestCluster, mach platform.Machine, testNum int) 
 				return errors.Wrapf(err, "failed to acknowledge reboot")
 			}
 			plog.Debug("Waiting for reboot")
-			err = mach.WaitForReboot(120*time.Second, bootID)
+			remainingTimeout, err := getRemainingTimeout(started, timeout)
+			if err != nil {
+				return errors.Wrapf(err, "Waiting for reboot")
+			}
+			err = mach.WaitForReboot(remainingTimeout, bootID)
 			if err != nil {
 				return errors.Wrapf(err, "Waiting for reboot")
 			}
@@ -1136,7 +1151,11 @@ func runExternalTest(c cluster.TestCluster, mach platform.Machine, testNum int) 
 				return errors.Wrapf(err, "failed to acknowledge soft-reboot")
 			}
 			plog.Debug("Waiting for soft-reboot")
-			err = mach.WaitForSoftReboot(120*time.Second, softrebootCount)
+			remainingTimeout, err := getRemainingTimeout(started, timeout)
+			if err != nil {
+				return errors.Wrapf(err, "Waiting for soft-reboot")
+			}
+			err = mach.WaitForSoftReboot(remainingTimeout, softrebootCount)
 			if err != nil {
 				return errors.Wrapf(err, "Waiting for soft-reboot")
 			}
@@ -1240,7 +1259,7 @@ ExecStart=%s
 			mach := c.Machines()[0]
 			plog.Debugf("Running kolet")
 
-			err := runExternalTest(c, mach, num)
+			err := runExternalTest(c, mach, num, time.Duration(targetMeta.TimeoutMin)*time.Minute)
 			if err != nil {
 				out, stderr, suberr := mach.SSH(fmt.Sprintf("sudo systemctl status --lines=40 %s", shellquote.Join(unitName)))
 				if len(out) > 0 {
