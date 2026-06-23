@@ -16,6 +16,7 @@ package journal
 
 import (
 	"context"
+	"errors"
 	"io"
 	"os"
 
@@ -54,7 +55,10 @@ func (r *Recorder) record(export io.Reader) error {
 	for {
 		entry, err := src.ReadEntry()
 		if err != nil {
-			if err == io.EOF {
+			// Treat a closed pipe the same as EOF; during teardown
+			// the pipe read end is closed to stop this goroutine,
+			// which is a normal shutdown path.
+			if err == io.EOF || errors.Is(err, os.ErrClosed) {
 				err = nil
 			}
 			return err
