@@ -19,6 +19,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"io"
 )
 
@@ -96,7 +97,15 @@ func (e *ExportReader) readBinary() ([]byte, error) {
 	}
 
 	// then, the data
-	value := make([]byte, binary.LittleEndian.Uint64(size))
+	// Validate the size to avoid a panic from corrupt or truncated streams
+	// (e.g. when the journal pipe is torn down mid-read).
+	// systemd limits journal fields to 768KB by default; 16 MiB is generous.
+	dataSize := binary.LittleEndian.Uint64(size)
+	const maxFieldSize = 1 << 24 // 16 MiB
+	if dataSize > maxFieldSize {
+		return nil, fmt.Errorf("journal: binary field size %d exceeds maximum %d", dataSize, maxFieldSize)
+	}
+	value := make([]byte, dataSize)
 	if _, err := io.ReadFull(e.buf, value); err != nil {
 		return nil, err
 	}
