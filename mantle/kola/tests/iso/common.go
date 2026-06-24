@@ -203,6 +203,26 @@ func WaitToSwitchBootOrderAndReboot(c cluster.TestCluster, qc *qemu.Cluster, m p
 	}
 }
 
+// VerifyNoEfiBootEntry checks that the EFI boot entries contain an
+// auto-created entry for the booted removable media (CD-ROM/DVD/Misc
+// Device) and that no persistent hard-drive entry was created for it.
+// Originally implemented in bf6d88e.
+func VerifyNoEfiBootEntry(c cluster.TestCluster, m platform.Machine) {
+	c.RunCmdSync(m, `
+		test -e /sys/firmware/efi
+		# Skip test on EL9 because efibootmgr didn't denote back then
+		# which entries were autocreated.
+		source /etc/os-release
+		if [ "${PLATFORM_ID:-}" != "platform:el9" ]; then
+			entries=$(efibootmgr)
+			# Check that there is an entry for the media we booted from
+			bootmediaentries=$(grep -E '(UEFI Misc Device|CDROM|DVD-ROM)' <<< "${entries}")
+			test -n "${bootmediaentries}"
+			# And that it was autocreated
+			grep auto_created_boot_option <<< "${bootmediaentries}"
+		fi`)
+}
+
 func cat(outfile string, infiles ...string) error {
 	out, err := os.OpenFile(outfile, os.O_WRONLY|os.O_CREATE, 0644)
 	if err != nil {
@@ -299,25 +319,6 @@ Type=oneshot
 RemainAfterExit=yes
 ExecStart=/bin/sh -c '[ ! -e /boot/ignition ]'
 [Install]
-RequiredBy=multi-user.target`
-
-// This test is broken. Please fix!
-// https://github.com/coreos/coreos-assembler/issues/3554
-var verifyNoEFIBootEntry = `
-[Unit]
-Description=TestISO Verify No EFI Boot Entry
-OnFailure=emergency.target
-OnFailureJobMode=isolate
-ConditionPathExists=/sys/firmware/efi
-Before=live-signal-ok.service
-[Service]
-Type=oneshot
-RemainAfterExit=yes
-ExecStart=/bin/sh -c '! efibootmgr -v | grep -E "(HD|CDROM)\("'
-[Install]
-# for install tests
-RequiredBy=coreos-installer.target
-# for iso-as-disk
 RequiredBy=multi-user.target`
 
 // Verify that the volume ID is the OS name. See also
