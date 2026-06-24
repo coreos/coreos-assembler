@@ -25,6 +25,8 @@ func init() {
 	}
 	for _, testName := range tests_as_disk_x86_64 {
 		opts := getIsoTestOpts(testName)
+		// Set machine to boot from the ISO as disk
+		opts.machineOpts.BootFrom = platform.BootFromISOAsDisk
 
 		register.RegisterTest(&register.Test{
 			Run: func(c cluster.TestCluster) {
@@ -38,11 +40,8 @@ func init() {
 			Platforms:   []string{"qemu"},
 			// Skip base checks (looks at journal for failures) until bootupd fix lands
 			// https://github.com/coreos/fedora-coreos-tracker/issues/2136
-			Tags: []string{kola.SkipBaseChecksTag, "reprovision"},
-			MachineOptions: platform.MachineOptions{
-				Firmware: opts.firmware,
-				BootFrom: platform.BootFromISOAsDisk,
-			},
+			Tags:           []string{kola.SkipBaseChecksTag, "reprovision"},
+			MachineOptions: opts.machineOpts,
 		})
 	}
 }
@@ -52,7 +51,7 @@ func testLiveAsDisk(c cluster.TestCluster, opts IsoTestOpts) {
 	// Verify we are on Live ISO
 	c.RunCmdSync(m, "test -f /run/ostree-live")
 	// And that no efi boot entry exists if on UEFI
-	if opts.firmware == "uefi" || opts.firmware == "uefi-secure" {
+	if opts.machineOpts.Firmware == "uefi" || opts.machineOpts.Firmware == "uefi-secure" {
 		VerifyNoEfiBootEntry(c, m)
 	}
 }

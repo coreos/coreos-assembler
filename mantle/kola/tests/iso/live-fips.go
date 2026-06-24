@@ -17,6 +17,10 @@ var tests_RHCOS_uefi = []string{
 func init() {
 	for _, testName := range tests_RHCOS_uefi {
 		opts := getIsoTestOpts(testName)
+		// Set fips=1 kernel argument
+		opts.machineOpts.AppendKernelArgs = "fips=1"
+		// Set machine to boot from the ISO
+		opts.machineOpts.BootFrom = platform.BootFromISO
 
 		register.RegisterTest(&register.Test{
 			Run:           testLiveFIPS,
@@ -29,12 +33,8 @@ func init() {
 			Architectures: []string{"x86_64", "aarch64"},
 			// Skip base checks (looks at journal for failures) until bootupd fix lands
 			// https://github.com/coreos/fedora-coreos-tracker/issues/2136
-			Tags: []string{kola.SkipBaseChecksTag, "reprovision"},
-			MachineOptions: platform.MachineOptions{
-				AppendKernelArgs: "fips=1",
-				Firmware:         opts.firmware,
-				BootFrom:         platform.BootFromISO,
-			},
+			Tags:           []string{kola.SkipBaseChecksTag, "reprovision"},
+			MachineOptions: opts.machineOpts,
 		})
 	}
 }

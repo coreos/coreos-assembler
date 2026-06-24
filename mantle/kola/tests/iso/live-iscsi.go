@@ -62,9 +62,11 @@ func getAllIscsiTests() []string {
 
 func init() {
 	for _, testName := range getAllIscsiTests() {
+		opts := getIsoTestOpts(testName)
+		// We need more memory to start another VM within.
+		opts.machineOpts.MinMemory = 2048
 		register.RegisterTest(&register.Test{
 			Run: func(c cluster.TestCluster) {
-				opts := getIsoTestOpts(testName)
 				testLiveSCSI(c, opts)
 			},
 			ClusterSize: 0,
@@ -76,6 +78,9 @@ func init() {
 			Timeout:   installTimeoutMins * time.Minute,
 			Flags:     []register.Flag{},
 			Platforms: []string{"qemu"},
+			// With ClusterSize: 0 we create the machine manually below, but at least
+			// MinMemory will be considered by the test harness for scheduling.
+			MachineOptions: opts.machineOpts,
 		})
 	}
 }
@@ -182,15 +187,10 @@ func testLiveSCSI(c cluster.TestCluster, opts IsoTestOpts) {
 		return nil
 	}
 
-	// We need more memory to start another VM within !
-	options := platform.MachineOptions{
-		MinMemory: 2048,
-		Firmware:  opts.firmware,
-	}
 	machineBuilder := &qemu.MachineBuilder{
 		SetupDisks: setupDisks,
 	}
-	_, err = qc.NewMachineWithBuilder(config, options, machineBuilder)
+	_, err = qc.NewMachineWithBuilder(config, opts.machineOpts, machineBuilder)
 	if err != nil {
 		c.Fatalf("Unable to create test machine: %v", err)
 	}
