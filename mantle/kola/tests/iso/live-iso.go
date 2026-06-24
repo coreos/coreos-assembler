@@ -240,7 +240,6 @@ func testLiveIso(c cluster.TestCluster, opts IsoTestOpts) {
 	}
 	liveConfig.CopyKeys(keys)
 	liveConfig.AddSystemdUnit("live-signal-ok.service", liveSignalOKUnit, conf.Enable)
-	liveConfig.AddSystemdUnit("verify-no-efi-boot-entry.service", verifyNoEFIBootEntry, conf.Enable)
 	liveConfig.AddSystemdUnit("iso-not-mounted-when-fromram.service", isoNotMountedUnit, conf.Enable)
 	liveConfig.AddSystemdUnit("coreos-test-entered-emergency-target.service", signalFailureUnit, conf.Enable)
 	volumeIdUnitContents := fmt.Sprintf(verifyIsoVolumeId, kola.CosaBuild.Meta.Name)
@@ -334,6 +333,11 @@ func testLiveIso(c cluster.TestCluster, opts IsoTestOpts) {
 	// Verify the machine came up (uses SSH)
 	if err := platform.CheckMachine(m); err != nil {
 		c.Fatal(err)
+	}
+
+	// While booted into the live ISO verify no efi bootentry was created
+	if opts.firmware == "uefi" || opts.firmware == "uefi-secure" {
+		VerifyNoEfiBootEntry(c, m)
 	}
 
 	// Wait for install to complete, then switch the boot order and reboot.
