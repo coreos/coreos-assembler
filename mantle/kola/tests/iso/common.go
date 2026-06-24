@@ -81,7 +81,6 @@ func startHTTPServer(listener net.Listener, dir string) *http.Server {
 }
 
 type IsoTestOpts struct {
-	instInsecure    bool
 	addNmKeyfile    bool
 	enable4k        bool
 	enableMultipath bool
@@ -91,7 +90,7 @@ type IsoTestOpts struct {
 	enableIbft      bool
 	manual          bool
 	pxeAppendRootfs bool
-	firmware        string
+	machineOpts     platform.MachineOptions
 }
 
 func getIsoTestOpts(testName string) IsoTestOpts {
@@ -102,9 +101,9 @@ func getIsoTestOpts(testName string) IsoTestOpts {
 		opts.enable4k = true
 	}
 	if strings.Contains(testName, "uefi-secure") {
-		opts.firmware = "uefi-secure"
+		opts.machineOpts.Firmware = "uefi-secure"
 	} else if strings.Contains(testName, "uefi") {
-		opts.firmware = "uefi"
+		opts.machineOpts.Firmware = "uefi"
 	}
 	if strings.Contains(testName, "mpath") {
 		opts.enableMultipath = true
@@ -131,7 +130,6 @@ func getIsoTestOpts(testName string) IsoTestOpts {
 		opts.manual = true
 	}
 
-	opts.instInsecure = kola.QEMUOptions.InstInsecure || IsDevBuild()
 	return opts
 }
 
@@ -139,6 +137,10 @@ func EnsureLiveArtifactsExist(c cluster.TestCluster) {
 	if kola.CosaBuild.Meta.BuildArtifacts.LiveIso == nil || kola.CosaBuild.Meta.BuildArtifacts.LiveKernel == nil || kola.CosaBuild.Meta.BuildArtifacts.LiveInitramfs == nil || kola.CosaBuild.Meta.BuildArtifacts.LiveRootfs == nil {
 		c.Skipf("Build %s is missing live artifacts", kola.CosaBuild.Meta.BuildID)
 	}
+}
+
+func ShouldUseInsecureInstallOption() bool {
+	return kola.QEMUOptions.InstInsecure || IsDevBuild()
 }
 
 func IsDevBuild() bool {

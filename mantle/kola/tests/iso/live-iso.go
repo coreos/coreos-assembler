@@ -81,6 +81,9 @@ func getAllLiveIsoTests() []string {
 
 func init() {
 	for _, testName := range getAllLiveIsoTests() {
+		opts := getIsoTestOpts(testName)
+		// Doing an install. Allocate more memory.
+		opts.machineOpts.MinMemory = 4096
 		// Skip base checks (looks at journal for failures) until bootupd fix lands
 		// https://github.com/coreos/fedora-coreos-tracker/issues/2136
 		tags := []string{kola.SkipBaseChecksTag, "reprovision"}
@@ -89,7 +92,6 @@ func init() {
 		}
 		register.RegisterTest(&register.Test{
 			Run: func(c cluster.TestCluster) {
-				opts := getIsoTestOpts(testName)
 				testLiveIso(c, opts)
 			},
 			ClusterSize: 0,
@@ -99,6 +101,9 @@ func init() {
 			Tags:        tags,
 			Flags:       []register.Flag{},
 			Platforms:   []string{"qemu"},
+			// With ClusterSize: 0 we create the machine manually below, but at least
+			// MinMemory will be considered by the test harness for scheduling.
+			MachineOptions: opts.machineOpts,
 		})
 	}
 }
@@ -150,7 +155,7 @@ func testLiveIso(c cluster.TestCluster, opts IsoTestOpts) {
 	installerConfig := coreosInstallerConfig{
 		DestDevice:  "/dev/vda",
 		AppendKargs: renderCosaTestIsoDebugKargs(),
-		Insecure:    opts.instInsecure,
+		Insecure:    ShouldUseInsecureInstallOption(),
 		CopyNetwork: opts.addNmKeyfile, // force networking on in the initrd to verify the keyfile was used
 	}
 
@@ -314,18 +319,14 @@ func testLiveIso(c cluster.TestCluster, opts IsoTestOpts) {
 	// install so we can synchronously switch the boot order below.
 	kargs = append(kargs, "coreos.inst.skip_reboot")
 
-	options := platform.MachineOptions{
-		MinMemory:        4096,
-		MultiPathDisk:    opts.enableMultipath,
-		AppendKernelArgs: strings.Join(kargs, " "),
-		Firmware:         opts.firmware,
-	}
+	opts.machineOpts.AppendKernelArgs = strings.Join(kargs, " ")
+	opts.machineOpts.MultiPathDisk = opts.enableMultipath
 
 	machineBuilder := &qemu.MachineBuilder{
 		SetupDisks: setupDisks,
 	}
 
-	m, err := qc.NewMachineWithBuilder(liveConfig, options, machineBuilder)
+	m, err := qc.NewMachineWithBuilder(liveConfig, opts.machineOpts, machineBuilder)
 	if err != nil {
 		c.Fatal(errors.Wrap(err, "unable to create test machine"))
 	}
@@ -336,7 +337,7 @@ func testLiveIso(c cluster.TestCluster, opts IsoTestOpts) {
 	}
 
 	// While booted into the live ISO verify no efi bootentry was created
-	if opts.firmware == "uefi" || opts.firmware == "uefi-secure" {
+	if opts.machineOpts.Firmware == "uefi" || opts.machineOpts.Firmware == "uefi-secure" {
 		VerifyNoEfiBootEntry(c, m)
 	}
 

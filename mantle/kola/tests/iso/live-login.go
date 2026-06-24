@@ -2,7 +2,6 @@ package iso
 
 import (
 	"context"
-	"strings"
 	"time"
 
 	"github.com/coreos/coreos-assembler/mantle/kola"
@@ -48,12 +47,12 @@ func getAllLiveLoginTests() []string {
 
 func init() {
 	for _, testName := range getAllLiveLoginTests() {
-		var firmware string
-		if strings.Contains(testName, "uefi-secure") {
-			firmware = "uefi-secure"
-		} else if strings.Contains(testName, "uefi") {
-			firmware = "uefi"
-		}
+		opts := getIsoTestOpts(testName)
+		// Set machine to boot from the ISO
+		opts.machineOpts.BootFrom = platform.BootFromISO
+		// Set machine to not pass an Ignition config since we want to
+		// verify autologin works (which only triggers with no config)
+		opts.machineOpts.NoIgnition = true
 
 		register.RegisterTest(&register.Test{
 			Run:         testLiveLogin,
@@ -65,12 +64,8 @@ func init() {
 			Platforms:   []string{"qemu"},
 			// Skip base checks (looks at journal for failures) until bootupd fix lands
 			// https://github.com/coreos/fedora-coreos-tracker/issues/2136
-			Tags: []string{kola.SkipBaseChecksTag, "reprovision"},
-			MachineOptions: platform.MachineOptions{
-				Firmware:   firmware,
-				BootFrom:   platform.BootFromISO,
-				NoIgnition: true,
-			},
+			Tags:           []string{kola.SkipBaseChecksTag, "reprovision"},
+			MachineOptions: opts.machineOpts,
 		})
 	}
 }

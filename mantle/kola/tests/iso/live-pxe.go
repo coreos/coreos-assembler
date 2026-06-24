@@ -62,9 +62,17 @@ func getAllPxeTests() []string {
 
 func init() {
 	for _, testName := range getAllPxeTests() {
+		opts := getIsoTestOpts(testName)
+		// Doing an install. Allocate more memory.
+		opts.machineOpts.MinMemory = 4096
+		// Increase the memory for pxe tests with appended rootfs in the initrd
+		// we were bumping up into the 4GiB limit in RHCOS/c9s
+		if opts.pxeAppendRootfs {
+			opts.machineOpts.MinMemory = 5120
+		}
+
 		register.RegisterTest(&register.Test{
 			Run: func(c cluster.TestCluster) {
-				opts := getIsoTestOpts(testName)
 				testLivePXE(c, opts)
 			},
 			ClusterSize: 0,
@@ -76,6 +84,9 @@ func init() {
 			// Skip base checks (looks at journal for failures) until bootupd fix lands
 			// https://github.com/coreos/fedora-coreos-tracker/issues/2136
 			Tags: []string{kola.SkipBaseChecksTag, "reprovision"},
+			// With ClusterSize: 0 we create the machine manually below, but at least
+			// MinMemory will be considered by the test harness for scheduling.
+			MachineOptions: opts.machineOpts,
 		})
 	}
 }
@@ -143,7 +154,7 @@ func testLivePXE(c cluster.TestCluster, opts IsoTestOpts) {
 		if err != nil {
 			return err
 		}
-		liveConfig, err := getPXEConfig(opts.instInsecure, opts.isOffline)
+		liveConfig, err := getPXEConfig(opts.isOffline)
 		if err != nil {
 			return err
 		}
@@ -217,23 +228,12 @@ func testLivePXE(c cluster.TestCluster, opts IsoTestOpts) {
 		return nil
 	}
 
-	options := platform.MachineOptions{
-		MinMemory: 4096,
-		Firmware:  opts.firmware,
-	}
-
-	// increase the memory for pxe tests with appended rootfs in the initrd
-	// we were bumping up into the 4GiB limit in RHCOS/c9s
-	if opts.pxeAppendRootfs {
-		options.MinMemory = 5120
-	}
-
 	builder := &qemu.MachineBuilder{
 		InitBuilder:  initBuilder,
 		SetupDisks:   setupDisks,
 		SetupNetwork: setupNet,
 	}
-	m, err := qc.NewMachineWithBuilder(nil, options, builder)
+	m, err := qc.NewMachineWithBuilder(nil, opts.machineOpts, builder)
 	if err != nil {
 		c.Fatal(errors.Wrap(err, "unable to create test machine"))
 	}
@@ -251,11 +251,11 @@ func testLivePXE(c cluster.TestCluster, opts IsoTestOpts) {
 	}
 }
 
-func getPXEConfig(insecure bool, offline bool) (*conf.Conf, error) {
+func getPXEConfig(offline bool) (*conf.Conf, error) {
 	installerConfig := coreosInstallerConfig{
 		Console:     []string{platform.ConsoleKernelArgument[coreosarch.CurrentRpmArch()]},
 		AppendKargs: renderCosaTestIsoDebugKargs(),
-		Insecure:    insecure,
+		Insecure:    ShouldUseInsecureInstallOption(),
 	}
 	installerConfigData, err := yaml.Marshal(installerConfig)
 	if err != nil {
@@ -379,7 +379,7 @@ func (pxe *PXE) setupArchDefaults(opts IsoTestOpts) error {
 	pxe.tftpipaddr = "192.168.76.2"
 	switch coreosarch.CurrentRpmArch() {
 	case "x86_64":
-		if opts.firmware == "uefi" {
+		if opts.machineOpts.Firmware == "uefi" {
 			pxe.boottype = "grub"
 			pxe.bootfile = "/boot/grub2/grubx64.efi"
 			pxe.pxeimagepath = "/boot/efi/EFI/fedora/grubx64.efi"
@@ -500,7 +500,7 @@ func renderInstallKargs(baseurl string, metalname string, opts IsoTestOpts) []st
 		args = append(args, fmt.Sprintf("coreos.inst.image_url=%s/%s", baseurl, metalname))
 	}
 	// FIXME - ship signatures by default too
-	if opts.instInsecure {
+	if ShouldUseInsecureInstallOption() {
 		args = append(args, "coreos.inst.insecure")
 	}
 	return args
