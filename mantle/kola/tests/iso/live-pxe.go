@@ -83,7 +83,7 @@ func init() {
 			Platforms:   []string{"qemu"},
 			// Skip base checks (looks at journal for failures) until bootupd fix lands
 			// https://github.com/coreos/fedora-coreos-tracker/issues/2136
-			Tags: []string{kola.SkipBaseChecksTag, "reprovision"},
+			Tags: []string{kola.SkipBaseChecksTag},
 			// With ClusterSize: 0 we create the machine manually below, but at least
 			// MinMemory will be considered by the test harness for scheduling.
 			MachineOptions: opts.machineOpts,

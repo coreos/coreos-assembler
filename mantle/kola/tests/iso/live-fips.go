@@ -33,7 +33,7 @@ func init() {
 			Architectures: []string{"x86_64", "aarch64"},
 			// Skip base checks (looks at journal for failures) until bootupd fix lands
 			// https://github.com/coreos/fedora-coreos-tracker/issues/2136
-			Tags:           []string{kola.SkipBaseChecksTag, "reprovision"},
+			Tags:           []string{kola.SkipBaseChecksTag},
 			MachineOptions: opts.machineOpts,
 		})
 	}
