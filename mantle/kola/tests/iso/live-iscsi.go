@@ -122,7 +122,7 @@ func testLiveSCSI(c cluster.TestCluster, opts IsoTestOpts) {
 
 	// Prepare config
 	var butane string
-	if opts.enableIbft && opts.enableMultipath {
+	if opts.enableIbft && opts.machineOpts.MultiPathDisk {
 		butane = strings.ReplaceAll(iscsi_butane_config, "COREOS_INSTALLER_KARGS", "--append-karg rd.iscsi.firmware=1 --append-karg rd.multipath=default --append-karg root=/dev/disk/by-label/dm-mpath-root --append-karg rw")
 	} else if opts.enableIbft {
 		butane = strings.ReplaceAll(iscsi_butane_config, "COREOS_INSTALLER_KARGS", "--append-karg rd.iscsi.firmware=1")

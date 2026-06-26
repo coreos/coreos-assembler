@@ -83,7 +83,6 @@ func startHTTPServer(listener net.Listener, dir string) *http.Server {
 type IsoTestOpts struct {
 	addNmKeyfile    bool
 	enable4k        bool
-	enableMultipath bool
 	isOffline       bool
 	isISOFromRAM    bool
 	isMiniso        bool
@@ -106,7 +105,7 @@ func getIsoTestOpts(testName string) IsoTestOpts {
 		opts.machineOpts.Firmware = "uefi"
 	}
 	if strings.Contains(testName, "mpath") {
-		opts.enableMultipath = true
+		opts.machineOpts.MultiPathDisk = true
 	}
 	if strings.Contains(testName, "offline") {
 		opts.isOffline = true

@@ -143,7 +143,7 @@ func testLiveIso(c cluster.TestCluster, opts IsoTestOpts) {
 	targetConfig.AddSystemdUnit("coreos-test-installer.service", signalCompletionUnit, conf.Enable)
 	targetConfig.AddSystemdUnit("coreos-test-entered-emergency-target.service", signalFailureUnit, conf.Enable)
 	targetConfig.AddSystemdUnit("coreos-test-installer-no-ignition.service", checkNoIgnition, conf.Enable)
-	if opts.enableMultipath {
+	if opts.machineOpts.MultiPathDisk {
 		targetConfig.AddSystemdUnit("coreos-test-installer-multipathed.service", multipathedRoot, conf.Enable)
 	}
 	if opts.addNmKeyfile {
@@ -227,7 +227,7 @@ func testLiveIso(c cluster.TestCluster, opts IsoTestOpts) {
 	if coreosarch.CurrentRpmArch() != "s390x" {
 		installerConfig.Console = []string{platform.ConsoleKernelArgument[coreosarch.CurrentRpmArch()]}
 	}
-	if opts.enableMultipath {
+	if opts.machineOpts.MultiPathDisk {
 		// we only have one multipath device so it has to be that
 		installerConfig.DestDevice = "/dev/mapper/mpatha"
 		installerConfig.AppendKargs = append(installerConfig.AppendKargs, "rd.multipath=default", "root=/dev/disk/by-label/dm-mpath-root", "rw")
@@ -254,7 +254,7 @@ func testLiveIso(c cluster.TestCluster, opts IsoTestOpts) {
 	}
 	liveConfig.AddFile("/etc/coreos/installer.d/mantle.yaml", string(installerConfigData), mode)
 	liveConfig.AddAutoLogin()
-	if opts.enableMultipath {
+	if opts.machineOpts.MultiPathDisk {
 		liveConfig.AddSystemdUnit("coreos-installer-multipath.service", coreosInstallerMultipathUnit, conf.Enable)
 		liveConfig.AddSystemdUnitDropin("coreos-installer.service", "wait-for-mpath-target.conf", waitForMpathTargetConf)
 	}
@@ -281,7 +281,7 @@ func testLiveIso(c cluster.TestCluster, opts IsoTestOpts) {
 		disk := platform.Disk{
 			Size:          "12G", // Arbitrary
 			SectorSize:    sectorSize,
-			MultiPathDisk: opts.enableMultipath,
+			MultiPathDisk: opts.machineOpts.MultiPathDisk,
 		}
 		//TBD: see if we can remove this and just use AddDisk and inject bootindex during startup
 		if coreosarch.CurrentRpmArch() == "s390x" || coreosarch.CurrentRpmArch() == "aarch64" {
@@ -320,7 +320,6 @@ func testLiveIso(c cluster.TestCluster, opts IsoTestOpts) {
 	kargs = append(kargs, "coreos.inst.skip_reboot")
 
 	opts.machineOpts.AppendKernelArgs = strings.Join(kargs, " ")
-	opts.machineOpts.MultiPathDisk = opts.enableMultipath
 
 	machineBuilder := &qemu.MachineBuilder{
 		SetupDisks: setupDisks,
