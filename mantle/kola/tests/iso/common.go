@@ -84,7 +84,6 @@ type IsoTestOpts struct {
 	addNmKeyfile    bool
 	enable4k        bool
 	isOffline       bool
-	isISOFromRAM    bool
 	isMiniso        bool
 	enableIbft      bool
 	manual          bool
@@ -111,7 +110,8 @@ func getIsoTestOpts(testName string) IsoTestOpts {
 		opts.isOffline = true
 	}
 	if strings.Contains(testName, "fromram") {
-		opts.isISOFromRAM = true
+		// https://github.com/coreos/fedora-coreos-config/pull/2544
+		opts.machineOpts.AppendKernelArgs = "coreos.liveiso.fromram"
 	}
 	if strings.Contains(testName, "miniso") {
 		opts.isMiniso = true

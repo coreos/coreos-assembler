@@ -305,9 +305,8 @@ func testLiveIso(c cluster.TestCluster, opts IsoTestOpts) {
 		return builder.AddIso(isopath, "bootindex=3", false)
 	}
 	kargs := renderCosaTestIsoDebugKargs()
-	if opts.isISOFromRAM {
-		// https://github.com/coreos/fedora-coreos-config/pull/2544
-		kargs = append(kargs, "coreos.liveiso.fromram")
+	if opts.machineOpts.AppendKernelArgs != "" {
+		kargs = append(kargs, opts.machineOpts.AppendKernelArgs)
 	}
 	if opts.addNmKeyfile {
 		// We verify that the keyfiles get applied in the initramfs so let's
