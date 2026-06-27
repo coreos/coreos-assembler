@@ -1,0 +1,55 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Eli Elgaev <eelgaev@redhat.com>
+Date: Sun, 8 Jun 2026 00:00:00 +0000
+Subject: [PATCH] stages/bfb: use RedHat capsule and drop mlxbf_pmc blacklist
+
+Use the Red Hat secure boot capsule file instead of the Mellanox
+boot_update2.cap, and remove the modprobe.blacklist=mlxbf_pmc kernel
+argument which is no longer needed.
+
+https://github.com/osbuild/osbuild/pull/2470
+---
+ stages/org.osbuild.bfb           | 5 ++---
+ stages/org.osbuild.bfb.meta.json | 3 +--
+ 2 files changed, 3 insertions(+), 5 deletions(-)
+
+diff --git a/stages/org.osbuild.bfb b/stages/org.osbuild.bfb
+index 9f16ed58..4b43016e 100755
+--- a/stages/org.osbuild.bfb
++++ b/stages/org.osbuild.bfb
+@@ -17,7 +17,7 @@ import osbuild.api
+ #
+ # Hardcode some firmware file paths in constants that we use below
+ DEFAULT_BFB_PATH = "/lib/firmware/mellanox/boot/default.bfb"
+-BOOT_CAPSULE_PATH = "/lib/firmware/mellanox/boot/capsule/boot_update2.cap"
++BOOT_CAPSULE_PATH = "/usr/share/redhat-cap/RedHat.cap"
+
+
+ def parse_input(inputs, name):
+@@ -52,8 +52,7 @@ def main(inputs, output, options):
+         "console=hvc0",
+         "console=ttyAMA0",
+         "earlycon=pl011,0x13010000",
+-        "initrd=initramfs",
+-        "modprobe.blacklist=mlxbf_pmc"
++        "initrd=initramfs"
+     ]
+     boot_args_v0 = " ".join(options.get("boot_args_v0", default_args_v0))
+     boot_args_v2 = " ".join(options.get("boot_args_v2", default_args_v2))
+diff --git a/stages/org.osbuild.bfb.meta.json b/stages/org.osbuild.bfb.meta.json
+index c519a1f8..c40a9ee2 100644
+--- a/stages/org.osbuild.bfb.meta.json
++++ b/stages/org.osbuild.bfb.meta.json
+@@ -55,8 +55,7 @@
+             "console=hvc0",
+             "console=ttyAMA0",
+             "earlycon=pl011,0x13010000",
+-            "initrd=initramfs",
+-            "modprobe.blacklist=mlxbf_pmc"
++            "initrd=initramfs"
+           ]
+         },
+         "boot_path": {
+--
+2.49.0
+

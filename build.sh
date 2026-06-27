@@ -197,6 +197,7 @@ patch_osbuild() {
     # shellcheck disable=SC2002
     cat \
         /usr/lib/coreos-assembler/0003-buildroot-bind-mount-run-udev-for-partition-discovery.patch \
+        /usr/lib/coreos-assembler/0001-stages-bfb-use-RedHat-capsule-and-drop-mlxbf_pmc-blacklist.patch \
             | patch -d /usr/lib/osbuild -p1
     # And then move the files back; supermin appliance creation will need it back
     # in the places delivered by the RPM.

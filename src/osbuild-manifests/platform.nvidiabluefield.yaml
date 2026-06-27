@@ -3,10 +3,12 @@ version: '2'
 sources:
   org.osbuild.curl:
     items:
-      sha256:31291585b25881f633e9f4d7e97367d10413dd7877117fbf16b8eda5cb425ccc:
-        url: https://linux.mellanox.com/public/repo/doca/3.3.0/rhel9.6/arm64-dpu/mlxbf-bfscripts-3.6.0-1.el9.noarch.rpm
-      sha256:b35ad0f987fd3870e11ad5dbec3340a019a456b7879caa4b82c944c4ff6841b4:
-        url: https://linux.mellanox.com/public/repo/doca/3.3.0/rhel9.6/arm64-dpu/mlxbf-bootimages-signed-4.14.0-13878.aarch64.rpm
+      sha256:3dd8541c3d0cf527e71f861ff76967a90bc50f9181099022384621bb9fd5b461:
+        url: https://linux.mellanox.com/public/repo/doca/latest-3.2-LTS/rhel9.6/arm64-dpu/mlxbf-bfscripts-3.6.0-1.el9.noarch.rpm
+      sha256:40d3b4b048d4e9ed13892eeeeee5faed5c853bcd2ff7d4e8ee2a20e7d25ed0b2:
+        url: https://linux.mellanox.com/public/repo/doca/latest-3.2-LTS/rhel9.6/arm64-dpu/mlxbf-bootimages-signed-4.13.1-13827.aarch64.rpm
+      sha256:bd317d7072824ad2e89c0bdc6ceb8759aedab76fff1fa580f6e17b0a38b7ae0e:
+        url: https://github.com/NVIDIA/doca-platform/releases/download/v25.7.1/redhat-cap-1.0.0-1.noarch.rpm
 pipelines:
   - name: nvidiabluefield-buildroot
     stages:
@@ -31,11 +33,14 @@ pipelines:
             references:
               # mlxbf-bfscripts contains the mlx-mkbfb.py, a python script that runs well with the stdlib
               # Using `rhel-9.6` here because the packages we need aren't in the rhel 10 versions of the repos yet.
-              # https://linux.mellanox.com/public/repo/doca/3.3.0/rhel9.6/arm64-dpu/mlxbf-bfscripts-3.6.0-1.el9.noarch.rpm
-              sha256:31291585b25881f633e9f4d7e97367d10413dd7877117fbf16b8eda5cb425ccc: {}
-              # mlxbf-bootimages-signed contains the binary blobs we use to build the BFB
-              # https://linux.mellanox.com/public/repo/doca/3.3.0/rhel9.6/arm64-dpu/mlxbf-bootimages-signed-4.14.0-13878.aarch64.rpm
-              sha256:b35ad0f987fd3870e11ad5dbec3340a019a456b7879caa4b82c944c4ff6841b4: {}
+              # https://linux.mellanox.com/public/repo/doca/latest-3.2-LTS/rhel9.6/arm64-dpu/mlxbf-bfscripts-3.6.0-1.el9.noarch.rpm
+              sha256:3dd8541c3d0cf527e71f861ff76967a90bc50f9181099022384621bb9fd5b461: {}
+              # mlxbf-bootimages-signed contains the default.bfb binary blob we use to build the BFB
+              # https://linux.mellanox.com/public/repo/doca/latest-3.2-LTS/rhel9.6/arm64-dpu/mlxbf-bootimages-signed-4.13.1-13827.aarch64.rpm
+              sha256:40d3b4b048d4e9ed13892eeeeee5faed5c853bcd2ff7d4e8ee2a20e7d25ed0b2: {}
+              # redhat-cap contains NVIDIA capsule file with up to date Red Hat secure-boot certificates
+              # https://github.com/NVIDIA/doca-platform/releases/download/v25.7.1/redhat-cap-1.0.0-1.noarch.rpm
+              sha256:bd317d7072824ad2e89c0bdc6ceb8759aedab76fff1fa580f6e17b0a38b7ae0e: {}
         options:
           # The two RPMS above pull in more deps than we actually need for  mlx-mkbfb.py like
           # binutils and mlxbf-bootctl. Let's just install them without considering missing deps.
@@ -108,9 +113,7 @@ pipelines:
             - "console=ttyAMA0"
             - "earlycon=pl011,0x13010000"
             - "initrd=initramfs"
-            - "modprobe.blacklist=mlxbf_pmc"
             - "ignition.firstboot"
             - "ignition.platform.id=nvidiabluefield"
           filename:
               mpp-format-string: '{artifact_name_prefix}-nvidiabluefield.{arch}.bfb'
-
