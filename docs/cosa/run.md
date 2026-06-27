@@ -17,11 +17,41 @@ $ cosa run --qemu-image rhcos-qemu.qcow2
 Many additional options are supported. Use `--help` to see them. The following
 sections discuss a few in more details.
 
+## Running on cloud platforms
+
+`cosa run` only supports local QEMU VMs. To spawn instances on cloud
+platforms, use `kola spawn` with the `-p` flag:
+
+```
+$ cosa kola spawn -p aws --aws-ami <AMI> --aws-region us-east-1
+$ cosa kola spawn -p gcp --gcp-image <image> --gcp-json-key <key>
+```
+
+This launches an instance and opens an SSH shell. Use `--remove=false` to
+keep the instance running after you exit, or `--detach` to spawn in the
+background. See `cosa kola spawn --help` for all options and
+[credentials](../mantle/credentials.md) for platform authentication setup.
+
 ## Testing Butane or Ignition configs
 
 Using `cosa run` is a very effective way to iterate on your Butane or Ignition
 config. Use the `--butane/-B` or `--ignition/-i` switches respectively to pass
-the config path.
+the config path:
+
+```
+$ cosa run -B my-config.bu
+$ cosa run -i my-config.ign
+```
+
+A few things to keep in mind:
+
+- `--butane` and `--ignition` are **mutually exclusive** — you can pass one or
+  the other, but not both.
+- Butane configs are **automatically transpiled** to Ignition, so there is no
+  need to run `butane` manually before passing the file.
+- Your config becomes the **base** Ignition config for the VM. COSA
+  automatically merges its own built-in fragments on top (e.g., autologin when
+  using devshell mode), so your config is never replaced.
 
 ## Using the serial console
 
@@ -146,7 +176,7 @@ installed system automatically just as the live environment itself was set up.)
 
 Of course, one can also use an Ignition config or [a customized ISO](https://coreos.github.io/coreos-installer/cmd/iso/#coreos-installer-iso-customize)
 or the `coreos.inst.*` kargs using `--kargs` to also manually test automated
-flows. (Many of these flows are covered by our `kola testiso` tests.)
+flows. (Many of these flows are covered by kola's ISO install tests.)
 
 ## Multipath
 
@@ -214,7 +244,7 @@ TARGET   SOURCE              FSTYPE OPTIONS
 (The `--ignition /run/ignition.json` is a trick for getting auto-login on the
 installed system automatically just as the live environment itself was set up.)
 
-This is equivalent to our `kola testiso` multipath tests.
+This is equivalent to kola's ISO multipath install tests.
 
 ## Netbooting
 
