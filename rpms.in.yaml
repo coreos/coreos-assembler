@@ -70,7 +70,6 @@ packages:
   - genisoimage
   - git
   - golang
-  - golang-github-aliyun-cli
   - name: grub2
     arches:
       only:

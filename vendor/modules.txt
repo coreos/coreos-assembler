@@ -175,23 +175,6 @@ github.com/IBM/ibm-cos-sdk-go/private/protocol/xml/xmlutil
 github.com/IBM/ibm-cos-sdk-go/service/s3
 github.com/IBM/ibm-cos-sdk-go/service/s3/s3iface
 github.com/IBM/ibm-cos-sdk-go/service/s3/s3manager
-# github.com/aliyun/alibaba-cloud-sdk-go v1.63.107
-## explicit; go 1.13
-github.com/aliyun/alibaba-cloud-sdk-go/sdk
-github.com/aliyun/alibaba-cloud-sdk-go/sdk/auth
-github.com/aliyun/alibaba-cloud-sdk-go/sdk/auth/credentials
-github.com/aliyun/alibaba-cloud-sdk-go/sdk/auth/credentials/provider
-github.com/aliyun/alibaba-cloud-sdk-go/sdk/auth/signers
-github.com/aliyun/alibaba-cloud-sdk-go/sdk/endpoints
-github.com/aliyun/alibaba-cloud-sdk-go/sdk/errors
-github.com/aliyun/alibaba-cloud-sdk-go/sdk/internal
-github.com/aliyun/alibaba-cloud-sdk-go/sdk/requests
-github.com/aliyun/alibaba-cloud-sdk-go/sdk/responses
-github.com/aliyun/alibaba-cloud-sdk-go/sdk/utils
-github.com/aliyun/alibaba-cloud-sdk-go/services/ecs
-# github.com/aliyun/aliyun-oss-go-sdk v3.0.2+incompatible
-## explicit
-github.com/aliyun/aliyun-oss-go-sdk/oss
 # github.com/aws/aws-sdk-go-v2 v1.41.6
 ## explicit; go 1.24
 github.com/aws/aws-sdk-go-v2/aws
@@ -635,9 +618,6 @@ github.com/inconshreveable/mousetrap
 # github.com/jmespath/go-jmespath v0.4.0
 ## explicit; go 1.14
 github.com/jmespath/go-jmespath
-# github.com/json-iterator/go v1.1.12
-## explicit; go 1.12
-github.com/json-iterator/go
 # github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51
 ## explicit
 github.com/kballard/go-shellquote
@@ -652,23 +632,12 @@ github.com/leodido/go-urn/scim/schema
 # github.com/mitchellh/go-homedir v1.1.0
 ## explicit
 github.com/mitchellh/go-homedir
-# github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd
-## explicit
-github.com/modern-go/concurrent
-# github.com/modern-go/reflect2 v1.0.2
-## explicit; go 1.12
-github.com/modern-go/reflect2
 # github.com/oklog/ulid v1.3.1
 ## explicit
 github.com/oklog/ulid
 # github.com/opencontainers/go-digest v1.0.0
 ## explicit; go 1.13
 github.com/opencontainers/go-digest
-# github.com/opentracing/opentracing-go v1.2.1-0.20220228012449-10b1cf09e00b
-## explicit; go 1.14
-github.com/opentracing/opentracing-go
-github.com/opentracing/opentracing-go/ext
-github.com/opentracing/opentracing-go/log
 # github.com/pborman/uuid v1.2.1
 ## explicit
 github.com/pborman/uuid
@@ -979,9 +948,6 @@ google.golang.org/protobuf/runtime/protoimpl
 google.golang.org/protobuf/types/known/anypb
 google.golang.org/protobuf/types/known/durationpb
 google.golang.org/protobuf/types/known/timestamppb
-# gopkg.in/ini.v1 v1.67.0
-## explicit
-gopkg.in/ini.v1
 # gopkg.in/yaml.v2 v2.4.0
 ## explicit; go 1.15
 gopkg.in/yaml.v2

@@ -172,8 +172,8 @@ def append_build(out, input_):
                     }
                 }
             }
-    # Aliyun/AWS specific additions
-    for meta_key, cloud, image_field in ("aliyun", "aliyun", "id"), ("amis", "aws", "hvm"):
+    # AWS specific additions
+    for meta_key, cloud, image_field in ("amis", "aws", "hvm"),:
         if input_.get(meta_key, None) is not None:
             arch_dict["media"].setdefault(cloud, {}).setdefault("images", {})
             for cloud_dict in input_.get(meta_key):
