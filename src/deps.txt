@@ -123,3 +123,6 @@ python3-dotenv
 # For testing numad
 # https://github.com/coreos/fedora-coreos-config/pull/4051
 stress-ng
+
+# To create/download OCI artifacts
+golang-oras
