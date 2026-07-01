@@ -4,6 +4,12 @@
 This command takes a containers-transports(5) ref to an OCI image and converts
 it into a `cosa build`, as if one did `cosa build ostree`. One can then e.g.
 `cosa buildextend-qemu` right away.
+
+If the source image is an OCI image index that contains disk image artifacts
+(entries with artifactType matching application/vnd.diskimage.*), they are
+automatically discovered. The platform.os field is used as the cosa platform
+name (e.g. qemu, metal) and the artifactType to derive the file extension.
+Use --download to pull disk image blobs and populate the build's meta.json.
 '''
 
 import argparse
@@ -45,9 +51,18 @@ def main():
         print(f"ERROR: Build ID {buildid} ({arch}) already exists!")
         sys.exit(1)
 
+    # Probe srcimg to check if it's an OCI index that contains disk image
+    # artifacts alongside the OS container image. skopeo will resolve through
+    # the index automatically for the OS image (platform.os='linux'), but we
+    # need the raw index to discover disk image entries.
+    index_manifest = try_fetch_oci_index(args.srcimg)
+    disk_image_artifacts = []
+    if index_manifest is not None:
+        disk_image_artifacts = resolve_disk_image_artifacts(index_manifest, arch)
+
     with tempfile.TemporaryDirectory(prefix='cosa-import-', dir='tmp') as tmpd:
         # create the OCI archive
-        tmp_oci_archive = generate_oci_archive(args, tmpd)
+        tmp_oci_archive = generate_oci_archive(args.srcimg, tmpd)
         # extract the OCI manifest from it. Note here that we operate
         # on the ociarchive directly rather than args.srcimg because
         # otherwise the manifest we fetch with skopeo *could* be a
@@ -60,11 +75,39 @@ def main():
         # create meta.json
         build_meta = generate_build_meta(tmp_oci_archive, tmp_oci_manifest, metadata, ostree_commit)
 
+        # download disk images if requested and available
+        disk_image_files = {}
+        if disk_image_artifacts and args.download:
+            registry = registry_from_arg(args.srcimg)
+            available_platforms = [a['platform'] for a in disk_image_artifacts]
+            if args.download == 'all':
+                to_download = disk_image_artifacts
+            else:
+                requested = [p.strip() for p in args.download.split(',')]
+                missing = [p for p in requested if p not in available_platforms]
+                if missing:
+                    print(f"ERROR: Requested platform(s) not found: {', '.join(missing)}")
+                    print(f"Available platforms: {', '.join(available_platforms)}")
+                    sys.exit(1)
+                to_download = [a for a in disk_image_artifacts if a['platform'] in requested]
+
+            disk_image_files = download_disk_images(
+                to_download, build_meta['name'], buildid, arch, registry, tmpd)
+
+            for platform, img_meta in disk_image_files.items():
+                build_meta['images'][platform] = {
+                    'path': img_meta['path'],
+                    'sha256': img_meta['sha256'],
+                    'size': img_meta['size'],
+                    'skip-compression': True,
+                }
+
         # artificially recreate generated lockfile and commitmeta.json
         tmp_lockfile, tmp_commitmeta = generate_lockfile_and_commitmeta(tmpd, ostree_commit, build_meta)
 
         # move into official location
-        finalize_build(builds, build_meta, tmp_oci_archive, tmp_oci_manifest, tmp_lockfile, tmp_commitmeta)
+        finalize_build(builds, build_meta, tmp_oci_archive, tmp_oci_manifest,
+                       tmp_lockfile, tmp_commitmeta, disk_image_files)
 
     # Now that the build has been created (i.e. files put into the
     # right places) let's use `cosa diff` to insert package and
@@ -77,6 +120,15 @@ def main():
     if not args.skip_prune:
         subprocess.check_call(['/usr/lib/coreos-assembler/cmd-prune'])
 
+    # report discovered disk images at the end so it's visible after
+    # all the import output
+    if disk_image_artifacts:
+        print(f"Found {len(disk_image_artifacts)} disk image(s) for {arch}:")
+        for a in disk_image_artifacts:
+            print(f"  - {a['platform']} (.{a['extension']})")
+        if not args.download:
+            print("Use --download to pull them (e.g. --download all)")
+
 
 def parse_args():
     parser = argparse.ArgumentParser(prog='cosa import')
@@ -86,21 +138,177 @@ def parse_args():
                         help="Skip prunning previous builds")
     parser.add_argument("--parent-build",
                         help="The parent build to diff against")
+    parser.add_argument("--download", default=None,
+                        help="Comma-separated list of disk image platforms to download "
+                             "(e.g. qemu,metal), or 'all'. Only effective when the "
+                             "source image is an OCI index containing disk image artifacts")
     return parser.parse_args()
 
 
-def generate_oci_archive(args, tmpd):
+# OCI/Go architecture names to RPM basearch names
+# (same mapping as src/cmd-push-container-manifest)
+OCI_GOARCH_TO_BASEARCH = {
+    'amd64': 'x86_64',
+    'arm64': 'aarch64',
+}
+
+
+def oci_goarch_to_basearch(goarch):
+    """Convert an OCI/Go architecture name to an RPM basearch name."""
+    return OCI_GOARCH_TO_BASEARCH.get(goarch, goarch)
+
+
+def artifact_type_to_extension(artifact_type):
+    """Convert an OCI artifactType to a file extension.
+
+    e.g. 'application/vnd.diskimage.qcow2' -> 'qcow2'
+         'application/vnd.diskimage.raw.gzip' -> 'raw.gz'
+    """
+    prefix = 'application/vnd.diskimage.'
+    if not artifact_type.startswith(prefix):
+        raise ValueError(f"Unknown artifactType: {artifact_type}")
+    suffix = artifact_type[len(prefix):]
+    # normalize compression names to standard extensions
+    suffix = suffix.replace('gzip', 'gz')
+    return suffix
+
+
+def registry_from_arg(ref):
+    """Strip the docker:// transport prefix if present for use with oras."""
+    if ref.startswith('docker://'):
+        return ref[len('docker://'):]
+    return ref
+
+
+def try_fetch_oci_index(srcimg):
+    """Probe the raw manifest of srcimg to check if it's an OCI image index.
+
+    If the manifest is an OCI image index (application/vnd.oci.image.index.v1+json),
+    returns the parsed JSON manifest. Otherwise returns None.
+    """
+    registry = registry_from_arg(srcimg)
+    try:
+        raw = subprocess.check_output(['oras', 'manifest', 'fetch', registry],
+                                      stderr=subprocess.STDOUT)
+    except subprocess.CalledProcessError:
+        return None
+    manifest = json.loads(raw)
+    if manifest.get('mediaType') == 'application/vnd.oci.image.index.v1+json':
+        return manifest
+    return None
+
+
+DISK_IMAGE_ARTIFACT_PREFIX = 'application/vnd.diskimage.'
+
+
+def resolve_disk_image_artifacts(index_manifest, basearch):
+    """Resolve disk image artifact entries from an OCI index manifest.
+
+    Parses the index manifest and filters to entries matching the given basearch
+    that have a disk image artifactType (application/vnd.diskimage.*).
+
+    Entries without an artifactType or with a non-disk-image artifactType
+    (e.g. the OS container image with platform.os='linux') are silently skipped.
+
+    No sub-manifest fetches are performed here; the per-image manifest digest
+    is returned so that the caller can fetch it lazily (e.g. at download time).
+
+    Returns a list of dicts:
+        [{'platform': str, 'manifest_digest': str, 'extension': str}, ...]
+    """
+    artifacts = []
+    for entry in index_manifest.get('manifests', []):
+        # skip entries that are not disk image artifacts
+        artifact_type = entry.get('artifactType', '')
+        if not artifact_type.startswith(DISK_IMAGE_ARTIFACT_PREFIX):
+            continue
+
+        platform = entry.get('platform', {})
+        entry_arch = oci_goarch_to_basearch(platform.get('architecture', ''))
+        if entry_arch != basearch:
+            continue
+
+        platform_name = platform.get('os', '')
+        if not platform_name:
+            print(f"WARNING: Skipping manifest entry with no platform.os: {entry.get('digest', 'unknown')}")
+            continue
+
+        try:
+            extension = artifact_type_to_extension(artifact_type)
+        except ValueError:
+            print(f"WARNING: Skipping {platform_name}: unknown artifactType {artifact_type}")
+            continue
+
+        artifacts.append({
+            'platform': platform_name,
+            'manifest_digest': entry['digest'],
+            'extension': extension,
+        })
+
+    return artifacts
+
+
+def download_disk_images(artifacts, name, buildid, arch, registry, tmpd):
+    """Download disk image blobs from an OCI registry using oras.
+
+    For each artifact, fetches the per-image manifest to resolve the blob layer
+    digest, then downloads the blob.
+
+    Returns a dict mapping platform name to artifact metadata:
+        {'qemu': {'path': '<filename>', 'sha256': '<hash>', 'size': <int>,
+                  'tmp_file_path': '<tmpd>/<filename>'}, ...}
+    """
+    downloaded = {}
+    for artifact in artifacts:
+        platform = artifact['platform']
+        extension = artifact['extension']
+        manifest_digest = artifact['manifest_digest']
+        filename = f'{name}-{buildid}-{platform}.{arch}.{extension}'
+        tmp_path = os.path.join(tmpd, filename)
+
+        # fetch the per-image manifest to get the actual blob layer digest
+        raw = subprocess.check_output(['oras', 'manifest', 'fetch',
+                                       f'{registry}@{manifest_digest}'])
+        image_manifest = json.loads(raw)
+        layers = image_manifest.get('layers', [])
+        if not layers:
+            print(f"WARNING: Skipping {platform}: manifest {manifest_digest} has no layers")
+            continue
+
+        blob_digest = layers[0]['digest']
+        print(f"Downloading {platform} disk image ({blob_digest})...")
+        subprocess.check_call([
+            'oras', 'blob', 'fetch',
+            '--output', tmp_path,
+            f'{registry}@{blob_digest}'
+        ])
+
+        sha256 = sha256sum_file(tmp_path)
+        size = os.path.getsize(tmp_path)
+
+        downloaded[platform] = {
+            'path': filename,
+            'sha256': sha256,
+            'size': size,
+            'tmp_file_path': tmp_path,
+        }
+        print(f"  -> {filename} (sha256:{sha256[:16]}..., {size} bytes)")
+
+    return downloaded
+
+
+def generate_oci_archive(srcimg, tmpd):
     tmpf = os.path.join(tmpd, 'out.ociarchive')
 
-    if args.srcimg.startswith('oci-archive:'):
-        print(f"Copying {args.srcimg.partition(':')[2]} to {tmpf}")
-        subprocess.check_call(['cp-reflink', args.srcimg.partition(':')[2], tmpf])
+    if srcimg.startswith('oci-archive:'):
+        print(f"Copying {srcimg.partition(':')[2]} to {tmpf}")
+        subprocess.check_call(['cp-reflink', srcimg.partition(':')[2], tmpf])
     else:
         extra_args = []
         # in the containers-storage case, there's no digest to preserve
-        if not args.srcimg.startswith('containers-storage'):
+        if not srcimg.startswith('containers-storage'):
             extra_args += ['--preserve-digests']
-        subprocess.check_call(['skopeo', 'copy', args.srcimg, f"oci-archive:{tmpf}"] + extra_args)
+        subprocess.check_call(['skopeo', 'copy', srcimg, f"oci-archive:{tmpf}"] + extra_args)
     return tmpf
 
 
@@ -218,7 +426,8 @@ def generate_build_meta(tmp_oci_archive, tmp_oci_manifest, metadata, ostree_comm
     return meta
 
 
-def finalize_build(builds, build_meta, tmp_oci_archive, tmp_oci_manifest, tmp_lockfile, tmp_commitmeta):
+def finalize_build(builds, build_meta, tmp_oci_archive, tmp_oci_manifest,
+                   tmp_lockfile, tmp_commitmeta, disk_image_files=None):
     buildid = build_meta['buildid']
     arch = build_meta['coreos-assembler.basearch']
 
@@ -229,6 +438,11 @@ def finalize_build(builds, build_meta, tmp_oci_archive, tmp_oci_manifest, tmp_lo
     shutil.move(tmp_oci_manifest, f'{destdir}/{build_meta['images']['oci-manifest']['path']}')
     shutil.move(tmp_lockfile, f'{destdir}/manifest-lock.generated.{arch}.json')
     shutil.move(tmp_commitmeta, f'{destdir}/commitmeta.json')
+
+    # move downloaded disk images into the build directory
+    if disk_image_files:
+        for platform, img_meta in disk_image_files.items():
+            shutil.move(img_meta['tmp_file_path'], f'{destdir}/{img_meta["path"]}')
 
     with open(f'{destdir}/meta.json', 'w') as f:
         json.dump(build_meta, f, indent=4)
