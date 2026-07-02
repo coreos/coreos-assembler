@@ -58,8 +58,8 @@ def main():
     index_manifest = try_fetch_oci_index(args.srcimg)
     disk_image_artifacts = []
     if index_manifest is not None:
-        registry = registry_from_arg(args.srcimg)
-        disk_image_artifacts = resolve_disk_image_artifacts(index_manifest, registry, arch)
+        registry_base = registry_base_from_ref(args.srcimg)
+        disk_image_artifacts = resolve_disk_image_artifacts(index_manifest, registry_base, arch)
 
     # fail early if --download was requested but we can't fulfill it
     if args.download:
@@ -186,6 +186,23 @@ def registry_from_arg(ref):
     """Strip the docker:// transport prefix if present for use with oras."""
     if ref.startswith('docker://'):
         return ref[len('docker://'):]
+    return ref
+
+
+def registry_base_from_ref(ref):
+    """Return the registry/repo base from a ref, stripping any tag or digest.
+
+    e.g. 'quay.io/repo@sha256:abc...' -> 'quay.io/repo'
+         'quay.io/repo:latest' -> 'quay.io/repo'
+         'docker://quay.io/repo@sha256:abc...' -> 'quay.io/repo'
+    """
+    ref = registry_from_arg(ref)
+    # strip digest
+    if '@' in ref:
+        ref = ref.split('@')[0]
+    # strip tag
+    elif ':' in ref.split('/')[-1]:
+        ref = ref.rsplit(':', 1)[0]
     return ref
 
 
