@@ -1,0 +1,48 @@
+# tmt test definitions for coreos-assembler CI. Each node maps to a shell script
+# invocation with TEST_CASE set to select the specific stage. The `order` field
+# enforces execution sequence: init must complete before builds, and builds before tests.
+
+/init:
+  test: ./init.sh
+  duration: 1h
+  order: 50
+
+# Runs `cosa build` to produce the OSTree commit and base image artifacts.
+/build-fcos:
+  test: ./build.sh
+  duration: 1h
+  order: 60
+  environment:
+    TEST_CASE: build-fcos
+
+# Runs `cosa osbuild qemu` to produce the qcow2 disk image used by kola QEMU tests.
+/build-qemu:
+  test: ./build.sh
+  duration: 1h
+  order: 70
+  environment:
+    TEST_CASE: build-qemu
+
+# Boots the qcow2 image in QEMU VMs and runs the full kola integration test suite.
+/test-qemu:
+  test: ./test.sh
+  duration: 2h
+  order: 80
+  environment:
+    TEST_CASE: test-qemu
+
+# Verifies that a system on the previous release can upgrade to the newly built image.
+/test-kola-upgrade:
+  test: ./test.sh
+  duration: 2h
+  order: 90
+  environment:
+    TEST_CASE: test-kola-upgrade
+
+# Runs the ext.kola-ci-self* suite to validate coreos-assembler tooling itself.
+/test-kola-self:
+  test: ./test.sh
+  duration: 1h
+  order: 100
+  environment:
+    TEST_CASE: test-kola-self
