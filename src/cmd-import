@@ -58,7 +58,17 @@ def main():
     index_manifest = try_fetch_oci_index(args.srcimg)
     disk_image_artifacts = []
     if index_manifest is not None:
-        disk_image_artifacts = resolve_disk_image_artifacts(index_manifest, arch)
+        registry = registry_from_arg(args.srcimg)
+        disk_image_artifacts = resolve_disk_image_artifacts(index_manifest, registry, arch)
+
+    # fail early if --download was requested but we can't fulfill it
+    if args.download:
+        if index_manifest is None:
+            print("ERROR: --download was specified, but the source image is not an OCI image index")
+            sys.exit(1)
+        if not disk_image_artifacts:
+            print(f"ERROR: --download was specified, but no disk image artifacts were found for {arch}")
+            sys.exit(1)
 
     with tempfile.TemporaryDirectory(prefix='cosa-import-', dir='tmp') as tmpd:
         # create the OCI archive
@@ -78,7 +88,6 @@ def main():
         # download disk images if requested and available
         disk_image_files = {}
         if disk_image_artifacts and args.download:
-            registry = registry_from_arg(args.srcimg)
             available_platforms = [a['platform'] for a in disk_image_artifacts]
             if args.download == 'all':
                 to_download = disk_image_artifacts
@@ -92,7 +101,7 @@ def main():
                 to_download = [a for a in disk_image_artifacts if a['platform'] in requested]
 
             disk_image_files = download_disk_images(
-                to_download, build_meta['name'], buildid, arch, registry, tmpd)
+                to_download, build_meta['name'], buildid, arch, args.srcimg, tmpd)
 
             for platform, img_meta in disk_image_files.items():
                 build_meta['images'][platform] = {
@@ -201,7 +210,7 @@ def try_fetch_oci_index(srcimg):
 DISK_IMAGE_ARTIFACT_PREFIX = 'application/vnd.diskimage.'
 
 
-def resolve_disk_image_artifacts(index_manifest, basearch):
+def resolve_disk_image_artifacts(index_manifest, registry, basearch):
     """Resolve disk image artifact entries from an OCI index manifest.
 
     Parses the index manifest and filters to entries matching the given basearch
@@ -210,11 +219,11 @@ def resolve_disk_image_artifacts(index_manifest, basearch):
     Entries without an artifactType or with a non-disk-image artifactType
     (e.g. the OS container image with platform.os='linux') are silently skipped.
 
-    No sub-manifest fetches are performed here; the per-image manifest digest
-    is returned so that the caller can fetch it lazily (e.g. at download time).
+    For each matching entry, fetches the per-image manifest to resolve the
+    layer filename (from the org.opencontainers.image.title annotation).
 
     Returns a list of dicts:
-        [{'platform': str, 'manifest_digest': str, 'extension': str}, ...]
+        [{'platform': str, 'goarch': str, 'extension': str, 'pull_filename': str}, ...]
     """
     artifacts = []
     for entry in index_manifest.get('manifests', []):
@@ -224,13 +233,19 @@ def resolve_disk_image_artifacts(index_manifest, basearch):
             continue
 
         platform = entry.get('platform', {})
-        entry_arch = oci_goarch_to_basearch(platform.get('architecture', ''))
+        goarch = platform.get('architecture', '')
+        entry_arch = oci_goarch_to_basearch(goarch)
         if entry_arch != basearch:
             continue
 
         platform_name = platform.get('os', '')
+        digest = entry.get('digest')
         if not platform_name:
-            print(f"WARNING: Skipping manifest entry with no platform.os: {entry.get('digest', 'unknown')}")
+            print(f"WARNING: Skipping manifest entry with no platform.os: {digest or 'unknown'}")
+            continue
+
+        if not digest:
+            print(f"WARNING: Skipping {platform_name}: manifest entry has no digest")
             continue
 
         try:
@@ -239,49 +254,68 @@ def resolve_disk_image_artifacts(index_manifest, basearch):
             print(f"WARNING: Skipping {platform_name}: unknown artifactType {artifact_type}")
             continue
 
+        # fetch the per-image manifest to get the layer filename
+        try:
+            raw = subprocess.check_output(['oras', 'manifest', 'fetch',
+                                           f'{registry}@{digest}'])
+            image_manifest = json.loads(raw)
+        except (subprocess.CalledProcessError, ValueError):
+            print(f"WARNING: Skipping {platform_name}: failed to fetch manifest {digest}")
+            continue
+
+        layers = image_manifest.get('layers', [])
+        if not layers:
+            print(f"WARNING: Skipping {platform_name}: manifest {digest} has no layers")
+            continue
+
+        pull_filename = layers[0].get('annotations', {}).get(
+            'org.opencontainers.image.title', '')
+        if not pull_filename:
+            print(f"WARNING: Skipping {platform_name}: layer has no title annotation")
+            continue
+
         artifacts.append({
             'platform': platform_name,
-            'manifest_digest': entry['digest'],
+            'goarch': goarch,
             'extension': extension,
+            'pull_filename': pull_filename,
         })
 
     return artifacts
 
 
-def download_disk_images(artifacts, name, buildid, arch, registry, tmpd):
-    """Download disk image blobs from an OCI registry using oras.
+def download_disk_images(artifacts, name, buildid, arch, srcimg, tmpd):
+    """Download disk image artifacts from an OCI registry using oras pull.
 
-    For each artifact, fetches the per-image manifest to resolve the blob layer
-    digest, then downloads the blob.
+    Uses `oras pull --platform <os>/<goarch>` to resolve and download each
+    disk image artifact directly from the OCI index.
 
     Returns a dict mapping platform name to artifact metadata:
         {'qemu': {'path': '<filename>', 'sha256': '<hash>', 'size': <int>,
                   'tmp_file_path': '<tmpd>/<filename>'}, ...}
     """
+    registry = registry_from_arg(srcimg)
     downloaded = {}
     for artifact in artifacts:
         platform = artifact['platform']
+        goarch = artifact['goarch']
         extension = artifact['extension']
-        manifest_digest = artifact['manifest_digest']
+        pull_filename = artifact['pull_filename']
         filename = f'{name}-{buildid}-{platform}.{arch}.{extension}'
-        tmp_path = os.path.join(tmpd, filename)
 
-        # fetch the per-image manifest to get the actual blob layer digest
-        raw = subprocess.check_output(['oras', 'manifest', 'fetch',
-                                       f'{registry}@{manifest_digest}'])
-        image_manifest = json.loads(raw)
-        layers = image_manifest.get('layers', [])
-        if not layers:
-            print(f"WARNING: Skipping {platform}: manifest {manifest_digest} has no layers")
-            continue
-
-        blob_digest = layers[0]['digest']
-        print(f"Downloading {platform} disk image ({blob_digest})...")
+        oras_platform = f'{platform}/{goarch}'
+        print(f"Downloading {platform} disk image (platform: {oras_platform})...")
         subprocess.check_call([
-            'oras', 'blob', 'fetch',
-            '--output', tmp_path,
-            f'{registry}@{blob_digest}'
+            'oras', 'pull',
+            '--platform', oras_platform,
+            '--output', tmpd,
+            registry
         ])
+
+        # rename the pulled file to the expected cosa filename
+        pulled_path = os.path.join(tmpd, pull_filename)
+        tmp_path = os.path.join(tmpd, filename)
+        shutil.move(pulled_path, tmp_path)
 
         sha256 = sha256sum_file(tmp_path)
         size = os.path.getsize(tmp_path)
