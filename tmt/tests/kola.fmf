@@ -15,30 +15,6 @@
   environment:
     TEST_CASE: build-fcos
 
-# Runs `cosa osbuild qemu` to produce the qcow2 disk image used by kola QEMU tests.
-/build-qemu:
-  test: ./build.sh
-  duration: 1h
-  order: 70
-  environment:
-    TEST_CASE: build-qemu
-
-# Boots the qcow2 image in QEMU VMs and runs the full kola integration test suite.
-/test-qemu:
-  test: ./test.sh
-  duration: 2h
-  order: 80
-  environment:
-    TEST_CASE: test-qemu
-
-# Verifies that a system on the previous release can upgrade to the newly built image.
-/test-kola-upgrade:
-  test: ./test.sh
-  duration: 2h
-  order: 90
-  environment:
-    TEST_CASE: test-kola-upgrade
-
 # Runs the ext.kola-ci-self* suite to validate coreos-assembler tooling itself.
 /test-kola-self:
   test: ./test.sh

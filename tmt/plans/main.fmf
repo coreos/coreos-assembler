@@ -21,35 +21,49 @@ execute:
 # since all steps are sequential dependencies.
   exit-first: true
 
+
 # Runs the full kola QEMU integration test suite (including reprovision tests).
 /kola-qemu:
   summary: run kola qemu tests
   discover+:
-    how: fmf
-    test:
-      - init
-      - build-fcos
-      - build-qemu
-      - test-qemu
+    - how: fmf
+      test:
+        - init
+        - build-fcos
+    - how: fmf
+      url: https://github.com/coreos/fedora-coreos-pipeline
+      test:
+        - build-qemu
+        - test-qemu
+
+# Runs the kola upgrade test to verify the previous release can upgrade to the new image.
+/kola-test-upgrade:
+  summary: run kola upgrade tests
+  discover+:
+    - how: fmf
+      test:
+        - init
+        - build-fcos
+    - how: fmf
+      url: https://github.com/coreos/fedora-coreos-pipeline
+      test:
+        - build-qemu
+        - test-kola-upgrade
+
 
 # Runs coreos-assembler's own CI self-tests (ext.kola-ci-self*).
 /kola-self-tests:
   summary: run self-tests
   discover+:
-    how: fmf
-    test:
-      - init
-      - build-fcos
-      - build-qemu
-      - test-kola-self
+    - how: fmf
+      test:
+        - init
+        - build-fcos
+    - how: fmf
+      url: https://github.com/coreos/fedora-coreos-pipeline
+      test:
+        - build-qemu
+    - how: fmf
+      test:
+        - test-kola-self
 
-# Runs the kola upgrade test to verify the previous release can upgrade to the new image.
-/kola-test-upgrade:
-  summary: run kola upgrade test
-  discover+:
-    how: fmf
-    test:
-      - init
-      - build-fcos
-      - build-qemu
-      - test-kola-upgrade
