@@ -29,10 +29,10 @@ execute:
     - how: fmf
       test:
         - init
-        - build-fcos
     - how: fmf
       url: https://github.com/coreos/fedora-coreos-pipeline
       test:
+        - build-fcos
         - build-qemu
         - test-qemu
 
@@ -43,10 +43,10 @@ execute:
     - how: fmf
       test:
         - init
-        - build-fcos
     - how: fmf
       url: https://github.com/coreos/fedora-coreos-pipeline
       test:
+        - build-fcos
         - build-qemu
         - test-kola-upgrade
 
@@ -58,10 +58,10 @@ execute:
     - how: fmf
       test:
         - init
-        - build-fcos
     - how: fmf
       url: https://github.com/coreos/fedora-coreos-pipeline
       test:
+        - build-fcos
         - build-qemu
     - how: fmf
       test:
