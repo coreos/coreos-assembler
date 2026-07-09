@@ -1,0 +1,81 @@
+From 30df19ea3f3f7b3d98f6e64333237b4bcd523e18 Mon Sep 17 00:00:00 2001
+From: Dusty Mabe <dusty@dustymabe.com>
+Date: Wed, 1 Jul 2026 18:44:35 +0000
+Subject: [PATCH 3/9] util/path: move ensure_glob() from coreos stage into
+ osbuild.util.path
+
+Factor out the ensure_glob() helper function from the
+coreos.live-artifacts stage into osbuild.util.path, where it sits
+alongside other path-related utilities (in_tree, join_abs, etc.).
+
+This makes the function available for reuse by other stages.
+
+Assisted-By: <anthropic/claude-opus-4.6>
+---
+ osbuild/util/path.py                          | 14 ++++++++++++++
+ stages/org.osbuild.coreos.live-artifacts.mono | 14 +-------------
+ 2 files changed, 15 insertions(+), 13 deletions(-)
+
+diff --git a/osbuild/util/path.py b/osbuild/util/path.py
+index 035b385f..f9348e93 100644
+--- a/osbuild/util/path.py
++++ b/osbuild/util/path.py
+@@ -1,5 +1,6 @@
+ """Path handling utility functions"""
+ import errno
++import glob
+ import os
+ import os.path
+ from typing import Optional, Union
+@@ -56,3 +57,16 @@ def join_abs(root: Union[str, os.PathLike], *paths: Union[str, os.PathLike]) ->
+         else:
+             final_path = os.path.join(final_path, path)
+     return os.path.normpath(os.path.join(os.sep, final_path))
++
++
++def ensure_glob(pathname, n="", **kwargs):
++    """
++    Call glob.glob() and fail if there are no results or
++    if the number of results doesn't match provided n
++    """
++    ret = glob.glob(pathname, **kwargs)
++    if not ret:
++        raise ValueError(f'No matches for {pathname}')
++    if n != "" and len(ret) != int(n):
++        raise ValueError(f'Matches for {pathname} does not match expected ({n})')
++    return ret
+diff --git a/stages/org.osbuild.coreos.live-artifacts.mono b/stages/org.osbuild.coreos.live-artifacts.mono
+index 5db23e59..ecbfba7a 100755
+--- a/stages/org.osbuild.coreos.live-artifacts.mono
++++ b/stages/org.osbuild.coreos.live-artifacts.mono
+@@ -27,6 +27,7 @@ import osbuild.api
+ import osbuild.remoteloop as remoteloop
+ from osbuild.util import checksum, osrelease
+ from osbuild.util.chroot import Chroot
++from osbuild.util.path import ensure_glob
+ 
+ # Size of file used to embed an Ignition config within a CPIO.
+ IGNITION_IMG_SIZE = 256 * 1024
+@@ -130,19 +131,6 @@ def make_stream_hash(src, dest):
+                 outf.write(hashlib.sha256(buf).hexdigest() + '\n')
+ 
+ 
+-def ensure_glob(pathname, n="", **kwargs):
+-    """
+-    Call glob.glob() and fail if there are no results or
+-    if the number of results doesn't match provided n
+-    """
+-    ret = glob.glob(pathname, **kwargs)
+-    if not ret:
+-        raise ValueError(f'No matches for {pathname}')
+-    if n != "" and len(ret) != int(n):
+-        raise ValueError(f'Matches for {pathname} does not match expected ({n})')
+-    return ret
+-
+-
+ # This function finds the source EFI paths to copy from /usr/ to the EFI/
+ # directory. Historically this was just the usr/lib/bootupd/updates/EFI/
+ # directory (populated by bootupd), but as part of BootLoaderUpdatesPhase1 [1]
+-- 
+2.54.0
+

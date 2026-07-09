@@ -182,27 +182,35 @@ write_archive_info() {
 }
 
 patch_osbuild() {
-    return # No patches at this time
-    # # Add a few patches that either haven't made it into a release or
-    # # that will be obsoleted with other work that will be done soon.
-    # #
-    # # To make it easier to apply patches we'll move around the osbuild
-    # # code on the system first:
-    # rmdir /usr/lib/osbuild/osbuild
-    # python_lib_dir=$(ls -d /usr/lib/python*)
-    # mv "${python_lib_dir}/site-packages/osbuild" /usr/lib/osbuild/
-    # mkdir -p /usr/lib/osbuild/tools
-    # mv /usr/bin/osbuild-mpp /usr/lib/osbuild/tools/
-    # # Now all the software is under the /usr/lib/osbuild dir and we can patch
-    # # shellcheck disable=SC2002
-    # cat \
-    #     /usr/lib/coreos-assembler/0003-buildroot-bind-mount-run-udev-for-partition-discovery.patch \
-    #         | patch -d /usr/lib/osbuild -p1
-    # # And then move the files back; supermin appliance creation will need it back
-    # # in the places delivered by the RPM.
-    # mv /usr/lib/osbuild/tools/osbuild-mpp /usr/bin/osbuild-mpp
-    # mv /usr/lib/osbuild/osbuild "${python_lib_dir}/site-packages/osbuild"
-    # mkdir -p /usr/lib/osbuild/osbuild
+    #return # No patches at this time
+    # Add a few patches that either haven't made it into a release or
+    # that will be obsoleted with other work that will be done soon.
+    #
+    # To make it easier to apply patches we'll move around the osbuild
+    # code on the system first:
+    rmdir /usr/lib/osbuild/osbuild
+    python_lib_dir=$(ls -d /usr/lib/python*)
+    mv "${python_lib_dir}/site-packages/osbuild" /usr/lib/osbuild/
+    mkdir -p /usr/lib/osbuild/tools
+    mv /usr/bin/osbuild-mpp /usr/lib/osbuild/tools/
+    # Now all the software is under the /usr/lib/osbuild dir and we can patch
+    # shellcheck disable=SC2002
+    cat \
+        /usr/lib/coreos-assembler/0001-stages-coreos.live-artifacts-refactor-some-EFI-funct.patch \
+        /usr/lib/coreos-assembler/0002-stages-coreos.live-artifacts-drop-separate-make_efi_.patch \
+        /usr/lib/coreos-assembler/0003-util-path-move-ensure_glob-from-coreos-stage-into-os.patch \
+        /usr/lib/coreos-assembler/0004-utils-add-utils.makeefi-library.patch                      \
+        /usr/lib/coreos-assembler/0005-util-makeefi-update-find_efi_vendor_dir_name-to-acce.patch \
+        /usr/lib/coreos-assembler/0006-util-makeefi-make-efiboot.img-align-to-512-byte-boun.patch \
+        /usr/lib/coreos-assembler/0007-util-makeefi-search-more-paths-for-EFI-files.patch         \
+        /usr/lib/coreos-assembler/0008-util-makeefi-move-comment-into-function-description.patch  \
+        /usr/lib/coreos-assembler/0009-BFB-boot-grub-shims-instead-of-booting-kernel-direct.patch \
+            | patch -d /usr/lib/osbuild -p1
+    # And then move the files back; supermin appliance creation will need it back
+    # in the places delivered by the RPM.
+    mv /usr/lib/osbuild/tools/osbuild-mpp /usr/bin/osbuild-mpp
+    mv /usr/lib/osbuild/osbuild "${python_lib_dir}/site-packages/osbuild"
+    mkdir -p /usr/lib/osbuild/osbuild
 }
 
 fixup_file_permissions() {
