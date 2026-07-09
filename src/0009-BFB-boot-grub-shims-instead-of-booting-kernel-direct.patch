@@ -1,0 +1,220 @@
+From 60bfbbcc73e8b2e85a3716697a6a566da1847252 Mon Sep 17 00:00:00 2001
+From: Eli Elgaev <eelgaev@redhat.com>
+Date: Wed, 1 Jul 2026 07:10:54 -0400
+Subject: [PATCH 9/9] BFB boot grub shims instead of booting kernel directly
+
+---
+ stages/org.osbuild.bfb           | 119 +++++++++++++++++++------------
+ stages/org.osbuild.bfb.meta.json |  22 +++---
+ 2 files changed, 81 insertions(+), 60 deletions(-)
+
+diff --git a/stages/org.osbuild.bfb b/stages/org.osbuild.bfb
+index 9f16ed58..5138345f 100755
+--- a/stages/org.osbuild.bfb
++++ b/stages/org.osbuild.bfb
+@@ -6,10 +6,14 @@ Buildhost commands used: `mlx-mkbfb`
+ """
+ 
+ import os
++import shutil
+ import subprocess
+ import sys
++import tempfile
+ 
+ import osbuild.api
++import osbuild.remoteloop as remoteloop
++from osbuild.util import makeefi
+ 
+ # BlueField enablement software is typically from these RPMs:
+ # - mlxbf-bfscripts: provides /usr/bin/mlx-mkbfb tool
+@@ -17,8 +21,28 @@ import osbuild.api
+ #
+ # Hardcode some firmware file paths in constants that we use below
+ DEFAULT_BFB_PATH = "/lib/firmware/mellanox/boot/default.bfb"
++
+ BOOT_CAPSULE_PATH = "/lib/firmware/mellanox/boot/capsule/boot_update2.cap"
+ 
++DEFAULT_KERNEL_ARGS = [
++    "console=hvc0",            # rshim virtual console (/dev/rshim0/console)
++    "console=ttyAMA0",         # IPMI serial console
++    "earlycon=pl011,0x13010000",  # early serial output on BF3
++]
++
++
++def make_grub_cfg(kernel_args):
++    args_str = " ".join(kernel_args)
++    return f"""
++set timeout=5
++set default=0
++
++menuentry "RHCOS Live" {{
++    linux /EFI/BOOT/vmlinuz {args_str}
++    initrd /EFI/BOOT/initramfs.img
++}}
++"""
++
+ 
+ def parse_input(inputs, name):
+     data = inputs[name]
+@@ -28,60 +52,63 @@ def parse_input(inputs, name):
+     return os.path.join(data["path"], filename)
+ 
+ 
+-def main(inputs, output, options):
++def main(inputs, output, options, loop_client):
+     filename = options["filename"].lstrip("/")
+     kernel = parse_input(inputs, "kernel")
+     initramfs = parse_input(inputs, "initramfs")
+ 
+-    # Combine initramfs + rootfs if rootfs provided
+-    if "rootfs" in inputs:
+-        rootfs = parse_input(inputs, "rootfs")
+-        combined = os.path.join(output, "combined.img")
+-        with open(combined, "wb") as out:
+-            for path in [initramfs, rootfs]:
+-                with open(path, "rb") as f:
+-                    out.write(f.read())
+-        initramfs = combined
+-
+-    # We don't plan to support BF1/BF2 hardware where v0 args are used
+-    default_args_v0 = []
+-    # Sourced from https://github.com/Mellanox/bfb-build
+-    # - console=hvc0: rshim virtual console (/dev/rshim0/console)
+-    # - console=ttyAMA0: IPMI serial console
+-    # - earlycon=pl011,0x13010000: early serial output on BF3
+-    # - initrd=initramfs: initramfs selection
+-    # - modprobe.blacklist=mlxbf_pmc: avoid PMC driver conflicts on BF3
+-    default_args_v2 = [
+-        "console=hvc0",
+-        "console=ttyAMA0",
+-        "earlycon=pl011,0x13010000",
+-        "initrd=initramfs",
+-        "modprobe.blacklist=mlxbf_pmc"
+-    ]
+-    boot_args_v0 = " ".join(options.get("boot_args_v0", default_args_v0))
+-    boot_args_v2 = " ".join(options.get("boot_args_v2", default_args_v2))
+-    boot_path = options.get("boot_path", "VenHw(F019E406-8C9C-11E5-8797-001ACA00BFC4)/Image")
+-    boot_desc = options.get("boot_desc", "Linux from rshim")
+-
+-    cmd = [
+-        "/usr/bin/mlx-mkbfb",
+-        "--image", kernel,
+-        "--initramfs", initramfs,
+-        "--capsule", BOOT_CAPSULE_PATH,
+-        "--boot-args-v0", f"={boot_args_v0}",
+-        "--boot-args-v2", f"={boot_args_v2}",
+-        "--boot-path", f"={boot_path}",
+-        "--boot-desc", f"={boot_desc}",
+-        DEFAULT_BFB_PATH,
+-        os.path.join(output, filename)
+-    ]
+-
+-    subprocess.run(cmd, check=True)
++    with tempfile.TemporaryDirectory(dir=output) as workdir:
++        # Optionally combine initramfs + rootfs
++        if "rootfs" in inputs:
++            rootfs = parse_input(inputs, "rootfs")
++            combined_initramfs = os.path.join(workdir, "combined.img")
++            with open(combined_initramfs, "wb") as out:
++                for path in [initramfs, rootfs]:
++                    with open(path, "rb") as f:
++                        shutil.copyfileobj(f, out)
++            initramfs = combined_initramfs
++
++        # Copy in all files needed for EFI booting into a tmpdir
++        # We'll pull the files from the buildroot "/".
++        efidir = os.path.join(workdir, 'efidir')
++        makeefi.mkefidir(efidir=efidir, source_tree="/")
++
++        # Create the grub.cfg
++        kernel_args = options.get("kernel_args", DEFAULT_KERNEL_ARGS)
++        grub_cfg = make_grub_cfg(kernel_args)
++        with open(os.path.join(efidir, "BOOT", "grub.cfg"), "w", encoding='utf8') as fh:
++            fh.write(grub_cfg)
++
++        # Copy in the kernel+initramfs
++        shutil.copy2(kernel, os.path.join(efidir, "BOOT", "vmlinuz"))
++        shutil.copy2(initramfs, os.path.join(efidir, "BOOT", "initramfs.img"))
++
++        # Create the efiboot.img file
++        ramdisk = os.path.join(workdir, "ramdisk.img")
++        makeefi.mkefiboot(efidir=efidir,
++                          output_efiboot_img=ramdisk,
++                          loop_client=loop_client)
++
++        boot_path = options.get("boot_path", "VenHw(F019E406-8C9C-11E5-8797-001ACA00BFC4)/EFI/BOOT/BOOTAA64.EFI")
++        boot_desc = options.get("boot_desc", "Linux via EFI+GRUB")
++
++        cmd = [
++            "/usr/bin/mlx-mkbfb",
++            "--ramdisk", ramdisk,
++            "--capsule", options.get("capsule", BOOT_CAPSULE_PATH),
++            "--boot-path", f"={boot_path}",
++            "--boot-desc", f"={boot_desc}",
++            DEFAULT_BFB_PATH,
++            os.path.join(output, filename)
++        ]
++
++        subprocess.run(cmd, check=True)
+ 
+     return 0
+ 
+ 
+ if __name__ == '__main__':
+     args = osbuild.api.arguments()
+-    r = main(args["inputs"], args["tree"], args["options"])
++    r = main(args["inputs"], args["tree"], args["options"],
++             loop_client=remoteloop.LoopClient("/run/osbuild/api/remoteloop"))
+     sys.exit(r)
+diff --git a/stages/org.osbuild.bfb.meta.json b/stages/org.osbuild.bfb.meta.json
+index c519a1f8..644a1bc8 100644
+--- a/stages/org.osbuild.bfb.meta.json
++++ b/stages/org.osbuild.bfb.meta.json
+@@ -4,7 +4,7 @@
+     "Packages Linux live artifacts into NVIDIA BFB format for BlueField DPUs.",
+     "Takes kernel, initramfs, and optionally rootfs as inputs.",
+     "If rootfs is provided, it is concatenated with initramfs.",
+-    "Provides hardware-specific boot arguments for BlueField DPUs.",
++    "Boots via GRUB shims discovered from the buildroot EFI paths.",
+     "Buildhost commands used: `mlx-mkbfb`"
+   ],
+   "schema_2": {
+@@ -40,28 +40,22 @@
+           "type": "string",
+           "description": "Output BFB filename"
+         },
+-        "boot_args_v0": {
++        "kernel_args": {
+           "type": "array",
+           "items": {
+             "type": "string"
+           },
+-          "description": "Boot arguments for older DPU firmware (BF1/BF2). Empty by default as BF1/BF2 support is not planned.",
+-          "default": []
+-        },
+-        "boot_args_v2": {
+-          "type": "array",
+-          "items": {
+-            "type": "string"
+-          },
+-          "description": "Boot arguments for newer DPU firmware (BF3). Defaults include essential hardware-specific arguments (console, earlycon, initrd).",
++          "description": "Kernel command-line arguments.",
+           "default": [
+             "console=hvc0",
+             "console=ttyAMA0",
+-            "earlycon=pl011,0x13010000",
+-            "initrd=initramfs",
+-            "modprobe.blacklist=mlxbf_pmc"
++            "earlycon=pl011,0x13010000"
+           ]
+         },
++        "capsule": {
++          "type": "string",
++          "description": "Path to UEFI capsule for firmware update, passed to mlx-mkbfb --capsule."
++        },
+         "boot_path": {
+           "type": "string",
+           "description": "UEFI boot path"
+-- 
+2.54.0
+

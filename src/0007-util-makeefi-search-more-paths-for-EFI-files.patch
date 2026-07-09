@@ -1,0 +1,50 @@
+From fd1ad528fe99da6137a36963ac38908b313da1b1 Mon Sep 17 00:00:00 2001
+From: Dusty Mabe <dusty@dustymabe.com>
+Date: Mon, 6 Jul 2026 10:15:40 -0400
+Subject: [PATCH 7/9] util/makeefi: search more paths for EFI files
+
+Notably this makes it so that package mode filesystem trees
+with files in boot/efi/EFI will manage to find an EFI directory.
+---
+ osbuild/util/makeefi.py | 18 ++++++++++++------
+ 1 file changed, 12 insertions(+), 6 deletions(-)
+
+diff --git a/osbuild/util/makeefi.py b/osbuild/util/makeefi.py
+index 4d0c173b..70acd2fb 100644
+--- a/osbuild/util/makeefi.py
++++ b/osbuild/util/makeefi.py
+@@ -15,10 +15,10 @@ from osbuild.util.path import ensure_glob
+ 
+ # This function finds the source EFI paths to copy from /usr/ to the EFI/
+ # directory. Historically this was just the usr/lib/bootupd/updates/EFI/
+-# directory (populated by bootupd), but as part of BootLoaderUpdatesPhase1 [1]
+-# the shim and grub packages started delivering files in
+-# /usr/lib/efi/(grub|shim)/<version>/EFI/ directly. Lets prefer the
+-# new paths and fallback to the legacy path if those don't exist.
++# directory (populated by bootupd) or boot/efi/EFI (package mode), but
++# as part of BootLoaderUpdatesPhase1 [1] the shim and grub packages started
++# delivering files in /usr/lib/efi/(grub|shim)/<version>/EFI/ directly.
++# Lets prefer the new paths and fallback to the legacy paths.
+ #
+ # [1] https://fedoraproject.org/wiki/Changes/BootLoaderUpdatesPhase1
+ def find_efi_source_paths(tree):
+@@ -28,8 +28,14 @@ def find_efi_source_paths(tree):
+         # Let's ensure there's only 2 dirs that match (i.e. one for grub
+         # one for shim) and return that list.
+         return ensure_glob(os.path.join(tree, 'usr/lib/efi/*/*/EFI'), n=2)
+-    # Legacy path. Just return a single entry list with the old path.
+-    return [os.path.join(tree, 'usr/lib/bootupd/updates/EFI')]
++    # Legacy paths:
++    #   - 'usr/lib/bootupd/updates/EFI' - on Image Mode systems
++    #   - 'boot/efi/EFI'                - on Package Mode systems
++    for path in ['usr/lib/bootupd/updates/EFI', 'boot/efi/EFI']:
++        fullpath = os.path.join(tree, path)
++        if os.path.exists(fullpath):
++            return [fullpath]
++    raise ValueError(f'No EFI source paths found in {tree}')
+ 
+ 
+ def find_efi_vendor_dir_name(efidir=None, source_tree=None):
+-- 
+2.54.0
+

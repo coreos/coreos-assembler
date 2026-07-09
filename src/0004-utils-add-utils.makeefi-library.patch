@@ -1,0 +1,329 @@
+From 5d65665c5acf0be46814472507022080853cc3ee Mon Sep 17 00:00:00 2001
+From: Dusty Mabe <dusty@dustymabe.com>
+Date: Wed, 1 Jul 2026 14:50:18 -0400
+Subject: [PATCH 4/9] utils: add utils.makeefi library
+
+These are functions related to making EFI bootable images that can
+be shared among stages that need to do that. These are factored out
+of the org.osbuild.coreos.live-artifacts.mono stage at this point.
+---
+ osbuild/util/makeefi.py                       | 126 ++++++++++++++++++
+ stages/org.osbuild.coreos.live-artifacts.mono | 126 +-----------------
+ 2 files changed, 132 insertions(+), 120 deletions(-)
+ create mode 100644 osbuild/util/makeefi.py
+
+diff --git a/osbuild/util/makeefi.py b/osbuild/util/makeefi.py
+new file mode 100644
+index 00000000..fab56507
+--- /dev/null
++++ b/osbuild/util/makeefi.py
+@@ -0,0 +1,126 @@
++"""EFI boot image utilities
++
++Functions for building EFI boot directory layouts and
++FAT filesystem images suitable for ISO / removable-media boot.
++"""
++import glob
++import os
++import shutil
++import subprocess
++import tarfile
++import tempfile
++
++from osbuild.util.path import ensure_glob
++
++
++# This function finds the source EFI paths to copy from /usr/ to the EFI/
++# directory. Historically this was just the usr/lib/bootupd/updates/EFI/
++# directory (populated by bootupd), but as part of BootLoaderUpdatesPhase1 [1]
++# the shim and grub packages started delivering files in
++# /usr/lib/efi/(grub|shim)/<version>/EFI/ directly. Lets prefer the
++# new paths and fallback to the legacy path if those don't exist.
++#
++# [1] https://fedoraproject.org/wiki/Changes/BootLoaderUpdatesPhase1
++def find_efi_source_paths(tree):
++    if glob.glob(os.path.join(tree, 'usr/lib/efi/*/*/EFI')):
++        # BootLoaderUpdatesPhase1 has been implemented and we should
++        # be able to pick up files from usr/lib/efi/(grub|shim)/<version>/EFI/
++        # Let's ensure there's only 2 dirs that match (i.e. one for grub
++        # one for shim) and return that list.
++        return ensure_glob(os.path.join(tree, 'usr/lib/efi/*/*/EFI'), n=2)
++    # Legacy path. Just return a single entry list with the old path.
++    return [os.path.join(tree, 'usr/lib/bootupd/updates/EFI')]
++
++
++def find_efi_vendor_dir_name(efidir):
++    # Find name of vendor directory for this distro. i.e. "fedora" or "redhat".
++    dirs = [n for n in os.listdir(efidir) if n != "BOOT"]
++    if len(dirs) != 1:
++        raise ValueError(f"did not find exactly one EFI vendor ID: {dirs}")
++    vendor_id = dirs[0]
++    return vendor_id
++
++
++def mkefidir(efidir, source_tree):
++    """
++    Searches the source_tree for files used for EFI booting and copies
++    these files into the specified efidir.
++    """
++    for path in find_efi_source_paths(source_tree):
++        shutil.copytree(path, efidir, dirs_exist_ok=True)
++
++    vendor_id = find_efi_vendor_dir_name(efidir)
++
++    # Delete fallback and its CSV file.  Its purpose is to create
++    # EFI boot variables, which we don't want when booting from
++    # removable media.
++    #
++    # A future shim release will merge fallback.efi into the main
++    # shim binary and enable the fallback behavior when the CSV
++    # exists.  But for now, fail if fallback.efi is missing.
++    for path in ensure_glob(os.path.join(efidir, "BOOT", "fb*.efi")):
++        os.unlink(path)
++    for path in ensure_glob(os.path.join(efidir, vendor_id, "BOOT*.CSV")):
++        os.unlink(path)
++
++    # Drop vendor copies of shim; we already have it in BOOT*.EFI in
++    # BOOT
++    for path in ensure_glob(os.path.join(efidir, vendor_id, "shim*.efi")):
++        os.unlink(path)
++
++    # Consolidate remaining files into BOOT.  shim needs GRUB to be
++    # there, and the rest doesn't hurt.
++    for path in ensure_glob(os.path.join(efidir, vendor_id, "*")):
++        shutil.move(path, os.path.join(efidir, "BOOT"))
++    os.rmdir(os.path.join(efidir, vendor_id))
++
++
++def mkefiboot(efidir, output_efiboot_img, loop_client):
++    """
++    Creates an efi boot image file at output_efiboot_img (usually named efiboot.img),
++    which is required for EFI booting. This is a fat32 formatted filesystem that
++    contains all the files needed for EFI boot.
++    """
++
++    # In restrictive environments, setgid, setuid and ownership changes
++    # may be restricted. This sets the file ownership to root and
++    # removes the setgid and setuid bits in the tarball.
++    def strip_tar(tarinfo):
++        tarinfo.uid = 0
++        tarinfo.gid = 0
++        if tarinfo.isdir():
++            tarinfo.mode = 0o755
++        elif tarinfo.isfile():
++            tarinfo.mode = 0o0644
++        return tarinfo
++
++    # Install binaries from the efidir
++    # Manually construct the tarball to ensure proper permissions and ownership
++    efitarfile = tempfile.NamedTemporaryFile(suffix=".tar")
++    with tarfile.open(efitarfile.name, "w:", dereference=True) as tar:
++        tar.add(efidir, arcname="/EFI", filter=strip_tar)
++
++    # Create the efiboot image file. Determine the size we should make
++    # it by taking the tarball size and adding 2MiB for fs overhead.
++    size = os.path.getsize(efitarfile.name) + 2 * 1024 * 1024
++    with open(output_efiboot_img, "wb") as out:
++        out.truncate(size)
++
++    # Make loopback device; mkfs; populate with files
++    with loop_client.device(output_efiboot_img) as loopdev:
++        # On RHEL 8, when booting from a disk device (rather than a CD),
++        # https://github.com/systemd/systemd/issues/14408 causes the
++        # hybrid ESP to race with the ISO9660 filesystem for the
++        # /dev/disk/by-label symlink unless the ESP has its own label,
++        # so set EFI-SYSTEM for consistency with the metal image.
++        # This should not be needed on Fedora or RHEL 9, but seems like
++        # a good thing to do anyway.
++        label = 'EFI-SYSTEM'
++        # NOTE: the arguments to mkfs here match how virt-make-fs calls mkfs
++        subprocess.check_call(['mkfs', '-t', 'vfat', '-I', '--mbr=n', '-n', label, loopdev])
++        with tempfile.TemporaryDirectory() as d:
++            try:
++                subprocess.check_call(['mount', '-o', 'utf8', loopdev, d])
++                subprocess.check_call(['tar', '-C', d, '-xf', efitarfile.name])
++            finally:
++                subprocess.check_call(['umount', d])
+diff --git a/stages/org.osbuild.coreos.live-artifacts.mono b/stages/org.osbuild.coreos.live-artifacts.mono
+index ecbfba7a..d136f708 100755
+--- a/stages/org.osbuild.coreos.live-artifacts.mono
++++ b/stages/org.osbuild.coreos.live-artifacts.mono
+@@ -18,14 +18,13 @@ import shutil
+ import struct
+ import subprocess
+ import sys
+-import tarfile
+ import tempfile
+ 
+ import yaml
+ 
+ import osbuild.api
+ import osbuild.remoteloop as remoteloop
+-from osbuild.util import checksum, osrelease
++from osbuild.util import checksum, makeefi, osrelease
+ from osbuild.util.chroot import Chroot
+ from osbuild.util.path import ensure_glob
+ 
+@@ -131,34 +130,6 @@ def make_stream_hash(src, dest):
+                 outf.write(hashlib.sha256(buf).hexdigest() + '\n')
+ 
+ 
+-# This function finds the source EFI paths to copy from /usr/ to the EFI/
+-# directory. Historically this was just the usr/lib/bootupd/updates/EFI/
+-# directory (populated by bootupd), but as part of BootLoaderUpdatesPhase1 [1]
+-# the shim and grub packages started delivering files in
+-# /usr/lib/efi/(grub|shim)/<version>/EFI/ directly. Lets prefer the
+-# new paths and fallback to the legacy path if those don't exist.
+-#
+-# [1] https://fedoraproject.org/wiki/Changes/BootLoaderUpdatesPhase1
+-def find_efi_source_paths(tree):
+-    if glob.glob(os.path.join(tree, 'usr/lib/efi/*/*/EFI')):
+-        # BootLoaderUpdatesPhase1 has been implemented and we should
+-        # be able to pick up files from usr/lib/efi/(grub|shim)/<version>/EFI/
+-        # Let's ensure there's only 2 dirs that match (i.e. one for grub
+-        # one for shim) and return that list.
+-        return ensure_glob(os.path.join(tree, 'usr/lib/efi/*/*/EFI'), n=2)
+-    # Legacy path. Just return a single entry list with the old path.
+-    return [os.path.join(tree, 'usr/lib/bootupd/updates/EFI')]
+-
+-
+-def find_efi_vendor_dir_name(efidir):
+-    # Find name of vendor directory for this distro. i.e. "fedora" or "redhat".
+-    dirs = [n for n in os.listdir(efidir) if n != "BOOT"]
+-    if len(dirs) != 1:
+-        raise ValueError(f"did not find exactly one EFI vendor ID: {dirs}")
+-    vendor_id = dirs[0]
+-    return vendor_id
+-
+-
+ def parse_metal_inputs(inputs):
+     def get_filepath_from_input(name):
+         files = inputs[name]["data"]["files"]
+@@ -343,9 +314,9 @@ def gen_live_artifacts(paths, tree, filenames, deployed_tree, loop_client, versi
+         output_efiboot_img = paths["iso/images/efiboot.img"]
+         # Copy out the EFI files found from the source_tree to the specified
+         # directory: efidir
+-        mkefidir(efidir=efidir, source_tree=deployed_tree)
++        makeefi.mkefidir(efidir=efidir, source_tree=deployed_tree)
+         # Discover the vendor ID (can be different on Fedora/RHEL/CentOS)
+-        vendor_id = find_efi_vendor_dir_name(efidir)
++        vendor_id = makeefi.find_efi_vendor_dir_name(efidir)
+         # Get the grub configuration for booting from the ISO and write it out
+         # to $efidir/BOOT/grub.cfg. See the comment in the function for explanation
+         # of config used.
+@@ -353,7 +324,7 @@ def gen_live_artifacts(paths, tree, filenames, deployed_tree, loop_client, versi
+         with open(os.path.join(efidir, "BOOT", "grub.cfg"), "w", encoding='utf8') as fh:
+             fh.write(get_grub_cfg_string(volid, vendor_id))
+         # Create the efiboot.img file
+-        mkefiboot(efidir, output_efiboot_img, loop_client)
++        makeefi.mkefiboot(efidir, output_efiboot_img, loop_client)
+         # And add arguments to include it in when creating the ISO
+         genisoargs += ['-eltorito-alt-boot', '-efi-boot', 'images/efiboot.img', '-no-emul-boot']
+ 
+@@ -483,91 +454,6 @@ boot
+ '''
+ 
+ 
+-def mkefidir(efidir, source_tree):
+-    """
+-    Searches the source_tree for files used for EFI booting and copies
+-    these files into the specified efidir.
+-    """
+-    for path in find_efi_source_paths(source_tree):
+-        shutil.copytree(path, efidir, dirs_exist_ok=True)
+-
+-    vendor_id = find_efi_vendor_dir_name(efidir)
+-
+-    # Delete fallback and its CSV file.  Its purpose is to create
+-    # EFI boot variables, which we don't want when booting from
+-    # removable media.
+-    #
+-    # A future shim release will merge fallback.efi into the main
+-    # shim binary and enable the fallback behavior when the CSV
+-    # exists.  But for now, fail if fallback.efi is missing.
+-    for path in ensure_glob(os.path.join(efidir, "BOOT", "fb*.efi")):
+-        os.unlink(path)
+-    for path in ensure_glob(os.path.join(efidir, vendor_id, "BOOT*.CSV")):
+-        os.unlink(path)
+-
+-    # Drop vendor copies of shim; we already have it in BOOT*.EFI in
+-    # BOOT
+-    for path in ensure_glob(os.path.join(efidir, vendor_id, "shim*.efi")):
+-        os.unlink(path)
+-
+-    # Consolidate remaining files into BOOT.  shim needs GRUB to be
+-    # there, and the rest doesn't hurt.
+-    for path in ensure_glob(os.path.join(efidir, vendor_id, "*")):
+-        shutil.move(path, os.path.join(efidir, "BOOT"))
+-    os.rmdir(os.path.join(efidir, vendor_id))
+-
+-
+-def mkefiboot(efidir, output_efiboot_img, loop_client):
+-    """
+-    Creates an efi boot image file at output_efiboot_img (usually named efiboot.img),
+-    which is required for EFI booting. This is a fat32 formatted filesystem that
+-    contains all the files needed for EFI boot.
+-    """
+-
+-    # In restrictive environments, setgid, setuid and ownership changes
+-    # may be restricted. This sets the file ownership to root and
+-    # removes the setgid and setuid bits in the tarball.
+-    def strip_tar(tarinfo):
+-        tarinfo.uid = 0
+-        tarinfo.gid = 0
+-        if tarinfo.isdir():
+-            tarinfo.mode = 0o755
+-        elif tarinfo.isfile():
+-            tarinfo.mode = 0o0644
+-        return tarinfo
+-
+-    # Install binaries from the efidir
+-    # Manually construct the tarball to ensure proper permissions and ownership
+-    efitarfile = tempfile.NamedTemporaryFile(suffix=".tar")
+-    with tarfile.open(efitarfile.name, "w:", dereference=True) as tar:
+-        tar.add(efidir, arcname="/EFI", filter=strip_tar)
+-
+-    # Create the efiboot image file. Determine the size we should make
+-    # it by taking the tarball size and adding 2MiB for fs overhead.
+-    size = os.path.getsize(efitarfile.name) + 2 * 1024 * 1024
+-    with open(output_efiboot_img, "wb") as out:
+-        out.truncate(size)
+-
+-    # Make loopback device; mkfs; populate with files
+-    with loop_client.device(output_efiboot_img) as loopdev:
+-        # On RHEL 8, when booting from a disk device (rather than a CD),
+-        # https://github.com/systemd/systemd/issues/14408 causes the
+-        # hybrid ESP to race with the ISO9660 filesystem for the
+-        # /dev/disk/by-label symlink unless the ESP has its own label,
+-        # so set EFI-SYSTEM for consistency with the metal image.
+-        # This should not be needed on Fedora or RHEL 9, but seems like
+-        # a good thing to do anyway.
+-        label = 'EFI-SYSTEM'
+-        # NOTE: the arguments to mkfs here match how virt-make-fs calls mkfs
+-        subprocess.check_call(['mkfs', '-t', 'vfat', '-I', '--mbr=n', '-n', label, loopdev])
+-        with tempfile.TemporaryDirectory() as d:
+-            try:
+-                subprocess.check_call(['mount', '-o', 'utf8', loopdev, d])
+-                subprocess.check_call(['tar', '-C', d, '-xf', efitarfile.name])
+-            finally:
+-                subprocess.check_call(['umount', d])
+-
+-
+ def mkrootfs_metal(paths, workdir, img_metal, fstype, fsoptions, loop_client):
+     """
+     Mounts a copy of the metal image and modifies it accordingly to create a (fstype) rootfs from its contents for the
+@@ -737,9 +623,9 @@ def copy_configs_and_init_kargs_json(deployed_tree, paths, blsentry_kargs, volid
+     #
+     # To find the string for the vendor ID we only need to inspect one
+     # of the source EFI directories. Grab one here.
+-    efidir = find_efi_source_paths(deployed_tree)[0]
++    efidir = makeefi.find_efi_source_paths(deployed_tree)[0]
+     if os.path.exists(efidir):
+-        vendor_id = find_efi_vendor_dir_name(efidir)
++        vendor_id = makeefi.find_efi_vendor_dir_name(efidir)
+         grubfilepath = ensure_glob(os.path.join(paths["iso"], 'EFI/*/grub.cfg'), n=1)[0]
+         srcdir = os.path.dirname(grubfilepath)
+         dstdir = os.path.join(paths["iso"], f"EFI/{vendor_id}")
+-- 
+2.54.0
+

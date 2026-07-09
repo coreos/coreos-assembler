@@ -1,0 +1,166 @@
+From 34b6ad676acff7977b74b85e850707794965321b Mon Sep 17 00:00:00 2001
+From: Dusty Mabe <dusty@dustymabe.com>
+Date: Wed, 1 Jul 2026 13:36:02 -0400
+Subject: [PATCH 1/9] stages/coreos.live-artifacts: refactor some EFI functions
+
+This is prep for them being pulled out into a library to be shared
+with another stage.
+
+There should be no difference in behavior introduced with this change.
+---
+ stages/org.osbuild.coreos.live-artifacts.mono | 116 ++++++++++--------
+ 1 file changed, 68 insertions(+), 48 deletions(-)
+
+diff --git a/stages/org.osbuild.coreos.live-artifacts.mono b/stages/org.osbuild.coreos.live-artifacts.mono
+index 5bcf97d8..029af63b 100755
+--- a/stages/org.osbuild.coreos.live-artifacts.mono
++++ b/stages/org.osbuild.coreos.live-artifacts.mono
+@@ -377,8 +377,24 @@ def gen_live_artifacts(paths, tree, filenames, deployed_tree, loop_client, versi
+ 
+     # For x86_64 and aarch64 UEFI booting
+     if basearch in ("x86_64", "aarch64"):
+-        efiboot_path = mkefiboot(paths, deployed_tree, volid, loop_client)
+-        genisoargs += ['-eltorito-alt-boot', '-efi-boot', efiboot_path, '-no-emul-boot']
++        # extract a few directories from paths dict
++        efidir = paths["efi"]
++        output_efiboot_img = paths["iso/images/efiboot.img"]
++        # Copy out the EFI files found from the source_tree to the specified
++        # directory: efidir
++        mkefidir(efidir=efidir, source_tree=deployed_tree)
++        # Discover the vendor ID (can be different on Fedora/RHEL/CentOS)
++        vendor_id = find_efi_vendor_dir_name(efidir)
++        # Get the grub configuration for booting from the ISO and write it out
++        # to $efidir/BOOT/grub.cfg. See the comment in the function for explanation
++        # of config used.
++        # Write out the grub config into $efidir/BOOT/grub.cfg
++        with open(os.path.join(efidir, "BOOT", "grub.cfg"), "w", encoding='utf8') as fh:
++            fh.write(get_grub_cfg_string(volid, vendor_id))
++        # Create the efiboot.img file
++        mkefiboot(efidir, output_efiboot_img, loop_client)
++        # And add arguments to include it in when creating the ISO
++        genisoargs += ['-eltorito-alt-boot', '-efi-boot', 'images/efiboot.img', '-no-emul-boot']
+ 
+     # We've done everything that might affect kargs, so filter out any files
+     # that no longer exist and write out the kargs JSON if it lists any files
+@@ -483,28 +499,35 @@ def update_image_offsets_s390x(paths, kargs_json, igninfo_json):
+     })
+ 
+ 
+-def mkefiboot(paths, deployed_tree, volid, loop_client):
+-    """
+-    Creates an efi boot image (efiboot.img) file, required for EFI
+-    booting the ISO. This is a fat32 formatted filesystem that contains
+-    all the files needed for EFI boot from an ISO.
++def get_grub_cfg_string(volid, vendor_id):
++    # Inject a stub grub.cfg pointing to the one in the main ISO image.
++    #
++    # When booting via El Torito, this stub is not used; GRUB reads
++    # the ISO image directly using its own ISO support.  This
++    # happens when booting from a CD device, or when the ISO is
++    # copied to a USB stick and booted on EFI firmware which prefers
++    # to boot a hard disk from an El Torito image if it has one.
++    # EDK II in QEMU behaves this way.
++    #
++    # This stub is used with EFI firmware which prefers to boot a
++    # hard disk from an ESP, or which cannot boot a hard disk via El
++    # Torito at all.  In that case, GRUB thinks it booted from a
++    # partition of the disk (a fake ESP created by isohybrid,
++    # pointing to efiboot.img) and needs a grub.cfg there.
++    return f'''search --label "{volid}" --set root --no-floppy
++set prefix=($root)/EFI/{vendor_id}
++echo "Booting via ESP..."
++configfile $prefix/grub.cfg
++boot
++'''
+ 
+-    Returns the path to the image file.
+-    """
+-    # In restrictive environments, setgid, setuid and ownership changes
+-    # may be restricted. This sets the file ownership to root and
+-    # removes the setgid and setuid bits in the tarball.
+-    def strip(tarinfo):
+-        tarinfo.uid = 0
+-        tarinfo.gid = 0
+-        if tarinfo.isdir():
+-            tarinfo.mode = 0o755
+-        elif tarinfo.isfile():
+-            tarinfo.mode = 0o0644
+-        return tarinfo
+ 
+-    efidir = paths["efi"]
+-    for path in find_efi_source_paths(deployed_tree):
++def mkefidir(efidir, source_tree):
++    """
++    Searches the source_tree for files used for EFI booting and copies
++    these files into the specified efidir.
++    """
++    for path in find_efi_source_paths(source_tree):
+         shutil.copytree(path, efidir, dirs_exist_ok=True)
+ 
+     vendor_id = find_efi_vendor_dir_name(efidir)
+@@ -532,39 +555,36 @@ def mkefiboot(paths, deployed_tree, volid, loop_client):
+         shutil.move(path, os.path.join(efidir, "BOOT"))
+     os.rmdir(os.path.join(efidir, vendor_id))
+ 
+-    # Inject a stub grub.cfg pointing to the one in the main ISO image.
+-    #
+-    # When booting via El Torito, this stub is not used; GRUB reads
+-    # the ISO image directly using its own ISO support.  This
+-    # happens when booting from a CD device, or when the ISO is
+-    # copied to a USB stick and booted on EFI firmware which prefers
+-    # to boot a hard disk from an El Torito image if it has one.
+-    # EDK II in QEMU behaves this way.
+-    #
+-    # This stub is used with EFI firmware which prefers to boot a
+-    # hard disk from an ESP, or which cannot boot a hard disk via El
+-    # Torito at all.  In that case, GRUB thinks it booted from a
+-    # partition of the disk (a fake ESP created by isohybrid,
+-    # pointing to efiboot.img) and needs a grub.cfg there.
+-    with open(os.path.join(efidir, "BOOT", "grub.cfg"), "w", encoding='utf8') as fh:
+-        fh.write(f'''search --label "{volid}" --set root --no-floppy
+-set prefix=($root)/EFI/{vendor_id}
+-echo "Booting via ESP..."
+-configfile $prefix/grub.cfg
+-boot
+-''')
++
++def mkefiboot(efidir, output_efiboot_img, loop_client):
++    """
++    Creates an efi boot image file at output_efiboot_img (usually named efiboot.img),
++    which is required for EFI booting. This is a fat32 formatted filesystem that
++    contains all the files needed for EFI boot.
++    """
++
++    # In restrictive environments, setgid, setuid and ownership changes
++    # may be restricted. This sets the file ownership to root and
++    # removes the setgid and setuid bits in the tarball.
++    def strip_tar(tarinfo):
++        tarinfo.uid = 0
++        tarinfo.gid = 0
++        if tarinfo.isdir():
++            tarinfo.mode = 0o755
++        elif tarinfo.isfile():
++            tarinfo.mode = 0o0644
++        return tarinfo
+ 
+     # Install binaries from boot partition
+     # Manually construct the tarball to ensure proper permissions and ownership
+     efitarfile = tempfile.NamedTemporaryFile(suffix=".tar")
+     with tarfile.open(efitarfile.name, "w:", dereference=True) as tar:
+-        tar.add(efidir, arcname="/EFI", filter=strip)
++        tar.add(efidir, arcname="/EFI", filter=strip_tar)
+ 
+     # Create the efiboot.img file in the images/ dir
+-    efibootfile = paths["iso/images/efiboot.img"]
+-    make_efi_bootfile(loop_client, input_tarball=efitarfile.name, output_efiboot_img=efibootfile)
+-    return "images/efiboot.img"
+-
++    make_efi_bootfile(loop_client,
++                      input_tarball=efitarfile.name,
++                      output_efiboot_img=output_efiboot_img)
+ 
+ def mkrootfs_metal(paths, workdir, img_metal, fstype, fsoptions, loop_client):
+     """
+-- 
+2.54.0
+

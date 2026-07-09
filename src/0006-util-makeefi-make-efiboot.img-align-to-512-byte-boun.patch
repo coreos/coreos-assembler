@@ -1,0 +1,30 @@
+From a9677c19f60cc8de174169c11d97077d9f2b8cbb Mon Sep 17 00:00:00 2001
+From: Dusty Mabe <dusty@dustymabe.com>
+Date: Wed, 1 Jul 2026 22:57:28 -0400
+Subject: [PATCH 6/9] util/makeefi: make efiboot.img align to 512 byte boundary
+
+Align to 512 byte boundary. Some firmeware (like nvidiabluefield)
+derives block device sector size from image size; unaligned sizes
+produce sector size 1 which GRUB cannot handle
+---
+ osbuild/util/makeefi.py | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/osbuild/util/makeefi.py b/osbuild/util/makeefi.py
+index 97d5e881..4d0c173b 100644
+--- a/osbuild/util/makeefi.py
++++ b/osbuild/util/makeefi.py
+@@ -119,6 +119,10 @@ def mkefiboot(efidir, output_efiboot_img, loop_client):
+     # Create the efiboot image file. Determine the size we should make
+     # it by taking the tarball size and adding 2MiB for fs overhead.
+     size = os.path.getsize(efitarfile.name) + 2 * 1024 * 1024
++    # Align to 512 byte boundary. Some firmeware (like nvidiabluefield)
++    # derives block device sector size from image size; unaligned sizes
++    # produce sector size 1 which GRUB cannot handle
++    size = (size + 511) & ~511
+     with open(output_efiboot_img, "wb") as out:
+         out.truncate(size)
+ 
+-- 
+2.54.0
+
