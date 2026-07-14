@@ -26,7 +26,7 @@ storage:
           while [ ! -e "/var/genprotimg/signal.file" ]; do
               sleep 1
           done
-          genprotimg -V --no-verify -i /var/genprotimg/vmlinuz -r /var/genprotimg/initrd.img  -p /var/genprotimg/parmfile -k /etc/se-hostkeys/ibm-z-hostkey-1 -o /var/genprotimg/se.img
+          pvimg create --verbose --no-verify -i /var/genprotimg/vmlinuz -r /var/genprotimg/initrd.img  -p /var/genprotimg/parmfile -k /etc/se-hostkeys/ibm-z-hostkey-1 -o /var/genprotimg/se.img
           rm -f /var/genprotimg/signal.file
           bash /var/build/post-script.sh
     - path: /etc/systemd/system-generators/coreos-genprotimg-generator
