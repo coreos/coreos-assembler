@@ -79,14 +79,41 @@ func (qc *Cluster) NewMachineWithBuilder(userdata any, options platform.MachineO
 	// Use default builder if none provided
 	builder = qc.ensureBuilderDefaults(builder)
 
+	rconf := qc.RuntimeConf()
+	noIgnition := rconf.NoIgnition
+
+	if noIgnition {
+		if qc.flight.opts.SecureExecution {
+			return nil, errors.New("secure execution requires Ignition; not supported with --no-ignition")
+		}
+		if len(append(qc.flight.opts.BindRO, options.BindMountHostRO...)) > 0 {
+			return nil, errors.New("bind mounts require Ignition; not supported with --no-ignition")
+		}
+	}
+
 	qm, config, err := qc.createMachine(userdata)
 	if err != nil {
 		return nil, err
 	}
 
 	qemuBuilder := platform.NewQemuBuilder()
-	qemuBuilder.SetConfig(config)
 	defer qemuBuilder.Close()
+	if noIgnition {
+		keys, err := qc.Keys()
+		if err != nil {
+			return nil, err
+		}
+		systemdCredDir, err := os.MkdirTemp("", "mantle-systemd-credentials-*")
+		if err != nil {
+			return nil, fmt.Errorf("creating systemd credential dir: %w", err)
+		}
+		if err := platform.WriteSystemdSSHCredentialsDir(systemdCredDir, rconf.SSHUser, keys); err != nil {
+			return nil, err
+		}
+		qemuBuilder.MountSystemdCredentialDir(systemdCredDir)
+	} else {
+		qemuBuilder.SetConfig(config)
+	}
 	if err := builder.InitBuilder(options, qemuBuilder); err != nil {
 		return nil, err
 	}
@@ -106,7 +133,9 @@ func (qc *Cluster) NewMachineWithBuilder(userdata any, options platform.MachineO
 		}
 		readonly := true
 		qemuBuilder.MountHost(src, dest, readonly)
-		config.MountHost(dest, readonly)
+		if config != nil {
+			config.MountHost(dest, readonly)
+		}
 	}
 
 	qemuBuilder.UUID = qm.id
@@ -161,9 +190,8 @@ func (qc *Cluster) NewMachineWithBuilder(userdata any, options platform.MachineO
 	}
 
 	// Run StartMachine, which blocks on the machine being booted up enough
-	// for SSH access, but only if we have a config, else there's no
-	// SSH key for us to use to get in so don't bother.
-	if config != nil {
+	// for SSH access. With --no-ignition, SSH keys come from virtiofs credentials.
+	if config != nil || noIgnition {
 		if err := platform.StartMachine(qm, qm.journal); err != nil {
 			qm.Destroy()
 			return nil, err
@@ -243,9 +271,13 @@ func (qc *Cluster) createMachine(userdata any) (*machine, *conf.Conf, error) {
 		return nil, nil, err
 	}
 
-	config, err := qc.RenderUserDataIfNeeded(userdata)
-	if err != nil {
-		return nil, nil, err
+	var config *conf.Conf
+	var err error
+	if !qc.RuntimeConf().NoIgnition {
+		config, err = qc.RenderUserDataIfNeeded(userdata)
+		if err != nil {
+			return nil, nil, err
+		}
 	}
 
 	journal, err := platform.NewJournal(dir)

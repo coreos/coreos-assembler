@@ -303,6 +303,12 @@ type RuntimeConfig struct {
 	// in-flight SSH commands when the test times out. If nil,
 	// context.Background() is used (no timeout).
 	TestExecTimeout context.Context
+
+	// NoIgnition skips Ignition when launching QEMU VMs; SSH keys are
+	// provisioned via virtiofs systemd credentials instead.
+	NoIgnition bool
+	// SSHUser overrides the default SSH user (core) when set.
+	SSHUser string
 }
 
 // Wrap a StdoutPipe as a io.ReadCloser

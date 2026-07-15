@@ -1802,6 +1802,10 @@ func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flig
 		WarningsAction:     conf.FailWarnings,
 		EarlyRelease:       h.Release,
 		TestExecTimeout:    h.TimeoutContext(),
+		NoIgnition:         QEMUOptions.NoIgnition,
+	}
+	if QEMUOptions.NoIgnition {
+		rconf.SSHUser = "root"
 	}
 	if t.HasFlag(register.AllowConfigWarnings) {
 		rconf.WarningsAction = conf.IgnoreWarnings
