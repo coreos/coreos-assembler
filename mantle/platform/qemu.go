@@ -551,8 +551,12 @@ type QemuBuilder struct {
 	virtioSerialID uint
 	// hostMounts is an array of directories mounted (via 9p or virtiofs) from the host
 	hostMounts []HostMount
-	// systemdCredentialDir is a host directory shared with the guest via virtiofs
-	// using SystemdCredentialVirtiofsTag.
+	// systemdCredentialDir is a host directory containing systemd credential
+	// files to share with the guest via virtiofs using SystemdCredentialVirtiofsTag.
+	// The guest must have import-virtiofs-systemd-credentials (or equivalent) to
+	// mount the share and import credentials into /run/credentials/@initrd/ or
+	// /run/credentials/@system/.
+	// See https://systemd.io/CREDENTIALS/ and https://github.com/systemd/systemd/issues/29175
 	systemdCredentialDir string
 	// fds is file descriptors we own to pass to qemu
 	fds []*os.File
@@ -858,8 +862,17 @@ func (builder *QemuBuilder) MountHost(source, dest string, readonly bool) {
 }
 
 // MountSystemdCredentialDir shares a host directory with the guest via virtiofs
-// using SystemdCredentialVirtiofsTag. The guest must import credentials from
-// this share (see fedora-coreos-config import-virtiofs-systemd-credentials).
+// using SystemdCredentialVirtiofsTag. The guest must run
+// import-virtiofs-systemd-credentials (or equivalent) to mount this share and
+// copy systemd credential files into /run/credentials/@initrd/ or
+// /run/credentials/@system/.
+//
+// This provides a cross-architecture alternative to SMBIOS OEM strings and
+// fw_cfg for passing systemd credentials to VMs. Unlike those mechanisms,
+// virtiofs works on all architectures (x86_64, aarch64, ppc64le, s390x).
+//
+// See https://systemd.io/CREDENTIALS/ and fedora-coreos-config
+// import-virtiofs-systemd-credentials.
 func (builder *QemuBuilder) MountSystemdCredentialDir(dir string) {
 	builder.systemdCredentialDir = dir
 }
@@ -2043,7 +2056,7 @@ func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 			virtiofsdSocket := filepath.Join(builder.tempdir, fmt.Sprintf("virtiofsd-%d.sock", i))
 			builder.Append("-chardev", fmt.Sprintf("socket,id=%s,path=%s", virtiofsChar, virtiofsdSocket))
 			builder.Append("-device", fmt.Sprintf("vhost-user-fs-pci,queue-size=1024,chardev=%s,tag=%s", virtiofsChar, hostmnt.dest))
-			plog.Debugf("creating virtiofs helper for %s", hostmnt.src)
+			plog.Debugf("creating virtiofs helper for %s (tag=%s)", hostmnt.src, hostmnt.dest)
 			// TODO: Honor hostmnt.readonly somehow here (add an option to virtiofsd)
 			p := createVirtiofsCmd(hostmnt.src, virtiofsdSocket)
 			if err := p.Start(); err != nil {

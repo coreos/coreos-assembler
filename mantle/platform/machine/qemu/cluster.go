@@ -98,20 +98,7 @@ func (qc *Cluster) NewMachineWithBuilder(userdata any, options platform.MachineO
 
 	qemuBuilder := platform.NewQemuBuilder()
 	defer qemuBuilder.Close()
-	if noIgnition {
-		keys, err := qc.Keys()
-		if err != nil {
-			return nil, err
-		}
-		systemdCredDir, err := os.MkdirTemp("", "mantle-systemd-credentials-*")
-		if err != nil {
-			return nil, fmt.Errorf("creating systemd credential dir: %w", err)
-		}
-		if err := platform.WriteSystemdSSHCredentialsDir(systemdCredDir, rconf.SSHUser, keys); err != nil {
-			return nil, err
-		}
-		qemuBuilder.MountSystemdCredentialDir(systemdCredDir)
-	} else {
+	if !noIgnition {
 		qemuBuilder.SetConfig(config)
 	}
 	if err := builder.InitBuilder(options, qemuBuilder); err != nil {
@@ -159,6 +146,32 @@ func (qc *Cluster) NewMachineWithBuilder(userdata any, options platform.MachineO
 		if err := qemuBuilder.AddCexDevice(); err != nil {
 			return nil, err
 		}
+	}
+
+	// When --no-ignition is set, provision SSH keys via virtiofs systemd
+	// credentials. This creates a temporary directory with a tmpfiles.extra
+	// systemd credential file that sets up ~/.ssh/authorized_keys for the
+	// SSH user, and shares it with the guest via virtiofs using the tag
+	// "io.systemd.credentials". The guest must have
+	// import-virtiofs-systemd-credentials installed to import these systemd
+	// credentials at boot.
+	//
+	// This approach works on all architectures (x86_64, aarch64, ppc64le,
+	// s390x) unlike SMBIOS OEM strings or fw_cfg which are limited to
+	// specific architectures.
+	if noIgnition {
+		systemdCredDir, err := os.MkdirTemp("", "mantle-systemd-credentials-*")
+		if err != nil {
+			return nil, fmt.Errorf("creating systemd credential dir: %w", err)
+		}
+		keys, err := qc.Keys()
+		if err != nil {
+			return nil, fmt.Errorf("getting SSH keys: %w", err)
+		}
+		if err := platform.WriteSystemdSSHCredentialsDir(systemdCredDir, rconf.SSHUser, keys); err != nil {
+			return nil, err
+		}
+		qemuBuilder.MountSystemdCredentialDir(systemdCredDir)
 	}
 
 	// Since we are on qemu let's just use non-network based journal
