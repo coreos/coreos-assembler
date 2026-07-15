@@ -551,6 +551,9 @@ type QemuBuilder struct {
 	virtioSerialID uint
 	// hostMounts is an array of directories mounted (via 9p or virtiofs) from the host
 	hostMounts []HostMount
+	// systemdCredentialDir is a host directory shared with the guest via virtiofs
+	// using SystemdCredentialVirtiofsTag.
+	systemdCredentialDir string
 	// fds is file descriptors we own to pass to qemu
 	fds []*os.File
 
@@ -852,6 +855,13 @@ func (builder *QemuBuilder) encryptIgnitionConfig() error {
 // We do mount it read-only by default in the guest, however.
 func (builder *QemuBuilder) MountHost(source, dest string, readonly bool) {
 	builder.hostMounts = append(builder.hostMounts, HostMount{src: source, dest: dest, readonly: readonly})
+}
+
+// MountSystemdCredentialDir shares a host directory with the guest via virtiofs
+// using SystemdCredentialVirtiofsTag. The guest must import credentials from
+// this share (see fedora-coreos-config import-virtiofs-systemd-credentials).
+func (builder *QemuBuilder) MountSystemdCredentialDir(dir string) {
+	builder.systemdCredentialDir = dir
 }
 
 // supportsFwCfg if the target system supports injecting
@@ -2002,8 +2012,19 @@ func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 		return nil, err
 	}
 
+	// Build the list of virtiofs mounts: regular host mounts plus systemd credential dir
+	allVirtioFSMounts := make([]HostMount, len(builder.hostMounts))
+	copy(allVirtioFSMounts, builder.hostMounts)
+	if builder.systemdCredentialDir != "" {
+		allVirtioFSMounts = append(allVirtioFSMounts, HostMount{
+			src:      builder.systemdCredentialDir,
+			dest:     SystemdCredentialVirtiofsTag,
+			readonly: true,
+		})
+	}
+
 	// Process virtiofs mounts
-	if len(builder.hostMounts) > 0 {
+	if len(allVirtioFSMounts) > 0 {
 		if err := builder.ensureTempdir(); err != nil {
 			return nil, err
 		}
@@ -2012,7 +2033,7 @@ func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 
 		// Spawn off a virtiofsd helper per mounted path
 		virtiofsHelpers := make(map[string]exec.Cmd)
-		for i, hostmnt := range builder.hostMounts {
+		for i, hostmnt := range allVirtioFSMounts {
 			// By far the most common failure to spawn virtiofsd will be a typo'd source directory,
 			// so let's synchronously check that ourselves here.
 			if _, err := os.Stat(hostmnt.src); err != nil {
