@@ -48,7 +48,9 @@ def main():
     builds = Builds()
     arch = get_basearch()
     previous_build = builds.get_latest_for_arch(arch)
-    if builds.has(buildid) and arch in builds.get_build_arches(buildid):
+    build_exists = builds.has(buildid) and arch in builds.get_build_arches(buildid)
+
+    if build_exists and not args.download:
         print(f"ERROR: Build ID {buildid} ({arch}) already exists!")
         sys.exit(1)
 
@@ -76,6 +78,29 @@ def main():
             print(f"ERROR: --download was specified, but no disk image artifacts were found for {download_arch}")
             sys.exit(1)
 
+    if build_exists and args.download:
+        # Augment an existing build with additional disk images
+        augment_existing_build(args, builds, buildid, arch, download_arch,
+                               disk_image_artifacts, registry_base)
+    else:
+        # Full import: create a new build
+        import_new_build(args, builds, buildid, arch, download_arch,
+                         disk_image_artifacts, registry_base, metadata,
+                         previous_build)
+
+    # report discovered disk images at the end
+    if disk_image_artifacts:
+        print(f"Found {len(disk_image_artifacts)} disk image(s):")
+        for a in disk_image_artifacts:
+            print(f"  - {a['platform']}/{a['arch']} (.{a['extension']})")
+        if not args.download:
+            print("Use --download to pull them (e.g. --download all)")
+
+
+def import_new_build(args, builds, buildid, arch, download_arch,
+                     disk_image_artifacts, registry_base, metadata,
+                     previous_build):
+    """Full import: create a new build from an OCI image."""
     with tempfile.TemporaryDirectory(prefix='cosa-import-', dir='tmp') as tmpd:
         # create the OCI archive
         tmp_oci_archive = generate_oci_archive(args.srcimg, tmpd)
@@ -94,19 +119,8 @@ def main():
         # download disk images if requested and available
         disk_image_files = {}
         if args.download:
-            arch_artifacts = [a for a in disk_image_artifacts if a['arch'] == download_arch]
-            available_platforms = [a['platform'] for a in arch_artifacts]
-            if args.download == 'all':
-                to_download = arch_artifacts
-            else:
-                requested = [p.strip() for p in args.download.split(',')]
-                missing = [p for p in requested if p not in available_platforms]
-                if missing:
-                    print(f"ERROR: Requested platform(s) not found for {download_arch}: {', '.join(missing)}")
-                    print(f"Available platforms: {', '.join(available_platforms)}")
-                    sys.exit(1)
-                to_download = [a for a in arch_artifacts if a['platform'] in requested]
-
+            to_download = select_platforms_to_download(
+                args.download, disk_image_artifacts, download_arch)
             disk_image_files = download_disk_images(
                 to_download, build_meta['name'], buildid, registry_base, tmpd)
 
@@ -136,13 +150,44 @@ def main():
     if not args.skip_prune:
         subprocess.check_call(['/usr/lib/coreos-assembler/cmd-prune'])
 
-    # report discovered disk images at the end
-    if disk_image_artifacts:
-        print(f"Found {len(disk_image_artifacts)} disk image(s):")
-        for a in disk_image_artifacts:
-            print(f"  - {a['platform']}/{a['arch']} (.{a['extension']})")
-        if not args.download:
-            print("Use --download to pull them (e.g. --download all)")
+
+def augment_existing_build(args, builds, buildid, arch, download_arch,
+                           disk_image_artifacts, registry_base):
+    """Add disk images to an existing build."""
+    meta = GenericBuildMeta(workdir=os.getcwd(), build=buildid, basearch=arch)
+    existing_images = meta.get('images', {})
+    name = meta['name']
+
+    to_download = select_platforms_to_download(
+        args.download, disk_image_artifacts, download_arch)
+
+    # skip platforms that already exist in the build
+    already_present = [a for a in to_download if a['platform'] in existing_images]
+    to_download = [a for a in to_download if a['platform'] not in existing_images]
+
+    for a in already_present:
+        print(f"Skipping {a['platform']}/{a['arch']}: already present in build {buildid}")
+
+    if not to_download:
+        print("All requested disk images are already present.")
+        return
+
+    with tempfile.TemporaryDirectory(prefix='cosa-import-', dir='tmp') as tmpd:
+        disk_image_files = download_disk_images(
+            to_download, name, buildid, registry_base, tmpd)
+
+        destdir = meta.build_dir
+        for platform, img_meta in disk_image_files.items():
+            shutil.move(img_meta['tmp_file_path'], f'{destdir}/{img_meta["path"]}')
+            meta['images'][platform] = {
+                'path': img_meta['path'],
+                'sha256': img_meta['sha256'],
+                'size': img_meta['size'],
+                'skip-compression': True,
+            }
+
+    meta.write()
+    print(f"Added {len(disk_image_files)} disk image(s) to build {buildid}")
 
 
 def parse_args():
@@ -266,6 +311,21 @@ def discover_disk_image_artifacts(index_manifest):
         })
 
     return artifacts
+
+
+def select_platforms_to_download(download_arg, disk_image_artifacts, download_arch):
+    """Filter artifacts by arch and platform selection. Returns list of artifacts to download."""
+    arch_artifacts = [a for a in disk_image_artifacts if a['arch'] == download_arch]
+    available_platforms = [a['platform'] for a in arch_artifacts]
+    if download_arg == 'all':
+        return arch_artifacts
+    requested = [p.strip() for p in download_arg.split(',')]
+    missing = [p for p in requested if p not in available_platforms]
+    if missing:
+        print(f"ERROR: Requested platform(s) not found for {download_arch}: {', '.join(missing)}")
+        print(f"Available platforms: {', '.join(available_platforms)}")
+        sys.exit(1)
+    return [a for a in arch_artifacts if a['platform'] in requested]
 
 
 def download_disk_images(artifacts, name, buildid, registry_base, tmpd):
