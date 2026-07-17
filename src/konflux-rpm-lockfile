@@ -58,8 +58,6 @@ def format_packages_with_repoid(pkgs, repos):
     """
     packages = []
     local_repos = list(repos)
-    if "fedora-coreos-pool" in local_repos:
-        local_repos.remove("fedora-coreos-pool")
 
     if not local_repos:
         if pkgs:
