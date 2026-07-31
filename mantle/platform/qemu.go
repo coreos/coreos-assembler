@@ -1391,10 +1391,17 @@ func (builder *QemuBuilder) AddIso(path string, bootindexStr string, asDisk bool
 }
 
 // DefaultMemoryMiB returns the default QEMU guest memory in MiB for
-// the given architecture. The historical defaults are 1024 for x86_64
-// and 2048 for all other architectures.
-func DefaultMemoryMiB(arch string) int {
-	switch arch {
+// the given architecture. If no architecture is provided, the current
+// host architecture is used. The historical defaults are 1024 for
+// x86_64 and 2048 for all other architectures.
+func DefaultMemoryMiB(arch ...string) int {
+	a := ""
+	if len(arch) > 0 {
+		a = arch[0]
+	} else {
+		a = coreosarch.CurrentRpmArch()
+	}
+	switch a {
 	case "aarch64", "s390x", "ppc64le":
 		return 2048
 	default:
