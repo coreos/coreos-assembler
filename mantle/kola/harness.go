@@ -1765,6 +1765,16 @@ func releaseMemoryCount(flight platform.Flight, t *register.Test) {
 	}
 }
 
+// isMemoryCountReleased checks whether a test's memory reservation
+// has already been released. This must be used instead of reading
+// t.ReservedMemoryCountMiB directly from other goroutines to avoid
+// a data race with releaseMemoryCount.
+func isMemoryCountReleased(t *register.Test) bool {
+	reservedMemoryCountMutex.Lock()
+	defer reservedMemoryCountMutex.Unlock()
+	return t.ReservedMemoryCountMiB == 0
+}
+
 // reserveHostPortsForTest attempts to reserve all required host ports
 // for the given test. Returns true if all ports were successfully
 // reserved, false if any port is already held by another test.
@@ -1969,8 +1979,23 @@ func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flig
 	// At the point machines show up in tcluster.Machines() they've
 	// already been contacted via SSH in StartMachine() and their
 	// QEMU processes have allocated their memory.
+	//
+	// Some tests (e.g., ignition failure tests) use QemuBuilder
+	// directly and their VMs never appear in the cluster's machine
+	// list. For those tests, the goroutine will keep polling until
+	// the test completes and the defer releases the memory
+	// reservation (setting ReservedMemoryCountMiB to 0). The brief
+	// double-counting of memory for these short-lived tests is
+	// acceptable.
 	go func() {
 		for len(tcluster.Machines()) < t.ClusterSize {
+			// If the memory reservation was already released
+			// (by the defer when the test completes), stop
+			// polling. Uses isMemoryCountReleased to avoid a
+			// data race with releaseMemoryCount.
+			if isMemoryCountReleased(t) {
+				return
+			}
 			time.Sleep(1 * time.Second)
 		}
 		releaseMemoryCount(flight, t)
