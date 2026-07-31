@@ -54,6 +54,23 @@ boot_device:
       - /dev/vdb`)
 )
 
+// bootMirrorTestMemoryMiB is the memory for the boot-mirror test VM.
+// Defined here so it can be used both in the test registration (for
+// the scheduler's memory accounting) and when creating VMs.
+var bootMirrorTestMemoryMiB = bootMirrorTestMemoryDefault()
+
+func bootMirrorTestMemoryDefault() int {
+	// ppc64le uses 64K pages by default which increases memory overhead.
+	// Double the memory request to avoid kernel panics during reprovisioning.
+	// See similar logic in harness.go and luks.go.
+	switch coreosarch.CurrentRpmArch() {
+	case "ppc64le":
+		return 8192
+	default:
+		return 4096
+	}
+}
+
 func init() {
 	register.RegisterTest(&register.Test{
 		Run:         runBootMirrorTest,
@@ -69,6 +86,9 @@ func init() {
 		Tags:             []string{"boot-mirror", "raid1", "reprovision"},
 		FailFast:         true,
 		Timeout:          15 * time.Minute,
+		// With ClusterSize: 0 we create the machine manually, but at least
+		// MinMemory will be considered by the test harness for scheduling.
+		MachineOptions: platform.MachineOptions{MinMemory: bootMirrorTestMemoryMiB},
 	})
 	register.RegisterTest(&register.Test{
 		Run:         runBootMirrorLUKSTest,
@@ -85,6 +105,9 @@ func init() {
 		Tags:             []string{"boot-mirror", "luks", "raid1", "tpm2", kola.NeedsInternetTag, "reprovision"},
 		FailFast:         true,
 		Timeout:          15 * time.Minute,
+		// With ClusterSize: 0 we create the machine manually, but at least
+		// MinMemory will be considered by the test harness for scheduling.
+		MachineOptions: platform.MachineOptions{MinMemory: bootMirrorTestMemoryMiB},
 	})
 }
 
@@ -95,12 +118,7 @@ func runBootMirrorTest(c cluster.TestCluster) {
 	var err error
 	options := platform.MachineOptions{
 		AdditionalDisks: []string{"5G", "5G"},
-		MinMemory:       4096,
-	}
-	// ppc64le uses 64K pages; see similar logic in harness.go and luks.go
-	switch coreosarch.CurrentRpmArch() {
-	case "ppc64le":
-		options.MinMemory = 8192
+		MinMemory:       bootMirrorTestMemoryMiB,
 	}
 	// FIXME: for QEMU tests kola currently assumes the host CPU architecture
 	// matches the one under test
@@ -145,12 +163,7 @@ func runBootMirrorLUKSTest(c cluster.TestCluster) {
 	var err error
 	options := platform.MachineOptions{
 		AdditionalDisks: []string{"5G"},
-		MinMemory:       4096,
-	}
-	// ppc64le uses 64K pages; see similar logic in harness.go and luks.go
-	switch coreosarch.CurrentRpmArch() {
-	case "ppc64le":
-		options.MinMemory = 8192
+		MinMemory:       bootMirrorTestMemoryMiB,
 	}
 	// FIXME: for QEMU tests kola currently assumes the host CPU architecture
 	// matches the one under test

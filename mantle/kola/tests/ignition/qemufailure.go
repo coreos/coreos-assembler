@@ -36,6 +36,12 @@ var (
 	plog = capnslog.NewPackageLogger("github.com/coreos/coreos-assembler/mantle", "kola/tests/ignition/qemufailure")
 )
 
+// qemuFailureTestMemoryMiB is the memory for the raw QemuBuilder
+// failure tests. Defined here so the test harness can account for
+// memory when scheduling, even though these tests use QemuBuilder
+// directly rather than cluster-managed machines.
+var qemuFailureTestMemoryMiB = 2048
+
 func init() {
 	register.RegisterTest(&register.Test{
 		Name:        "coreos.ignition.failure",
@@ -44,6 +50,12 @@ func init() {
 		ClusterSize: 0,
 		Platforms:   []string{"qemu"},
 		Tags:        []string{"ignition"},
+		// With ClusterSize: 0 we use QemuBuilder directly (not cluster-managed
+		// machines), but at least MinMemory will be considered by the test
+		// harness for scheduling.
+		MachineOptions: platform.MachineOptions{
+			MinMemory: qemuFailureTestMemoryMiB,
+		},
 	})
 	register.RegisterTest(&register.Test{
 		Name:        "coreos.unique.boot.failure",
@@ -51,6 +63,12 @@ func init() {
 		Description: "Verify boot fails if there are pre-existing boot filesystems.",
 		Platforms:   []string{"qemu"},
 		Run:         runDualBootfsFailure,
+		// With ClusterSize: 0 we use QemuBuilder directly (not cluster-managed
+		// machines), but at least MinMemory will be considered by the test
+		// harness for scheduling.
+		MachineOptions: platform.MachineOptions{
+			MinMemory: qemuFailureTestMemoryMiB,
+		},
 	})
 	register.RegisterTest(&register.Test{
 		Name:        "coreos.unique.boot.ignition.failure",
@@ -58,6 +76,12 @@ func init() {
 		Description: "Verify boot fails if there are pre-existing boot filesystems created with Ignition.",
 		Platforms:   []string{"qemu"},
 		Run:         runDualBootfsIgnitionFailure,
+		// With ClusterSize: 0 we use QemuBuilder directly (not cluster-managed
+		// machines), but at least MinMemory will be considered by the test
+		// harness for scheduling.
+		MachineOptions: platform.MachineOptions{
+			MinMemory: qemuFailureTestMemoryMiB,
+		},
 	})
 }
 
@@ -173,7 +197,7 @@ func ignitionFailure(c cluster.TestCluster) error {
 		return err
 	}
 
-	builder.MemoryMiB = 2048
+	builder.MemoryMiB = qemuFailureTestMemoryMiB
 	builder.Firmware = kola.QEMUOptions.Firmware
 
 	searchPattern := "error creating /sysroot/notwritable.txt"
@@ -222,7 +246,7 @@ func dualBootfsFailure(c cluster.TestCluster) error {
 	if err != nil {
 		return err
 	}
-	builder.MemoryMiB = 2048
+	builder.MemoryMiB = qemuFailureTestMemoryMiB
 	builder.Firmware = kola.QEMUOptions.Firmware
 
 	searchRegexString := "Error: System has 2 devices with a filesystem labeled 'boot'"
@@ -280,7 +304,7 @@ func dualBootfsIgnitionFailure(c cluster.TestCluster) error {
 		return err
 	}
 
-	builder.MemoryMiB = 2048
+	builder.MemoryMiB = qemuFailureTestMemoryMiB
 	builder.Firmware = kola.QEMUOptions.Firmware
 
 	searchRegexString := "Error: System has 2 devices with a filesystem labeled 'boot'"

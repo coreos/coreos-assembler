@@ -18,6 +18,31 @@ import (
 	"github.com/coreos/coreos-assembler/mantle/util"
 )
 
+// Memory constants for LUKS tests. These are defined here so they can
+// be used both in the test registration (for the scheduler's memory
+// accounting) and when creating VMs in the test functions.
+var (
+	// luksTangHelperMemoryMiB is the memory for the Tang server VM.
+	// It uses the architecture default since no MinMemory is set.
+	luksTangHelperMemoryMiB = platform.DefaultMemoryMiB()
+	// luksTestMemoryMiB is the memory for the LUKS test VM.
+	luksTestMemoryMiB = luksTestMemoryDefault()
+	// luksCexTestMemoryMiB is the memory for the CEX test VM (s390x only).
+	luksCexTestMemoryMiB = 8192
+)
+
+func luksTestMemoryDefault() int {
+	// ppc64le uses 64K pages by default which increases memory overhead.
+	// Double the memory request to avoid kernel panics during reprovisioning.
+	// See similar logic in harness.go and boot-mirror.go.
+	switch coreosarch.CurrentRpmArch() {
+	case "ppc64le":
+		return 8192
+	default:
+		return 4096
+	}
+}
+
 func init() {
 	// Create 0 cluster size to allow starting and setup of Tang as needed per test
 	// See: https://github.com/coreos/coreos-assembler/pull/1310#discussion_r401908836
@@ -29,6 +54,13 @@ func init() {
 		Flags:       []register.Flag{},
 		Distros:     []string{"rhcos", "scos"},
 		Tags:        []string{"luks", "tang", kola.NeedsInternetTag, "reprovision"},
+		// With ClusterSize: 0 we create the machines manually, but the
+		// total MinMemory is set here so the test harness can account for
+		// memory when scheduling. This value covers both the Tang server
+		// VM and the LUKS test VM. Only relevant on the qemu platform.
+		MachineOptions: platform.MachineOptions{
+			MinMemory: luksTangHelperMemoryMiB + luksTestMemoryMiB,
+		},
 	})
 	register.RegisterTest(&register.Test{
 		Run:                  luksSSST1Test,
@@ -40,6 +72,13 @@ func init() {
 		Platforms:            []string{"qemu"},
 		ExcludeArchitectures: []string{"s390x"}, // no TPM backend support for s390x
 		Tags:                 []string{"luks", "tpm", "tang", "sss", kola.NeedsInternetTag, "reprovision"},
+		// With ClusterSize: 0 we create the machines manually, but the
+		// total MinMemory is set here so the test harness can account for
+		// memory when scheduling. This value covers both the Tang server
+		// VM and the LUKS test VM. Only relevant on the qemu platform.
+		MachineOptions: platform.MachineOptions{
+			MinMemory: luksTangHelperMemoryMiB + luksTestMemoryMiB,
+		},
 	})
 	register.RegisterTest(&register.Test{
 		Run:                  luksSSST2Test,
@@ -51,6 +90,13 @@ func init() {
 		Platforms:            []string{"qemu"},
 		ExcludeArchitectures: []string{"s390x"}, // no TPM backend support for s390x
 		Tags:                 []string{"luks", "tpm", "tang", "sss", kola.NeedsInternetTag, "reprovision"},
+		// With ClusterSize: 0 we create the machines manually, but the
+		// total MinMemory is set here so the test harness can account for
+		// memory when scheduling. This value covers both the Tang server
+		// VM and the LUKS test VM. Only relevant on the qemu platform.
+		MachineOptions: platform.MachineOptions{
+			MinMemory: luksTangHelperMemoryMiB + luksTestMemoryMiB,
+		},
 	})
 	register.RegisterTest(&register.Test{
 		Run:                  luksSSST2FipsTest,
@@ -63,6 +109,13 @@ func init() {
 		Platforms:            []string{"qemu"},
 		ExcludeArchitectures: []string{"s390x"}, // no TPM backend support for s390x
 		Tags:                 []string{"luks", "tpm", "tang", "sss", kola.NeedsInternetTag, "fips", "reprovision"},
+		// With ClusterSize: 0 we create the machines manually, but the
+		// total MinMemory is set here so the test harness can account for
+		// memory when scheduling. This value covers both the Tang server
+		// VM and the LUKS test VM. Only relevant on the qemu platform.
+		MachineOptions: platform.MachineOptions{
+			MinMemory: luksTangHelperMemoryMiB + luksTestMemoryMiB,
+		},
 	})
 	register.RegisterTest(&register.Test{
 		Run:           runCexTest,
@@ -73,6 +126,11 @@ func init() {
 		Platforms:     []string{"qemu"},
 		Architectures: []string{"s390x"},
 		Tags:          []string{"luks", "cex", "reprovision"},
+		// With ClusterSize: 0 we create the machine manually, but at least
+		// MinMemory will be considered by the test harness for scheduling.
+		MachineOptions: platform.MachineOptions{
+			MinMemory: luksCexTestMemoryMiB,
+		},
 		NativeFuncs: map[string]register.NativeFuncWrap{
 			"RHCOSGrowpart": register.CreateNativeFuncWrap(coretest.TestRHCOSGrowfs, []string{"fcos"}...),
 			"FCOSGrowpart":  register.CreateNativeFuncWrap(coretest.TestFCOSGrowfs, []string{"rhcos", "scos"}...),
@@ -91,6 +149,7 @@ func setupTangMachine(c cluster.TestCluster) ut.TangServer {
 			{Service: "ssh", HostPort: 0, GuestPort: 22},
 			{Service: "tang", HostPort: 0, GuestPort: 80},
 		},
+		MinMemory: luksTangHelperMemoryMiB,
 	}
 
 	ignition := conf.Ignition(`{
@@ -181,12 +240,7 @@ func runTest(c cluster.TestCluster, tpm2 bool, threshold int, killTangAfterFirst
 	}`, tpm2, tangd.Address, tangd.Thumbprint, threshold, fipsFileSection(fips)))
 
 	opts := platform.MachineOptions{
-		MinMemory: 4096,
-	}
-	// ppc64le uses 64K pages; see similar logic in harness.go and boot-mirror.go
-	switch coreosarch.CurrentRpmArch() {
-	case "ppc64le":
-		opts.MinMemory = 8192
+		MinMemory: luksTestMemoryMiB,
 	}
 	m, err := c.NewMachineWithOptions(ignition, opts)
 	if err != nil {
@@ -248,7 +302,7 @@ func runCexTest(c cluster.TestCluster) {
 
 	opts := platform.MachineOptions{
 		Cex:       true,
-		MinMemory: 8192,
+		MinMemory: luksCexTestMemoryMiB,
 	}
 
 	m, err = c.Cluster.NewMachineWithOptions(ignition, opts)
