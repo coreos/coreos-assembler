@@ -83,7 +83,7 @@ func init() {
 		// skipping this test on UEFI until https://github.com/coreos/coreos-assembler/issues/2039
 		// gets resolved.
 		ExcludeFirmwares: []string{"uefi"},
-		Tags:             []string{"boot-mirror", "raid1", "reprovision"},
+		Tags:             []string{"boot-mirror", "raid1"},
 		FailFast:         true,
 		Timeout:          15 * time.Minute,
 		// With ClusterSize: 0 we create the machine manually, but at least
@@ -102,7 +102,7 @@ func init() {
 		// skipping this test on UEFI until https://github.com/coreos/coreos-assembler/issues/2039
 		// gets resolved.
 		ExcludeFirmwares: []string{"uefi"},
-		Tags:             []string{"boot-mirror", "luks", "raid1", "tpm2", kola.NeedsInternetTag, "reprovision"},
+		Tags:             []string{"boot-mirror", "luks", "raid1", "tpm2", kola.NeedsInternetTag},
 		FailFast:         true,
 		Timeout:          15 * time.Minute,
 		// With ClusterSize: 0 we create the machine manually, but at least

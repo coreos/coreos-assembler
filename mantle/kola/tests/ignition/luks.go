@@ -53,7 +53,7 @@ func init() {
 		Description: "Verify that the rootfs is encrypted with Tang.",
 		Flags:       []register.Flag{},
 		Distros:     []string{"rhcos", "scos"},
-		Tags:        []string{"luks", "tang", kola.NeedsInternetTag, "reprovision"},
+		Tags:        []string{"luks", "tang", kola.NeedsInternetTag},
 		// With ClusterSize: 0 we create the machines manually, but the
 		// total MinMemory is set here so the test harness can account for
 		// memory when scheduling. This value covers both the Tang server
@@ -71,7 +71,7 @@ func init() {
 		Distros:              []string{"rhcos", "scos"},
 		Platforms:            []string{"qemu"},
 		ExcludeArchitectures: []string{"s390x"}, // no TPM backend support for s390x
-		Tags:                 []string{"luks", "tpm", "tang", "sss", kola.NeedsInternetTag, "reprovision"},
+		Tags:                 []string{"luks", "tpm", "tang", "sss", kola.NeedsInternetTag},
 		// With ClusterSize: 0 we create the machines manually, but the
 		// total MinMemory is set here so the test harness can account for
 		// memory when scheduling. This value covers both the Tang server
@@ -89,7 +89,7 @@ func init() {
 		Distros:              []string{"fcos"},
 		Platforms:            []string{"qemu"},
 		ExcludeArchitectures: []string{"s390x"}, // no TPM backend support for s390x
-		Tags:                 []string{"luks", "tpm", "tang", "sss", kola.NeedsInternetTag, "reprovision"},
+		Tags:                 []string{"luks", "tpm", "tang", "sss", kola.NeedsInternetTag},
 		// With ClusterSize: 0 we create the machines manually, but the
 		// total MinMemory is set here so the test harness can account for
 		// memory when scheduling. This value covers both the Tang server
@@ -108,7 +108,7 @@ func init() {
 		Distros:              []string{"rhcos", "scos"},
 		Platforms:            []string{"qemu"},
 		ExcludeArchitectures: []string{"s390x"}, // no TPM backend support for s390x
-		Tags:                 []string{"luks", "tpm", "tang", "sss", kola.NeedsInternetTag, "fips", "reprovision"},
+		Tags:                 []string{"luks", "tpm", "tang", "sss", kola.NeedsInternetTag, "fips"},
 		// With ClusterSize: 0 we create the machines manually, but the
 		// total MinMemory is set here so the test harness can account for
 		// memory when scheduling. This value covers both the Tang server
@@ -125,7 +125,7 @@ func init() {
 		Flags:         []register.Flag{},
 		Platforms:     []string{"qemu"},
 		Architectures: []string{"s390x"},
-		Tags:          []string{"luks", "cex", "reprovision"},
+		Tags:          []string{"luks", "cex"},
 		// With ClusterSize: 0 we create the machine manually, but at least
 		// MinMemory will be considered by the test harness for scheduling.
 		MachineOptions: platform.MachineOptions{
