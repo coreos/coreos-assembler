@@ -50,13 +50,14 @@ func init() {
 	})
 	// This test follows the same network configuration used on https://github.com/RHsyseng/rhcos-slb
 	register.RegisterTest(&register.Test{
-		Run:         NetworkAdditionalNics,
-		ClusterSize: 0,
-		Name:        "rhcos.network.multiple-nics",
-		Description: "Verify configuring networking with multiple NICs work.",
-		Timeout:     20 * time.Minute,
-		Distros:     []string{"rhcos", "scos"},
-		Platforms:   []string{"qemu"},
+		Run:                 NetworkAdditionalNics,
+		ClusterSize:         1,
+		TestManagedMachines: true,
+		Name:                "rhcos.network.multiple-nics",
+		Description:         "Verify configuring networking with multiple NICs work.",
+		Timeout:             20 * time.Minute,
+		Distros:             []string{"rhcos", "scos"},
+		Platforms:           []string{"qemu"},
 	})
 	// This test follows the same network configuration used on https://github.com/RHsyseng/rhcos-slb
 	// with a slight change, where the script originally run by MCO is run from

@@ -52,12 +52,18 @@ func CreateNativeFuncWrap(f func() error, exclusions ...string) NativeFuncWrap {
 // statically declare state of the platform.TestCluster before the test
 // function is run.
 type Test struct {
-	Name                 string // should be unique
-	Subtests             []string
-	Run                  func(cluster.TestCluster)
-	NativeFuncs          map[string]NativeFuncWrap
-	UserData             *conf.UserData
-	ClusterSize          int
+	Name        string // should be unique
+	Subtests    []string
+	Run         func(cluster.TestCluster)
+	NativeFuncs map[string]NativeFuncWrap
+	UserData    *conf.UserData
+	ClusterSize int
+	// TestManagedMachines indicates that the test creates its own
+	// machines rather than having the harness create them. When true,
+	// ClusterSize still indicates how many machines the test will
+	// create (used for memory reservation scheduling) but the harness
+	// will not create any machines itself.
+	TestManagedMachines  bool
 	Platforms            []string      // allowlist of platforms to run test against -- defaults to all
 	Firmwares            []string      // allowlist of firmwares to run test against -- defaults to all
 	ExcludePlatforms     []string      // denylist of platforms to ignore -- defaults to none
@@ -75,7 +81,9 @@ type Test struct {
 
 	// MachineOptions contains options for machine creation (disks, memory,
 	// kernel args, etc.). The test harness passes these to
-	// NewMachineWithOptions when ClusterSize > 0.
+	// NewMachineWithOptions when TestManagedMachines is false.
+	// When TestManagedMachines is true, fields like MinMemory and
+	// RequiredHostPorts are still used by the scheduler.
 	MachineOptions platform.MachineOptions
 
 	// InjectContainer will cause the ostree base image to be injected into the target
@@ -117,6 +125,9 @@ var UpgradeTests = map[string]*Test{}
 func Register(m map[string]*Test, t *Test) {
 	if len(t.Conflicts) > 0 && !t.NonExclusive {
 		panic("exclusive test cannot have non-empty conflicts entry")
+	}
+	if t.ClusterSize <= 0 {
+		panic(fmt.Sprintf("test %v must set ClusterSize to the number of expected machines", t.Name))
 	}
 	_, ok := m[t.Name]
 	if ok {

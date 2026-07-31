@@ -28,12 +28,13 @@ import (
 
 func init() {
 	register.RegisterTest(&register.Test{
-		Run:         varLibContainers,
-		ClusterSize: 0,
-		Name:        `coreos.misc.disk.varlibcontainers`,
-		Flags:       []register.Flag{},
-		Distros:     []string{"rhcos", "fcos"},
-		Platforms:   []string{"qemu"},
+		Run:                 varLibContainers,
+		ClusterSize:         1,
+		TestManagedMachines: true,
+		Name:                `coreos.misc.disk.varlibcontainers`,
+		Flags:               []register.Flag{},
+		Distros:             []string{"rhcos", "fcos"},
+		Platforms:           []string{"qemu"},
 	})
 }
 

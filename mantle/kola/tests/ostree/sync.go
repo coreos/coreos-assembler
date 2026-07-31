@@ -82,15 +82,15 @@ var (
 func init() {
 	// See https://github.com/ostreedev/ostree/pull/2968
 	register.RegisterTest(&register.Test{
-		Run:         ostreeSyncTest,
-		ClusterSize: 0,
-		Name:        "ostree.sync",
-		Description: "Verify ostree can sync the filesystem with disconnected the NFS volume.",
-		Distros:     []string{"rhcos", "scos"},
-		Tags:        []string{"ostree", kola.SkipBaseChecksTag, kola.NeedsInternetTag},
-		// With ClusterSize: 0 we create the machines manually, but the
-		// total MinMemory is set here so the test harness can account for
-		// memory when scheduling. This value covers both the NFS server
+		Run:                 ostreeSyncTest,
+		ClusterSize:         2,
+		TestManagedMachines: true,
+		Name:                "ostree.sync",
+		Description:         "Verify ostree can sync the filesystem with disconnected the NFS volume.",
+		Distros:             []string{"rhcos", "scos"},
+		Tags:                []string{"ostree", kola.SkipBaseChecksTag, kola.NeedsInternetTag},
+		// The total MinMemory is set here so the test harness can account
+		// for memory when scheduling. This value covers both the NFS server
 		// VM and the client VM.
 		// RequiredHostPorts declares that this test needs exclusive access
 		// to host port 2049 (NFS) to prevent clashes with other parallel

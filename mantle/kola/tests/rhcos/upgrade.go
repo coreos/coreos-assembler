@@ -87,7 +87,8 @@ func init() {
 
 	register.RegisterTest(&register.Test{
 		Run:                  rhcosUpgradeFromOcpRhcos,
-		ClusterSize:          0,
+		ClusterSize:          1,
+		TestManagedMachines:  true,
 		Name:                 "rhcos.upgrade.from-ocp-rhcos",
 		Description:          "Verify upgrading from the latest RHCOS released for OCP works.",
 		FailFast:             true,

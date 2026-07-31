@@ -73,11 +73,12 @@ func bootMirrorTestMemoryDefault() int {
 
 func init() {
 	register.RegisterTest(&register.Test{
-		Run:         runBootMirrorTest,
-		ClusterSize: 0,
-		Name:        `coreos.boot-mirror`,
-		Description: "Verify the boot-mirror RAID1 flow works properly in both BIOS and UEFI mode.",
-		Platforms:   []string{"qemu"},
+		Run:                 runBootMirrorTest,
+		ClusterSize:         1,
+		TestManagedMachines: true,
+		Name:                `coreos.boot-mirror`,
+		Description:         "Verify the boot-mirror RAID1 flow works properly in both BIOS and UEFI mode.",
+		Platforms:           []string{"qemu"},
 		// Can't mirror boot disk on s390x
 		ExcludeArchitectures: []string{"s390x"},
 		// skipping this test on UEFI until https://github.com/coreos/coreos-assembler/issues/2039
@@ -86,16 +87,16 @@ func init() {
 		Tags:             []string{"boot-mirror", "raid1"},
 		FailFast:         true,
 		Timeout:          15 * time.Minute,
-		// With ClusterSize: 0 we create the machine manually, but at least
 		// MinMemory will be considered by the test harness for scheduling.
 		MachineOptions: platform.MachineOptions{MinMemory: bootMirrorTestMemoryMiB},
 	})
 	register.RegisterTest(&register.Test{
-		Run:         runBootMirrorLUKSTest,
-		ClusterSize: 0,
-		Name:        `coreos.boot-mirror.luks`,
-		Description: "Verify the boot-mirror+LUKS RAID1 flow works properly in both BIOS and UEFI modes.",
-		Platforms:   []string{"qemu"},
+		Run:                 runBootMirrorLUKSTest,
+		ClusterSize:         1,
+		TestManagedMachines: true,
+		Name:                `coreos.boot-mirror.luks`,
+		Description:         "Verify the boot-mirror+LUKS RAID1 flow works properly in both BIOS and UEFI modes.",
+		Platforms:           []string{"qemu"},
 		// Can't mirror boot disk on s390x, and qemu s390x doesn't
 		// support TPM
 		ExcludeArchitectures: []string{"s390x"},
@@ -105,7 +106,6 @@ func init() {
 		Tags:             []string{"boot-mirror", "luks", "raid1", "tpm2", kola.NeedsInternetTag},
 		FailFast:         true,
 		Timeout:          15 * time.Minute,
-		// With ClusterSize: 0 we create the machine manually, but at least
 		// MinMemory will be considered by the test harness for scheduling.
 		MachineOptions: platform.MachineOptions{MinMemory: bootMirrorTestMemoryMiB},
 	})

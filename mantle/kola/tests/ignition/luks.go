@@ -44,19 +44,18 @@ func luksTestMemoryDefault() int {
 }
 
 func init() {
-	// Create 0 cluster size to allow starting and setup of Tang as needed per test
 	// See: https://github.com/coreos/coreos-assembler/pull/1310#discussion_r401908836
 	register.RegisterTest(&register.Test{
-		Run:         luksTangTest,
-		ClusterSize: 0,
-		Name:        `luks.tang`,
-		Description: "Verify that the rootfs is encrypted with Tang.",
-		Flags:       []register.Flag{},
-		Distros:     []string{"rhcos", "scos"},
-		Tags:        []string{"luks", "tang", kola.NeedsInternetTag},
-		// With ClusterSize: 0 we create the machines manually, but the
-		// total MinMemory is set here so the test harness can account for
-		// memory when scheduling. This value covers both the Tang server
+		Run:                 luksTangTest,
+		ClusterSize:         2,
+		TestManagedMachines: true,
+		Name:                `luks.tang`,
+		Description:         "Verify that the rootfs is encrypted with Tang.",
+		Flags:               []register.Flag{},
+		Distros:             []string{"rhcos", "scos"},
+		Tags:                []string{"luks", "tang", kola.NeedsInternetTag},
+		// The total MinMemory is set here so the test harness can account
+		// for memory when scheduling. This value covers both the Tang server
 		// VM and the LUKS test VM. Only relevant on the qemu platform.
 		MachineOptions: platform.MachineOptions{
 			MinMemory: luksTangHelperMemoryMiB + luksTestMemoryMiB,
@@ -64,7 +63,8 @@ func init() {
 	})
 	register.RegisterTest(&register.Test{
 		Run:                  luksSSST1Test,
-		ClusterSize:          0,
+		ClusterSize:          2,
+		TestManagedMachines:  true,
 		Name:                 `luks.sss.t1`,
 		Description:          "Verify that the rootfs is encrypted with SSS with t=1.",
 		Flags:                []register.Flag{},
@@ -72,9 +72,8 @@ func init() {
 		Platforms:            []string{"qemu"},
 		ExcludeArchitectures: []string{"s390x"}, // no TPM backend support for s390x
 		Tags:                 []string{"luks", "tpm", "tang", "sss", kola.NeedsInternetTag},
-		// With ClusterSize: 0 we create the machines manually, but the
-		// total MinMemory is set here so the test harness can account for
-		// memory when scheduling. This value covers both the Tang server
+		// The total MinMemory is set here so the test harness can account
+		// for memory when scheduling. This value covers both the Tang server
 		// VM and the LUKS test VM. Only relevant on the qemu platform.
 		MachineOptions: platform.MachineOptions{
 			MinMemory: luksTangHelperMemoryMiB + luksTestMemoryMiB,
@@ -82,7 +81,8 @@ func init() {
 	})
 	register.RegisterTest(&register.Test{
 		Run:                  luksSSST2Test,
-		ClusterSize:          0,
+		ClusterSize:          2,
+		TestManagedMachines:  true,
 		Name:                 `luks.sss.t2`,
 		Description:          "Verify that the rootfs is encrypted with SSS with t=2.",
 		Flags:                []register.Flag{},
@@ -90,9 +90,8 @@ func init() {
 		Platforms:            []string{"qemu"},
 		ExcludeArchitectures: []string{"s390x"}, // no TPM backend support for s390x
 		Tags:                 []string{"luks", "tpm", "tang", "sss", kola.NeedsInternetTag},
-		// With ClusterSize: 0 we create the machines manually, but the
-		// total MinMemory is set here so the test harness can account for
-		// memory when scheduling. This value covers both the Tang server
+		// The total MinMemory is set here so the test harness can account
+		// for memory when scheduling. This value covers both the Tang server
 		// VM and the LUKS test VM. Only relevant on the qemu platform.
 		MachineOptions: platform.MachineOptions{
 			MinMemory: luksTangHelperMemoryMiB + luksTestMemoryMiB,
@@ -100,7 +99,8 @@ func init() {
 	})
 	register.RegisterTest(&register.Test{
 		Run:                  luksSSST2FipsTest,
-		ClusterSize:          0,
+		ClusterSize:          2,
+		TestManagedMachines:  true,
 		Name:                 `luks.sss.t2.fips`,
 		Description:          "Verify that the rootfs is encrypted with SSS with t=2 and FIPS mode enabled.",
 		CreationDate:         "2026-05-01",
@@ -109,24 +109,23 @@ func init() {
 		Platforms:            []string{"qemu"},
 		ExcludeArchitectures: []string{"s390x"}, // no TPM backend support for s390x
 		Tags:                 []string{"luks", "tpm", "tang", "sss", kola.NeedsInternetTag, "fips"},
-		// With ClusterSize: 0 we create the machines manually, but the
-		// total MinMemory is set here so the test harness can account for
-		// memory when scheduling. This value covers both the Tang server
+		// The total MinMemory is set here so the test harness can account
+		// for memory when scheduling. This value covers both the Tang server
 		// VM and the LUKS test VM. Only relevant on the qemu platform.
 		MachineOptions: platform.MachineOptions{
 			MinMemory: luksTangHelperMemoryMiB + luksTestMemoryMiB,
 		},
 	})
 	register.RegisterTest(&register.Test{
-		Run:           runCexTest,
-		ClusterSize:   0,
-		Name:          `luks.cex`,
-		Description:   "Verify that CEX-based rootfs encryption works.",
-		Flags:         []register.Flag{},
-		Platforms:     []string{"qemu"},
-		Architectures: []string{"s390x"},
-		Tags:          []string{"luks", "cex"},
-		// With ClusterSize: 0 we create the machine manually, but at least
+		Run:                 runCexTest,
+		ClusterSize:         1,
+		TestManagedMachines: true,
+		Name:                `luks.cex`,
+		Description:         "Verify that CEX-based rootfs encryption works.",
+		Flags:               []register.Flag{},
+		Platforms:           []string{"qemu"},
+		Architectures:       []string{"s390x"},
+		Tags:                []string{"luks", "cex"},
 		// MinMemory will be considered by the test harness for scheduling.
 		MachineOptions: platform.MachineOptions{
 			MinMemory: luksCexTestMemoryMiB,

@@ -1909,7 +1909,7 @@ func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flig
 		}
 	}()
 
-	if t.ClusterSize > 0 {
+	if !t.TestManagedMachines {
 		var userdata *conf.UserData = t.UserData
 
 		options := t.MachineOptions
@@ -1964,15 +1964,13 @@ func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flig
 		tcluster.H.WarningOnFailure()
 	}
 
-	// Machines may be created directly by the test (not via the
-	// harness with NewMachines above), so we poll asynchronously
-	// via a goroutine until at least one shows up and then release
-	// the temporary memory reservation.
+	// Poll asynchronously until all expected machines have been
+	// created and then release the temporary memory reservation.
+	// At the point machines show up in tcluster.Machines() they've
+	// already been contacted via SSH in StartMachine() and their
+	// QEMU processes have allocated their memory.
 	go func() {
-		// Wait for at least one machine in the cluster to exist.
-		// At the point machines show up in tcluster.Machines() they've
-		// already been contacted successfully via SSH in StartMachine().
-		for len(tcluster.Machines()) == 0 {
+		for len(tcluster.Machines()) < t.ClusterSize {
 			time.Sleep(1 * time.Second)
 		}
 		releaseMemoryCount(flight, t)
