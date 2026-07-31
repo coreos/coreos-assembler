@@ -101,16 +101,15 @@ func fipsFailureTestMemoryDefault() int {
 
 func init() {
 	register.RegisterTest(&register.Test{
-		Name:        "fips.failure",
-		Description: "Verify cryptsetup lukscreate will fail with FIPS and incompatible crypto algorithms.",
-		Run:         runFipsFailure,
-		ClusterSize: 0,
-		Platforms:   []string{"qemu"},
-		Tags:        []string{"ignition"},
-		Distros:     []string{"rhcos", "scos"},
-		// With ClusterSize: 0 we use QemuBuilder directly (not cluster-managed
-		// machines), but at least MinMemory will be considered by the test
-		// harness for scheduling.
+		Name:                "fips.failure",
+		Description:         "Verify cryptsetup lukscreate will fail with FIPS and incompatible crypto algorithms.",
+		Run:                 runFipsFailure,
+		ClusterSize:         1,
+		TestManagedMachines: true,
+		Platforms:           []string{"qemu"},
+		Tags:                []string{"ignition"},
+		Distros:             []string{"rhcos", "scos"},
+		// MinMemory will be considered by the test harness for scheduling.
 		MachineOptions: platform.MachineOptions{
 			MinMemory: fipsFailureTestMemoryMiB,
 		},

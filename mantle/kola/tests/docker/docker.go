@@ -65,10 +65,11 @@ func init() {
 		ExcludePlatforms: []string{"qemu"},
 	})
 	register.RegisterTest(&register.Test{
-		Run:         dockerOldClient,
-		ClusterSize: 0,
-		Name:        "docker.oldclient",
-		Distros:     []string{"cl"},
+		Run:                 dockerOldClient,
+		ClusterSize:         1,
+		TestManagedMachines: true,
+		Name:                "docker.oldclient",
+		Distros:             []string{"cl"},
 	})
 	register.RegisterTest(&register.Test{
 		Run:         dockerUserns,

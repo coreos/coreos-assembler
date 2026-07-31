@@ -30,21 +30,23 @@ import (
 func init() {
 	// mount disks to `/var/log` and `/var/lib/containers`
 	register.RegisterTest(&register.Test{
-		Name:        "coreos.ignition.mount.disks",
-		Description: "Verify that we can mount two disks through Ignition and write to the mountpoints.",
-		Run:         testMountDisks,
-		ClusterSize: 0,
-		Platforms:   []string{"qemu"},
-		Tags:        []string{"ignition"},
+		Name:                "coreos.ignition.mount.disks",
+		Description:         "Verify that we can mount two disks through Ignition and write to the mountpoints.",
+		Run:                 testMountDisks,
+		ClusterSize:         1,
+		TestManagedMachines: true,
+		Platforms:           []string{"qemu"},
+		Tags:                []string{"ignition"},
 	})
 	// create new partitions on disk labeled `coreos-boot-disk
 	register.RegisterTest(&register.Test{
-		Name:        "coreos.ignition.mount.partitions",
-		Description: "Verify that we can create new partitions through Ignition.",
-		Run:         testMountPartitions,
-		ClusterSize: 0,
-		Platforms:   []string{"qemu"},
-		Tags:        []string{"ignition"},
+		Name:                "coreos.ignition.mount.partitions",
+		Description:         "Verify that we can create new partitions through Ignition.",
+		Run:                 testMountPartitions,
+		ClusterSize:         1,
+		TestManagedMachines: true,
+		Platforms:           []string{"qemu"},
+		Tags:                []string{"ignition"},
 	})
 }
 

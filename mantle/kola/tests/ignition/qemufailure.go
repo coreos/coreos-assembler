@@ -44,41 +44,38 @@ var qemuFailureTestMemoryMiB = 2048
 
 func init() {
 	register.RegisterTest(&register.Test{
-		Name:        "coreos.ignition.failure",
-		Description: "Verify ignition will fail with unsupported action.",
-		Run:         runIgnitionFailure,
-		ClusterSize: 0,
-		Platforms:   []string{"qemu"},
-		Tags:        []string{"ignition"},
-		// With ClusterSize: 0 we use QemuBuilder directly (not cluster-managed
-		// machines), but at least MinMemory will be considered by the test
-		// harness for scheduling.
+		Name:                "coreos.ignition.failure",
+		Description:         "Verify ignition will fail with unsupported action.",
+		Run:                 runIgnitionFailure,
+		ClusterSize:         1,
+		TestManagedMachines: true,
+		Platforms:           []string{"qemu"},
+		Tags:                []string{"ignition"},
+		// MinMemory will be considered by the test harness for scheduling.
 		MachineOptions: platform.MachineOptions{
 			MinMemory: qemuFailureTestMemoryMiB,
 		},
 	})
 	register.RegisterTest(&register.Test{
-		Name:        "coreos.unique.boot.failure",
-		ClusterSize: 0,
-		Description: "Verify boot fails if there are pre-existing boot filesystems.",
-		Platforms:   []string{"qemu"},
-		Run:         runDualBootfsFailure,
-		// With ClusterSize: 0 we use QemuBuilder directly (not cluster-managed
-		// machines), but at least MinMemory will be considered by the test
-		// harness for scheduling.
+		Name:                "coreos.unique.boot.failure",
+		ClusterSize:         1,
+		TestManagedMachines: true,
+		Description:         "Verify boot fails if there are pre-existing boot filesystems.",
+		Platforms:           []string{"qemu"},
+		Run:                 runDualBootfsFailure,
+		// MinMemory will be considered by the test harness for scheduling.
 		MachineOptions: platform.MachineOptions{
 			MinMemory: qemuFailureTestMemoryMiB,
 		},
 	})
 	register.RegisterTest(&register.Test{
-		Name:        "coreos.unique.boot.ignition.failure",
-		ClusterSize: 0,
-		Description: "Verify boot fails if there are pre-existing boot filesystems created with Ignition.",
-		Platforms:   []string{"qemu"},
-		Run:         runDualBootfsIgnitionFailure,
-		// With ClusterSize: 0 we use QemuBuilder directly (not cluster-managed
-		// machines), but at least MinMemory will be considered by the test
-		// harness for scheduling.
+		Name:                "coreos.unique.boot.ignition.failure",
+		ClusterSize:         1,
+		TestManagedMachines: true,
+		Description:         "Verify boot fails if there are pre-existing boot filesystems created with Ignition.",
+		Platforms:           []string{"qemu"},
+		Run:                 runDualBootfsIgnitionFailure,
+		// MinMemory will be considered by the test harness for scheduling.
 		MachineOptions: platform.MachineOptions{
 			MinMemory: qemuFailureTestMemoryMiB,
 		},

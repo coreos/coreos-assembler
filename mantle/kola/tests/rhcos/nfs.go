@@ -54,11 +54,12 @@ systemd:
 func init() {
 	// TODO: enable FCOS
 	register.RegisterTest(&register.Test{
-		Run:            NFSv4,
-		ClusterSize:    0,
-		Name:           "rhcos.nfs.v4",
-		Description:    "Verify that NFSv4 works.",
-		ExcludeDistros: []string{"fcos"},
+		Run:                 NFSv4,
+		ClusterSize:         2,
+		TestManagedMachines: true,
+		Name:                "rhcos.nfs.v4",
+		Description:         "Verify that NFSv4 works.",
+		ExcludeDistros:      []string{"fcos"},
 
 		// Disabled on Azure because setting hostname
 		// is required at the instance creation level

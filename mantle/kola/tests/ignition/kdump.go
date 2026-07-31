@@ -28,33 +28,32 @@ var (
 )
 
 func init() {
-	// Create 0 cluster size to allow starting and setup ssh server as needed for the test
 	// See: https://github.com/coreos/coreos-assembler/pull/1310#discussion_r401908836
 	register.RegisterTest(&register.Test{
-		Run:         kdumpSSHTest,
-		ClusterSize: 0,
-		Name:        `kdump.crash.ssh`,
-		Description: "Verifies kdump logs are exported to SSH destination",
-		Tags:        []string{"kdump", kola.SkipBaseChecksTag, kola.NeedsInternetTag},
-		Platforms:   []string{"qemu"},
-		// With ClusterSize: 0 we create the machines manually, but the
-		// total MinMemory is set here so the test harness can account for
-		// memory when scheduling. This value covers both the helper VM
+		Run:                 kdumpSSHTest,
+		ClusterSize:         2,
+		TestManagedMachines: true,
+		Name:                `kdump.crash.ssh`,
+		Description:         "Verifies kdump logs are exported to SSH destination",
+		Tags:                []string{"kdump", kola.SkipBaseChecksTag, kola.NeedsInternetTag},
+		Platforms:           []string{"qemu"},
+		// The total MinMemory is set here so the test harness can account
+		// for memory when scheduling. This value covers both the helper VM
 		// and the kdump test VM. Only relevant on the qemu platform.
 		MachineOptions: platform.MachineOptions{
 			MinMemory: kdumpHelperMemoryMiB + kdumpTestMemoryMiB,
 		},
 	})
 	register.RegisterTest(&register.Test{
-		Run:         kdumpNFSTest,
-		ClusterSize: 0,
-		Name:        `kdump.crash.nfs`,
-		Description: "Verifies kdump logs are exported to NFS destination",
-		Tags:        []string{"kdump", kola.SkipBaseChecksTag, kola.NeedsInternetTag},
-		Platforms:   []string{"qemu"},
-		// With ClusterSize: 0 we create the machines manually, but the
-		// total MinMemory is set here so the test harness can account for
-		// memory when scheduling. This value covers both the helper VM
+		Run:                 kdumpNFSTest,
+		ClusterSize:         2,
+		TestManagedMachines: true,
+		Name:                `kdump.crash.nfs`,
+		Description:         "Verifies kdump logs are exported to NFS destination",
+		Tags:                []string{"kdump", kola.SkipBaseChecksTag, kola.NeedsInternetTag},
+		Platforms:           []string{"qemu"},
+		// The total MinMemory is set here so the test harness can account
+		// for memory when scheduling. This value covers both the helper VM
 		// and the kdump test VM. Only relevant on the qemu platform.
 		// RequiredHostPorts declares that this test needs exclusive access
 		// to host port 2049 (NFS) to prevent clashes with other parallel

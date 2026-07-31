@@ -94,14 +94,14 @@ func init() {
 			Run: func(c cluster.TestCluster) {
 				testLiveIso(c, opts)
 			},
-			ClusterSize: 0,
-			Name:        "iso." + testName,
-			Description: "Verify ISO live install works.",
-			Timeout:     installTimeoutMins * time.Minute,
-			Tags:        tags,
-			Flags:       []register.Flag{},
-			Platforms:   []string{"qemu"},
-			// With ClusterSize: 0 we create the machine manually below, but at least
+			ClusterSize:         1,
+			TestManagedMachines: true,
+			Name:                "iso." + testName,
+			Description:         "Verify ISO live install works.",
+			Timeout:             installTimeoutMins * time.Minute,
+			Tags:                tags,
+			Flags:               []register.Flag{},
+			Platforms:           []string{"qemu"},
 			// MinMemory will be considered by the test harness for scheduling.
 			MachineOptions: opts.machineOpts,
 		})
