@@ -45,15 +45,12 @@ func init() {
 			MinMemory: kdumpHelperMemoryMiB + kdumpTestMemoryMiB,
 		},
 	})
-	// Add tag "reprovision" to run serially to avoid NFS port conflicts.
-	// This is hack until a better solution exists.
-	// See https://github.com/coreos/coreos-assembler/issues/4117#issuecomment-3495048106
 	register.RegisterTest(&register.Test{
 		Run:         kdumpNFSTest,
 		ClusterSize: 0,
 		Name:        `kdump.crash.nfs`,
 		Description: "Verifies kdump logs are exported to NFS destination",
-		Tags:        []string{"kdump", kola.SkipBaseChecksTag, kola.NeedsInternetTag, "reprovision"},
+		Tags:        []string{"kdump", kola.SkipBaseChecksTag, kola.NeedsInternetTag},
 		Platforms:   []string{"qemu"},
 		// With ClusterSize: 0 we create the machines manually, but the
 		// total MinMemory is set here so the test harness can account for

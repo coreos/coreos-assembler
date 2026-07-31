@@ -81,16 +81,13 @@ var (
 
 func init() {
 	// See https://github.com/ostreedev/ostree/pull/2968
-	// Add tag "reprovision" to run serially to avoid NFS port conflicts.
-	// This is hack until a better solution exists.
-	// See https://github.com/coreos/coreos-assembler/issues/4117#issuecomment-3495048106
 	register.RegisterTest(&register.Test{
 		Run:         ostreeSyncTest,
 		ClusterSize: 0,
 		Name:        "ostree.sync",
 		Description: "Verify ostree can sync the filesystem with disconnected the NFS volume.",
 		Distros:     []string{"rhcos", "scos"},
-		Tags:        []string{"ostree", kola.SkipBaseChecksTag, kola.NeedsInternetTag, "reprovision"},
+		Tags:        []string{"ostree", kola.SkipBaseChecksTag, kola.NeedsInternetTag},
 		// With ClusterSize: 0 we create the machines manually, but the
 		// total MinMemory is set here so the test harness can account for
 		// memory when scheduling. This value covers both the NFS server
