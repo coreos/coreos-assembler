@@ -95,8 +95,12 @@ func init() {
 		// total MinMemory is set here so the test harness can account for
 		// memory when scheduling. This value covers both the NFS server
 		// VM and the client VM.
+		// RequiredHostPorts declares that this test needs exclusive access
+		// to host port 2049 (NFS) to prevent clashes with other parallel
+		// tests. See https://github.com/coreos/coreos-assembler/issues/4117
 		MachineOptions: platform.MachineOptions{
-			MinMemory: ostreeSyncNfsServerMemoryMiB + ostreeSyncClientMemoryMiB,
+			MinMemory:         ostreeSyncNfsServerMemoryMiB + ostreeSyncClientMemoryMiB,
+			RequiredHostPorts: []int{2049},
 		},
 	})
 }

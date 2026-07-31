@@ -132,6 +132,12 @@ var (
 	// reservedMemoryCountMutex protects access to reservedMemoryCountMiB
 	reservedMemoryCountMutex sync.Mutex
 
+	// reservedHostPorts tracks host ports currently reserved by running
+	// tests. This prevents parallel tests from clashing on well-known
+	// ports (e.g., NFS 2049) that cannot be randomized.
+	reservedHostPorts      = make(map[int]string) // port -> test name
+	reservedHostPortsMutex sync.Mutex
+
 	// ForceRunPlatformIndependent will cause tests that claim platform-independence to run
 	ForceRunPlatformIndependent bool
 
@@ -997,6 +1003,7 @@ type externalTestMeta struct {
 	BindMountHostRO           []string `json:"bindMountHostRO,omitempty"           yaml:"bindMountHostRO,omitempty"`
 	CreationDate              string   `json:"creationDate,omitempty"              yaml:"creationDate,omitempty"`
 	BootFrom                  string   `json:"bootFrom,omitempty"                  yaml:"bootFrom,omitempty"`
+	RequiredHostPorts         []int    `json:"requiredHostPorts,omitempty"          yaml:"requiredHostPorts,omitempty"`
 }
 
 // metadataFromTestBinary extracts JSON-in-comment like:
@@ -1232,6 +1239,7 @@ ExecStart=%s
 			AppendFirstbootKernelArgs: targetMeta.AppendFirstbootKernelArgs,
 			InstanceType:              targetMeta.InstanceType,
 			BootFrom:                  targetMeta.BootFrom,
+			RequiredHostPorts:         targetMeta.RequiredHostPorts,
 		},
 		InjectContainer: targetMeta.InjectContainer,
 		NonExclusive:    !targetMeta.Exclusive,
@@ -1757,6 +1765,62 @@ func releaseMemoryCount(flight platform.Flight, t *register.Test) {
 	}
 }
 
+// reserveHostPortsForTest attempts to reserve all required host ports
+// for the given test. Returns true if all ports were successfully
+// reserved, false if any port is already held by another test.
+func reserveHostPortsForTest(t *register.Test) bool {
+	ports := t.MachineOptions.RequiredHostPorts
+	if len(ports) == 0 {
+		return true
+	}
+	reservedHostPortsMutex.Lock()
+	defer reservedHostPortsMutex.Unlock()
+	// Check all ports first before reserving any.
+	for _, port := range ports {
+		if holder, held := reservedHostPorts[port]; held {
+			plog.Debugf("Waiting on host port %d for %s: currently held by %s",
+				port, t.Name, holder)
+			return false
+		}
+	}
+	// All ports are free -- reserve them.
+	for _, port := range ports {
+		reservedHostPorts[port] = t.Name
+	}
+	plog.Debugf("Reserved host ports %v for %s", ports, t.Name)
+	return true
+}
+
+// waitForHostPorts polls until all of the test's required host ports
+// are free and then reserves them. This is called after waitForMemory
+// in runTest to prevent parallel tests from clashing on well-known
+// ports like NFS 2049.
+func waitForHostPorts(h *harness.H, flight platform.Flight, t *register.Test) {
+	if len(t.MachineOptions.RequiredHostPorts) == 0 {
+		return
+	}
+	for !reserveHostPortsForTest(t) {
+		// sleep between 0 and 20 seconds and try again
+		time.Sleep(time.Duration(rand.Intn(20)) * time.Second)
+	}
+}
+
+// releaseHostPorts returns a test's reserved host ports back to the
+// pool. This should be called when the test completes and its QEMU
+// VMs have been destroyed.
+func releaseHostPorts(t *register.Test) {
+	ports := t.MachineOptions.RequiredHostPorts
+	if len(ports) == 0 {
+		return
+	}
+	reservedHostPortsMutex.Lock()
+	defer reservedHostPortsMutex.Unlock()
+	for _, port := range ports {
+		delete(reservedHostPorts, port)
+	}
+	plog.Debugf("Released host ports %v for %s", ports, t.Name)
+}
+
 // getNeededMemoryMiB returns the memory in MiB that a QEMU VM for
 // this test will use. It mirrors the resolution logic in
 // platform/machine/qemu/cluster.go:NewMachineWithOptions.
@@ -1780,6 +1844,9 @@ func getNeededMemoryMiB(t *register.Test) int {
 // analysis after the test run. It should already exist.
 func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flight) {
 	h.Parallel()
+	// Wait for any required host ports to become free first, so we
+	// don't hold a memory reservation while blocked on a port.
+	waitForHostPorts(h, flight, t)
 	// On QEMU we'll consider the amount of memory available in the
 	// system/cgroup before continuing. We do this after taking a
 	// parallel slot above via Parallel() so we are essentiallly
@@ -1815,6 +1882,8 @@ func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flig
 		c.Destroy()
 		// Release the memory reservation (if there was one) now that the VM is gone.
 		releaseMemoryCount(flight, t)
+		// Release any reserved host ports now that the VMs are gone.
+		releaseHostPorts(t)
 		if testSkipBaseChecks(t) {
 			plog.Debugf("Skipping base checks for %s", t.Name)
 			return

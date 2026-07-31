@@ -190,6 +190,12 @@ type MachineOptions struct {
 	BindMountHostRO           []string
 	BootFrom                  string
 	NoIgnition                bool
+
+	// RequiredHostPorts lists host ports that this test requires exclusive
+	// access to (e.g., well-known service ports like NFS 2049 that cannot
+	// be randomized). The test harness uses this for scheduling to prevent
+	// parallel tests from clashing on the same host port.
+	RequiredHostPorts []int
 }
 
 // EnsureNoQEMUOnlyOptions returns an error if any QEMU-only options
@@ -243,6 +249,9 @@ func (m *MachineOptions) EnsureNoQEMUOnlyOptions(platformName string) error {
 	}
 	if m.NoIgnition {
 		return fmt.Errorf("platform %s does not support NoIgnition", platformName)
+	}
+	if len(m.RequiredHostPorts) > 0 {
+		return fmt.Errorf("platform %s does not support RequiredHostPorts", platformName)
 	}
 	return nil
 }
