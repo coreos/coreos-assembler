@@ -81,6 +81,24 @@ var failConfig = conf.Ignition(`{
 	}
 }`)
 
+// fipsFailureTestMemoryMiB is the memory for the FIPS failure test.
+// Defined here so the test harness can account for memory when
+// scheduling, even though this test uses QemuBuilder directly
+// rather than cluster-managed machines.
+var fipsFailureTestMemoryMiB = fipsFailureTestMemoryDefault()
+
+func fipsFailureTestMemoryDefault() int {
+	// ppc64le uses 64K pages by default which increases memory overhead.
+	// Double the memory request to avoid kernel panics during reprovisioning.
+	// See similar logic in harness.go and luks.go.
+	switch coreosarch.CurrentRpmArch() {
+	case "ppc64le":
+		return 8192
+	default:
+		return 4096
+	}
+}
+
 func init() {
 	register.RegisterTest(&register.Test{
 		Name:        "fips.failure",
@@ -90,6 +108,12 @@ func init() {
 		Platforms:   []string{"qemu"},
 		Tags:        []string{"ignition"},
 		Distros:     []string{"rhcos", "scos"},
+		// With ClusterSize: 0 we use QemuBuilder directly (not cluster-managed
+		// machines), but at least MinMemory will be considered by the test
+		// harness for scheduling.
+		MachineOptions: platform.MachineOptions{
+			MinMemory: fipsFailureTestMemoryMiB,
+		},
 	})
 }
 
@@ -170,11 +194,7 @@ func ignitionFailure(c cluster.TestCluster) error {
 		return err
 	}
 
-	builder.MemoryMiB = 4096
-	switch coreosarch.CurrentRpmArch() {
-	case "ppc64le":
-		builder.MemoryMiB = 8192
-	}
+	builder.MemoryMiB = fipsFailureTestMemoryMiB
 	builder.Firmware = kola.QEMUOptions.Firmware
 
 	searchPattern := "Only PBKDF2 is supported in FIPS mode"

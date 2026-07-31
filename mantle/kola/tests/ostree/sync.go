@@ -70,6 +70,15 @@ systemd:
     - name: "nfs-server.service"
       enabled: true`)
 
+// Memory constants for the ostree sync test. These are defined here
+// so they can be used both in the test registration (for the
+// scheduler's memory accounting) and when creating VMs in the test
+// functions. This test starts two VMs (NFS server + client).
+var (
+	ostreeSyncNfsServerMemoryMiB = 2048
+	ostreeSyncClientMemoryMiB    = 2048
+)
+
 func init() {
 	// See https://github.com/ostreedev/ostree/pull/2968
 	// Add tag "reprovision" to run serially to avoid NFS port conflicts.
@@ -82,6 +91,13 @@ func init() {
 		Description: "Verify ostree can sync the filesystem with disconnected the NFS volume.",
 		Distros:     []string{"rhcos", "scos"},
 		Tags:        []string{"ostree", kola.SkipBaseChecksTag, kola.NeedsInternetTag, "reprovision"},
+		// With ClusterSize: 0 we create the machines manually, but the
+		// total MinMemory is set here so the test harness can account for
+		// memory when scheduling. This value covers both the NFS server
+		// VM and the client VM.
+		MachineOptions: platform.MachineOptions{
+			MinMemory: ostreeSyncNfsServerMemoryMiB + ostreeSyncClientMemoryMiB,
+		},
 	})
 }
 
@@ -101,7 +117,7 @@ func setupNFSMachine(c cluster.TestCluster) NfsServer {
 			{Service: "ssh", HostPort: 0, GuestPort: 22},
 			{Service: "nfs", HostPort: 2049, GuestPort: 2049},
 		},
-		MinMemory: 2048,
+		MinMemory: ostreeSyncNfsServerMemoryMiB,
 	}
 	// start the machine
 	switch c.Cluster.(type) {
@@ -191,7 +207,7 @@ systemd:
         [Install]
         WantedBy=multi-user.target`)
 	opts := platform.MachineOptions{
-		MinMemory: 2048,
+		MinMemory: ostreeSyncClientMemoryMiB,
 	}
 	var nfs_client platform.Machine
 	var err error

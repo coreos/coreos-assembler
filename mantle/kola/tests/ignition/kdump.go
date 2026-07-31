@@ -16,6 +16,17 @@ import (
 
 // Test kdump to remote hosts
 
+// Memory constants for kdump tests. These are defined here so they can
+// be used both in the test registration (for the scheduler's memory
+// accounting) and when creating VMs in the test functions.
+var (
+	// kdumpHelperMemoryMiB is the memory for the helper VM (SSH/NFS server).
+	// It uses the architecture default since no MinMemory is set.
+	kdumpHelperMemoryMiB = platform.DefaultMemoryMiB()
+	// kdumpTestMemoryMiB is the memory for the kdump test VM.
+	kdumpTestMemoryMiB = 2048
+)
+
 func init() {
 	// Create 0 cluster size to allow starting and setup ssh server as needed for the test
 	// See: https://github.com/coreos/coreos-assembler/pull/1310#discussion_r401908836
@@ -26,6 +37,13 @@ func init() {
 		Description: "Verifies kdump logs are exported to SSH destination",
 		Tags:        []string{"kdump", kola.SkipBaseChecksTag, kola.NeedsInternetTag},
 		Platforms:   []string{"qemu"},
+		// With ClusterSize: 0 we create the machines manually, but the
+		// total MinMemory is set here so the test harness can account for
+		// memory when scheduling. This value covers both the helper VM
+		// and the kdump test VM. Only relevant on the qemu platform.
+		MachineOptions: platform.MachineOptions{
+			MinMemory: kdumpHelperMemoryMiB + kdumpTestMemoryMiB,
+		},
 	})
 	// Add tag "reprovision" to run serially to avoid NFS port conflicts.
 	// This is hack until a better solution exists.
@@ -37,6 +55,13 @@ func init() {
 		Description: "Verifies kdump logs are exported to NFS destination",
 		Tags:        []string{"kdump", kola.SkipBaseChecksTag, kola.NeedsInternetTag, "reprovision"},
 		Platforms:   []string{"qemu"},
+		// With ClusterSize: 0 we create the machines manually, but the
+		// total MinMemory is set here so the test harness can account for
+		// memory when scheduling. This value covers both the helper VM
+		// and the kdump test VM. Only relevant on the qemu platform.
+		MachineOptions: platform.MachineOptions{
+			MinMemory: kdumpHelperMemoryMiB + kdumpTestMemoryMiB,
+		},
 	})
 }
 
@@ -109,6 +134,7 @@ func setupSSHMachine(c cluster.TestCluster) SshServer {
 		HostForwardPorts: []platform.HostForwardPort{
 			{Service: "ssh", HostPort: 0, GuestPort: 22},
 		},
+		MinMemory: kdumpHelperMemoryMiB,
 	}
 
 	// temp dir to store SSH keys
@@ -222,7 +248,7 @@ kernel_arguments:
 		ssh_host.PubSSH, padded, ssh_host.MachineAddress, ssh_host.SSHPort, ssh_host.MachineAddress))
 
 	opts := platform.MachineOptions{
-		MinMemory: 2048,
+		MinMemory: kdumpTestMemoryMiB,
 	}
 
 	kdump_machine, err := c.NewMachineWithOptions(butane, opts)
@@ -249,6 +275,7 @@ func setupNFSMachine(c cluster.TestCluster) NfsServer {
 			// Kdump NFS option does not allow a custom port
 			{Service: "nfs", HostPort: 2049, GuestPort: 2049},
 		},
+		MinMemory: kdumpHelperMemoryMiB,
 	}
 
 	nfs_server_butane := conf.Butane(`variant: fcos
@@ -312,7 +339,7 @@ kernel_arguments:
 		nfs_host.MachineAddress))
 
 	opts := platform.MachineOptions{
-		MinMemory: 2048,
+		MinMemory: kdumpTestMemoryMiB,
 	}
 
 	kdump_machine, err := c.NewMachineWithOptions(butane, opts)
