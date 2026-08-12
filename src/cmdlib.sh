@@ -244,12 +244,13 @@ runvm() {
     # include COSA in the image
     find /usr/lib/coreos-assembler/ -type f > "${vmpreparedir}/hostfiles"
 
-    # osbuild files not yet owned by an RPM. This happens from time to
-    # time when we are backporting patches that contain newly created
-    # files that aren't yet owned by the osbuild RPMs in Fedora.
-    cat <<EOF >> "${vmpreparedir}/hostfiles"
-/usr/lib/python3.14/site-packages/osbuild/util/makeefi.py
-EOF
+	# Not needed right now as we are not applying any patches
+    # # osbuild files not yet owned by an RPM. This happens from time to
+    # # time when we are backporting patches that contain newly created
+    # # files that aren't yet owned by the osbuild RPMs in Fedora.
+    # cat <<EOF >> "${vmpreparedir}/hostfiles"
+	# /usr/lib/python3.14/site-packages/osbuild/util/makeefi.py
+	# EOF
 
     # and include all GPG keys
     echo '/etc/pki/rpm-gpg/*' >> "${vmpreparedir}/hostfiles"
