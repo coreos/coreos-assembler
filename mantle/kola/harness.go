@@ -1017,7 +1017,7 @@ func metadataFromTestBinary(executable string) (*externalTestMeta, error) {
 	}
 	defer f.Close()
 	r := bufio.NewReader(io.LimitReader(f, 8192))
-	meta := &externalTestMeta{Exclusive: true}
+	var meta *externalTestMeta
 	inmeta := false    // true if we saw a ## kola: prefix after which we expect YAML
 	metadatayaml := "" // accumulated YAML metadata
 	for {
@@ -1048,10 +1048,11 @@ func metadataFromTestBinary(executable string) (*externalTestMeta, error) {
 			if inmeta {
 				return nil, fmt.Errorf("found multiple %s", InstalledTestMetaPrefixYaml)
 			}
+			meta = &externalTestMeta{Exclusive: true}
 			inmeta = true
 		} else if inmeta {
 			if !strings.HasPrefix(line, "## ") {
-				if err := yaml.UnmarshalStrict([]byte(metadatayaml), &meta); err != nil {
+				if err := yaml.UnmarshalStrict([]byte(metadatayaml), meta); err != nil {
 					return nil, err
 				}
 				break
