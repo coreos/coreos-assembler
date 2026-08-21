@@ -160,18 +160,17 @@ func (qc *Cluster) NewMachineWithBuilder(userdata any, options platform.MachineO
 	// s390x) unlike SMBIOS OEM strings or fw_cfg which are limited to
 	// specific architectures.
 	if noIgnition {
-		systemdCredDir, err := os.MkdirTemp("", "mantle-systemd-credentials-*")
-		if err != nil {
-			return nil, fmt.Errorf("creating systemd credential dir: %w", err)
-		}
 		keys, err := qc.Keys()
 		if err != nil {
 			return nil, fmt.Errorf("getting SSH keys: %w", err)
 		}
+		systemdCredDir, err := qemuBuilder.InitSystemdCredentialDir()
+		if err != nil {
+			return nil, err
+		}
 		if err := platform.WriteSystemdSSHCredentialsDir(systemdCredDir, rconf.SSHUser, keys); err != nil {
 			return nil, err
 		}
-		qemuBuilder.MountSystemdCredentialDir(systemdCredDir)
 	}
 
 	// Since we are on qemu let's just use non-network based journal
