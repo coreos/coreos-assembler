@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/coreos/coreos-assembler/mantle/platform/machine/gcloud"
 	"github.com/spf13/cobra"
 )
 
@@ -54,7 +55,12 @@ func runDestroy(cmd *cobra.Command, args []string) {
 
 	var count int
 	for _, vm := range vms {
-		if err := api.TerminateInstance(vm.Name); err != nil {
+		zone, err := gcloud.ExtractZoneFromInstance(vm)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Could not get vm's zone from URL %s: %v", vm.Zone, err)
+			os.Exit(1)
+		}
+		if err := api.TerminateInstance(vm.Name, zone); err != nil {
 			fmt.Fprintf(os.Stderr, "Failed destroying vm: %v\n", err)
 			os.Exit(1)
 		}
