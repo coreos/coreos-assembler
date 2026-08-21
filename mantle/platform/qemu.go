@@ -2150,10 +2150,11 @@ func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 
 	plog.Debugf("Started qemu (%v) with args: %v", inst.qemu.Pid(), argv)
 
+	cleanupInst = true
+
 	// Transfer ownership of the tempdir
 	inst.tempdir = builder.tempdir
 	builder.tempdir = ""
-	cleanupInst = false
 
 	// Connect to the QMP socket which allows us to control qemu.  We wait up to 30s
 	// to avoid flakes on loaded CI systems.  But, probably rather than bumping this
@@ -2210,6 +2211,7 @@ func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 		}()
 	}
 
+	cleanupInst = false
 	return &inst, nil
 }
 
