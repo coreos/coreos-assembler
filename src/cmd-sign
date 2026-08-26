@@ -67,7 +67,7 @@ def parse_args():
                          help="target the stg infra rather than prod")
     robosig.add_argument("--gpgkeypath", help="path to directory containing "
                          "public keys to use for signature verification",
-                         default="/etc/pki/rpm-gpg")
+                         default="/usr/share/pki/rpm-gpg")
     robosig.add_argument("--s3-sigstore", help="bucket and prefix to S3 sigstore")
     robosig.add_argument("--verify-only", action='store_true',
                          help="verify only that the sigs are valid and make public")
