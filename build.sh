@@ -124,19 +124,6 @@ install_ocp_tools() {
     mv oc /usr/bin
 }
 
-# By default, we trust the official Red Hat GPG keys
-trust_redhat_gpg_keys() {
-    for f in /usr/share/distribution-gpg-keys/redhat/*; do
-        local base
-        base=$(basename "$f")
-        if [ ! -e "/etc/pki/rpm-gpg/$base" ]; then
-            # libdnf at least ignores symlinks, so we need to copy.
-            # but might as well keep symlinks as symlinks.
-            cp -vPt /etc/pki/rpm-gpg "$f"
-        fi
-    done
-}
-
 make_and_makeinstall() {
     make
     make install
