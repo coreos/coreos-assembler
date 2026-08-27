@@ -24,6 +24,30 @@ version="${version#v}"
 version="${version/-/+}"
 ldflags="-X ${REPO_PATH}/version.Version=${version}"
 
+# Apply local vendored dependency patches only while compiling.
+# See https://github.com/coreos/coreos-assembler/issues/4611
+#
+# We do this because applying the patch directly to the vendor dir
+# wouldn't survive a dependabot update and we really don't want to
+# maintain a fork for a one line change. Ideally this patch gets
+# accepted upstream soon, but the digitalocean/go-qemu library isn't
+# very active.
+#
+# Later we unpatch to preserve `git describe` above not reporting "dirty"
+# when subsequent binaries are compiled.
+patch_file="$(pwd)/0001-copy-qmp-response-buffer.patch"
+unpatch=false
+if git -C .. apply --check "${patch_file}"; then
+    echo "Applying QMP response buffer patch from ${patch_file}"
+    git -C .. apply "${patch_file}"
+    unpatch=true
+elif git -C .. apply --reverse --check "${patch_file}"; then
+    echo "QMP response buffer patch is already applied. Maybe can remove ${patch_file}"
+else
+    echo "QMP response buffer patch no longer applies; update or remove ${patch_file}" >&2
+    exit 1
+fi
+
 host_build() {
     local cmd=$1; shift
     echo "Building $cmd"
@@ -59,3 +83,8 @@ for arg in "$@"; do
         host_build "${cmd}"
     fi
 done
+
+if [ "${unpatch}" = true ]; then
+    echo "Undoing QMP response buffer patch from ${patch_file}"
+    git -C .. apply --reverse "${patch_file}"
+fi

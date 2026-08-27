@@ -1,0 +1,14 @@
+# See https://github.com/coreos/coreos-assembler/issues/4611
+diff --git a/vendor/github.com/digitalocean/go-qemu/qmp/socket.go b/vendor/github.com/digitalocean/go-qemu/qmp/socket.go
+index c929a77e3..6032f3706 100644
+--- a/vendor/github.com/digitalocean/go-qemu/qmp/socket.go
++++ b/vendor/github.com/digitalocean/go-qemu/qmp/socket.go
+@@ -184,7 +184,7 @@ func (mon *SocketMonitor) listen(r io.Reader, events chan<- Event, stream chan<-
+ 
+ 		// If data does not have an event type, it must be in response to a command.
+ 		if e.Event == "" {
+-			stream <- streamResponse{buf: b}
++			stream <- streamResponse{buf: append([]byte(nil), b...)}
+ 			continue
+ 		}
+ 
