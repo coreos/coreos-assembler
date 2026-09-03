@@ -185,6 +185,54 @@ def get_locked_nevras(srcdir, arch):
     return data.get('packages', [])
 
 
+def parse_lock_overrides(path, input_packages, arch):
+    data = {}
+    try:
+        with open(path, encoding='utf-8') as f:
+            data = yaml.safe_load(f)
+            # Empty override file, nothing to do.
+            if data is None:
+                return
+    except OSError as e:
+        print(f"Cannot read ${path}. Reason: {e}")
+        sys.exit(1)
+    except yaml.YAMLError as e:
+        print(f"Cannot parse YAML file {path}. Error: {e}")
+        sys.exit(1)
+
+    overrides = data.get("packages", None)
+    if overrides:
+        print(f"Injecting {len(overrides)} overrides")
+        for entry in overrides:
+            if entry not in input_packages:
+                print(f"No matching entry exists in {arch} lockfile for override {entry}, skipping.")
+                continue
+            evr = overrides.get(entry).get("evr")
+            if evr:
+                # When the override applies on all arches, the arch
+                # is not specified, so append $arch
+                evra = f"{evr}.{arch}"
+                input_packages[entry]["evra"] = evra
+            else:
+                evra = overrides.get(entry).get("evra")
+                if evra:
+                    input_packages[entry]["evra"] = evra
+                else:
+                    print(f"Error: invalid override entry: {entry}. Missing 'evr' or 'evra' field.")
+                    sys.exit(1)
+
+
+def apply_lock_overrides(srcdir, input_packages, arch):
+    filenames = ["manifest-lock.overrides.yaml", f"manifest-lock.overrides.{arch}.yaml",]
+
+    for file in filenames:
+        path = os.path.join(srcdir, file)
+
+        # If the file does not exists there is nothing to do.
+        if os.path.exists(path):
+            parse_lock_overrides(path, input_packages, arch)
+
+
 def generate_main(args):
     """
     Generates the cachi2/hermeto RPM lock file.
@@ -227,6 +275,7 @@ def generate_main(args):
         if not locks:
             print(f"This tool derive the konflux lockfile from rpm-ostree lockfiles. Empty manifest-lock for {arch} in {contextdir}")
             sys.exit(1)
+        apply_lock_overrides(contextdir, locks, arch)
         print(f"Resolving packages for {arch}...")
         arch_args = []
         if arch is not get_basearch():
