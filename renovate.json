@@ -44,7 +44,16 @@
       "matchDatasources": [
         "custom.oc"
       ],
-      "extractVersion": "openshift-client-linux-(?<version>.+)\\.tar\\.gz"
+      "extractVersion": "openshift-client-linux-(?<version>.+)\\.tar\\.gz",
+      "postUpgradeTasks": {
+        "commands": [
+          "update_artifacts_lockfile ci/hermetic/artifacts.lock.yaml"
+        ],
+        "executionMode": "branch",
+        "fileFilters": [
+          "ci/hermetic/artifacts.lock.yaml"
+        ]
+      }
     }
   ],
   "customManagers": [

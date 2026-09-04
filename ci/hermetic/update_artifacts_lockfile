@@ -21,6 +21,7 @@ from ruamel.yaml import YAML
 import requests
 import hashlib
 import os
+import sys
 from typing import List, Dict, Any, Optional
 
 
@@ -149,5 +150,5 @@ if __name__ == "__main__":
     # This script will attempt to load and update 'artifacts.lock.yaml'
     # in the current directory. Make sure this file exists and is
     # correctly formatted before running.
-    artifacts_lock_filename: str = "artifacts.lock.yaml"
+    artifacts_lock_filename: str = sys.argv[1] if len(sys.argv) > 1 else "artifacts.lock.yaml"
     update_artifact_checksums(artifacts_lock_filename)
