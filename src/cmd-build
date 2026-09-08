@@ -184,8 +184,8 @@ build_with_buildah() {
 
     # Add --secret args for the yumrepo/contentsets if the repo file exists
     if [ -d "src/yumrepos" ] && [ -e "src/yumrepos/${yumrepo_filename}" ]; then
-        set -- "$@" --secret id=yumrepos,src="$(realpath "src/yumrepos/${yumrepo_filename}")" \
-                    --secret id=contentsets,src="$(realpath src/yumrepos/content_sets.yaml)" \
+        set -- "$@" --secret id=container-image-build/yumrepos,src="$(realpath "src/yumrepos/${yumrepo_filename}")" \
+                    --secret id=container-image-build/contentsets,src="$(realpath src/yumrepos/content_sets.yaml)" \
                     -v /etc/pki/ca-trust:/etc/pki/ca-trust:ro
     fi
 
