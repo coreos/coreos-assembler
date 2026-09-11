@@ -44,7 +44,17 @@
       "matchDatasources": [
         "custom.oc"
       ],
-      "extractVersion": "openshift-client-linux-(?<version>.+)\\.tar\\.gz"
+      "extractVersion": "openshift-client-linux-(?<version>.+)\\.tar\\.gz",
+      "postUpgradeTasks": {
+        "commands": [
+          "update_artifacts_lockfile -f \"$RENOVATE_POST_UPGRADE_COMMAND_DATA_FILE\""
+        ],
+        "dataFileTemplate": "[{{#each upgrades}}{\"packageFile\": \"{{{packageFile}}}\"}{{#unless @last}},{{/unless}}{{/each}}]",
+        "executionMode": "branch",
+        "fileFilters": [
+          "ci/hermetic/artifacts.lock.yaml"
+        ]
+      }
     }
   ],
   "customManagers": [
