@@ -31,6 +31,46 @@ By default, kola uses the `qemu` platform with the most recently built image
 1. TOC
 {:toc}
 
+## Running kola via cosa
+
+The recommended way to run kola is through the `cosa kola` wrapper. It handles
+several defaults automatically:
+
+- **Platform:** defaults to `-p qemu` (when not running as root and no
+  `-p`/`--platform` is given).
+- **Output directory:** defaults to `tmp/kola` (or `$ARTIFACT_DIR/kola` if
+  `$ARTIFACT_DIR` is set).
+- **Subcommand:** defaults to `run` if no subcommand is given. For upgrade
+  tests, use `cosa kola --upgrades`.
+- **Build:** uses the latest build in the cosa workdir by default. Use
+  `--build` to select a specific build.
+
+For example, `cosa kola run basic` is equivalent to running:
+
+```
+kola -p qemu run basic --output-dir tmp/kola
+```
+
+## Automatic external test discovery
+
+When running inside a cosa workdir, kola automatically discovers external tests
+from these locations (no `-E` flag required):
+
+1. **`src/config/tests/kola/`** -- tests from the config repo, registered with
+   the prefix `ext.config` (e.g., a test at
+   `src/config/tests/kola/files/aleph-version/test.sh` becomes
+   `ext.config.files.aleph-version`).
+2. **`/usr/lib/coreos-assembler/tests/kola/`** -- tests installed by packages,
+   registered with the prefix `ext`.
+3. **`./tests/kola/`** (current directory) -- if no `-E` flag is given and no
+   cosa build is detected, kola checks the current directory for a
+   `tests/kola/` subdirectory.
+
+The `-E`/`--exttest` flag is only needed for *additional* external test
+directories beyond these defaults. See
+[kola/external-tests.md](kola/external-tests.md) for details on how to write
+external tests.
+
 ## kola run
 
 The run command invokes the main kola test harness. It
@@ -86,6 +126,22 @@ Example format of the file:
 ```
 
 The special pattern `skip-console-warnings` suppresses the default check for kernel errors on the console which would otherwise fail a test.
+
+### Common flags
+
+| Flag | Description |
+|------|-------------|
+| `-j` / `--parallel N` | Run N tests in parallel (default: 1). Use `auto` to match CPU count. |
+| `--tag TAG` | Run only tests with the given tag. May be repeated. Prefix with `!` to exclude. |
+| `--denylist-test PATTERN` | Skip tests matching the pattern. May be repeated. |
+| `-E` / `--exttest DIR` | Add an external test directory (see above for automatic discovery). |
+| `--rerun` | Re-run failed tests once. |
+| `--append-butane PATH` | Merge a Butane config snippet with every test's Ignition config. |
+| `--append-ignition PATH` | Merge an Ignition config snippet with every test's Ignition config. |
+| `--ssh-on-test-failure` | SSH into the machine when a test fails (useful for debugging). |
+| `--multiply N` | Run matched tests N times (useful for finding race conditions). |
+
+Use `cosa kola run -h` for the full list of options.
 
 ## kola list
 
@@ -197,29 +253,28 @@ After you run the kola test, you can find more information in `tmp/kola/<test-na
 2. `console.txt`
 3. `ignition.json`
 
-## Extended artifacts
+## Testing platform artifacts
 
-1. Extended artifacts need additional forms of testing (You can pass the ignition and the path to the artifact you want to test)
+1. Platform artifacts need additional forms of testing (You can pass the ignition and the path to the artifact you want to test)
 2. `cosa kola run -h` (this allows you to see the commands yourself and what syntax is needed)
-3. `cosa buildextend-"name_of_artifact"` (An example of building an extended artifact)
-4. `kola run -p <platform>` Is the most generic way of testing extended artifacts, this is mostly useful for the cloud platforms
+3. `cosa osbuild <platform>` (Build a disk image for a specific platform, e.g. `cosa osbuild aws`)
+4. `kola run -p <platform>` Is the most generic way of testing platform artifacts, this is mostly useful for the cloud platforms
 5. For running the likes of metal/metal4k artifacts there's not much difference than running `kola run` from the coreos-assembler
 6. `cd builds/latest/` (This will show your latest build information)
 7. `cosa list` (This will show you the most recent CoreOS builds that have been made and the artifacts that were created)
-8. In the case of the `testiso` command, you can determine what tests are running by looking for the pattern in the test name. It will follow: `test-to-run.disk-type.networking.multipath.firmware`. For example, the `iso-live-login.4k.uefi`, attempts to install FCOS/RHCOS to a disk that uses 4k sector size. If you don't see the 4k pattern, the `testiso` command will attempt to install FCOS/RHCOS to a non 4k disk (512b sector size).
-9. `cosa kola testiso iso-offline-install.mpath.uefi` (This is an example testing the live ISO build with no internet access using multipath and the uefi firmware.)
-
-Example output:
+8. ISO install tests are regular kola tests. The test name pattern tries to indicate what the test is running. For example, `iso.pxe-online-install.4k.uefi` attempts to install FCOS/RHCOS to a disk that uses 4k sector size. If you don't see the `4k` pattern, the test uses a standard 512-byte sector size disk.
+9. `cosa kola run iso.iso-offline-install.mpath.bios` is an example testing the live ISO build with no internet access using multipath and the bios firmware.)
 
 ```
-kola -p qemu testiso --inst-insecure --output-dir tmp/kola
-Ignoring verification of signature on metal image
-Running test: iso-as-disk.bios
-PASS: iso-as-disk.bios (12.408s)
-Running test: iso-as-disk.uefi
-PASS: iso-as-disk.uefi (16.039s)
-Running test: iso-as-disk.uefi-secure
-PASS: iso-as-disk.uefi-secure (16.994s)
+cosa kola run iso.pxe-online-install.4k.uefi iso.iso-offline-install.mpath.bios
+ kola -p qemu run iso.pxe-online-install.4k.uefi iso.iso-offline-install.mpath.bios --output-dir tmp/kola
+ === RUN   iso.pxe-online-install.4k.uefi
+ === RUN   iso.iso-offline-install.mpath.bios
+ Detected development build; disabling signature verification
+ --- PASS: iso.pxe-online-install.4k.uefi (88.66s)
+ Detected development build; disabling signature verification
+ --- PASS: iso.iso-offline-install.mpath.bios (193.72s)
+ PASS, output in tmp/kola
 ```
 
 ## Useful commands

@@ -3,9 +3,10 @@ parent: CoreOS Assembler Command Line Reference
 nav_order: 1
 ---
 
-# cosa buildextend-aws
+# cosa imageupload-aws
 
-Using `cosa buildextend-aws` looks for AWS credentials in the standard places;
+`cosa imageupload-aws` uploads a disk image to AWS as an AMI. It looks for
+AWS credentials in the standard places;
 Common methods are `AWS_ACCESS_KEY_ID`
 and `AWS_SECRET_ACCESS_KEY` environment variables, and using `AWS_PROFILE`.
 For more information, consult the documentation for the `aws` CLI tool, in particular
@@ -86,5 +87,7 @@ The full list of permisions required for your IAM policy should look similar to 
 }
 ```
 
-This is currently a wrapper around the `ore` subcommand of mantle; there is an
+Before uploading, build the AWS disk image with `cosa osbuild aws`.
+
+This command is a wrapper around the `ore` subcommand of mantle; there is an
 `ore aws initialize` subcommand which may be useful.
