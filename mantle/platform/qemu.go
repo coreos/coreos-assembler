@@ -551,6 +551,13 @@ type QemuBuilder struct {
 	virtioSerialID uint
 	// hostMounts is an array of directories mounted (via 9p or virtiofs) from the host
 	hostMounts []HostMount
+	// systemdCredentialDir is a host directory containing systemd credential
+	// files to share with the guest via virtiofs using SystemdCredentialVirtiofsTag.
+	// The guest must have import-virtiofs-systemd-credentials (or equivalent) to
+	// mount the share and import credentials into /run/credentials/@initrd/ or
+	// /run/credentials/@system/.
+	// See https://systemd.io/CREDENTIALS/ and https://github.com/systemd/systemd/issues/29175
+	systemdCredentialDir string
 	// fds is file descriptors we own to pass to qemu
 	fds []*os.File
 
@@ -852,6 +859,37 @@ func (builder *QemuBuilder) encryptIgnitionConfig() error {
 // We do mount it read-only by default in the guest, however.
 func (builder *QemuBuilder) MountHost(source, dest string, readonly bool) {
 	builder.hostMounts = append(builder.hostMounts, HostMount{src: source, dest: dest, readonly: readonly})
+}
+
+// InitSystemdCredentialDir creates a directory under the builder tempdir for
+// systemd credential files. It is cleaned up when the builder or VM instance
+// is destroyed.
+func (builder *QemuBuilder) InitSystemdCredentialDir() (string, error) {
+	if err := builder.ensureTempdir(); err != nil {
+		return "", err
+	}
+	dir, err := os.MkdirTemp(builder.tempdir, "systemd-credentials-*")
+	if err != nil {
+		return "", fmt.Errorf("creating systemd credential dir: %w", err)
+	}
+	builder.systemdCredentialDir = dir
+	return dir, nil
+}
+
+// MountSystemdCredentialDir shares a host directory with the guest via virtiofs
+// using SystemdCredentialVirtiofsTag. The guest must run
+// import-virtiofs-systemd-credentials (or equivalent) to mount this share and
+// copy systemd credential files into /run/credentials/@initrd/ or
+// /run/credentials/@system/.
+//
+// This provides a cross-architecture alternative to SMBIOS OEM strings and
+// fw_cfg for passing systemd credentials to VMs. Unlike those mechanisms,
+// virtiofs works on all architectures (x86_64, aarch64, ppc64le, s390x).
+//
+// See https://systemd.io/CREDENTIALS/ and fedora-coreos-config
+// import-virtiofs-systemd-credentials.
+func (builder *QemuBuilder) MountSystemdCredentialDir(dir string) {
+	builder.systemdCredentialDir = dir
 }
 
 // supportsFwCfg if the target system supports injecting
@@ -1773,8 +1811,11 @@ func (builder *QemuBuilder) VirtioJournal(config *conf.Conf, queryArguments ...s
 }
 
 // createVirtiofsCmd returns a new command instance configured to launch virtiofsd.
-func createVirtiofsCmd(directory, socketPath string) exec.Cmd {
+func createVirtiofsCmd(directory, socketPath string, readonly bool) exec.Cmd {
 	args := []string{"--sandbox", "none", "--socket-path", socketPath, "--shared-dir", "."}
+	if readonly {
+		args = append(args, "--readonly")
+	}
 	// Work around https://gitlab.com/virtio-fs/virtiofsd/-/merge_requests/197
 	if os.Getuid() == 0 {
 		args = append(args, "--modcaps=-mknod:-setfcap")
@@ -2009,8 +2050,19 @@ func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 		return nil, err
 	}
 
+	// Build the list of virtiofs mounts: regular host mounts plus systemd credential dir
+	allVirtioFSMounts := make([]HostMount, 0, len(builder.hostMounts)+1)
+	allVirtioFSMounts = append(allVirtioFSMounts, builder.hostMounts...)
+	if builder.systemdCredentialDir != "" {
+		allVirtioFSMounts = append(allVirtioFSMounts, HostMount{
+			src:      builder.systemdCredentialDir,
+			dest:     SystemdCredentialVirtiofsTag,
+			readonly: true,
+		})
+	}
+
 	// Process virtiofs mounts
-	if len(builder.hostMounts) > 0 {
+	if len(allVirtioFSMounts) > 0 {
 		if err := builder.ensureTempdir(); err != nil {
 			return nil, err
 		}
@@ -2019,7 +2071,7 @@ func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 
 		// Spawn off a virtiofsd helper per mounted path
 		virtiofsHelpers := make(map[string]exec.Cmd)
-		for i, hostmnt := range builder.hostMounts {
+		for i, hostmnt := range allVirtioFSMounts {
 			// By far the most common failure to spawn virtiofsd will be a typo'd source directory,
 			// so let's synchronously check that ourselves here.
 			if _, err := os.Stat(hostmnt.src); err != nil {
@@ -2029,9 +2081,8 @@ func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 			virtiofsdSocket := filepath.Join(builder.tempdir, fmt.Sprintf("virtiofsd-%d.sock", i))
 			builder.Append("-chardev", fmt.Sprintf("socket,id=%s,path=%s", virtiofsChar, virtiofsdSocket))
 			builder.Append("-device", fmt.Sprintf("vhost-user-fs-pci,queue-size=1024,chardev=%s,tag=%s", virtiofsChar, hostmnt.dest))
-			plog.Debugf("creating virtiofs helper for %s", hostmnt.src)
-			// TODO: Honor hostmnt.readonly somehow here (add an option to virtiofsd)
-			p := createVirtiofsCmd(hostmnt.src, virtiofsdSocket)
+			plog.Debugf("creating virtiofs helper for %s (tag=%s)", hostmnt.src, hostmnt.dest)
+			p := createVirtiofsCmd(hostmnt.src, virtiofsdSocket, hostmnt.readonly)
 			if err := p.Start(); err != nil {
 				return nil, fmt.Errorf("failed to start virtiofsd")
 			}
@@ -2106,10 +2157,11 @@ func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 
 	plog.Debugf("Started qemu (%v) with args: %v", inst.qemu.Pid(), argv)
 
+	cleanupInst = true
+
 	// Transfer ownership of the tempdir
 	inst.tempdir = builder.tempdir
 	builder.tempdir = ""
-	cleanupInst = false
 
 	// Connect to the QMP socket which allows us to control qemu.  We wait up to 30s
 	// to avoid flakes on loaded CI systems.  But, probably rather than bumping this
@@ -2166,6 +2218,7 @@ func (builder *QemuBuilder) Exec() (*QemuInstance, error) {
 		}()
 	}
 
+	cleanupInst = false
 	return &inst, nil
 }
 

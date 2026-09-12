@@ -79,14 +79,28 @@ func (qc *Cluster) NewMachineWithBuilder(userdata any, options platform.MachineO
 	// Use default builder if none provided
 	builder = qc.ensureBuilderDefaults(builder)
 
+	rconf := qc.RuntimeConf()
+	noIgnition := rconf.NoIgnition
+
+	if noIgnition {
+		if qc.flight.opts.SecureExecution {
+			return nil, errors.New("secure execution requires Ignition; not supported with --no-ignition")
+		}
+		if len(append(qc.flight.opts.BindRO, options.BindMountHostRO...)) > 0 {
+			return nil, errors.New("bind mounts require Ignition; not supported with --no-ignition")
+		}
+	}
+
 	qm, config, err := qc.createMachine(userdata)
 	if err != nil {
 		return nil, err
 	}
 
 	qemuBuilder := platform.NewQemuBuilder()
-	qemuBuilder.SetConfig(config)
 	defer qemuBuilder.Close()
+	if !noIgnition {
+		qemuBuilder.SetConfig(config)
+	}
 	if err := builder.InitBuilder(options, qemuBuilder); err != nil {
 		return nil, err
 	}
@@ -106,7 +120,9 @@ func (qc *Cluster) NewMachineWithBuilder(userdata any, options platform.MachineO
 		}
 		readonly := true
 		qemuBuilder.MountHost(src, dest, readonly)
-		config.MountHost(dest, readonly)
+		if config != nil {
+			config.MountHost(dest, readonly)
+		}
 	}
 
 	qemuBuilder.UUID = qm.id
@@ -128,6 +144,31 @@ func (qc *Cluster) NewMachineWithBuilder(userdata any, options platform.MachineO
 	}
 	if qc.flight.opts.Cex || options.Cex {
 		if err := qemuBuilder.AddCexDevice(); err != nil {
+			return nil, err
+		}
+	}
+
+	// When --no-ignition is set, provision SSH keys via virtiofs systemd
+	// credentials. This creates a temporary directory with a tmpfiles.extra
+	// systemd credential file that sets up ~/.ssh/authorized_keys for the
+	// SSH user, and shares it with the guest via virtiofs using the tag
+	// "io.systemd.credentials". The guest must have
+	// import-virtiofs-systemd-credentials installed to import these systemd
+	// credentials at boot.
+	//
+	// This approach works on all architectures (x86_64, aarch64, ppc64le,
+	// s390x) unlike SMBIOS OEM strings or fw_cfg which are limited to
+	// specific architectures.
+	if noIgnition {
+		keys, err := qc.Keys()
+		if err != nil {
+			return nil, fmt.Errorf("getting SSH keys: %w", err)
+		}
+		systemdCredDir, err := qemuBuilder.InitSystemdCredentialDir()
+		if err != nil {
+			return nil, err
+		}
+		if err := platform.WriteSystemdSSHCredentialsDir(systemdCredDir, rconf.SSHUser, keys); err != nil {
 			return nil, err
 		}
 	}
@@ -161,9 +202,8 @@ func (qc *Cluster) NewMachineWithBuilder(userdata any, options platform.MachineO
 	}
 
 	// Run StartMachine, which blocks on the machine being booted up enough
-	// for SSH access, but only if we have a config, else there's no
-	// SSH key for us to use to get in so don't bother.
-	if config != nil {
+	// for SSH access. With --no-ignition, SSH keys come from virtiofs credentials.
+	if config != nil || noIgnition {
 		if err := platform.StartMachine(qm, qm.journal); err != nil {
 			qm.Destroy()
 			return nil, err
@@ -243,9 +283,13 @@ func (qc *Cluster) createMachine(userdata any) (*machine, *conf.Conf, error) {
 		return nil, nil, err
 	}
 
-	config, err := qc.RenderUserDataIfNeeded(userdata)
-	if err != nil {
-		return nil, nil, err
+	var config *conf.Conf
+	var err error
+	if !qc.RuntimeConf().NoIgnition {
+		config, err = qc.RenderUserDataIfNeeded(userdata)
+		if err != nil {
+			return nil, nil, err
+		}
 	}
 
 	journal, err := platform.NewJournal(dir)
