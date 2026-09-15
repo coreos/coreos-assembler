@@ -14,7 +14,7 @@ mpp-vars:
   ppc_prep_size_mb: 4
   reserved_part_size_mb: 1
   efi_system_size_mb: 127
-  boot_size_mb: 384
+  boot_size_mb: 600
   sector_size: 512
   four_k_sector_size: 4096
   # Filesystem UUID and label definitions. These UUIDs

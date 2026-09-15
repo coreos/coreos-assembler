@@ -15,7 +15,7 @@ mpp-vars:
   reserved_part_size_mb: 1
   efi_system_size_mb: 127
   se_size_mb:   200
-  boot_size_mb: 384
+  boot_size_mb: 600
   boot_verity_size_mb: 128
   root_verity_size_mb: 256
   sector_size: 512
