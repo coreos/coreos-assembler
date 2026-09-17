@@ -50,7 +50,7 @@ func (a *API) CreateStorageAccount(resourceGroup string) (string, error) {
 		SKU: &armstorage.SKU{
 			Name: to.Ptr(armstorage.SKUNameStandardLRS),
 		},
-		Kind:     to.Ptr(armstorage.KindStorage),
+		Kind:     to.Ptr(armstorage.KindStorageV2),
 		Location: to.Ptr(a.opts.Location),
 	}
 	ctx := context.Background()
