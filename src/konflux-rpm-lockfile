@@ -284,8 +284,9 @@ def generate_main(args):
             # we have to specify both --arch and --forcearch to get both result for $arch and $noarch
             arch_args = ['--forcearch', arch, '--arch', arch, '--arch', 'noarch']
         pkg_urls = query_packages_location(locks, repoquery_args + arch_args)
-        # we only want coreos-pool URLs
-        pkg_urls = use_koji_url_only(pkg_urls)
+        if args.from_coreos_pool:
+            # Rewrite URLs to point to Fedora coreos-pool
+            pkg_urls = use_koji_url_only(pkg_urls)
         packages.append({'arch': arch, 'packages': pkg_urls})
 
     lockfile = write_hermeto_lockfile(packages, repos)
@@ -371,6 +372,13 @@ if __name__ == "__main__":
         action='append',
         choices=['x86_64', 'aarch64', 's390x', 'ppc64le', 'all'],
         help="The architecture to resolve. Can be specified multiple times. 'all' resolves all architectures."
+    )
+    parser_generate.add_argument(
+        '--from-coreos-pool',
+        action='store_true',
+        default=False,
+        help="Rewrite all package URLs to point to the Fedora coreos-pool on Koji. "
+             "Use this for Fedora CoreOS builds. (default: False)"
     )
     parser_generate.set_defaults(func=generate_main)
 
