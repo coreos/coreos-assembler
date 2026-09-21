@@ -11,7 +11,7 @@ across multiple platforms. It is primarily designed to operate within
 the CoreOS Assembler for testing software that has landed in the OS image.
 
 Kola supports running tests on multiple platforms, currently QEMU, GCP,
-AWS, VMware VSphere, Packet, and OpenStack. In the future systemd-nspawn and
+AWS, VMware VSphere, Packet, OpenStack, and STACKIT. In the future systemd-nspawn and
 other platforms may be added.
 Local platforms do not rely on access to the Internet as a design
 principle of kola, minimizing external dependencies. Any network
@@ -251,3 +251,80 @@ In order to see the logs for these tests you must enter the `tmp/kola/name_of_th
 - `azure-disk-uri` is Azure disk uri of the custom image, this could be a gallery image version if you are using Azure Compute Gallery, refer to https://learn.microsoft.com/en-us/azure/virtual-machines/azure-compute-gallery. For example, get gallery image id via command: `galleryImageId=$(az sig image-version show --gallery-image-definition "${gallery_image_definition}" --gallery-image-version "${gallery_image_version}" --gallery-name "${gallery_name}" --resource-group $az_resource_group | jq -r .id)`.
 - `azure-location` specifies Azure location if you want to use custom location, by default is `westus`.
 - `azure-size` specifies Azure machine size if you want to use custom size, by default is `Standard_D2s_v3`.
+
+### STACKIT
+
+STACKIT support allows testing a custom image as part of the
+[emerging platform workflow](https://github.com/coreos/fedora-coreos-tracker/blob/main/.github/ISSUE_TEMPLATE/implementing-new-emerging-platform.md).
+Prepare an uncompressed QCOW2 image containing STACKIT support in Ignition and
+Afterburn, configured to boot with `ignition.platform.id=stackit`. The image must
+support UEFI, which `ore stackit create-image` enables in its image metadata.
+Upload it with `ore`, or supply an existing image ID with `--stackit-image`.
+This support does not add an image build/release pipeline or `--stream` lookup.
+
+Authenticate using `--stackit-service-account-key-path` with a service account
+JSON key, or use the STACKIT SDK's environment and credentials-file discovery.
+A raw token file remains supported through `--stackit-token-file`; it overrides
+discovery and cannot be combined with the explicit JSON key option. See
+[STACKIT credentials](mantle/credentials.md#stackit) for details. The account
+needs permission to manage images, servers, volumes, networks, security groups,
+and public IPs in the project, and SSH key pairs.
+
+Kola creates a routed DHCP network and a security group for each cluster. Managed
+groups allow IPv4 SSH from `--stackit-ssh-source-cidr` (default `0.0.0.0/0`),
+TCP/UDP/ICMP ingress from machines in the same group, and outbound IPv4 traffic.
+Set the SSH CIDR to the runner's public address or subnet. To reuse existing
+resources, pass `--stackit-network` and/or `--stackit-security-group` (repeat for
+multiple groups). Kola preserves supplied resources; their routing and rules
+must permit SSH, communication between test machines, and Internet access.
+
+The region defaults to `eu01` and `--stackit-machine-type` to `c2i.2`. The machine type must
+support volumes. `--stackit-disk-size` defaults to 16 GiB and must meet the image's
+minimum size. Use `--stackit-availability-zone` and
+`--stackit-disk-performance-class` to override STACKIT's placement and boot-volume
+performance defaults.
+
+For example, in Bash, upload a prepared x86_64 image and run the smoke tests:
+
+```bash
+stackit_common=(
+  --stackit-project '<project-id>'
+  --stackit-region eu01
+  --stackit-service-account-key-path "$HOME/.config/stackit/service-account-key.json"
+)
+stackit_image_id=$(ore stackit "${stackit_common[@]}" create-image \
+  --file ./fedora-coreos-stackit.qcow2 --name fedora-coreos-stackit-test \
+  --arch x86_64)
+stackit_kola=(
+  --platform stackit
+  "${stackit_common[@]}"
+  --stackit-image "$stackit_image_id"
+  --stackit-ssh-source-cidr '<runner-public-ip>/32'
+)
+
+# Open an SSH shell; resources are removed when the shell exits.
+kola spawn "${stackit_kola[@]}"
+
+# Exercise Ignition user data, metadata SSH keys, and Afterburn metadata.
+kola run "${stackit_kola[@]}" \
+  coreos.ignition.ssh.key \
+  fcos.ignition.misc.empty \
+  fcos.ignition.v3.noop \
+  fcos.metadata.stackit
+
+# Collect owned resources older than five hours, including unused uploaded images.
+ore stackit "${stackit_common[@]}" gc --duration 5h
+```
+
+`create-image` accepts `--arch x86_64` or `--arch aarch64` and prints the uploaded
+image ID after it becomes available. In the CoreOS Assembler environment, kola
+can also be invoked through `cosa kola`.
+
+Normal cleanup removes temporary servers, their boot volumes, public IPs, SSH
+keys, and managed networks/security groups. Kola collects console output and the
+system journal in the test output directory. After an interrupted run,
+`ore stackit gc` can collect leftover resources; its default minimum age is five
+hours. GC requires this provider's ownership labels, matching project/region,
+and a valid creation timestamp. It preserves dependencies of retained servers
+and unmarked resources, including failed networks. Images uploaded with `ore`
+are owned resources and become eligible for GC once old enough and unused.

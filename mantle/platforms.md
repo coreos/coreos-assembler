@@ -119,6 +119,17 @@ Like Azure, but not.
  - UserData is passed to the instances via the OpenStack metadata service.
  - Instances are tagged with `CreatedBy: mantle` which is used when filtering instances for `GC`.
 
+## STACKIT
+
+ - The STACKIT platform uses the IaaS v2 REST API and STACKIT SDK authentication. It accepts service account JSON keys, SDK credential discovery, or a raw token file.
+ - By default SSH keys are supplied through both a temporary STACKIT key pair and Ignition user data. Tests can disable either method independently.
+ - Kola creates a routed DHCP network and stateful security group per cluster, or preserves existing resources supplied with `--stackit-network` and `--stackit-security-group`.
+ - Managed groups allow IPv4 SSH from `--stackit-ssh-source-cidr`, TCP/UDP/ICMP ingress within the same group, and outbound IPv4 traffic.
+ - Region and machine type default to `eu01` and `c2i.2`. Boot volumes default to 16 GiB and are deleted with the server; availability zone and disk performance class can be overridden.
+ - `ore stackit create-image` uploads a prepared UEFI-capable QCOW2 image. Images must contain Ignition and Afterburn STACKIT support. Stream lookup and image build/release pipeline integration are not provided.
+ - Kola collects console output and journals and cleans up temporary resources. `ore stackit gc` collects old resources bearing this provider's ownership, project, region, and timestamp labels, while preserving retained-server dependencies and unmarked resources. Unused images uploaded by `ore` are eligible for GC.
+ - See [Testing with Kola: STACKIT](../docs/kola.md#stackit) for prerequisites and example commands.
+
 ## IBMCloud
 
 - The IBMCloud platform wraps [bluemix-go](https://github.com/IBM-Cloud/bluemix-go) and [ibm-cos-sdk-go](https://github.com/IBM/ibm-cos-sdk-go)
