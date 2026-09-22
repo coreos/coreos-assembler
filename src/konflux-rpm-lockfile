@@ -12,6 +12,18 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from cosalib.cmdlib import get_basearch
 
 
+def get_lockfile_dir(srcdir, stream):
+    """
+    Returns the directory containing lockfiles.
+    First looks in lockfiles/${stream}/, then falls back to srcdir root.
+    """
+    if stream:
+        stream_dir = os.path.join(srcdir, 'lockfiles', stream)
+        if os.path.isdir(stream_dir):
+            return stream_dir
+    return srcdir
+
+
 def use_koji_url_only(url_list):
     """
     Returns a list of package URLs to point only to our koji coreos-pool.
@@ -170,9 +182,9 @@ def query_packages_location(locks, repoquery_args):
     return pkg_urls
 
 
-def get_locked_nevras(srcdir, arch):
-
-    path = os.path.join(srcdir, f"manifest-lock.{arch}.json")
+def get_locked_nevras(srcdir, arch, stream=None):
+    lockfile_dir = get_lockfile_dir(srcdir, stream)
+    path = os.path.join(lockfile_dir, f"manifest-lock.{arch}.json")
 
     data = {}
     try:
@@ -222,11 +234,12 @@ def parse_lock_overrides(path, input_packages, arch):
                     sys.exit(1)
 
 
-def apply_lock_overrides(srcdir, input_packages, arch):
+def apply_lock_overrides(srcdir, input_packages, arch, stream=None):
+    lockfile_dir = get_lockfile_dir(srcdir, stream)
     filenames = ["manifest-lock.overrides.yaml", f"manifest-lock.overrides.{arch}.yaml",]
 
     for file in filenames:
-        path = os.path.join(srcdir, file)
+        path = os.path.join(lockfile_dir, file)
 
         # If the file does not exists there is nothing to do.
         if os.path.exists(path):
@@ -271,11 +284,11 @@ def generate_main(args):
 
     packages = []
     for arch in arches_to_resolve:
-        locks = get_locked_nevras(contextdir, arch)
+        locks = get_locked_nevras(contextdir, arch, args.stream)
         if not locks:
             print(f"This tool derive the konflux lockfile from rpm-ostree lockfiles. Empty manifest-lock for {arch} in {contextdir}")
             sys.exit(1)
-        apply_lock_overrides(contextdir, locks, arch)
+        apply_lock_overrides(contextdir, locks, arch, args.stream)
         print(f"Resolving packages for {arch}...")
         arch_args = []
         if arch is not get_basearch():
@@ -379,6 +392,12 @@ if __name__ == "__main__":
         default=False,
         help="Rewrite all package URLs to point to the Fedora coreos-pool on Koji. "
              "Use this for Fedora CoreOS builds. (default: False)"
+    )
+    parser_generate.add_argument(
+        '--stream',
+        default=None,
+        help="Stream name. If specified, lockfiles are looked up in "
+             "lockfiles/${stream}/ first, then in the context directory."
     )
     parser_generate.set_defaults(func=generate_main)
 
