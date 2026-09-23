@@ -33,7 +33,7 @@
       "commitMessageTopic": "RPM updates",
       "enabled": true,
       "schedule": [
-        "at any time"
+        "* * * * 0,6"
       ],
       "branchPrefix": "renovate/rpm/",
       "semanticCommits": "enabled",
