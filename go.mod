@@ -50,7 +50,7 @@ require (
 	github.com/vishvananda/netns v0.0.5
 	github.com/vmware/govmomi v0.53.1
 	github.com/xeipuuv/gojsonschema v1.2.0
-	golang.org/x/crypto v0.51.0
+	golang.org/x/crypto v0.52.0
 	golang.org/x/oauth2 v0.36.0
 	golang.org/x/term v0.43.0
 	google.golang.org/api v0.276.0
