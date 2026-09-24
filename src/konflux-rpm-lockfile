@@ -161,21 +161,21 @@ def query_packages_location(locks, repoquery_args):
             processed_urls[name] = url
 
     pkg_urls = list(processed_urls.values())
-    # sanity check all the locked packages got resolved
-    if len(pkg_urls) != len(locked_nevras):
-        locked_names = set(locks.keys())
-        resolved_names = set(processed_urls.keys())
 
-        missing = locked_names - resolved_names
-        extra = resolved_names - locked_names
+    # Check for name mismatches between lockfile and resolved packages
+    locked_names = set(locks.keys())
+    resolved_names = set(processed_urls.keys())
 
-        if missing:
-            print(f"Warning: Packages not resolved: {sorted(missing)}")
-            print("These packages likely come from manifest-lock.overrides.yaml and are not yet in the repos.")
-            print("They will be automatically downloaded to overrides/rpms and integrated by build-rootfs.")
-            print("If they are NOT in the overrides file, this is an error and the lockfile is out of date.")
-        if extra:
-            print(f"Warning: Unexpected packages resolved: {sorted(extra)}")
+    missing = locked_names - resolved_names
+    extra = resolved_names - locked_names
+
+    if missing:
+        print(f"Warning: Packages not resolved: {sorted(missing)}")
+        print("These packages likely come from manifest-lock.overrides.yaml and are not yet in the repos.")
+        print("They will be automatically downloaded to overrides/rpms and integrated by build-rootfs.")
+        print("If they are NOT in the overrides file, this is an error and the lockfile is out of date.")
+    if extra:
+        print(f"Warning: Unexpected packages resolved: {sorted(extra)}")
 
     print(f"Done. Resolved location for {len(pkg_urls)} packages.")
     return pkg_urls
