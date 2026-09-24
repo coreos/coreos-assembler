@@ -176,6 +176,10 @@ def query_packages_location(locks, repoquery_args):
         print("If they are NOT in the overrides file, this is an error and the lockfile is out of date.")
     if extra:
         print(f"Warning: Unexpected packages resolved: {sorted(extra)}")
+        # Remove unexpected packages from the result
+        for name in extra:
+            del processed_urls[name]
+        pkg_urls = list(processed_urls.values())
 
     print(f"Done. Resolved location for {len(pkg_urls)} packages.")
     return pkg_urls
