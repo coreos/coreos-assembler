@@ -33,12 +33,12 @@
       "commitMessageTopic": "RPM updates",
       "enabled": true,
       "schedule": [
-        "at any time"
+        "* * * * 0,6"
       ],
       "branchPrefix": "renovate/rpm/",
       "semanticCommits": "enabled",
       "automerge": true,
-      "automergeType": "branch"
+      "automergeType": "pr"
     },
     {
       "matchDatasources": [
