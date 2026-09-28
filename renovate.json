@@ -85,6 +85,14 @@
       ]
     }
   ],
+  "lockFileMaintenance": {
+    "enabled": true,
+    "automerge": true,
+    "automergeType": "pr",
+    "schedule": [
+      "* * * * 0,6"
+    ]
+  },
   "customDatasources": {
     "oc": {
       "defaultRegistryUrlTemplate": "https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/latest/sha256sum.txt",
