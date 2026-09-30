@@ -85,13 +85,15 @@
       ]
     }
   ],
-  "lockFileMaintenance": {
-    "enabled": true,
-    "automerge": true,
-    "automergeType": "pr",
-    "schedule": [
-      "* * * * 0,6"
-    ]
+  "rpm-lockfile": {
+    "lockFileMaintenance": {
+      "enabled": true,
+      "automerge": true,
+      "automergeType": "pr",
+      "schedule": [
+        "* * * * 0,6"
+      ]
+    }
   },
   "customDatasources": {
     "oc": {
