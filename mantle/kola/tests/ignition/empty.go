@@ -49,6 +49,17 @@ func init() {
 
 func noIgnitionSSHKey(c cluster.TestCluster) {
 	m := c.Machines()[0]
+	if c.Platform() == "azure" {
+		// Azure merges in the platform's SSH key before Ignition's
+		// passwd stage runs, so this file is expected to exist here.
+		// Verify it has only that one key (tagged with a distinct
+		// comment, see azure.MetadataSSHKeyComment), not one leaked
+		// in from the (empty) Ignition config.
+		// See: https://github.com/coreos/fedora-coreos-tracker/issues/2231
+		c.RunCmdSync(m, "[ \"$(wc -l < ~/.ssh/authorized_keys.d/ignition)\" -eq 1 ]")
+		c.AssertCmdOutputContains(m, "cat ~/.ssh/authorized_keys.d/ignition", "core@azure-metadata")
+		return
+	}
 	// check that the test harness correctly skipped passing SSH keys
 	// via Ignition
 	c.RunCmdSync(m, "[ ! -e ~/.ssh/authorized_keys.d/ignition ]")

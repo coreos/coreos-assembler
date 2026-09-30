@@ -25,6 +25,11 @@ import (
 
 const (
 	Platform platform.Name = "azure"
+
+	// MetadataSSHKeyComment marks the SSH key kola uploads via Azure's
+	// cloud metadata, so tests can confirm a key came from there
+	// rather than from Ignition's own config.
+	MetadataSSHKeyComment = "core@azure-metadata"
 )
 
 var (
@@ -64,7 +69,13 @@ func NewFlight(opts *azure.Options) (platform.Flight, error) {
 		af.Destroy()
 		return nil, err
 	}
-	af.SSHKey = keys[0].String()
+	// Tag the key uploaded to Azure with a distinct comment (instead
+	// of the default "core@default") so tests can identify it. This
+	// only changes the comment on the uploaded public key, not the
+	// key used for actual SSH auth.
+	sshKey := *keys[0]
+	sshKey.Comment = MetadataSSHKeyComment
+	af.SSHKey = sshKey.String()
 
 	return af, nil
 }
