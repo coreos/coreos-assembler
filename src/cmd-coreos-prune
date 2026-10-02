@@ -73,6 +73,8 @@ def parse_args():
     parser.add_argument("--aws-config-file", default=os.environ.get("AWS_CONFIG_FILE"), help="Path to AWS config file")
     parser.add_argument("--registry-auth-file", default=os.environ.get("REGISTRY_AUTH_FILE"),
                         help="Path to docker registry auth file. Directly passed to skopeo.")
+    parser.add_argument("--aws-skip-regions", nargs='+', default=[],
+                        help="AWS regions to skip during cloud-upload pruning (e.g. during outages)")
     return parser.parse_args()
 
 
@@ -139,6 +141,7 @@ def main():
             build_date = parse_fcos_version_to_timestamp(build_id)
 
         actions_completed = []
+        cloud_skipped_regions = set()
         print(f"Processing build {build_id}")
 
         # For each build, iterate over arches first to minimize downloads of meta.json per arch
@@ -160,10 +163,22 @@ def main():
                 if build_date < ref_date:
                     previous_cleanup = build.get("policy-cleanup", {})
 
-                    # Skip if the action has been handled previously for the build
+                    # Skip if the action has been handled previously for the build.
+                    # For cloud-uploads, check if there are previously skipped
+                    # regions that are no longer in the current skip list and
+                    # need to be retried.
                     if action in previous_cleanup:
-                        print(f"\t\tBuild {build_id} has already had {action} pruning completed")
-                        continue
+                        if action == "cloud-uploads":
+                            prev_skipped = set(previous_cleanup.get("cloud-uploads-skipped-regions", []))
+                            current_skip = set(cloud_config.get("aws", {}).get("skip-regions", []))
+                            regions_to_retry = prev_skipped - current_skip
+                            if not regions_to_retry:
+                                print(f"\t\tBuild {build_id} has already had {action} pruning completed")
+                                continue
+                            print(f"\t\tBuild {build_id} has regions to retry for {action}: {regions_to_retry}")
+                        else:
+                            print(f"\t\tBuild {build_id} has already had {action} pruning completed")
+                            continue
                     # We have to handle the "images" action separately because the key in the previous
                     # cleanup is "images-kept" and not "images"
                     if action == 'images' and 'images-kept' in previous_cleanup:
@@ -178,7 +193,7 @@ def main():
                     print(f"\t\t{arch} {action} for {build_id}")
                     match action:
                         case "cloud-uploads":
-                            prune_cloud_uploads(current_build, cloud_config, args.dry_run)
+                            cloud_skipped_regions |= prune_cloud_uploads(current_build, cloud_config, args.dry_run)
                         # Prune through images that are not mentioned in images-keep
                         case "images":
                             prune_images(s3_client, current_build, images_to_keep, args.dry_run, bucket, prefix)
@@ -188,6 +203,15 @@ def main():
                             # we'll prune later so that we do it only once and we
                             # make sure we've completed any architecture specific
                             # operations, (i.e. pruning aarch64 AMIs).
+                            # Don't prune the build if there are still skipped
+                            # cloud regions to avoid orphaning the skipped AMIs.
+                            still_skipped = cloud_skipped_regions | (
+                                set(previous_cleanup.get("cloud-uploads-skipped-regions", []))
+                                & set(cloud_config.get("aws", {}).get("skip-regions", []))
+                            )
+                            if still_skipped:
+                                print(f"\t\t\tBuild {build_id} has skipped cloud regions {sorted(still_skipped)}. Deferring build prune.")
+                                continue
                             builds_to_prune.add(build_id)
                         case "containers":
                             # Our containers are manifest listed, which means deleting the container tag
@@ -220,6 +244,13 @@ def main():
             for action in actions_completed:
                 if action == "images":
                     policy_cleanup["images-kept"] = images_to_keep
+                elif action == "cloud-uploads":
+                    policy_cleanup[action] = True
+                    if cloud_skipped_regions:
+                        policy_cleanup["cloud-uploads-skipped-regions"] = sorted(cloud_skipped_regions)
+                    else:
+                        # All regions completed; clear any previously recorded skips
+                        policy_cleanup.pop("cloud-uploads-skipped-regions", None)
                 else:
                     policy_cleanup[action] = True
 
@@ -253,7 +284,8 @@ def get_cloud_config(args):
             "json-key": args.gcp_json_key,
         },
         "aws": {
-            "credentials": args.aws_config_file
+            "credentials": args.aws_config_file,
+            "skip-regions": args.aws_skip_regions
         }
     }
 
@@ -357,11 +389,18 @@ def update_policy_cleanup(current_builds, remote_builds):
 def prune_cloud_uploads(build, cloud_config, dry_run):
     # Ensure AWS AMIs and GCP images are removed based on the configuration
     errors = []
-    errors.extend(deregister_aws_amis(build, cloud_config, dry_run))
+    skipped_regions = set()
+
+    ami_errors, ami_skipped = deregister_aws_amis(build, cloud_config, dry_run)
+    errors.extend(ami_errors)
+    skipped_regions |= ami_skipped
+
     errors.extend(delete_gcp_image(build, cloud_config, dry_run))
 
     if "aws-winli" in build.images:
-        errors.extend(deregister_aws_winli_amis(build, cloud_config, dry_run))
+        winli_errors, winli_skipped = deregister_aws_winli_amis(build, cloud_config, dry_run)
+        errors.extend(winli_errors)
+        skipped_regions |= winli_skipped
 
     if errors:
         print(f"\t\t\tFound errors when removing cloud-uploads for {build.id}:")
@@ -369,43 +408,34 @@ def prune_cloud_uploads(build, cloud_config, dry_run):
             print(e)
         raise Exception("Some errors were encountered")
 
+    return skipped_regions
+
 
 def deregister_aws_amis(build, cloud_config, dry_run):
-    errors = []
-    aws_credentials = cloud_config.get("aws", {}).get("credentials")
-    amis = build.images.get("amis")
-    if not amis:
-        print(f"\t\t\tNo AMI/Snapshot to prune for {build.id} for {build.arch}")
-        return errors
-    for ami in amis:
-        region_name = ami.get("name")
-        ami_id = ami.get("hvm")
-        # If we are dealing with an old manifest where the snapshot ID isn't stored
-        # then let's instruct ore to detect the snapshot ID from the AMI.
-        snapshot_id = ami.get("snapshot", "detectFromAMI")
-        if dry_run:
-            print(f"\t\t\tWould delete {ami_id} and {snapshot_id} for {build.id}")
-            continue
-        if (ami_id or snapshot_id) and region_name:
-            try:
-                deregister_aws_resource(ami_id, snapshot_id, region=region_name, credentials_file=aws_credentials)
-            except Exception as e:
-                errors.append(e)
-        else:
-            errors.append(f"Missing parameters to remove {ami_id} and {snapshot_id}")
-    return errors
+    return _deregister_aws_amis_for_key(build, cloud_config, dry_run, "amis")
 
 
 def deregister_aws_winli_amis(build, cloud_config, dry_run):
+    return _deregister_aws_amis_for_key(build, cloud_config, dry_run, "aws-winli")
+
+
+def _deregister_aws_amis_for_key(build, cloud_config, dry_run, image_key):
     errors = []
-    aws_credentials = cloud_config.get("aws", {}).get("credentials")
-    aws_winli_amis = build.images.get("aws-winli")
-    if not aws_winli_amis:
-        print(f"\t\t\tNo aws-winli AMI/Snapshot to prune for {build.id} for {build.arch}")
-        return errors
-    for ami in aws_winli_amis:
+    skipped_regions = set()
+    aws_config = cloud_config.get("aws", {})
+    aws_credentials = aws_config.get("credentials")
+    skip_regions = set(aws_config.get("skip-regions", []))
+    amis = build.images.get(image_key)
+    if not amis:
+        print(f"\t\t\tNo {image_key} AMI/Snapshot to prune for {build.id} for {build.arch}")
+        return errors, skipped_regions
+    for ami in amis:
         region_name = ami.get("name")
         ami_id = ami.get("hvm")
+        if region_name in skip_regions:
+            print(f"\t\t\tSkipping {ami_id} for {build.id} since region '{region_name}' is in the skip list")
+            skipped_regions.add(region_name)
+            continue
         # If we are dealing with an old manifest where the snapshot ID isn't stored
         # then let's instruct ore to detect the snapshot ID from the AMI.
         snapshot_id = ami.get("snapshot", "detectFromAMI")
@@ -419,7 +449,7 @@ def deregister_aws_winli_amis(build, cloud_config, dry_run):
                 errors.append(e)
         else:
             errors.append(f"Missing parameters to remove {ami_id} and {snapshot_id}")
-    return errors
+    return errors, skipped_regions
 
 
 def delete_gcp_image(build, cloud_config, dry_run):
