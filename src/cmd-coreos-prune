@@ -412,49 +412,24 @@ def prune_cloud_uploads(build, cloud_config, dry_run):
 
 
 def deregister_aws_amis(build, cloud_config, dry_run):
-    errors = []
-    skipped_regions = set()
-    aws_config = cloud_config.get("aws", {})
-    aws_credentials = aws_config.get("credentials")
-    skip_regions = aws_config.get("skip-regions", [])
-    amis = build.images.get("amis")
-    if not amis:
-        print(f"\t\t\tNo AMI/Snapshot to prune for {build.id} for {build.arch}")
-        return errors, skipped_regions
-    for ami in amis:
-        region_name = ami.get("name")
-        ami_id = ami.get("hvm")
-        if region_name in skip_regions:
-            print(f"\t\t\tSkipping {ami_id} for {build.id} since region '{region_name}' is in the skip list")
-            skipped_regions.add(region_name)
-            continue
-        # If we are dealing with an old manifest where the snapshot ID isn't stored
-        # then let's instruct ore to detect the snapshot ID from the AMI.
-        snapshot_id = ami.get("snapshot", "detectFromAMI")
-        if dry_run:
-            print(f"\t\t\tWould delete {ami_id} and {snapshot_id} for {build.id}")
-            continue
-        if (ami_id or snapshot_id) and region_name:
-            try:
-                deregister_aws_resource(ami_id, snapshot_id, region=region_name, credentials_file=aws_credentials)
-            except Exception as e:
-                errors.append(e)
-        else:
-            errors.append(f"Missing parameters to remove {ami_id} and {snapshot_id}")
-    return errors, skipped_regions
+    return _deregister_aws_amis_for_key(build, cloud_config, dry_run, "amis")
 
 
 def deregister_aws_winli_amis(build, cloud_config, dry_run):
+    return _deregister_aws_amis_for_key(build, cloud_config, dry_run, "aws-winli")
+
+
+def _deregister_aws_amis_for_key(build, cloud_config, dry_run, image_key):
     errors = []
     skipped_regions = set()
     aws_config = cloud_config.get("aws", {})
     aws_credentials = aws_config.get("credentials")
-    skip_regions = aws_config.get("skip-regions", [])
-    aws_winli_amis = build.images.get("aws-winli")
-    if not aws_winli_amis:
-        print(f"\t\t\tNo aws-winli AMI/Snapshot to prune for {build.id} for {build.arch}")
+    skip_regions = set(aws_config.get("skip-regions", []))
+    amis = build.images.get(image_key)
+    if not amis:
+        print(f"\t\t\tNo {image_key} AMI/Snapshot to prune for {build.id} for {build.arch}")
         return errors, skipped_regions
-    for ami in aws_winli_amis:
+    for ami in amis:
         region_name = ami.get("name")
         ami_id = ami.get("hvm")
         if region_name in skip_regions:
