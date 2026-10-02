@@ -73,6 +73,8 @@ def parse_args():
     parser.add_argument("--aws-config-file", default=os.environ.get("AWS_CONFIG_FILE"), help="Path to AWS config file")
     parser.add_argument("--registry-auth-file", default=os.environ.get("REGISTRY_AUTH_FILE"),
                         help="Path to docker registry auth file. Directly passed to skopeo.")
+    parser.add_argument("--aws-skip-regions", nargs='+', default=[],
+                        help="AWS regions to skip during cloud-upload pruning (e.g. during outages)")
     return parser.parse_args()
 
 
@@ -253,7 +255,8 @@ def get_cloud_config(args):
             "json-key": args.gcp_json_key,
         },
         "aws": {
-            "credentials": args.aws_config_file
+            "credentials": args.aws_config_file,
+            "skip-regions": args.aws_skip_regions
         }
     }
 
@@ -372,7 +375,9 @@ def prune_cloud_uploads(build, cloud_config, dry_run):
 
 def deregister_aws_amis(build, cloud_config, dry_run):
     errors = []
-    aws_credentials = cloud_config.get("aws", {}).get("credentials")
+    aws_config = cloud_config.get("aws", {})
+    aws_credentials = aws_config.get("credentials")
+    skip_regions = aws_config.get("skip-regions", [])
     amis = build.images.get("amis")
     if not amis:
         print(f"\t\t\tNo AMI/Snapshot to prune for {build.id} for {build.arch}")
@@ -380,6 +385,9 @@ def deregister_aws_amis(build, cloud_config, dry_run):
     for ami in amis:
         region_name = ami.get("name")
         ami_id = ami.get("hvm")
+        if region_name in skip_regions:
+            print(f"\t\t\tSkipping {ami_id} for {build.id} since region '{region_name}' is in the skip list")
+            continue
         # If we are dealing with an old manifest where the snapshot ID isn't stored
         # then let's instruct ore to detect the snapshot ID from the AMI.
         snapshot_id = ami.get("snapshot", "detectFromAMI")
@@ -398,7 +406,9 @@ def deregister_aws_amis(build, cloud_config, dry_run):
 
 def deregister_aws_winli_amis(build, cloud_config, dry_run):
     errors = []
-    aws_credentials = cloud_config.get("aws", {}).get("credentials")
+    aws_config = cloud_config.get("aws", {})
+    aws_credentials = aws_config.get("credentials")
+    skip_regions = aws_config.get("skip-regions", [])
     aws_winli_amis = build.images.get("aws-winli")
     if not aws_winli_amis:
         print(f"\t\t\tNo aws-winli AMI/Snapshot to prune for {build.id} for {build.arch}")
@@ -406,6 +416,9 @@ def deregister_aws_winli_amis(build, cloud_config, dry_run):
     for ami in aws_winli_amis:
         region_name = ami.get("name")
         ami_id = ami.get("hvm")
+        if region_name in skip_regions:
+            print(f"\t\t\tSkipping {ami_id} for {build.id} since region '{region_name}' is in the skip list")
+            continue
         # If we are dealing with an old manifest where the snapshot ID isn't stored
         # then let's instruct ore to detect the snapshot ID from the AMI.
         snapshot_id = ami.get("snapshot", "detectFromAMI")
