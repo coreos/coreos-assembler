@@ -41,7 +41,7 @@ func init() {
 
 	sv(&opts.Image, "image", "", "image name")
 	sv(&opts.Project, "project", "fedora-coreos-devel", "project")
-	sv(&opts.Zone, "zone", "us-central1-a", "zone")
+	sv(&opts.PreferredZone, "zone", "us-central1-a", "zone")
 	sv(&opts.MachineType, "machinetype", "n1-standard-1", "machine type")
 	sv(&opts.DiskType, "disktype", "pd-ssd", "disk type")
 	sv(&opts.BaseName, "basename", "kola", "instance name prefix")
