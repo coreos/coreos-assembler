@@ -1,0 +1,90 @@
+name: Auto-approve Mintmakers lockfile maintenance PRs
+
+on:
+  # Trigger on PR open, new commits, or reopen — but NOT on PR close/merge
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  auto-approve:
+    runs-on: ubuntu-latest
+    # Abort after 5 minutes to avoid hung runs consuming Actions quota
+    timeout-minutes: 5
+    # Serialize concurrent events for the same PR. With cancel-in-progress: false,
+    # the running job completes and a newer pending arrival replaces any earlier
+    # queued (but not yet started) job.
+    concurrency:
+      group: auto-approve-${{ github.event.pull_request.number }}
+      cancel-in-progress: false
+    # Only run when all four conditions are true:
+    # 1. PR opened by MintMaker bot (not a human or another bot)
+    # 2. PR comes from this repo — fork PRs are intentionally excluded
+    # 3. PR targets the main branch
+    # 4. PR is on the exact lockfile maintenance branch MintMaker uses
+    if: |
+      github.event.pull_request.user.login == 'red-hat-konflux-kflux-prd-rh03[bot]' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.base.ref == 'main' &&
+      github.event.pull_request.head.ref == 'renovate/main/lock-file-maintenance'
+    permissions:
+      # Required to post an approving review
+      pull-requests: write
+    steps:
+      - name: Validate and approve
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          # SHA from the event payload — used to detect head changes during this run
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          endpoint="repos/$REPO/pulls/$PR_NUMBER"
+
+          # Fetch PR metadata and verify the live head matches the event SHA before
+          # reading files. A push between event fire and this check would be caught here.
+          pr=$(gh api "$endpoint")
+          if [[ $(jq -r '.head.sha' <<< "$pr") != "$EXPECTED_SHA" ]]; then
+            echo "Event head is no longer current; skipping approval"
+            exit 0
+          fi
+          expected=$(jq -r '.changed_files' <<< "$pr")
+
+          # Verify the PR only modifies expected RPM lockfiles and nothing else.
+          # Checks: at least one file changed, count matches the API summary (pagination
+          # sanity check), every file is "modified" (not added/deleted/renamed), and
+          # every filename is on the explicit allowlist.
+          files=$(gh api "$endpoint/files?per_page=100" \
+            --paginate --slurp --jq 'add')
+
+          jq -e --argjson expected "$expected" '
+            ["rpms.lock.yaml",
+             "manifest-lock.x86_64.json",
+             "manifest-lock.aarch64.json",
+             "manifest-lock.ppc64le.json",
+             "manifest-lock.s390x.json"] as $allowed
+            | length > 0
+              and length == $expected
+              and all(.[];
+                . as $f
+                | $f.status == "modified"
+                  and ($allowed | index($f.filename)) != null)
+          ' <<< "$files"
+
+          # Verify head again after file fetch — a push can arrive between the first
+          # check and the file-list read. Binding the review to EXPECTED_SHA prevents
+          # the approval from silently attaching to a newer, unvalidated commit.
+          current_sha=$(gh api "$endpoint" --jq '.head.sha')
+          if [[ "$current_sha" != "$EXPECTED_SHA" ]]; then
+            echo "HEAD changed during validation ($EXPECTED_SHA -> $current_sha), skipping"
+            exit 0
+          fi
+
+          # Approve bound to the validated SHA. Using --raw-field makes the string
+          # intent explicit. No third-party action needed.
+          gh api "$endpoint/reviews" \
+            --method POST \
+            --raw-field commit_id="$EXPECTED_SHA" \
+            --raw-field event="APPROVE" \
+            --raw-field body=""
