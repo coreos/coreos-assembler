@@ -56,17 +56,17 @@ jobs:
           # sanity check), every file is "modified" (not added/deleted/renamed), and
           # every filename is on the explicit allowlist.
           files=$(gh api "$endpoint/files?per_page=100" \
-            --paginate --slurp --jq 'add')
+            --paginate --slurp | jq 'add')
 
-          jq -e --argjson expected "$expected" '
-            ["rpms.lock.yaml",
-             "manifest-lock.x86_64.json",
-             "manifest-lock.aarch64.json",
-             "manifest-lock.ppc64le.json",
-             "manifest-lock.s390x.json"] as $allowed
-            | length > 0
-              and length == $expected
-              and all(.[];
+          actual=$(jq 'length' <<< "$files")
+          if [[ "$actual" -eq 0 || "$actual" -ne "$expected" ]]; then
+            echo "File count mismatch: expected $expected, got $actual"
+            exit 1
+          fi
+
+          jq -e '
+            ["rpms.lock.yaml"] as $allowed
+            | all(.[];
                 . as $f
                 | $f.status == "modified"
                   and ($allowed | index($f.filename)) != null)
