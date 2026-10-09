@@ -930,23 +930,6 @@ func (a *API) RestoreImagePublic(imageID string) error {
 	return nil
 }
 
-// IsImagePublic returns true if the AMI has public launch permissions.
-func (a *API) IsImagePublic(imageID string) (bool, error) {
-	resp, err := a.ec2.DescribeImageAttribute(context.Background(), &ec2.DescribeImageAttributeInput{
-		Attribute: ec2types.ImageAttributeNameLaunchPermission,
-		ImageId:   aws.String(imageID),
-	})
-	if err != nil {
-		return false, fmt.Errorf("couldn't describe launch permissions for %v: %v", imageID, err)
-	}
-	for _, p := range resp.LaunchPermissions {
-		if p.Group == ec2types.PermissionGroupAll {
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
 func (a *API) FindSnapshotDiskSizeGiB(snapshotID string) (uint, error) {
 	result, err := a.ec2.DescribeSnapshots(context.Background(), &ec2.DescribeSnapshotsInput{
 		SnapshotIds: []string{snapshotID},
