@@ -56,6 +56,16 @@ func init() {
 		UserData:    enableMetadataService,
 		Distros:     []string{"fcos"},
 	})
+
+	register.RegisterTest(&register.Test{
+		Name:        "fcos.metadata.stackit",
+		Description: "Verify the metadata on STACKIT.",
+		Run:         verifySTACKIT,
+		ClusterSize: 1,
+		Platforms:   []string{"stackit"},
+		UserData:    enableMetadataService,
+		Distros:     []string{"fcos"},
+	})
 }
 
 func verifyAWS(c cluster.TestCluster) {
@@ -66,6 +76,15 @@ func verifyAzure(c cluster.TestCluster) {
 	verify(c, "AFTERBURN_AZURE_IPV4_DYNAMIC")
 	// kola tests do not spawn machines behind a load balancer on Azure
 	// which is required for AFTERBURN_AZURE_IPV4_VIRTUAL to be present
+}
+
+func verifySTACKIT(c cluster.TestCluster) {
+	verify(c, "AFTERBURN_STACKIT_INSTANCE_ID", "AFTERBURN_STACKIT_HOSTNAME", "AFTERBURN_STACKIT_AVAILABILITY_ZONE")
+	m := c.Machines()[0]
+	id := string(c.MustSSH(m, `. /run/metadata/afterburn; printf '%s' "$AFTERBURN_STACKIT_INSTANCE_ID"`))
+	if id != m.ID() {
+		c.Errorf("metadata instance ID %q does not match server ID %q", id, m.ID())
+	}
 }
 
 func verify(c cluster.TestCluster, keys ...string) {
