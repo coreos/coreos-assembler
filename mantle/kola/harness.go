@@ -80,6 +80,10 @@ const InstalledTestDefaultTest = "test.sh"
 // Specifying this in the tags list is required to denote a need for Internet access
 const NeedsInternetTag = "needs-internet"
 
+// BootcBaseTag marks tests with no test-specific Ignition/Butane (no register.Test.UserData).
+// They are intended to run with kola --no-ignition.
+const BootcBaseTag = "bootc-base"
+
 // PlatformIndependentTag is currently equivalent to platform: qemu, but that may change in the future.
 // For more, see the doc in external-tests.md.
 const PlatformIndependentTag = "platform-independent"
@@ -1875,6 +1879,10 @@ func runTest(h *harness.H, t *register.Test, pltfrm string, flight platform.Flig
 		WarningsAction:     conf.FailWarnings,
 		EarlyRelease:       h.Release,
 		TestExecTimeout:    h.TimeoutContext(),
+		NoIgnition:         QEMUOptions.NoIgnition,
+	}
+	if QEMUOptions.NoIgnition {
+		rconf.SSHUser = "root"
 	}
 	if t.HasFlag(register.AllowConfigWarnings) {
 		rconf.WarningsAction = conf.IgnoreWarnings
