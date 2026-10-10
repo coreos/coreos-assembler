@@ -4624,27 +4624,27 @@ arches:
     name: gnutls-utils
     evr: 3.8.13-1.fc44
     sourcerpm: gnutls-3.8.13-1.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/g/golang-1.26.8-2.fc44.x86_64.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/g/golang-1.26.9-1.fc44.x86_64.rpm
     repoid: updates
-    size: 1499186
-    checksum: sha256:1e040d55833b11412529d730416520fa1e6c7848315bff3bff04aeb3d5189c0c
+    size: 1499897
+    checksum: sha256:4613a4055ca2cd8bbc15fac07156ec0ecaf1c780efab775083098aedc5da96d7
     name: golang
-    evr: 1.26.8-2.fc44
-    sourcerpm: golang-1.26.8-2.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/g/golang-bin-1.26.8-2.fc44.x86_64.rpm
+    evr: 1.26.9-1.fc44
+    sourcerpm: golang-1.26.9-1.fc44.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/g/golang-bin-1.26.9-1.fc44.x86_64.rpm
     repoid: updates
-    size: 22080032
-    checksum: sha256:2966d1cdec3b400ac7e2c138cb7f24ac6d74bd97df90a7bb01efddd007f478cc
+    size: 22050677
+    checksum: sha256:0f1eef70c26b47f8e927e1a1a01ccfbe78728a9ac08259a8ae2e12870247e997
     name: golang-bin
-    evr: 1.26.8-2.fc44
-    sourcerpm: golang-1.26.8-2.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/g/golang-src-1.26.8-2.fc44.noarch.rpm
+    evr: 1.26.9-1.fc44
+    sourcerpm: golang-1.26.9-1.fc44.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/g/golang-src-1.26.9-1.fc44.noarch.rpm
     repoid: updates
-    size: 15289793
-    checksum: sha256:11966507e87786a04df48b7259a505489ca9e0d9d814b9bbb7a888a1110fefa6
+    size: 15297892
+    checksum: sha256:4b11adfd761975b2e3c45477956b1b57f99d4392a51e7ca306610ff6fe6f0438
     name: golang-src
-    evr: 1.26.8-2.fc44
-    sourcerpm: golang-1.26.8-2.fc44.src.rpm
+    evr: 1.26.9-1.fc44
+    sourcerpm: golang-1.26.9-1.fc44.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/g/gpgme-2.0.1-5.fc44.x86_64.rpm
     repoid: updates
     size: 237457
@@ -4715,20 +4715,20 @@ arches:
     name: gsettings-desktop-schemas
     evr: 50.1-1.fc44
     sourcerpm: gsettings-desktop-schemas-50.1-1.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/g/gstreamer1-1.28.7-1.fc44.x86_64.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/g/gstreamer1-1.28.8-1.fc44.x86_64.rpm
     repoid: updates
-    size: 1782702
-    checksum: sha256:efbb78bc961768b45c21763cabf29bb015f7cf8e93b000ca93897f079d2548fe
+    size: 1782644
+    checksum: sha256:f4c549cf0f7d12f80ab6695fa35d64a03d16fa73f83ab4d5b64269aedc22c6be
     name: gstreamer1
-    evr: 1.28.7-1.fc44
-    sourcerpm: gstreamer1-1.28.7-1.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/g/gstreamer1-plugins-base-1.28.7-1.fc44.x86_64.rpm
+    evr: 1.28.8-1.fc44
+    sourcerpm: gstreamer1-1.28.8-1.fc44.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/g/gstreamer1-plugins-base-1.28.8-1.fc44.x86_64.rpm
     repoid: updates
-    size: 2467848
-    checksum: sha256:079b6bada911ea9e1769d4a900086af22d4d69e9ec5de177ca62bd3bc7295aad
+    size: 2468491
+    checksum: sha256:cd12e8d484ad9ddf7e1cbc71f75069629a7290c68a67abe1a3a0c7aa8f97b671
     name: gstreamer1-plugins-base
-    evr: 1.28.7-1.fc44
-    sourcerpm: gstreamer1-plugins-base-1.28.7-1.fc44.src.rpm
+    evr: 1.28.8-1.fc44
+    sourcerpm: gstreamer1-plugins-base-1.28.8-1.fc44.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/g/gtk-update-icon-cache-3.24.52-2.fc44.x86_64.rpm
     repoid: updates
     size: 34659
@@ -5492,41 +5492,41 @@ arches:
     name: mercurial
     evr: 7.2.4-1.fc44
     sourcerpm: mercurial-7.2.4-1.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/m/mesa-dri-drivers-26.2.3-1.fc44.x86_64.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/m/mesa-dri-drivers-26.2.4-1.fc44.x86_64.rpm
     repoid: updates
-    size: 14499724
-    checksum: sha256:da6f31af30eb63bb07ecce375f79af624c01bba68327b1665dadfd59b241dad9
+    size: 14500838
+    checksum: sha256:52cb276bd6dc2c17c13a0c2af087fc83d7bbe54cbfd8711e07dea938d967b229
     name: mesa-dri-drivers
-    evr: 26.2.3-1.fc44
-    sourcerpm: mesa-26.2.3-1.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/m/mesa-filesystem-26.2.3-1.fc44.x86_64.rpm
+    evr: 26.2.4-1.fc44
+    sourcerpm: mesa-26.2.4-1.fc44.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/m/mesa-filesystem-26.2.4-1.fc44.x86_64.rpm
     repoid: updates
-    size: 9157
-    checksum: sha256:d36545022c0fe9ad21f034a1242b339dc367344d7f807ce4080bee642e9786d6
+    size: 9263
+    checksum: sha256:de411e60dda38e7cb7f855ccb5700d0fdab217012f614f4f0192376a9194712f
     name: mesa-filesystem
-    evr: 26.2.3-1.fc44
-    sourcerpm: mesa-26.2.3-1.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/m/mesa-libEGL-26.2.3-1.fc44.x86_64.rpm
+    evr: 26.2.4-1.fc44
+    sourcerpm: mesa-26.2.4-1.fc44.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/m/mesa-libEGL-26.2.4-1.fc44.x86_64.rpm
     repoid: updates
-    size: 144188
-    checksum: sha256:32ff03eb7d39a1a7bdf2284acf4a9667e0171eb25948493434e197dc4ef2bd62
+    size: 144303
+    checksum: sha256:72054e412c4d7f51550c48028347ed4f10d0080ef2c0edd1076fa4704ae9b802
     name: mesa-libEGL
-    evr: 26.2.3-1.fc44
-    sourcerpm: mesa-26.2.3-1.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/m/mesa-libGL-26.2.3-1.fc44.x86_64.rpm
+    evr: 26.2.4-1.fc44
+    sourcerpm: mesa-26.2.4-1.fc44.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/m/mesa-libGL-26.2.4-1.fc44.x86_64.rpm
     repoid: updates
-    size: 141774
-    checksum: sha256:98fc7d2e025f83e3a01c82a07718aa525231f6d8651f2d1483173eddf60b3d29
+    size: 141849
+    checksum: sha256:d6770ab8e4309de4bb231acb7d584d4638004832950cfd54cac93d9dec36e254
     name: mesa-libGL
-    evr: 26.2.3-1.fc44
-    sourcerpm: mesa-26.2.3-1.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/m/mesa-libgbm-26.2.3-1.fc44.x86_64.rpm
+    evr: 26.2.4-1.fc44
+    sourcerpm: mesa-26.2.4-1.fc44.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/m/mesa-libgbm-26.2.4-1.fc44.x86_64.rpm
     repoid: updates
-    size: 15307
-    checksum: sha256:76975ca980a236800b88cff43a580a4db16912627edc53bd7904e2ff444b666d
+    size: 15311
+    checksum: sha256:94f433141aa0d261e89ba736640b9dc11c2de481dd9978187a98e3de25bd8a95
     name: mesa-libgbm
-    evr: 26.2.3-1.fc44
-    sourcerpm: mesa-26.2.3-1.fc44.src.rpm
+    evr: 26.2.4-1.fc44
+    sourcerpm: mesa-26.2.4-1.fc44.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/m/mt7xxx-firmware-20260916-1.fc44.noarch.rpm
     repoid: updates
     size: 32058870
