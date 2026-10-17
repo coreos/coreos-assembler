@@ -4078,13 +4078,13 @@ arches:
     name: build-reproducibility-srpm-macros
     evr: 0.7.3-2.fc44
     sourcerpm: rust-add-determinism-0.7.3-2.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/b/buildah-1.43.4-1.fc44.x86_64.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/b/buildah-1.43.5-1.fc44.x86_64.rpm
     repoid: updates
-    size: 10506112
-    checksum: sha256:4f126f2d7d2396a896de082e46d55f7b49c1d05043a4e93c2156314f4053d2c5
+    size: 10516686
+    checksum: sha256:d1478a3cf34712f0444678e1c00c18eccd39ef16871ed155dd300210d4b0c308
     name: buildah
-    evr: 2:1.43.4-1.fc44
-    sourcerpm: buildah-1.43.4-1.fc44.src.rpm
+    evr: 2:1.43.5-1.fc44
+    sourcerpm: buildah-1.43.5-1.fc44.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/b/butane-2.27.0-3.fc44.x86_64.rpm
     repoid: updates
     size: 2866655
@@ -4771,13 +4771,13 @@ arches:
     name: kbd-misc
     evr: 2.9.0-4.fc44
     sourcerpm: kbd-2.9.0-4.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/k/kernel-core-7.2.10-200.fc44.x86_64.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/k/kernel-core-7.2.11-200.fc44.x86_64.rpm
     repoid: updates
-    size: 21891297
-    checksum: sha256:67ddd4b8583d903fb4b9f03a7905f7d52be26b1f86efafea2ff53410eb87f5bc
+    size: 21872965
+    checksum: sha256:6c993e04efdc0d45ae0e2542e045c37450a53ea968416c2e936eca5351988b24
     name: kernel-core
-    evr: 7.2.10-200.fc44
-    sourcerpm: kernel-7.2.10-200.fc44.src.rpm
+    evr: 7.2.11-200.fc44
+    sourcerpm: kernel-7.2.11-200.fc44.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/k/kernel-headers-7.2.4-200.fc44.x86_64.rpm
     repoid: updates
     size: 1833938
@@ -4785,20 +4785,20 @@ arches:
     name: kernel-headers
     evr: 7.2.4-200.fc44
     sourcerpm: kernel-headers-7.2.4-200.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/k/kernel-modules-7.2.10-200.fc44.x86_64.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/k/kernel-modules-7.2.11-200.fc44.x86_64.rpm
     repoid: updates
-    size: 78791185
-    checksum: sha256:ac54c1073f1844847a2f911657a15440cf866d7229f2234e794c5e4a46b7a038
+    size: 78791985
+    checksum: sha256:5be4c1bf1464aa4fd4289345038c83ca861b41ee788f45766f26ddcf56664c71
     name: kernel-modules
-    evr: 7.2.10-200.fc44
-    sourcerpm: kernel-7.2.10-200.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/k/kernel-modules-core-7.2.10-200.fc44.x86_64.rpm
+    evr: 7.2.11-200.fc44
+    sourcerpm: kernel-7.2.11-200.fc44.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/k/kernel-modules-core-7.2.11-200.fc44.x86_64.rpm
     repoid: updates
-    size: 50815205
-    checksum: sha256:2491210cfbf9a77364172eb459eb117cf360e176a6ad2fbbdddbba7705fc2621
+    size: 50817729
+    checksum: sha256:5c3d413174778693568a672167d92f60021d7c9b6e4810d90d4ad780f7bc7ce7
     name: kernel-modules-core
-    evr: 7.2.10-200.fc44
-    sourcerpm: kernel-7.2.10-200.fc44.src.rpm
+    evr: 7.2.11-200.fc44
+    sourcerpm: kernel-7.2.11-200.fc44.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/k/koji-1.36.1-1.fc44.noarch.rpm
     repoid: updates
     size: 282003
@@ -4918,20 +4918,20 @@ arches:
     name: libbpf
     evr: 2:1.6.3-2.fc44
     sourcerpm: libbpf-1.6.3-2.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/l/libcamera-0.7.1-2.fc44.x86_64.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/l/libcamera-0.7.2-2.fc44.x86_64.rpm
     repoid: updates
-    size: 840189
-    checksum: sha256:13ba544e0bc2fc2215a4da472d823da0aecad1f6aa5c897811c0f53b51962ed0
+    size: 762789
+    checksum: sha256:117252f5a7ba83b6291ca3115749ab3f9c8fde553dee6c41fe5c1022dc400756
     name: libcamera
-    evr: 0.7.1-2.fc44
-    sourcerpm: libcamera-0.7.1-2.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/l/libcamera-ipa-0.7.1-2.fc44.x86_64.rpm
+    evr: 0.7.2-2.fc44
+    sourcerpm: libcamera-0.7.2-2.fc44.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/l/libcamera-ipa-0.7.2-2.fc44.x86_64.rpm
     repoid: updates
-    size: 196293
-    checksum: sha256:5105b6b6f90cbb6bad5337855b5e3764d2883e3bf2edd70df8a5a0c2f8a2749a
+    size: 187176
+    checksum: sha256:301106d08ff62ba43184338bb5bbce0433d565a37712baed5c7584d5c85df97a
     name: libcamera-ipa
-    evr: 0.7.1-2.fc44
-    sourcerpm: libcamera-0.7.1-2.fc44.src.rpm
+    evr: 0.7.2-2.fc44
+    sourcerpm: libcamera-0.7.2-2.fc44.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/l/libcloudproviders-0.4.1-1.fc44.x86_64.rpm
     repoid: updates
     size: 47271
@@ -6094,13 +6094,13 @@ arches:
     name: pipewire-pulseaudio
     evr: 1.6.9-1.fc44
     sourcerpm: pipewire-1.6.9-1.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/p/podman-5.8.7-1.fc44.x86_64.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/p/podman-5.8.9-1.fc44.x86_64.rpm
     repoid: updates
-    size: 16107978
-    checksum: sha256:c13f548c74c9f80dfe9681824d2e648c832abe7cf19d2d9ab8d93d02b6be16fe
+    size: 16120962
+    checksum: sha256:c6c39d065de9299ca521e2b599a59c1cd2fcb413d88711ca263617896b4f5c70
     name: podman
-    evr: 5:5.8.7-1.fc44
-    sourcerpm: podman-5.8.7-1.fc44.src.rpm
+    evr: 5:5.8.9-1.fc44
+    sourcerpm: podman-5.8.9-1.fc44.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/p/podman-sequoia-0.3.2-2.fc44.x86_64.rpm
     repoid: updates
     size: 2487780
@@ -6178,20 +6178,20 @@ arches:
     name: python3-awscrt
     evr: 0.37.0-1.fc44
     sourcerpm: python-awscrt-0.37.0-1.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/p/python3-boto3-1.43.112-1.fc44.noarch.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/p/python3-boto3-1.43.114-1.fc44.noarch.rpm
     repoid: updates
-    size: 538290
-    checksum: sha256:7eed7c2f9ba8a2b326894c7ceeeaab41d33a4f99c78b711fcd0a6eee451dbe2d
+    size: 539688
+    checksum: sha256:ae7f0d3676a49549e523cb9698cf29e5c5ca92efd08ff442fc442b90b1a054e3
     name: python3-boto3
-    evr: 1.43.112-1.fc44
-    sourcerpm: python-boto3-1.43.112-1.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/p/python3-botocore-1.43.112-1.fc44.noarch.rpm
+    evr: 1.43.114-1.fc44
+    sourcerpm: python-boto3-1.43.114-1.fc44.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/p/python3-botocore-1.43.114-1.fc44.noarch.rpm
     repoid: updates
-    size: 9711700
-    checksum: sha256:aa4edee4fc64699338ead0f4d48fda8d2f919a769bebf4de6fe3cb6df3c23b2f
+    size: 9720583
+    checksum: sha256:e15f2fd4f90bd480ac61b0a6258e5db6ca21b6a8f5c1457ebd41873692036cf7
     name: python3-botocore
-    evr: 1.43.112-1.fc44
-    sourcerpm: python-botocore-1.43.112-1.fc44.src.rpm
+    evr: 1.43.114-1.fc44
+    sourcerpm: python-botocore-1.43.114-1.fc44.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/p/python3-click-8.3.3-1.fc44.noarch.rpm
     repoid: updates
     size: 277611
