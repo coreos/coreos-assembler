@@ -417,13 +417,6 @@ arches:
     name: emacs-filesystem
     evr: 1:30.2-2.fc44
     sourcerpm: emacs-filesystem-30.2-2.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/releases/44/Everything/x86_64/os/Packages/e/erlang-srpm-macros-0.3.11-1.fc44.noarch.rpm
-    repoid: fedora
-    size: 10196
-    checksum: sha256:8779a2bd3ef9d27377802fff3cb49da40e17ee6df7cacf1ee756aaca78c5b7e0
-    name: erlang-srpm-macros
-    evr: 0.3.11-1.fc44
-    sourcerpm: erlang-rpm-macros-0.3.11-1.fc44.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/releases/44/Everything/x86_64/os/Packages/e/exempi-2.6.4-9.fc44.x86_64.rpm
     repoid: fedora
     size: 625689
@@ -4309,6 +4302,13 @@ arches:
     name: elfutils-debuginfod-client
     evr: 0.196-1.fc44
     sourcerpm: elfutils-0.196-1.fc44.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/e/erlang-srpm-macros-0.4.0-1.fc44.noarch.rpm
+    repoid: updates
+    size: 10217
+    checksum: sha256:717571d24052b9b4774a344aa0a578563b79d6f2be6be218c9a600e3d2d38bb7
+    name: erlang-srpm-macros
+    evr: 0.4.0-1.fc44
+    sourcerpm: erlang-rpm-macros-0.4.0-1.fc44.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/e/erofs-fuse-1.9.4-1.fc44.x86_64.rpm
     repoid: updates
     size: 55543
@@ -5058,20 +5058,20 @@ arches:
     name: libguestfs-xfs
     evr: 1:1.60.1-2.fc44
     sourcerpm: libguestfs-1.60.1-2.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/l/libheif-1.23.5-3.fc44.x86_64.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/l/libheif-1.23.6-1.fc44.x86_64.rpm
     repoid: updates
-    size: 875640
-    checksum: sha256:02d5c39df33c85fbaf4493818b47e5975dcd3c0f7e1f7b8c3226292549d9f575
+    size: 878540
+    checksum: sha256:c291425d566eaf919229820d2c4fad348227456ae26a83a823031425e2a3d5eb
     name: libheif
-    evr: 1.23.5-3.fc44
-    sourcerpm: libheif-1.23.5-3.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/l/libheif-ffmpeg-1.23.5-3.fc44.x86_64.rpm
+    evr: 1.23.6-1.fc44
+    sourcerpm: libheif-1.23.6-1.fc44.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/l/libheif-ffmpeg-1.23.6-1.fc44.x86_64.rpm
     repoid: updates
-    size: 28441
-    checksum: sha256:84da9d2f22b80a34af2afa6681f95107c41b50d886921cb0ddf89582fffdab67
+    size: 28044
+    checksum: sha256:88bcb1f4db307c39141f011455a8a6f2277b73018a35e330fbcf2e8997f302b6
     name: libheif-ffmpeg
-    evr: 1.23.5-3.fc44
-    sourcerpm: libheif-1.23.5-3.fc44.src.rpm
+    evr: 1.23.6-1.fc44
+    sourcerpm: libheif-1.23.6-1.fc44.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/l/libibverbs-61.1^20260812git975bdaf-1.fc44.x86_64.rpm
     repoid: updates
     size: 507564
