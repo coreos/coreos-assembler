@@ -15,6 +15,7 @@
 package aws
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -90,7 +91,7 @@ func (am *machine) Destroy() {
 		plog.Warningf("Error retrieving console log for %v: %v", am.ID(), err)
 	}
 
-	if err := am.cluster.flight.api.TerminateInstances([]string{am.ID()}); err != nil {
+	if err := am.cluster.flight.api.TerminateInstances(context.Background(), []string{am.ID()}); err != nil {
 		plog.Errorf("Error terminating instance %v: %v", am.ID(), err)
 	}
 
