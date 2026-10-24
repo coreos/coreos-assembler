@@ -3644,20 +3644,6 @@ arches:
     name: squashfs-tools
     evr: 4.6.1-8.fc44
     sourcerpm: squashfs-tools-4.6.1-8.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/releases/44/Everything/x86_64/os/Packages/s/subversion-1.14.5-26.fc44.x86_64.rpm
-    repoid: fedora
-    size: 1044163
-    checksum: sha256:870d6c628a41a0746329c2b28caabc26bc684923e59f35c8c3f0b4e6fefba5ea
-    name: subversion
-    evr: 1.14.5-26.fc44
-    sourcerpm: subversion-1.14.5-26.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/releases/44/Everything/x86_64/os/Packages/s/subversion-libs-1.14.5-26.fc44.x86_64.rpm
-    repoid: fedora
-    size: 1605105
-    checksum: sha256:d001841e62458a91db44e28ac66bbdd2f2533267e56892dde1a45559a01054a4
-    name: subversion-libs
-    evr: 1.14.5-26.fc44
-    sourcerpm: subversion-1.14.5-26.fc44.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/releases/44/Everything/x86_64/os/Packages/s/supermin-5.3.5-8.fc44.x86_64.rpm
     repoid: fedora
     size: 731435
@@ -4022,13 +4008,13 @@ arches:
     name: bluez-libs
     evr: 5.87+1.git8750129efca8-1.fc44
     sourcerpm: bluez-5.87+1.git8750129efca8-1.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/b/bootc-1.16.13-1.fc44.x86_64.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/b/bootc-1.17.1-1.fc44.x86_64.rpm
     repoid: updates
-    size: 5455320
-    checksum: sha256:e6c24035d9df7305058875e4f34ca0ee6ed0c9148649becb71329863f4ab5129
+    size: 5704951
+    checksum: sha256:f6ba1f11a5dff1eb23f0035aed57669bc0da522198fbb9b95261c8b3eae21875
     name: bootc
-    evr: 1.16.13-1.fc44
-    sourcerpm: bootc-1.16.13-1.fc44.src.rpm
+    evr: 1.17.1-1.fc44
+    sourcerpm: bootc-1.17.1-1.fc44.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/b/bootupd-0.3.2-1.fc44.x86_64.rpm
     repoid: updates
     size: 1328502
@@ -4218,13 +4204,13 @@ arches:
     name: debugedit
     evr: 5.3-2.fc44
     sourcerpm: debugedit-5.3-2.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/d/device-mapper-persistent-data-1.3.3-1.fc44.x86_64.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/d/device-mapper-persistent-data-1.3.4-1.fc44.x86_64.rpm
     repoid: updates
-    size: 1174243
-    checksum: sha256:a84db9f060e32093e964cd067eb696816df2870c8d9bc24a0c5b4445e9683c18
+    size: 1182777
+    checksum: sha256:70cf1947089210912ec388ccddc6f22c0c68ff4028c5dd49c9bb847c12d5d932
     name: device-mapper-persistent-data
-    evr: 1.3.3-1.fc44
-    sourcerpm: device-mapper-persistent-data-1.3.3-1.fc44.src.rpm
+    evr: 1.3.4-1.fc44
+    sourcerpm: device-mapper-persistent-data-1.3.4-1.fc44.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/d/dhcpcd-10.3.2-1.fc44.x86_64.rpm
     repoid: updates
     size: 254191
@@ -4869,13 +4855,13 @@ arches:
     name: libXi
     evr: 1.8.3-1.fc44
     sourcerpm: libXi-1.8.3-1.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/l/libaom-3.13.3-1.fc44.x86_64.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/l/libaom-3.15.2-1.fc44.x86_64.rpm
     repoid: updates
-    size: 1972738
-    checksum: sha256:e1acd54b88cc77febfda0d06809b089f5652edaa1b1726da615a0c28e5690944
+    size: 2009972
+    checksum: sha256:cd2405aa2000775dddde06fe2451bb5b11d22b4a21f9d3e6f675449bccaf0039
     name: libaom
-    evr: 3.13.3-1.fc44
-    sourcerpm: aom-3.13.3-1.fc44.src.rpm
+    evr: 3.15.2-1.fc44
+    sourcerpm: aom-3.15.2-1.fc44.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/l/libasyncns-0.8-34.fc44.x86_64.rpm
     repoid: updates
     size: 30914
@@ -5296,13 +5282,13 @@ arches:
     name: libtextstyle
     evr: 0.26-5.fc44
     sourcerpm: gettext-0.26-5.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/l/libtiff-4.7.2-1.fc44.x86_64.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/l/libtiff-4.7.2-3.fc44.x86_64.rpm
     repoid: updates
-    size: 236946
-    checksum: sha256:d2d69d4d7f4f5e34abd8f717336d4fc5bd8deba6546c46de7c95c1ec805036a2
+    size: 239111
+    checksum: sha256:0a70bf4fcd903dacd56cc1ce98c6a619253f7f8d9555d6693b4030d474451ea6
     name: libtiff
-    evr: 4.7.2-1.fc44
-    sourcerpm: libtiff-4.7.2-1.fc44.src.rpm
+    evr: 4.7.2-3.fc44
+    sourcerpm: libtiff-4.7.2-3.fc44.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/l/libtinysparql-3.11.1-1.fc44.x86_64.rpm
     repoid: updates
     size: 373049
@@ -6675,6 +6661,20 @@ arches:
     name: strace
     evr: 7.2-1.fc44
     sourcerpm: strace-7.2-1.fc44.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/s/subversion-1.15.0-2.fc44.x86_64.rpm
+    repoid: updates
+    size: 1068537
+    checksum: sha256:228c8c1db9d3b306ab5be6e5b483b19ed15a3add875ab295886ee0e0de80ba11
+    name: subversion
+    evr: 1.15.0-2.fc44
+    sourcerpm: subversion-1.15.0-2.fc44.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/s/subversion-libs-1.15.0-2.fc44.x86_64.rpm
+    repoid: updates
+    size: 1612160
+    checksum: sha256:d00575ddf9d9b62ec0f741ceb1649df28951ec190b60dc76f6dd400be1d1154b
+    name: subversion-libs
+    evr: 1.15.0-2.fc44
+    sourcerpm: subversion-1.15.0-2.fc44.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/s/swtpm-0.10.2-1.fc44.x86_64.rpm
     repoid: updates
     size: 34368
@@ -6731,62 +6731,62 @@ arches:
     name: syslinux-nonlinux
     evr: 6.04-0.37.fc44
     sourcerpm: syslinux-6.04-0.37.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/s/systemd-259.9-1.fc44.x86_64.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/s/systemd-259.10-1.fc44.x86_64.rpm
     repoid: updates
-    size: 4488185
-    checksum: sha256:e5ebedb5c7b0893ec884cf8f187b39c6937d1b753c888f8b5f30761217400c88
+    size: 4490868
+    checksum: sha256:fbab51d7189a27e6e98b9f1a6d8d61a42924318289c143ef3474f763f30c20a7
     name: systemd
-    evr: 259.9-1.fc44
-    sourcerpm: systemd-259.9-1.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/s/systemd-container-259.9-1.fc44.x86_64.rpm
+    evr: 259.10-1.fc44
+    sourcerpm: systemd-259.10-1.fc44.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/s/systemd-container-259.10-1.fc44.x86_64.rpm
     repoid: updates
-    size: 932024
-    checksum: sha256:f0a720c5ef9adc66c46399cf8ef2cc7f22764c373c0ea3a97dc5eb23723c011a
+    size: 932983
+    checksum: sha256:698d85b61f83def7f00134fa9d718b96d16c4b1974ab350cbb8ff57899b53e74
     name: systemd-container
-    evr: 259.9-1.fc44
-    sourcerpm: systemd-259.9-1.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/s/systemd-networkd-259.9-1.fc44.x86_64.rpm
+    evr: 259.10-1.fc44
+    sourcerpm: systemd-259.10-1.fc44.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/s/systemd-networkd-259.10-1.fc44.x86_64.rpm
     repoid: updates
-    size: 816853
-    checksum: sha256:ccb6a6dabbe44beafc6d0452c9422bb0cba2bd8e986c7a79f2c68368b5286f79
+    size: 817511
+    checksum: sha256:41bb8ef36835b205522c4b4cdd8ebfbec572857079ee8861995221a4546d6d85
     name: systemd-networkd
-    evr: 259.9-1.fc44
-    sourcerpm: systemd-259.9-1.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/s/systemd-pam-259.9-1.fc44.x86_64.rpm
+    evr: 259.10-1.fc44
+    sourcerpm: systemd-259.10-1.fc44.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/s/systemd-pam-259.10-1.fc44.x86_64.rpm
     repoid: updates
-    size: 450948
-    checksum: sha256:f395b01934be3d5f44dcf6bdb618cba59f8ed27c82279dbec26b1217cc58abc8
+    size: 451012
+    checksum: sha256:704f41c4faae0455ce5c8475b2f02f72d07359fe1a4f5ef47631f87dd832921d
     name: systemd-pam
-    evr: 259.9-1.fc44
-    sourcerpm: systemd-259.9-1.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/s/systemd-resolved-259.9-1.fc44.x86_64.rpm
+    evr: 259.10-1.fc44
+    sourcerpm: systemd-259.10-1.fc44.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/s/systemd-resolved-259.10-1.fc44.x86_64.rpm
     repoid: updates
-    size: 293285
-    checksum: sha256:85f32f0b8ae0d14b4a924489e277ffaf30ca2193cf35a0a4825160dde5b1480d
+    size: 293381
+    checksum: sha256:a5d7893d4feb79adae49d39b179581df47b79910df82560bc6f43f701f1ab977
     name: systemd-resolved
-    evr: 259.9-1.fc44
-    sourcerpm: systemd-259.9-1.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/s/systemd-rpm-macros-259.9-1.fc44.noarch.rpm
+    evr: 259.10-1.fc44
+    sourcerpm: systemd-259.10-1.fc44.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/s/systemd-rpm-macros-259.10-1.fc44.noarch.rpm
     repoid: updates
-    size: 16234
-    checksum: sha256:3a57f1eeef8c090e385fcf5220215c6ce9c12beacd7d8506aa54b4edc3fd3a09
+    size: 16380
+    checksum: sha256:8d51c920b5041a082e6e7c1cbebe836fa9faf099f58ba4ce078172c535d211e5
     name: systemd-rpm-macros
-    evr: 259.9-1.fc44
-    sourcerpm: systemd-259.9-1.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/s/systemd-shared-259.9-1.fc44.x86_64.rpm
+    evr: 259.10-1.fc44
+    sourcerpm: systemd-259.10-1.fc44.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/s/systemd-shared-259.10-1.fc44.x86_64.rpm
     repoid: updates
-    size: 2107838
-    checksum: sha256:5164dd19e6330fcac0158b75ecc9678bbef8e7f47d8966ee42904542fb54c64f
+    size: 2108647
+    checksum: sha256:f1fd057fbd9eb6016a32ab051b712a4d3131d65b931f354b535d797aed18d090
     name: systemd-shared
-    evr: 259.9-1.fc44
-    sourcerpm: systemd-259.9-1.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/s/systemd-udev-259.9-1.fc44.x86_64.rpm
+    evr: 259.10-1.fc44
+    sourcerpm: systemd-259.10-1.fc44.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/s/systemd-udev-259.10-1.fc44.x86_64.rpm
     repoid: updates
-    size: 2786187
-    checksum: sha256:ccd4e09a7ccc249bcfc56928b28943d2c4ef02f5cc22a8524f504c1e61157e79
+    size: 2786868
+    checksum: sha256:16c06e9a6b99228056a9b79d6babf7a07b41cbe5194ae1eb1e0968b0e119fcc4
     name: systemd-udev
-    evr: 259.9-1.fc44
-    sourcerpm: systemd-259.9-1.fc44.src.rpm
+    evr: 259.10-1.fc44
+    sourcerpm: systemd-259.10-1.fc44.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/t/target-restore-2.2.4-1.fc44.noarch.rpm
     repoid: updates
     size: 13807
