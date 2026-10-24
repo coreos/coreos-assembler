@@ -17,10 +17,13 @@ package gcloud
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 
 	"golang.org/x/crypto/ssh/agent"
+	"google.golang.org/api/compute/v1"
 
 	"github.com/coreos/coreos-assembler/mantle/platform"
 	"github.com/coreos/coreos-assembler/mantle/platform/api/gcloud"
@@ -34,6 +37,16 @@ type cluster struct {
 
 func (gc *cluster) NewMachine(userdata *conf.UserData) (platform.Machine, error) {
 	return gc.NewMachineWithOptions(userdata, platform.MachineOptions{})
+}
+
+var zoneFromURLPattern = regexp.MustCompile(`/zones/([^/]+)`)
+
+func ExtractZoneFromInstance(instance *compute.Instance) (string, error) {
+	match := zoneFromURLPattern.FindStringSubmatch(instance.Zone)
+	if match == nil {
+		return "", fmt.Errorf("could not extract zone from instance zone field: %q", instance.Zone)
+	}
+	return match[1], nil
 }
 
 func (gc *cluster) NewMachineWithOptions(userdata *conf.UserData, options platform.MachineOptions) (platform.Machine, error) {
@@ -65,6 +78,11 @@ func (gc *cluster) NewMachineWithOptions(userdata *conf.UserData, options platfo
 		return nil, err
 	}
 
+	zone, err := ExtractZoneFromInstance(instance)
+	if err != nil {
+		return nil, err
+	}
+
 	intip, extip := gcloud.InstanceIPs(instance)
 
 	gm := &machine{
@@ -72,6 +90,7 @@ func (gc *cluster) NewMachineWithOptions(userdata *conf.UserData, options platfo
 		name:  instance.Name,
 		intIP: intip,
 		extIP: extip,
+		zone:  zone,
 	}
 
 	gm.dir = filepath.Join(gc.RuntimeConf().OutputDir, gm.ID())
