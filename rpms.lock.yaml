@@ -6038,55 +6038,55 @@ arches:
     name: perl-vars
     evr: 1.05-525.fc44
     sourcerpm: perl-5.42.3-525.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/p/pipewire-1.6.10-1.fc44.x86_64.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/p/pipewire-1.6.11-1.fc44.x86_64.rpm
     repoid: updates
-    size: 144654
-    checksum: sha256:76b5825a2ab22e071c66c9ee1b687c39c2ad378942c49c9ec6ede9ac319fa4b6
+    size: 144824
+    checksum: sha256:eb9d5f9f0921d6c45f9edb59e149c53c9ff960d6d500f6eb2c265aa626e668fb
     name: pipewire
-    evr: 1.6.10-1.fc44
-    sourcerpm: pipewire-1.6.10-1.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/p/pipewire-alsa-1.6.10-1.fc44.x86_64.rpm
+    evr: 1.6.11-1.fc44
+    sourcerpm: pipewire-1.6.11-1.fc44.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/p/pipewire-alsa-1.6.11-1.fc44.x86_64.rpm
     repoid: updates
-    size: 65693
-    checksum: sha256:85ec2355011e14ee41176414038f2192a466a5154e31c68828f4d6ed91b16550
+    size: 65685
+    checksum: sha256:49e22a2533c04ced61aa8a5534d8326ad34b0b61c588aae1dc31153619c5aa80
     name: pipewire-alsa
-    evr: 1.6.10-1.fc44
-    sourcerpm: pipewire-1.6.10-1.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/p/pipewire-jack-audio-connection-kit-1.6.10-1.fc44.x86_64.rpm
+    evr: 1.6.11-1.fc44
+    sourcerpm: pipewire-1.6.11-1.fc44.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/p/pipewire-jack-audio-connection-kit-1.6.11-1.fc44.x86_64.rpm
     repoid: updates
-    size: 12246
-    checksum: sha256:31531d6edee3ec5e5961cb479d6a75e40351f795eea568450f4f2a96f1cdd40a
+    size: 12250
+    checksum: sha256:c0886888cda479d755d8b7a5196af55e996cab46322419f48ac2a0577f49252a
     name: pipewire-jack-audio-connection-kit
-    evr: 1.6.10-1.fc44
-    sourcerpm: pipewire-1.6.10-1.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/p/pipewire-jack-audio-connection-kit-libs-1.6.10-1.fc44.x86_64.rpm
+    evr: 1.6.11-1.fc44
+    sourcerpm: pipewire-1.6.11-1.fc44.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/p/pipewire-jack-audio-connection-kit-libs-1.6.11-1.fc44.x86_64.rpm
     repoid: updates
-    size: 154946
-    checksum: sha256:f8d83c4fe9d4e888749aaec43c1aff0a81d590dc9bd23c7b00da0543ee3a0c87
+    size: 154874
+    checksum: sha256:6025a8d7ba2acbfe54007c227ead62b82cd9fb13fc04f25f2ead7a60e4e81f9f
     name: pipewire-jack-audio-connection-kit-libs
-    evr: 1.6.10-1.fc44
-    sourcerpm: pipewire-1.6.10-1.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/p/pipewire-libs-1.6.10-1.fc44.x86_64.rpm
+    evr: 1.6.11-1.fc44
+    sourcerpm: pipewire-1.6.11-1.fc44.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/p/pipewire-libs-1.6.11-1.fc44.x86_64.rpm
     repoid: updates
-    size: 2777478
-    checksum: sha256:e6094d55991c8f84f3267bd14fe1c8f89cbf6ba843999f93177ad9d86e845c85
+    size: 2779549
+    checksum: sha256:42231bc1667a0ccb0e43b9f845382701899fc451aac17c80124ea1aa2d88f7e6
     name: pipewire-libs
-    evr: 1.6.10-1.fc44
-    sourcerpm: pipewire-1.6.10-1.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/p/pipewire-plugin-libcamera-1.6.10-1.fc44.x86_64.rpm
+    evr: 1.6.11-1.fc44
+    sourcerpm: pipewire-1.6.11-1.fc44.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/p/pipewire-plugin-libcamera-1.6.11-1.fc44.x86_64.rpm
     repoid: updates
-    size: 77213
-    checksum: sha256:45e8f60338a888a68154a7e12998d08e1910265d01440d0bdf266441f460001e
+    size: 77211
+    checksum: sha256:0aafa7b0520b5358a9f9bdc609f27ac31da1fbbe6e1ee459b7c495f2760f19e9
     name: pipewire-plugin-libcamera
-    evr: 1.6.10-1.fc44
-    sourcerpm: pipewire-1.6.10-1.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/p/pipewire-pulseaudio-1.6.10-1.fc44.x86_64.rpm
+    evr: 1.6.11-1.fc44
+    sourcerpm: pipewire-1.6.11-1.fc44.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/p/pipewire-pulseaudio-1.6.11-1.fc44.x86_64.rpm
     repoid: updates
-    size: 226185
-    checksum: sha256:df30647821333e19413eff507ee3df98bef614a029892b8ff1d91f2001bb6c06
+    size: 226120
+    checksum: sha256:5a8dbaf65df602ac9c1ad6e0355cd19bf58e9fbe7f2f95a531dcee8a083b2480
     name: pipewire-pulseaudio
-    evr: 1.6.10-1.fc44
-    sourcerpm: pipewire-1.6.10-1.fc44.src.rpm
+    evr: 1.6.11-1.fc44
+    sourcerpm: pipewire-1.6.11-1.fc44.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/p/podman-5.8.9-1.fc44.x86_64.rpm
     repoid: updates
     size: 16120962
