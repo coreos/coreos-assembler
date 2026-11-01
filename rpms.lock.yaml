@@ -172,13 +172,6 @@ arches:
     name: cpio
     evr: 2.15-9.fc44
     sourcerpm: cpio-2.15-9.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/releases/44/Everything/x86_64/os/Packages/c/cpp-16.0.1-0.10.fc44.x86_64.rpm
-    repoid: fedora
-    size: 15162371
-    checksum: sha256:94b18381cc29e597ed0ab0c4325fb1acc3ffce0590c4a07aeaaababf2f811fdb
-    name: cpp
-    evr: 16.0.1-0.10.fc44
-    sourcerpm: gcc-16.0.1-0.10.fc44.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/releases/44/Everything/x86_64/os/Packages/c/createrepo_c-1.2.1-5.fc44.x86_64.rpm
     repoid: fedora
     size: 77569
@@ -515,20 +508,6 @@ arches:
     name: gap-srpm-macros
     evr: 2-2.fc44
     sourcerpm: gap-srpm-macros-2-2.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/releases/44/Everything/x86_64/os/Packages/g/gcc-16.0.1-0.10.fc44.x86_64.rpm
-    repoid: fedora
-    size: 45161684
-    checksum: sha256:5410123363bb8a6e3ac5d00448619957f8062e4769a434ba28cf61e9f2524871
-    name: gcc
-    evr: 16.0.1-0.10.fc44
-    sourcerpm: gcc-16.0.1-0.10.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/releases/44/Everything/x86_64/os/Packages/g/gcc-plugin-annobin-16.0.1-0.10.fc44.x86_64.rpm
-    repoid: fedora
-    size: 49974
-    checksum: sha256:2f2386be542ddc920cf4e8fa5af65eca21f0af49f203cc2c7407e4dcafaafbe0
-    name: gcc-plugin-annobin
-    evr: 16.0.1-0.10.fc44
-    sourcerpm: gcc-16.0.1-0.10.fc44.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/releases/44/Everything/x86_64/os/Packages/g/gdisk-1.0.10-5.fc44.x86_64.rpm
     repoid: fedora
     size: 283937
@@ -963,13 +942,6 @@ arches:
     name: libaribcaption
     evr: 1.1.1-4.fc44
     sourcerpm: libaribcaption-1.1.1-4.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/releases/44/Everything/x86_64/os/Packages/l/libatomic-16.0.1-0.10.fc44.x86_64.rpm
-    repoid: fedora
-    size: 46383
-    checksum: sha256:5e3cf6204197022209d80b779e4b658745a3bbd0139ad34418c9f3fda3bc90db
-    name: libatomic
-    evr: 16.0.1-0.10.fc44
-    sourcerpm: gcc-16.0.1-0.10.fc44.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/releases/44/Everything/x86_64/os/Packages/l/libavif-1.3.0-4.fc44.x86_64.rpm
     repoid: fedora
     size: 128809
@@ -1138,13 +1110,6 @@ arches:
     name: libglvnd-glx
     evr: 1:1.7.0-9.fc44
     sourcerpm: libglvnd-1.7.0-9.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/releases/44/Everything/x86_64/os/Packages/l/libgomp-16.0.1-0.10.fc44.x86_64.rpm
-    repoid: fedora
-    size: 396646
-    checksum: sha256:d8a4b54f2d90f30677e1b8cc0f8bd15b5bb87e1600a160e601f3fa40cadf19a4
-    name: libgomp
-    evr: 16.0.1-0.10.fc44
-    sourcerpm: gcc-16.0.1-0.10.fc44.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/releases/44/Everything/x86_64/os/Packages/l/libgudev-238-9.fc44.x86_64.rpm
     repoid: fedora
     size: 36040
@@ -4169,6 +4134,13 @@ arches:
     name: coreos-installer
     evr: 0.27.0-1.fc44
     sourcerpm: rust-coreos-installer-0.27.0-1.fc44.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/c/cpp-16.2.1-3.fc44.x86_64.rpm
+    repoid: updates
+    size: 15311326
+    checksum: sha256:3e84eafff2fd6df91b8c4a7d9dedb3cd148180e9861dd6f3e9fd8f8b1943ad0c
+    name: cpp
+    evr: 16.2.1-3.fc44
+    sourcerpm: gcc-16.2.1-3.fc44.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/c/criu-4.2.1-1.fc44.x86_64.rpm
     repoid: updates
     size: 636415
@@ -4414,6 +4386,20 @@ arches:
     name: fuse3-libs
     evr: 3.18.3-1.fc44
     sourcerpm: fuse3-3.18.3-1.fc44.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/g/gcc-16.2.1-3.fc44.x86_64.rpm
+    repoid: updates
+    size: 45323657
+    checksum: sha256:658a51078d5c5ef2f960117d2c7d7d813b2a891aae1d972603812441ad5e55b4
+    name: gcc
+    evr: 16.2.1-3.fc44
+    sourcerpm: gcc-16.2.1-3.fc44.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/g/gcc-plugin-annobin-16.2.1-3.fc44.x86_64.rpm
+    repoid: updates
+    size: 63809
+    checksum: sha256:0bd0bb19cb92f8c21871adcb74550a3c112fc29c1106cb859be6dc3130a73d73
+    name: gcc-plugin-annobin
+    evr: 16.2.1-3.fc44
+    sourcerpm: gcc-16.2.1-3.fc44.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/g/gdb-minimal-18.1-1.fc44.x86_64.rpm
     repoid: updates
     size: 5033604
@@ -4883,6 +4869,13 @@ arches:
     name: libasyncns
     evr: 0.8-34.fc44
     sourcerpm: libasyncns-0.8-34.fc44.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/l/libatomic-16.2.1-3.fc44.x86_64.rpm
+    repoid: updates
+    size: 60302
+    checksum: sha256:796663749555551f1d2179e709cad4aacbedbcc433d433697a67e04b920b27f2
+    name: libatomic
+    evr: 16.2.1-3.fc44
+    sourcerpm: gcc-16.2.1-3.fc44.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/l/libavcodec-free-8.1.3-1.fc44.x86_64.rpm
     repoid: updates
     size: 4720901
