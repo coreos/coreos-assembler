@@ -172,6 +172,13 @@ arches:
     name: cpio
     evr: 2.15-9.fc44
     sourcerpm: cpio-2.15-9.fc44.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/releases/44/Everything/x86_64/os/Packages/c/cpp-16.0.1-0.10.fc44.x86_64.rpm
+    repoid: fedora
+    size: 15162371
+    checksum: sha256:94b18381cc29e597ed0ab0c4325fb1acc3ffce0590c4a07aeaaababf2f811fdb
+    name: cpp
+    evr: 16.0.1-0.10.fc44
+    sourcerpm: gcc-16.0.1-0.10.fc44.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/releases/44/Everything/x86_64/os/Packages/c/createrepo_c-1.2.1-5.fc44.x86_64.rpm
     repoid: fedora
     size: 77569
@@ -508,6 +515,20 @@ arches:
     name: gap-srpm-macros
     evr: 2-2.fc44
     sourcerpm: gap-srpm-macros-2-2.fc44.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/releases/44/Everything/x86_64/os/Packages/g/gcc-16.0.1-0.10.fc44.x86_64.rpm
+    repoid: fedora
+    size: 45161684
+    checksum: sha256:5410123363bb8a6e3ac5d00448619957f8062e4769a434ba28cf61e9f2524871
+    name: gcc
+    evr: 16.0.1-0.10.fc44
+    sourcerpm: gcc-16.0.1-0.10.fc44.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/releases/44/Everything/x86_64/os/Packages/g/gcc-plugin-annobin-16.0.1-0.10.fc44.x86_64.rpm
+    repoid: fedora
+    size: 49974
+    checksum: sha256:2f2386be542ddc920cf4e8fa5af65eca21f0af49f203cc2c7407e4dcafaafbe0
+    name: gcc-plugin-annobin
+    evr: 16.0.1-0.10.fc44
+    sourcerpm: gcc-16.0.1-0.10.fc44.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/releases/44/Everything/x86_64/os/Packages/g/gdisk-1.0.10-5.fc44.x86_64.rpm
     repoid: fedora
     size: 283937
@@ -942,6 +963,13 @@ arches:
     name: libaribcaption
     evr: 1.1.1-4.fc44
     sourcerpm: libaribcaption-1.1.1-4.fc44.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/releases/44/Everything/x86_64/os/Packages/l/libatomic-16.0.1-0.10.fc44.x86_64.rpm
+    repoid: fedora
+    size: 46383
+    checksum: sha256:5e3cf6204197022209d80b779e4b658745a3bbd0139ad34418c9f3fda3bc90db
+    name: libatomic
+    evr: 16.0.1-0.10.fc44
+    sourcerpm: gcc-16.0.1-0.10.fc44.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/releases/44/Everything/x86_64/os/Packages/l/libavif-1.3.0-4.fc44.x86_64.rpm
     repoid: fedora
     size: 128809
@@ -1110,6 +1138,13 @@ arches:
     name: libglvnd-glx
     evr: 1:1.7.0-9.fc44
     sourcerpm: libglvnd-1.7.0-9.fc44.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/releases/44/Everything/x86_64/os/Packages/l/libgomp-16.0.1-0.10.fc44.x86_64.rpm
+    repoid: fedora
+    size: 396646
+    checksum: sha256:d8a4b54f2d90f30677e1b8cc0f8bd15b5bb87e1600a160e601f3fa40cadf19a4
+    name: libgomp
+    evr: 16.0.1-0.10.fc44
+    sourcerpm: gcc-16.0.1-0.10.fc44.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/releases/44/Everything/x86_64/os/Packages/l/libgudev-238-9.fc44.x86_64.rpm
     repoid: fedora
     size: 36040
@@ -4134,13 +4169,6 @@ arches:
     name: coreos-installer
     evr: 0.27.0-1.fc44
     sourcerpm: rust-coreos-installer-0.27.0-1.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/c/cpp-16.2.1-2.fc44.x86_64.rpm
-    repoid: updates
-    size: 15305443
-    checksum: sha256:a3ca10854d95dc2aefc76e36d116c0a33a305d53b2ba06d92e43aeedb179668b
-    name: cpp
-    evr: 16.2.1-2.fc44
-    sourcerpm: gcc-16.2.1-2.fc44.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/c/criu-4.2.1-1.fc44.x86_64.rpm
     repoid: updates
     size: 636415
@@ -4386,20 +4414,6 @@ arches:
     name: fuse3-libs
     evr: 3.18.3-1.fc44
     sourcerpm: fuse3-3.18.3-1.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/g/gcc-16.2.1-2.fc44.x86_64.rpm
-    repoid: updates
-    size: 45370845
-    checksum: sha256:77a82e328053f73d3881e633ffefb4dd49ebe0ac5b18a996de9b615de4eb9569
-    name: gcc
-    evr: 16.2.1-2.fc44
-    sourcerpm: gcc-16.2.1-2.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/g/gcc-plugin-annobin-16.2.1-2.fc44.x86_64.rpm
-    repoid: updates
-    size: 60327
-    checksum: sha256:50e8361afdb0870d31ef3e9bdb3436009510741720b097334f527494f404f1fe
-    name: gcc-plugin-annobin
-    evr: 16.2.1-2.fc44
-    sourcerpm: gcc-16.2.1-2.fc44.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/g/gdb-minimal-18.1-1.fc44.x86_64.rpm
     repoid: updates
     size: 5033604
@@ -4869,13 +4883,6 @@ arches:
     name: libasyncns
     evr: 0.8-34.fc44
     sourcerpm: libasyncns-0.8-34.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/l/libatomic-16.2.1-2.fc44.x86_64.rpm
-    repoid: updates
-    size: 56637
-    checksum: sha256:5df3c610688ff2548a4bbfd8e9b47c525b339a45b0d01349163079a3ec82f740
-    name: libatomic
-    evr: 16.2.1-2.fc44
-    sourcerpm: gcc-16.2.1-2.fc44.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/l/libavcodec-free-8.1.3-1.fc44.x86_64.rpm
     repoid: updates
     size: 4720901
@@ -5044,20 +5051,20 @@ arches:
     name: libguestfs-xfs
     evr: 1:1.60.1-2.fc44
     sourcerpm: libguestfs-1.60.1-2.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/l/libheif-1.23.6-1.fc44.x86_64.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/l/libheif-1.23.7-1.fc44.x86_64.rpm
     repoid: updates
-    size: 878540
-    checksum: sha256:c291425d566eaf919229820d2c4fad348227456ae26a83a823031425e2a3d5eb
+    size: 891974
+    checksum: sha256:5cad05032780ea3568db08bbb956f89f9559ce61127cbe23ebbfe3946f40967b
     name: libheif
-    evr: 1.23.6-1.fc44
-    sourcerpm: libheif-1.23.6-1.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/l/libheif-ffmpeg-1.23.6-1.fc44.x86_64.rpm
+    evr: 1.23.7-1.fc44
+    sourcerpm: libheif-1.23.7-1.fc44.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/l/libheif-ffmpeg-1.23.7-1.fc44.x86_64.rpm
     repoid: updates
-    size: 28044
-    checksum: sha256:88bcb1f4db307c39141f011455a8a6f2277b73018a35e330fbcf2e8997f302b6
+    size: 28331
+    checksum: sha256:8847076ab03e2ab2498d1ede9db0b260c9bc982a42249b0f52d2e11227d40508
     name: libheif-ffmpeg
-    evr: 1.23.6-1.fc44
-    sourcerpm: libheif-1.23.6-1.fc44.src.rpm
+    evr: 1.23.7-1.fc44
+    sourcerpm: libheif-1.23.7-1.fc44.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/l/libibverbs-61.1^20260812git975bdaf-1.fc44.x86_64.rpm
     repoid: updates
     size: 507564
@@ -6927,20 +6934,20 @@ arches:
     name: which
     evr: 2.25-1.fc44
     sourcerpm: which-2.25-1.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/w/wireplumber-0.5.18-1.fc44.x86_64.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/w/wireplumber-0.5.19-1.fc44.x86_64.rpm
     repoid: updates
-    size: 140139
-    checksum: sha256:1c08352ff028298fb6981b13d8ed91651f9074f8022d001bf5a92136bbdee901
+    size: 147922
+    checksum: sha256:4b48a8b41251400faee2b13f2828becbb257e548c29d213e377e9870bb5edc4b
     name: wireplumber
-    evr: 0.5.18-1.fc44
-    sourcerpm: wireplumber-0.5.18-1.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/w/wireplumber-libs-0.5.18-1.fc44.x86_64.rpm
+    evr: 0.5.19-1.fc44
+    sourcerpm: wireplumber-0.5.19-1.fc44.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/w/wireplumber-libs-0.5.19-1.fc44.x86_64.rpm
     repoid: updates
-    size: 484299
-    checksum: sha256:78f46e23c9ba174263b0452ab00ca8c9e59f7f1aedfb1096f4f0f4a4de95c8ce
+    size: 484116
+    checksum: sha256:89887dcc12a6398778dc55f9ee271022ef3968418e96a0fed8d77166cdc650a6
     name: wireplumber-libs
-    evr: 0.5.18-1.fc44
-    sourcerpm: wireplumber-0.5.18-1.fc44.src.rpm
+    evr: 0.5.19-1.fc44
+    sourcerpm: wireplumber-0.5.19-1.fc44.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/x/xdg-desktop-portal-1.22.1-1.fc44.x86_64.rpm
     repoid: updates
     size: 543260
