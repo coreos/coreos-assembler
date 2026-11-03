@@ -236,6 +236,18 @@ def main():
                     # to the list after only one architecture has run, but if we encounter a
                     # failure we don't ever update builds.json anyway so it doesn't matter.
                     actions_completed.append(action)
+
+        # An arch with no AMIs in a skipped region may queue the build
+        # for pruning before a later arch finds regions to skip. Drop
+        # the build from the prune set and from the completed actions.
+        # The build prune is then retried in the case where the regions
+        # are no longer skipped.
+        if cloud_skipped_regions and build_id in builds_to_prune:
+            print(f"Build {build_id} was queued for pruning before skipped regions "
+                  f"were found. Deferring build prune.")
+            builds_to_prune.discard(build_id)
+            actions_completed = [action for action in actions_completed if action != "build"]
+
         # Only add policy-cleanup for the build in builds.json if any
         # of the cleanup actions were completed.
         if actions_completed:
