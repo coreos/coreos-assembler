@@ -1003,7 +1003,8 @@ type externalTestMeta struct {
 	BindMountHostRO           []string `json:"bindMountHostRO,omitempty"           yaml:"bindMountHostRO,omitempty"`
 	CreationDate              string   `json:"creationDate,omitempty"              yaml:"creationDate,omitempty"`
 	BootFrom                  string   `json:"bootFrom,omitempty"                  yaml:"bootFrom,omitempty"`
-	RequiredHostPorts         []int    `json:"requiredHostPorts,omitempty"          yaml:"requiredHostPorts,omitempty"`
+	RequiredHostPorts         []int    `json:"requiredHostPorts,omitempty"         yaml:"requiredHostPorts,omitempty"`
+	CPUCount                  int      `json:"cpuCount,omitempty"                  yaml:"cpuCount,omitempty"`
 }
 
 // metadataFromTestBinary extracts JSON-in-comment like:
@@ -1240,6 +1241,7 @@ ExecStart=%s
 			InstanceType:              targetMeta.InstanceType,
 			BootFrom:                  targetMeta.BootFrom,
 			RequiredHostPorts:         targetMeta.RequiredHostPorts,
+			CPUCount:                  targetMeta.CPUCount,
 		},
 		InjectContainer: targetMeta.InjectContainer,
 		NonExclusive:    !targetMeta.Exclusive,

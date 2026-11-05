@@ -196,6 +196,7 @@ type MachineOptions struct {
 	// be randomized). The test harness uses this for scheduling to prevent
 	// parallel tests from clashing on the same host port.
 	RequiredHostPorts []int
+	CPUCount          int
 }
 
 // EnsureNoQEMUOnlyOptions returns an error if any QEMU-only options
@@ -252,6 +253,9 @@ func (m *MachineOptions) EnsureNoQEMUOnlyOptions(platformName string) error {
 	}
 	if len(m.RequiredHostPorts) > 0 {
 		return fmt.Errorf("platform %s does not support RequiredHostPorts", platformName)
+	}
+	if m.CPUCount != 0 {
+		return fmt.Errorf("platform %s does not support setting the CPU count", platformName)
 	}
 	return nil
 }
