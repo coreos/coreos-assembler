@@ -38,13 +38,11 @@ func (a *API) getSecurityGroupID(name string) (string, error) {
 			},
 		},
 	})
-
-	if len(sgIds.SecurityGroups) == 0 {
-		return a.createSecurityGroup(name)
-	}
-
 	if err != nil {
 		return "", fmt.Errorf("unable to get security group named %v: %v", name, err)
+	}
+	if len(sgIds.SecurityGroups) == 0 {
+		return a.createSecurityGroup(name)
 	}
 
 	return *sgIds.SecurityGroups[0].GroupId, nil
