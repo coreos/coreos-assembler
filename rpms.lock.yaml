@@ -4288,13 +4288,20 @@ arches:
     name: fedora-repos-ostree
     evr: 44-2
     sourcerpm: fedora-repos-44-2.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/f/file-5.46-10.fc44.x86_64.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/f/file-5.48-2.fc44.x86_64.rpm
     repoid: updates
-    size: 49901
-    checksum: sha256:d0e2372e97b29daaa98c2acf08e79320bbfc4137bd4f28ce8b2dcb4363a6f65b
+    size: 51268
+    checksum: sha256:c45a9e754d5ea48773b83ea84dcb8c00a26278accda9b748e25364268451ba40
     name: file
-    evr: 5.46-10.fc44
-    sourcerpm: file-5.46-10.fc44.src.rpm
+    evr: 5.48-2.fc44
+    sourcerpm: file-5.48-2.fc44.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/f/file-libs-5.48-2.fc44.x86_64.rpm
+    repoid: updates
+    size: 905320
+    checksum: sha256:0093af5322316bd5150444fb19d69f7ba95e4d38846eac04259cd4092dab12a8
+    name: file-libs
+    evr: 5.48-2.fc44
+    sourcerpm: file-5.48-2.fc44.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/f/freetype-2.14.3-1.fc44.x86_64.rpm
     repoid: updates
     size: 454638
@@ -6563,13 +6570,13 @@ arches:
     name: SDL2_image
     evr: 2.8.12-1.fc44
     sourcerpm: SDL2_image-2.8.12-1.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/s/SDL3-3.4.18-1.fc44.x86_64.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/s/SDL3-3.4.20-1.fc44.x86_64.rpm
     repoid: updates
-    size: 1297555
-    checksum: sha256:a54b67e056cb77976d9f0523ae5e0d79baa747d4cd28223eec479c2e20c464ae
+    size: 1299447
+    checksum: sha256:216e6a95fa98b954cebaa5eff886a7a709d01367813052da6fa5821a388aa393
     name: SDL3
-    evr: 3.4.18-1.fc44
-    sourcerpm: SDL3-3.4.18-1.fc44.src.rpm
+    evr: 3.4.20-1.fc44
+    sourcerpm: SDL3-3.4.20-1.fc44.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/s/samba-client-libs-4.24.7-1.fc44.x86_64.rpm
     repoid: updates
     size: 3369775
