@@ -4295,13 +4295,6 @@ arches:
     name: file
     evr: 5.48-2.fc44
     sourcerpm: file-5.48-2.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/f/file-libs-5.48-2.fc44.x86_64.rpm
-    repoid: updates
-    size: 905320
-    checksum: sha256:0093af5322316bd5150444fb19d69f7ba95e4d38846eac04259cd4092dab12a8
-    name: file-libs
-    evr: 5.48-2.fc44
-    sourcerpm: file-5.48-2.fc44.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/f/freetype-2.14.3-1.fc44.x86_64.rpm
     repoid: updates
     size: 454638
@@ -6150,20 +6143,20 @@ arches:
     name: python3-awscrt
     evr: 0.38.0-1.fc44
     sourcerpm: python-awscrt-0.38.0-1.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/p/python3-boto3-1.43.122-1.fc44.noarch.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/p/python3-boto3-1.43.124-1.fc44.noarch.rpm
     repoid: updates
-    size: 543919
-    checksum: sha256:04322a1fb6a5c1b9a6852f6808493690351446793787032dd32b3c4ce1a3829f
+    size: 545217
+    checksum: sha256:303fc816b81c9d279feef32c2780f4d3bd7c239635227a946f3065a6627e3bf9
     name: python3-boto3
-    evr: 1.43.122-1.fc44
-    sourcerpm: python-boto3-1.43.122-1.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/p/python3-botocore-1.43.122-1.fc44.noarch.rpm
+    evr: 1.43.124-1.fc44
+    sourcerpm: python-boto3-1.43.124-1.fc44.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/p/python3-botocore-1.43.124-1.fc44.noarch.rpm
     repoid: updates
-    size: 9796877
-    checksum: sha256:e81ad1b49fe77a93a3bccfb3350a8e530ba860159895f2c3456c407f6b98614e
+    size: 9818327
+    checksum: sha256:5850d228adf7b6b9223e964e9a67e8c2ee123aa5926a71340a25e4ad64af6c16
     name: python3-botocore
-    evr: 1.43.122-1.fc44
-    sourcerpm: python-botocore-1.43.122-1.fc44.src.rpm
+    evr: 1.43.124-1.fc44
+    sourcerpm: python-botocore-1.43.124-1.fc44.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/p/python3-click-8.3.3-1.fc44.noarch.rpm
     repoid: updates
     size: 277611
@@ -6437,13 +6430,13 @@ arches:
     name: python3-urllib3
     evr: 2.8.0-3.fc44
     sourcerpm: python-urllib3-2.8.0-3.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/p/python3-wrapt-2.5.1-1.fc44.x86_64.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/p/python3-wrapt-2.5.2-1.fc44.x86_64.rpm
     repoid: updates
-    size: 150044
-    checksum: sha256:c7b5ec0d07cfe6f3ffac79099e90426bd0d7c11811b22c15d3ef553f599aa1cf
+    size: 150322
+    checksum: sha256:e945089b7508680f48bb702c8465485c84068aa7e2e588e8ee52d674598bdf82
     name: python3-wrapt
-    evr: 2.5.1-1.fc44
-    sourcerpm: python-wrapt-2.5.1-1.fc44.src.rpm
+    evr: 2.5.2-1.fc44
+    sourcerpm: python-wrapt-2.5.2-1.fc44.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/q/qatlib-26.08.0-1.fc44.x86_64.rpm
     repoid: updates
     size: 278672
