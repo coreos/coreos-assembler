@@ -2,7 +2,7 @@ name: Auto-approve Mintmakers lockfile maintenance PRs
 
 on:
   # Trigger on PR open, new commits, or reopen — but NOT on PR close/merge
-  pull_request_target:
+  pull_request:
     types: [opened, synchronize, reopened]
 
 jobs:
