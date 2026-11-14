@@ -306,7 +306,7 @@ func (qc *Cluster) InitDefaultBuilder(options platform.MachineOptions, builder *
 	if options.AppendFirstbootKernelArgs != "" {
 		builder.AppendFirstbootKernelArgs = options.AppendFirstbootKernelArgs
 	}
-
+	builder.Processors = options.CPUCount
 	return nil
 }
 

@@ -233,7 +233,8 @@ Here's an example `kola.json`:
     "exclusive": true,
     "conflicts": ["ext.config.some-test", "podman.some-other-test"],
     "description": "test description",
-    "bootFrom": ""
+    "bootFrom": "",
+    "cpuCount": 2
 }
 ```
 
@@ -282,6 +283,10 @@ The `minMemory` key takes a size in MB and ensures that an instance type with
 at least the specified amount of memory is used. On QEMU, this is equivalent to
 the `--memory` argument to `qemuexec`. This is currently only enforced on
 `qemu`.
+
+The `cpuCount` key sets the number of virtual CPUs of the test VM (default: 1).
+A value of `-1` uses the available CPU count, with a maximum of 16. With
+`numaNodes`, the count must be even. It is currently only supported on `qemu`.
 
 The `additionalNics` key has the same semantics as the `--additional-nics` argument
 to `qemuexec`. It is currently only supported on `qemu`.
