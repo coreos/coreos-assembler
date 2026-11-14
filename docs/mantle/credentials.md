@@ -189,6 +189,26 @@ If you want to create a service account's JSON key for authentication, refer to 
 }
 ```
 
+## stackit
+
+`stackit` uses the STACKIT SDK for authentication. Supply a service account JSON
+key with `--stackit-service-account-key-path`, or use SDK credential discovery:
+`STACKIT_SERVICE_ACCOUNT_KEY` / `STACKIT_SERVICE_ACCOUNT_KEY_PATH`, the credentials
+file selected by `STACKIT_CREDENTIALS_PATH` (default
+`~/.stackit/credentials.json`), or `STACKIT_SERVICE_ACCOUNT_TOKEN`. A separate
+private key can be supplied with `STACKIT_PRIVATE_KEY` or
+`STACKIT_PRIVATE_KEY_PATH` when it is not included in the service account key.
+The SDK handles obtaining and refreshing access tokens for key authentication.
+
+`--stackit-token-file` selects a file containing a raw bearer token, not JSON.
+It overrides SDK discovery and is read on every API request so an external
+helper can refresh it. This option cannot be combined with
+`--stackit-service-account-key-path`.
+
+These options apply to both `kola` and `ore stackit`. See
+[Testing with Kola: STACKIT](../kola.md#stackit) for prerequisites and commands to
+upload an image, run tests, and collect leftover resources.
+
 ## qemu
 
 `qemu` is run locally and needs no credentials. It has a few restrictions:

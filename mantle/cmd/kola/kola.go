@@ -306,6 +306,18 @@ func writeProps() error {
 		ImageSize string `json:"imageSize"`
 		Swtpm     bool   `json:"swtpm"`
 	}
+	type STACKIT struct {
+		Project              string   `json:"project"`
+		Region               string   `json:"region"`
+		Image                string   `json:"image"`
+		MachineType          string   `json:"type"`
+		DiskSize             int      `json:"disk_size"`
+		Network              string   `json:"network"`
+		SecurityGroups       []string `json:"security_groups"`
+		AvailabilityZone     string   `json:"availability_zone"`
+		DiskPerformanceClass string   `json:"disk_performance_class"`
+		SSHSourceCIDR        string   `json:"ssh_source_cidr"`
+	}
 	return enc.Encode(&struct {
 		Cmdline     []string  `json:"cmdline"`
 		Platform    string    `json:"platform"`
@@ -319,6 +331,7 @@ func writeProps() error {
 		GCP         GCP       `json:"gcp"`
 		OpenStack   OpenStack `json:"openstack"`
 		QEMU        QEMU      `json:"qemu"`
+		STACKIT     STACKIT   `json:"stackit"`
 	}{
 		Cmdline:     os.Args,
 		Platform:    kolaPlatform,
@@ -362,6 +375,18 @@ func writeProps() error {
 			Image:     kola.QEMUOptions.DiskImage,
 			ImageSize: kola.QEMUOptions.DiskSize,
 			Swtpm:     kola.QEMUOptions.Swtpm,
+		},
+		STACKIT: STACKIT{
+			Project:              kola.STACKITOptions.Project,
+			Region:               kola.STACKITOptions.Region,
+			Image:                kola.STACKITOptions.Image,
+			MachineType:          kola.STACKITOptions.MachineType,
+			DiskSize:             kola.STACKITOptions.DiskSize,
+			Network:              kola.STACKITOptions.Network,
+			SecurityGroups:       kola.STACKITOptions.SecurityGroups,
+			AvailabilityZone:     kola.STACKITOptions.AvailabilityZone,
+			DiskPerformanceClass: kola.STACKITOptions.DiskPerformanceClass,
+			SSHSourceCIDR:        kola.STACKITOptions.SSHSourceCIDR,
 		},
 	})
 }
