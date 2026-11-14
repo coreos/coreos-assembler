@@ -147,4 +147,11 @@ func fipsEnableTest(c cluster.TestCluster) {
 	m := c.Machines()[0]
 	c.AssertCmdOutputContains(m, `cat /proc/sys/crypto/fips_enabled`, "1")
 	c.AssertCmdOutputContains(m, `update-crypto-policies --show`, "FIPS")
+	// There should be no mounts over crypto-policies.
+	//
+	// Bind mounts are generated over /etc/crypto-policies/back-ends
+	// when FIPS is not setup correctly, and the FIPS dracut module
+	// fixes it.
+	// See: https://github.com/coreos/rhel-coreos-config/pull/259
+	c.AssertCmdOutputDoesNotContain(m, `cat /proc/self/mountinfo`, "crypto-policies")
 }
