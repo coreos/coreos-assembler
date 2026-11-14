@@ -459,13 +459,6 @@ arches:
     name: fpc-srpm-macros
     evr: 1.3-16.fc44
     sourcerpm: fpc-srpm-macros-1.3-16.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/releases/44/Everything/x86_64/os/Packages/f/fribidi-1.0.16-4.fc44.x86_64.rpm
-    repoid: fedora
-    size: 55049
-    checksum: sha256:6112ddab962e7835fe80d31df2aaa6e3cdddd69a2068bfd63622147a8b78b507
-    name: fribidi
-    evr: 1.0.16-4.fc44
-    sourcerpm: fribidi-1.0.16-4.fc44.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/releases/44/Everything/x86_64/os/Packages/f/fuse-2.9.9-25.fc44.x86_64.rpm
     repoid: fedora
     size: 81815
@@ -1719,13 +1712,6 @@ arches:
     name: mpg123-libs
     evr: 1.32.10-3.fc44
     sourcerpm: mpg123-1.32.10-3.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/releases/44/Everything/x86_64/os/Packages/m/mtools-4.0.49-3.fc44.x86_64.rpm
-    repoid: fedora
-    size: 230359
-    checksum: sha256:934375f55eca0de9013b9600a14b58d892602369ddfd64ba118b328ec6d9ea4e
-    name: mtools
-    evr: 4.0.49-3.fc44
-    sourcerpm: mtools-4.0.49-3.fc44.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/releases/44/Everything/x86_64/os/Packages/n/ncurses-6.6-1.fc44.x86_64.rpm
     repoid: fedora
     size: 440103
@@ -3567,13 +3553,6 @@ arches:
     name: svt-av1-libs
     evr: 3.1.2-2.fc44
     sourcerpm: svt-av1-3.1.2-2.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/releases/44/Everything/x86_64/os/Packages/t/tang-15-11.fc44.x86_64.rpm
-    repoid: fedora
-    size: 47245
-    checksum: sha256:ce5c5bb80d3aed18939866909c38fe85bba39cd8e4a41adf5759d817c6836562
-    name: tang
-    evr: 15-11.fc44
-    sourcerpm: tang-15-11.fc44.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/releases/44/Everything/x86_64/os/Packages/t/targetcli-3.0.1-5.fc44.noarch.rpm
     repoid: fedora
     size: 105428
@@ -4288,6 +4267,13 @@ arches:
     name: freetype
     evr: 2.14.3-1.fc44
     sourcerpm: freetype-2.14.3-1.fc44.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/f/fribidi-1.0.18-1.fc44.x86_64.rpm
+    repoid: updates
+    size: 107063
+    checksum: sha256:9ea56273a873194fa322566b3f0b461c60809fb1c151d4fcbce30e5c7f586294
+    name: fribidi
+    evr: 1.0.18-1.fc44
+    sourcerpm: fribidi-1.0.18-1.fc44.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/f/fuse-common-3.18.3-1.fc44.x86_64.rpm
     repoid: updates
     size: 8248
@@ -4379,27 +4365,27 @@ arches:
     name: giflib
     evr: 6.1.3-2.fc44
     sourcerpm: giflib-6.1.3-2.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/g/git-2.56.0-1.fc44.x86_64.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/g/git-2.56.1-1.fc44.x86_64.rpm
     repoid: updates
-    size: 41830
-    checksum: sha256:32e8e5edae032a352441e056b5141a280f20710423a2e70e90ca88ea4ec54469
+    size: 41936
+    checksum: sha256:ccbee035bfbd8fee7916716de3fdd7fdce9a35a94ded9204ed15f42fd2b58c25
     name: git
-    evr: 2.56.0-1.fc44
-    sourcerpm: git-2.56.0-1.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/g/git-core-2.56.0-1.fc44.x86_64.rpm
+    evr: 2.56.1-1.fc44
+    sourcerpm: git-2.56.1-1.fc44.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/g/git-core-2.56.1-1.fc44.x86_64.rpm
     repoid: updates
-    size: 6023069
-    checksum: sha256:dd8a7f86ba8d523497830dd7e237890abaccbae2344b03eb27ddfeb0db2e7bfe
+    size: 6027631
+    checksum: sha256:37495d8dac372f77d3bab18c49205eba2a3d7e3e6237afecbc0c5620ed734a5f
     name: git-core
-    evr: 2.56.0-1.fc44
-    sourcerpm: git-2.56.0-1.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/g/git-core-doc-2.56.0-1.fc44.noarch.rpm
+    evr: 2.56.1-1.fc44
+    sourcerpm: git-2.56.1-1.fc44.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/g/git-core-doc-2.56.1-1.fc44.noarch.rpm
     repoid: updates
-    size: 3351017
-    checksum: sha256:0372f0739b7c9e2f97206c14dde19dfd087a7a36f0141de907ec55946ef7765b
+    size: 3367377
+    checksum: sha256:83d4e309cb9a72fde933d5aad8e64a0e0c23dec418f59e182b04089185e093a5
     name: git-core-doc
-    evr: 2.56.0-1.fc44
-    sourcerpm: git-2.56.0-1.fc44.src.rpm
+    evr: 2.56.1-1.fc44
+    sourcerpm: git-2.56.1-1.fc44.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/g/glib-networking-2.80.1-8.fc44.x86_64.rpm
     repoid: updates
     size: 207022
@@ -5177,6 +5163,13 @@ arches:
     name: librdmacm
     evr: 61.1^20260812git975bdaf-1.fc44
     sourcerpm: rdma-core-61.1^20260812git975bdaf-1.fc44.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/l/librepo-1.22.0-1.fc44.x86_64.rpm
+    repoid: updates
+    size: 106242
+    checksum: sha256:f4c180a6f11ce08d99ba2276bb502ca8f0a40e060484c02e0971ea8936310ac3
+    name: librepo
+    evr: 1.22.0-1.fc44
+    sourcerpm: librepo-1.22.0-1.fc44.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/l/librsvg2-2.62.4-1.fc44.x86_64.rpm
     repoid: updates
     size: 1953895
@@ -5457,6 +5450,13 @@ arches:
     name: mt7xxx-firmware
     evr: 20261019-1.fc44
     sourcerpm: linux-firmware-20261019-1.fc44.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/m/mtools-4.0.50-1.fc44.x86_64.rpm
+    repoid: updates
+    size: 229850
+    checksum: sha256:224059c53671778cc95461bf5274ad29af62d41e7389520f72fcb8bfeb38474c
+    name: mtools
+    evr: 4.0.50-1.fc44
+    sourcerpm: mtools-4.0.50-1.fc44.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/n/nbdkit-1.48.1-1.fc44.x86_64.rpm
     repoid: updates
     size: 15693
@@ -5835,13 +5835,13 @@ arches:
     name: perl-Getopt-Std
     evr: 1.14-525.fc44
     sourcerpm: perl-5.42.3-525.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/p/perl-Git-2.56.0-1.fc44.noarch.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/p/perl-Git-2.56.1-1.fc44.noarch.rpm
     repoid: updates
-    size: 38325
-    checksum: sha256:e23446f06de4066f17de478e16aef56f4e0cf22ca3a00b9eebd4b991b794bea5
+    size: 38350
+    checksum: sha256:8cd77c7a848885596c482ae1cd8251c371cd2115568d500e3cde0cf1d8910e33
     name: perl-Git
-    evr: 2.56.0-1.fc44
-    sourcerpm: git-2.56.0-1.fc44.src.rpm
+    evr: 2.56.1-1.fc44
+    sourcerpm: git-2.56.1-1.fc44.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/p/perl-HTTP-Tiny-0.096-1.fc44.noarch.rpm
     repoid: updates
     size: 59181
@@ -6248,13 +6248,13 @@ arches:
     name: python3-libdnf
     evr: 0.76.0-1.fc44
     sourcerpm: libdnf-0.76.0-1.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/p/python3-librepo-1.21.2-1.fc44.x86_64.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/p/python3-librepo-1.22.0-1.fc44.x86_64.rpm
     repoid: updates
-    size: 53701
-    checksum: sha256:fcfc8112094dbe19519059f2e8b37362fff56e487c4b1bd6c5a3972fb92ad491
+    size: 54516
+    checksum: sha256:e02210afa902772df355fd607032542307ceb87531d0ae0376f28085757b73a5
     name: python3-librepo
-    evr: 1.21.2-1.fc44
-    sourcerpm: librepo-1.21.2-1.fc44.src.rpm
+    evr: 1.22.0-1.fc44
+    sourcerpm: librepo-1.22.0-1.fc44.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/p/python3-libs-3.14.10-1.fc44.x86_64.rpm
     repoid: updates
     size: 10672326
@@ -6787,6 +6787,13 @@ arches:
     name: systemd-udev
     evr: 259.10-1.fc44
     sourcerpm: systemd-259.10-1.fc44.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/t/tang-16-1.fc44.x86_64.rpm
+    repoid: updates
+    size: 47163
+    checksum: sha256:11ca2c92e0df6f7925c4e4e358ddc7b50ec5a2fa2149699ceb0276a686573b93
+    name: tang
+    evr: 16-1.fc44
+    sourcerpm: tang-16-1.fc44.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/t/target-restore-2.2.4-1.fc44.noarch.rpm
     repoid: updates
     size: 13807
