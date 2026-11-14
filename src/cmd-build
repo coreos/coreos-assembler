@@ -217,11 +217,13 @@ build_with_buildah() {
             # Clean up any previous repo metadata
             rm -rf overrides/rpm/repodata
             if [[ -n $(ls overrides/rpm/*.rpm 2> /dev/null) ]]; then
-                # Generate new repo metadata since there are RPMs
-                (cd overrides/rpm && createrepo_c .)
+                # Generate new repo metadata since there are RPMs, setting the revision and the timestamp to 0
+				# so that the output is only dependent on the RPMS. This will avoid invalidating cache when
+				# none of the rpms were modified.
+                (cd overrides/rpm && createrepo_c --revision=0 --set-timestamp-to-revision .)
             fi
         fi
-        set -- "$@" -v "$(realpath overrides)":/src/overrides
+		cp -a "$(realpath overrides)/." "${tempdir}/src/overrides"
     fi
 
     # We'll also copy to an intermediate ociarchive file before
