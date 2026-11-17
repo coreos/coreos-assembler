@@ -1016,16 +1016,46 @@ func metadataFromTestBinary(executable string) (*externalTestMeta, error) {
 		return nil, err
 	}
 	defer f.Close()
-	r := bufio.NewReader(io.LimitReader(f, 8192))
+	const metadataLimit = 8192
+	// Read one extra byte to distinguish EOF from a line cut off by the limit.
+	r := bufio.NewReader(io.LimitReader(f, metadataLimit+1))
 	meta := &externalTestMeta{Exclusive: true}
+	// Return nil if there is no inline metadata, so kola can use kola.json.
+	foundMeta := false
 	inmeta := false    // true if we saw a ## kola: prefix after which we expect YAML
 	metadatayaml := "" // accumulated YAML metadata
+	bytesRead := 0
+	truncated := false
 	for {
 		line, err := r.ReadString('\n')
-		if err == io.EOF {
-			break
-		} else if err != nil {
+		if err != nil && err != io.EOF {
 			return nil, err
+		}
+		bytesRead += len(line)
+		if bytesRead > metadataLimit {
+			if inmeta {
+				// Only use the part of the line within the scan limit.
+				prefix := line[:len(line)-(bytesRead-metadataLimit)]
+				if strings.HasPrefix(prefix, InstalledTestMetaPrefix) {
+					return nil, fmt.Errorf("found both yaml and json test prefixes (%v %v)", InstalledTestMetaPrefixYaml, InstalledTestMetaPrefix)
+				}
+				if strings.HasPrefix(prefix, InstalledTestMetaPrefixYaml) {
+					return nil, fmt.Errorf("found multiple %s", InstalledTestMetaPrefixYaml)
+				}
+				// A complete YAML block can be followed by a long test line.
+				// An incomplete prefix might still be metadata, so ignore it.
+				if !strings.HasPrefix(prefix, "## ") &&
+					!strings.HasPrefix("## ", prefix) &&
+					!strings.HasPrefix(InstalledTestMetaPrefix, prefix) {
+					break
+				}
+			}
+			// Ignore metadata that extends beyond the scan limit.
+			truncated = true
+			break
+		}
+		if len(line) == 0 && err == io.EOF {
+			break
 		}
 
 		// Handle the older JSON metadata
@@ -1033,6 +1063,7 @@ func metadataFromTestBinary(executable string) (*externalTestMeta, error) {
 			if inmeta {
 				return nil, fmt.Errorf("found both yaml and json test prefixes (%v %v)", InstalledTestMetaPrefixYaml, InstalledTestMetaPrefix)
 			}
+			foundMeta = true
 			buf := strings.TrimSpace(line[len(InstalledTestMetaPrefix):])
 			dec := json.NewDecoder(strings.NewReader(buf))
 			dec.DisallowUnknownFields()
@@ -1049,16 +1080,26 @@ func metadataFromTestBinary(executable string) (*externalTestMeta, error) {
 				return nil, fmt.Errorf("found multiple %s", InstalledTestMetaPrefixYaml)
 			}
 			inmeta = true
+			foundMeta = true
 		} else if inmeta {
 			if !strings.HasPrefix(line, "## ") {
-				if err := yaml.UnmarshalStrict([]byte(metadatayaml), &meta); err != nil {
-					return nil, err
-				}
 				break
 			} else {
 				metadatayaml += fmt.Sprintf("%s\n", line[3:])
 			}
 		}
+		if err == io.EOF {
+			break
+		}
+	}
+	// Do not parse a YAML block cut off by the scan limit.
+	if inmeta && !truncated {
+		if err := yaml.UnmarshalStrict([]byte(metadatayaml), &meta); err != nil {
+			return nil, err
+		}
+	}
+	if !foundMeta {
+		return nil, nil
 	}
 	return meta, nil
 }
@@ -1332,7 +1373,8 @@ func patternMatchesTests(pattern string, tests map[string]*register.Test) (bool,
 // registerTestDir parses one test directory and registers it as a test
 func registerTestDir(dir, testprefix string, children []os.DirEntry) error {
 	var dependencydir string
-	var meta externalTestMeta
+	// Preserve the default when kola.json omits exclusive.
+	meta := externalTestMeta{Exclusive: true}
 	userdata := conf.EmptyIgnition()
 	executables := []string{}
 	for _, e := range children {
