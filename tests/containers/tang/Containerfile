@@ -1,4 +1,4 @@
-FROM quay.io/fedora/fedora:44
+FROM quay.io/fedora/fedora:45
 
 RUN dnf -y install systemd tang && dnf clean all && rm -rf /var/cache/yum
 EXPOSE 80
