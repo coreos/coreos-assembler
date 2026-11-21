@@ -209,6 +209,16 @@ func (t *TestCluster) AssertCmdOutputContains(m platform.Machine, cmd string, ex
 	}
 }
 
+// AssertCmdOutputDoesNotContain runs cmd via SSH and panics if stdout contains unexpected
+func (t *TestCluster) AssertCmdOutputDoesNotContain(m platform.Machine, cmd string, unexpected string) {
+	t.LogJournal(m, "+ "+cmd)
+	outputBuf := t.MustSSH(m, cmd)
+	output := string(outputBuf)
+	if strings.Contains(output, unexpected) {
+		t.Fatalf("cmd %s unexpectedly contained %s", cmd, unexpected)
+	}
+}
+
 // AssertCmdOutputContains runs cmd via SSH and panics if stdout does not contain expected
 func (t *TestCluster) AssertCmdOutputMatches(m platform.Machine, cmd string, expected *regexp.Regexp) {
 	t.LogJournal(m, "+ "+cmd)
