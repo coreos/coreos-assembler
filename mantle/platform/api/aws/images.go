@@ -863,8 +863,14 @@ func getImageSnapshotID(image *ec2types.Image) (string, error) {
 
 // ListProductionImages returns all AMIs owned by this account tagged
 // production=true, including already-deprecated ones.
+//
+// This paginates because callers need the complete production set: an AMI that
+// falls off the end of an unpaginated response is silently never restored and
+// never relaunched, with nothing in the exit status to say so. AWS also
+// recommends it independently -- "Unpaginated requests are susceptible to
+// throttling and timeouts".
 func (a *API) ListProductionImages() ([]ec2types.Image, error) {
-	resp, err := a.ec2.DescribeImages(context.Background(), &ec2.DescribeImagesInput{
+	input := &ec2.DescribeImagesInput{
 		Owners:            []string{"self"},
 		IncludeDeprecated: aws.Bool(true),
 		Filters: []ec2types.Filter{
@@ -873,11 +879,18 @@ func (a *API) ListProductionImages() ([]ec2types.Image, error) {
 				Values: []string{"true"},
 			},
 		},
-	})
-	if err != nil {
-		return nil, fmt.Errorf("couldn't list production images: %v", err)
 	}
-	return resp.Images, nil
+
+	var images []ec2types.Image
+	paginator := ec2.NewDescribeImagesPaginator(a.ec2, input)
+	for paginator.HasMorePages() {
+		page, err := paginator.NextPage(context.Background())
+		if err != nil {
+			return nil, fmt.Errorf("couldn't list production images: %v", err)
+		}
+		images = append(images, page.Images...)
+	}
+	return images, nil
 }
 
 // GetImageByID returns the AMI with the given ID owned by
@@ -915,23 +928,6 @@ func (a *API) RestoreImagePublic(imageID string) error {
 		return fmt.Errorf("couldn't restore public launch permission on %v: %v", imageID, err)
 	}
 	return nil
-}
-
-// IsImagePublic returns true if the AMI has public launch permissions.
-func (a *API) IsImagePublic(imageID string) (bool, error) {
-	resp, err := a.ec2.DescribeImageAttribute(context.Background(), &ec2.DescribeImageAttributeInput{
-		Attribute: ec2types.ImageAttributeNameLaunchPermission,
-		ImageId:   aws.String(imageID),
-	})
-	if err != nil {
-		return false, fmt.Errorf("couldn't describe launch permissions for %v: %v", imageID, err)
-	}
-	for _, p := range resp.LaunchPermissions {
-		if p.Group == ec2types.PermissionGroupAll {
-			return true, nil
-		}
-	}
-	return false, nil
 }
 
 func (a *API) FindSnapshotDiskSizeGiB(snapshotID string) (uint, error) {
