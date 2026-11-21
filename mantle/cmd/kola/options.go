@@ -40,7 +40,7 @@ var (
 	kolaPlatform      string
 	kolaParallelArg   string
 	kolaArchitectures = []string{"amd64"}
-	kolaPlatforms     = []string{"aws", "azure", "do", "esx", "gcp", "openstack", "qemu", "qemu-iso"}
+	kolaPlatforms     = []string{"aws", "azure", "do", "esx", "gcp", "openstack", "qemu", "qemu-iso", "stackit"}
 	kolaDistros       = []string{"fcos", "rhcos", "scos"}
 )
 
@@ -139,6 +139,21 @@ func init() {
 	sv(&kola.OpenStackOptions.Network, "openstack-network", "", "OpenStack network")
 	sv(&kola.OpenStackOptions.Domain, "openstack-domain", "", "OpenStack domain ID")
 	sv(&kola.OpenStackOptions.FloatingIPNetwork, "openstack-floating-ip-network", "", "OpenStack network to use when creating a floating IP")
+
+	// STACKIT-specific options. Keep tokens out of the command line, which is
+	// recorded in properties.json.
+	sv(&kola.STACKITOptions.TokenFile, "stackit-token-file", "", "File containing a raw STACKIT service account token (overrides SDK credential discovery)")
+	sv(&kola.STACKITOptions.ServiceAccountKeyPath, "stackit-service-account-key-path", "", "STACKIT service account JSON key file (defaults to SDK credential discovery)")
+	sv(&kola.STACKITOptions.Project, "stackit-project", "", "STACKIT project ID")
+	sv(&kola.STACKITOptions.Region, "stackit-region", "eu01", "STACKIT region")
+	sv(&kola.STACKITOptions.Image, "stackit-image", "", "STACKIT image ID (image must support ignition.platform.id=stackit)")
+	sv(&kola.STACKITOptions.MachineType, "stackit-machine-type", "c2i.2", "STACKIT machine type")
+	sv(&kola.STACKITOptions.AvailabilityZone, "stackit-availability-zone", "", "STACKIT availability zone (defaults to platform selection)")
+	root.PersistentFlags().IntVar(&kola.STACKITOptions.DiskSize, "stackit-disk-size", 16, "STACKIT boot volume size in GiB")
+	sv(&kola.STACKITOptions.DiskPerformanceClass, "stackit-disk-performance-class", "", "STACKIT boot volume performance class (defaults to platform selection)")
+	sv(&kola.STACKITOptions.Network, "stackit-network", "", "Existing STACKIT network ID (default: create a network per cluster)")
+	ssv(&kola.STACKITOptions.SecurityGroups, "stackit-security-group", nil, "Existing STACKIT security group IDs (default: create a group per cluster)")
+	sv(&kola.STACKITOptions.SSHSourceCIDR, "stackit-ssh-source-cidr", "0.0.0.0/0", "IPv4 CIDR allowed SSH access by managed STACKIT security groups")
 
 	// QEMU-specific options
 	sv(&kola.QEMUOptions.Firmware, "qemu-firmware", "", "Boot firmware: bios,uefi,uefi-secure (default bios)")

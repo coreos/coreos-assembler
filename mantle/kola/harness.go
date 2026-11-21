@@ -47,6 +47,7 @@ import (
 	esxapi "github.com/coreos/coreos-assembler/mantle/platform/api/esx"
 	gcloudapi "github.com/coreos/coreos-assembler/mantle/platform/api/gcloud"
 	openstackapi "github.com/coreos/coreos-assembler/mantle/platform/api/openstack"
+	stackitapi "github.com/coreos/coreos-assembler/mantle/platform/api/stackit"
 	"github.com/coreos/coreos-assembler/mantle/platform/conf"
 	"github.com/coreos/coreos-assembler/mantle/platform/machine/aws"
 	"github.com/coreos/coreos-assembler/mantle/platform/machine/azure"
@@ -56,6 +57,7 @@ import (
 	"github.com/coreos/coreos-assembler/mantle/platform/machine/openstack"
 	"github.com/coreos/coreos-assembler/mantle/platform/machine/qemu"
 	"github.com/coreos/coreos-assembler/mantle/platform/machine/qemuiso"
+	"github.com/coreos/coreos-assembler/mantle/platform/machine/stackit"
 	"github.com/coreos/coreos-assembler/mantle/system"
 	"github.com/coreos/coreos-assembler/mantle/util"
 )
@@ -117,6 +119,7 @@ var (
 	OpenStackOptions = openstackapi.Options{Options: &Options} // glue to set platform options from main
 	QEMUOptions      = qemu.Options{Options: &Options}         // glue to set platform options from main
 	QEMUIsoOptions   = qemuiso.Options{Options: &Options}      // glue to set platform options from main
+	STACKITOptions   = stackitapi.Options{Options: &Options}   // glue to set platform options from main
 
 	CosaBuild *util.LocalBuild // this is a parsed cosa build
 
@@ -308,6 +311,8 @@ func NewFlight(pltfrm string) (flight platform.Flight, err error) {
 		flight, err = gcloud.NewFlight(&GCPOptions)
 	case "openstack":
 		flight, err = openstack.NewFlight(&OpenStackOptions)
+	case "stackit":
+		flight, err = stackit.NewFlight(&STACKITOptions)
 	case "qemu":
 		flight, err = qemu.NewFlight(&QEMUOptions)
 	case "qemu-iso":
