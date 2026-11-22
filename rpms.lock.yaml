@@ -3994,20 +3994,20 @@ arches:
     name: containers-common-extra
     evr: 5:0.67.2-1.fc44
     sourcerpm: containers-common-0.67.2-1.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/c/copr-cli-2.8-1.fc44.noarch.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/c/copr-cli-2.9-1.fc44.noarch.rpm
     repoid: updates
-    size: 102904
-    checksum: sha256:8c77dd47e481cbf886b05632cd86aaf8e5c290ff43a5144f510f60a289d9efca
+    size: 102939
+    checksum: sha256:a61bb31718cd598d0c67d54e2fdf8984d137640865ff0e81d56ccf9d2b8e6e65
     name: copr-cli
-    evr: 2.8-1.fc44
-    sourcerpm: copr-cli-2.8-1.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/c/coreos-installer-0.27.0-1.fc44.x86_64.rpm
+    evr: 2.9-1.fc44
+    sourcerpm: copr-cli-2.9-1.fc44.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/c/coreos-installer-0.27.0-3.fc44.x86_64.rpm
     repoid: updates
-    size: 3427310
-    checksum: sha256:f288dc4c83ed4612bf75c87784ff6af97880502cd0a1b858bdee06f88c1de270
+    size: 3426468
+    checksum: sha256:68b71960ec17b9eced1ec6682e431a4ca26cf82e48a739f7642cc80a1c8da6e6
     name: coreos-installer
-    evr: 0.27.0-1.fc44
-    sourcerpm: rust-coreos-installer-0.27.0-1.fc44.src.rpm
+    evr: 0.27.0-3.fc44
+    sourcerpm: rust-coreos-installer-0.27.0-3.fc44.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/c/cpp-16.2.1-3.fc44.x86_64.rpm
     repoid: updates
     size: 15311326
@@ -4428,27 +4428,27 @@ arches:
     name: gnutls-utils
     evr: 3.8.13-1.fc44
     sourcerpm: gnutls-3.8.13-1.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/g/golang-1.26.10-1.fc44.x86_64.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/g/golang-1.26.11-2.fc44.x86_64.rpm
     repoid: updates
-    size: 1499222
-    checksum: sha256:f7b347122d8cb2e93eafbb8405acf2b643c68180d40ce393c739eec98c22527f
+    size: 1500020
+    checksum: sha256:5204748217ab0e21c864651a3a2edeb9b2e5664853c4509a47657594bd5f1218
     name: golang
-    evr: 1.26.10-1.fc44
-    sourcerpm: golang-1.26.10-1.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/g/golang-bin-1.26.10-1.fc44.x86_64.rpm
+    evr: 1.26.11-2.fc44
+    sourcerpm: golang-1.26.11-2.fc44.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/g/golang-bin-1.26.11-2.fc44.x86_64.rpm
     repoid: updates
-    size: 22058844
-    checksum: sha256:da6d778ba0745e15ce555e13ea7378e72f68741f9acd7d371d37c34f1097205b
+    size: 22095669
+    checksum: sha256:04b56a31940638f59b82334ede0171781fbaa48c753c730bb1ba5b9af06166d9
     name: golang-bin
-    evr: 1.26.10-1.fc44
-    sourcerpm: golang-1.26.10-1.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/g/golang-src-1.26.10-1.fc44.noarch.rpm
+    evr: 1.26.11-2.fc44
+    sourcerpm: golang-1.26.11-2.fc44.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/g/golang-src-1.26.11-2.fc44.noarch.rpm
     repoid: updates
-    size: 15297629
-    checksum: sha256:afa2c78dce37f8e0928f18580f86f34ba5b5824c4f2e1aa44e06cbbe306abe72
+    size: 15308238
+    checksum: sha256:b3007b3560865e35bec69bae80f6425c8a01068f8cc6cf99c4f5689a5d26f443
     name: golang-src
-    evr: 1.26.10-1.fc44
-    sourcerpm: golang-1.26.10-1.fc44.src.rpm
+    evr: 1.26.11-2.fc44
+    sourcerpm: golang-1.26.11-2.fc44.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/g/gpgme-2.0.1-5.fc44.x86_64.rpm
     repoid: updates
     size: 237457
@@ -6157,13 +6157,13 @@ arches:
     name: python3-click
     evr: 1:8.3.3-1.fc44
     sourcerpm: python-click-8.3.3-1.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/p/python3-copr-2.9-1.fc44.noarch.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/p/python3-copr-2.10-1.fc44.noarch.rpm
     repoid: updates
-    size: 102049
-    checksum: sha256:e5254a5839698560b7c6476362c2350ea7e0006db6fa194f4b988c4847c6b5da
+    size: 102065
+    checksum: sha256:2a5daf792acadef2bac33bfde6b277e8bae8fb4dd0f07870d962ec73daf85a49
     name: python3-copr
-    evr: 2.9-1.fc44
-    sourcerpm: python-copr-2.9-1.fc44.src.rpm
+    evr: 2.10-1.fc44
+    sourcerpm: python-copr-2.10-1.fc44.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/p/python3-coprtree-0.1.4-1.fc44.noarch.rpm
     repoid: updates
     size: 47853
