@@ -145,6 +145,7 @@ func runCreate(c *cobra.Command, args []string) error {
 		// See: https://github.com/coreos/coreos-assembler/blob/main/docs/cosa/buildextend-secex.md
 		"--volume=secex-data:/data.secex:ro",
 		"--userns=keep-id:uid=1000,gid=1000",
+		"--group-add=wheel",
 		"--device=/dev/kvm", "--device=/dev/fuse", "--tmpfs=/tmp",
 		"--init", "--entrypoint=/usr/bin/sleep"}
 	// Add in any env vars that were specified.
