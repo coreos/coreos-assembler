@@ -143,6 +143,7 @@ func runCreate(c *cobra.Command, args []string) error {
 		// See: https://github.com/coreos/coreos-assembler/blob/main/docs/cosa/buildextend-secex.md
 		"--volume=secex-data:/data.secex:ro",
 		"--uidmap=1000:0:1", "--uidmap=0:1:1000", "--uidmap=1001:1001:64536",
+		"--group-add=wheel",
 		"--device=/dev/kvm", "--device=/dev/fuse", "--tmpfs=/tmp",
 		"--entrypoint=/usr/bin/dumb-init", remoteSessionOpts.CreateImage,
 		"sleep", remoteSessionOpts.CreateExpiration}
