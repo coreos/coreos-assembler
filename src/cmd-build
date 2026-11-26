@@ -28,6 +28,7 @@ Usage: coreos-assembler build
                          The build context root remains the config dir. When set, build-args.conf
                          is also loaded from the Containerfile's directory.
   --authfile             A registry pull secret to use when doing the build.
+  --compute-version-only Print the version the build would use and exit without building.
 EOF
 }
 
@@ -40,8 +41,9 @@ SKIP_PRUNE=
 STRICT=
 PARENT_BUILD=
 CONTAINERFILE=
+COMPUTE_VERSION_ONLY=
 rc=0
-options=$(getopt --options h,d --longoptions help,version:,versionary,direct,autolock:,skip-prune,parent-build:,force,strict,file:,authfile: -- "$@") || rc=$?
+options=$(getopt --options h,d --longoptions help,version:,versionary,direct,autolock:,skip-prune,parent-build:,force,strict,file:,authfile:,compute-version-only -- "$@") || rc=$?
 [ $rc -eq 0 ] || {
     print_help
     exit 1
@@ -88,6 +90,9 @@ while true; do
             shift
             REGISTRY_AUTH_FILE=$1
             ;;
+        --compute-version-only)
+            COMPUTE_VERSION_ONLY=1
+            ;;
         --)
             shift
             break
@@ -102,21 +107,8 @@ while true; do
     shift
 done
 
-build_with_buildah() {
-    echo "Building with container runtime (buildah) with VERSION=${VERSION}"
-
-    # Allocate temporary space for this build
-    tempdir="$(pwd)/tmp/build"
-    rm "${tempdir}" -rf
-    mkdir "${tempdir}"
-
-    # the config dir virtiofs mount is mounted ro; copy it to the tempdir
-    cp -r src/config/ "${tempdir}/src"
-    # Make sure there are no setgid/setuid bits in there.
-    # See e.g. https://github.com/coreos/fedora-coreos-tracker/issues/1003.
-    # This is analogous to the chmod we do in cmdlib.sh in the legacy path.
-    chmod -R gu-s "${tempdir}/src"
-
+# Sets the global `argsfile`, `variant` and `VERSION` variables.
+compute_version() {
     initconfig="src/config.json"
     if [ -f "${initconfig}" ]; then
         variant="$(jq --raw-output '."coreos-assembler.config-variant"' "${initconfig}")"
@@ -145,6 +137,24 @@ build_with_buildah() {
         # Call versionary. Let it error out if file does not exist.
         VERSION=$(src/config/versionary --build-args="src/config/${argsfile}" ${dev_arg})
     fi
+}
+
+build_with_buildah() {
+    echo "Building with container runtime (buildah) with VERSION=${VERSION}"
+
+    # Allocate temporary space for this build
+    tempdir="$(pwd)/tmp/build"
+    rm "${tempdir}" -rf
+    mkdir "${tempdir}"
+
+    # the config dir virtiofs mount is mounted ro; copy it to the tempdir
+    cp -r src/config/ "${tempdir}/src"
+    # Make sure there are no setgid/setuid bits in there.
+    # See e.g. https://github.com/coreos/fedora-coreos-tracker/issues/1003.
+    # This is analogous to the chmod we do in cmdlib.sh in the legacy path.
+    chmod -R gu-s "${tempdir}/src"
+
+    compute_version
 
     if [ -e "builds/$VERSION/${arch}" ]; then
         echo "Build ${VERSION} ($arch) already exists"
@@ -277,5 +287,11 @@ EOF
 
     rm -rf "${tempdir}"
 }
+
+if [ -n "${COMPUTE_VERSION_ONLY}" ]; then
+    compute_version
+    echo "${VERSION}"
+    exit 0
+fi
 
 build_with_buildah
