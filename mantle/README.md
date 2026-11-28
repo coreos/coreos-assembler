@@ -24,7 +24,7 @@ Ideally, all software needed for a test should be included by building
 it into the image from the SDK.
 
 Kola supports running tests on multiple platforms, currently QEMU, GCP,
-AWS, VMware VSphere, and OpenStack. In the future systemd-nspawn and other
+AWS, VMware VSphere, OpenStack, and STACKIT. In the future systemd-nspawn and other
 platforms may be added.
 Local platforms do not rely on access to the Internet as a design
 principle of kola, minimizing external dependencies. Any network
@@ -359,6 +359,16 @@ The json file should have the following fields at the minimum with the api key b
 	"apikey": "api key here"
 }
 ```
+
+### stackit
+
+`stackit` accepts a service account JSON key through
+`--stackit-service-account-key-path` and otherwise uses STACKIT SDK credential
+discovery from the environment or `~/.stackit/credentials.json`. The alternative
+`--stackit-token-file` reads a raw bearer token and cannot be combined with the
+explicit JSON key option. See [STACKIT credentials](../docs/mantle/credentials.md#stackit)
+and [Testing with Kola: STACKIT](../docs/kola.md#stackit) for authentication,
+managed networking, image upload, test, and garbage-collection commands.
 
 ### qemu
 `qemu` is run locally and needs no credentials. It has a few restrictions:
