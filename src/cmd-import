@@ -7,8 +7,10 @@ it into a `cosa build`, as if one did `cosa build ostree`. One can then e.g.
 
 If the source image is an OCI image index that contains disk image artifacts
 (entries with artifactType matching application/vnd.diskimage.*), they are
-automatically discovered. The platform.os field is used as the cosa platform
-name (e.g. qemu, metal) and the artifactType to derive the file extension.
+automatically discovered. The artifactType is of the form
+application/vnd.diskimage.<platform>.<filetype> (e.g.
+application/vnd.diskimage.qemu.qcow2) and is used to derive both the cosa
+platform name (e.g. qemu, metal) and the file extension.
 Use --download to pull disk image blobs and populate the build's meta.json.
 '''
 
@@ -221,17 +223,22 @@ def oci_goarch_to_basearch(goarch):
     return OCI_GOARCH_TO_BASEARCH.get(goarch, goarch)
 
 
-def artifact_type_to_extension(artifact_type):
-    """Convert an OCI artifactType to a file extension.
+def artifact_type_to_platform_and_extension(artifact_type):
+    """Parse an OCI artifactType into its cosa platform name and file extension.
 
-    e.g. 'application/vnd.diskimage.qcow2' -> 'qcow2'
-         'application/vnd.diskimage.raw.gzip' -> 'raw.gz'
+    e.g. 'application/vnd.diskimage.qemu.qcow2' -> ('qemu', 'qcow2')
+         'application/vnd.diskimage.metal.raw.gzip' -> ('metal', 'raw.gz')
     """
     if not artifact_type.startswith(DISK_IMAGE_ARTIFACT_PREFIX):
         raise ValueError(f"Unknown artifactType: {artifact_type}")
-    suffix = artifact_type[len(DISK_IMAGE_ARTIFACT_PREFIX):]
+    remainder = artifact_type[len(DISK_IMAGE_ARTIFACT_PREFIX):]
+    if '.' not in remainder:
+        raise ValueError(f"Malformed artifactType (missing platform): {artifact_type}")
+    platform_name, suffix = remainder.split('.', 1)
+    if not platform_name or not suffix:
+        raise ValueError(f"Malformed artifactType (missing platform): {artifact_type}")
     suffix = suffix.replace('gzip', 'gz')
-    return suffix
+    return platform_name, suffix
 
 
 def strip_transport_prefix(ref):
@@ -290,18 +297,12 @@ def discover_disk_image_artifacts(index_manifest):
         goarch = platform.get('architecture', '')
         arch = oci_goarch_to_basearch(goarch)
 
-        platform_name = platform.get('os', '')
         digest = entry.get('digest')
-        if not platform_name:
-            raise ValueError(
-                f"Malformed manifest entry: missing platform.os "
-                f"(digest: {digest or 'unknown'})")
-
         if not digest:
             raise ValueError(
-                f"Malformed manifest entry for {platform_name}: missing digest")
+                f"Malformed manifest entry: missing digest (artifactType: {artifact_type})")
 
-        extension = artifact_type_to_extension(artifact_type)
+        platform_name, extension = artifact_type_to_platform_and_extension(artifact_type)
 
         artifacts.append({
             'platform': platform_name,
