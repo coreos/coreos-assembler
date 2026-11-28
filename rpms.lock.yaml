@@ -3714,20 +3714,20 @@ arches:
     name: alsa-lib
     evr: 1.2.16.1-1.fc44
     sourcerpm: alsa-lib-1.2.16.1-1.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/a/amd-gpu-firmware-20261019-1.fc44.noarch.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/a/amd-gpu-firmware-20261124-1.fc44.noarch.rpm
     repoid: updates
-    size: 29286972
-    checksum: sha256:685c5e11b6f72cb55aa15517e12191cf7ac576de4dfb9985d27fe1915b7173ec
+    size: 30979919
+    checksum: sha256:d94077f4f5e271010a9e89a78e3ca76bfebe8a36040827b04fb73da817f3ee33
     name: amd-gpu-firmware
-    evr: 20261019-1.fc44
-    sourcerpm: linux-firmware-20261019-1.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/a/amd-ucode-firmware-20261019-1.fc44.noarch.rpm
+    evr: 20261124-1.fc44
+    sourcerpm: linux-firmware-20261124-1.fc44.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/a/amd-ucode-firmware-20261124-1.fc44.noarch.rpm
     repoid: updates
-    size: 656285
-    checksum: sha256:83dc994c91cb611dbaf895040db34f09a6a350443164e28d450a782ecd7fe3b5
+    size: 776505
+    checksum: sha256:e487c34a3eb423e846023ff909d95c1843e93035fc67033e671a8c714be909f4
     name: amd-ucode-firmware
-    evr: 20261019-1.fc44
-    sourcerpm: linux-firmware-20261019-1.fc44.src.rpm
+    evr: 20261124-1.fc44
+    sourcerpm: linux-firmware-20261124-1.fc44.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/a/annobin-docs-13.14-1.fc44.noarch.rpm
     repoid: updates
     size: 88811
@@ -3777,13 +3777,13 @@ arches:
     name: at-spi2-core
     evr: 2.60.7-1.fc44
     sourcerpm: at-spi2-core-2.60.7-1.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/a/atheros-firmware-20261019-1.fc44.noarch.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/a/atheros-firmware-20261124-1.fc44.noarch.rpm
     repoid: updates
-    size: 49613372
-    checksum: sha256:5149e96e0377a7d3a9e1dea254d39fa5a46fd4903df839b3971de8ccfb75ed38
+    size: 51636449
+    checksum: sha256:cd1c0f637f27250dcc11fc7186730d705b79d7d43f1130d133383df9d771c3f6
     name: atheros-firmware
-    evr: 20261019-1.fc44
-    sourcerpm: linux-firmware-20261019-1.fc44.src.rpm
+    evr: 20261124-1.fc44
+    sourcerpm: linux-firmware-20261124-1.fc44.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/a/atk-2.60.7-1.fc44.x86_64.rpm
     repoid: updates
     size: 84396
@@ -3847,13 +3847,13 @@ arches:
     name: bootupd
     evr: 0.3.2-1.fc44
     sourcerpm: rust-bootupd-0.3.2-1.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/b/brcmfmac-firmware-20261019-1.fc44.noarch.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/b/brcmfmac-firmware-20261124-1.fc44.noarch.rpm
     repoid: updates
-    size: 10041114
-    checksum: sha256:2bb80b7bfa853d9bb28b02df3a00d535a49a1688b48e107806903b810560a8ff
+    size: 10046313
+    checksum: sha256:76150b6f9cc0b257ba411ec12d8d73d720df26c40847fe16d0681be53c870749
     name: brcmfmac-firmware
-    evr: 20261019-1.fc44
-    sourcerpm: linux-firmware-20261019-1.fc44.src.rpm
+    evr: 20261124-1.fc44
+    sourcerpm: linux-firmware-20261124-1.fc44.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/b/bsdtar-3.8.7-1.fc44.x86_64.rpm
     repoid: updates
     size: 67596
@@ -3917,13 +3917,13 @@ arches:
     name: checkpolicy
     evr: 3.11-1.fc44
     sourcerpm: checkpolicy-3.11-1.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/c/cirrus-audio-firmware-20261019-1.fc44.noarch.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/c/cirrus-audio-firmware-20261124-1.fc44.noarch.rpm
     repoid: updates
-    size: 3335639
-    checksum: sha256:630d0756b13237b9dfe631f1afc44ae51a4380fe47e5ca30662ae36a942e2136
+    size: 3579779
+    checksum: sha256:b6b05b9f12670a1dba82578a8933637e534da58a9fe0db323fde75938b50e719
     name: cirrus-audio-firmware
-    evr: 20261019-1.fc44
-    sourcerpm: linux-firmware-20261019-1.fc44.src.rpm
+    evr: 20261124-1.fc44
+    sourcerpm: linux-firmware-20261124-1.fc44.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/c/cjson-1.7.19-1.fc44.x86_64.rpm
     repoid: updates
     size: 33386
@@ -4001,20 +4001,20 @@ arches:
     name: createrepo_c-libs
     evr: 1.2.6-1.fc44
     sourcerpm: createrepo_c-1.2.6-1.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/c/criu-4.3-1.fc44.x86_64.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/c/criu-4.3.1-1.fc44.x86_64.rpm
     repoid: updates
-    size: 685201
-    checksum: sha256:5dde4ddf61e8450b726e1cf90c54174dd422d3c899ed6d55af5f6d641a9386cb
+    size: 686034
+    checksum: sha256:b5e19c7708a0361645a356f2e3f74a4a1a4378aa7e497f7609233446d013766f
     name: criu
-    evr: 4.3-1.fc44
-    sourcerpm: criu-4.3-1.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/c/criu-libs-4.3-1.fc44.x86_64.rpm
+    evr: 4.3.1-1.fc44
+    sourcerpm: criu-4.3.1-1.fc44.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/c/criu-libs-4.3.1-1.fc44.x86_64.rpm
     repoid: updates
-    size: 36767
-    checksum: sha256:88003b52ab88db63cc0708cb707b95ca826fa35bd9f3e1fed73b356fcb4ef550
+    size: 36850
+    checksum: sha256:dbe85397913ce9cdd6541b4c41b0129f9c7794f1d244e5844eacda4043ec2553
     name: criu-libs
-    evr: 4.3-1.fc44
-    sourcerpm: criu-4.3-1.fc44.src.rpm
+    evr: 4.3.1-1.fc44
+    sourcerpm: criu-4.3.1-1.fc44.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/c/crun-1.30-1.fc44.x86_64.rpm
     repoid: updates
     size: 292463
@@ -4582,20 +4582,20 @@ arches:
     name: igvm-libs
     evr: 0.4.0-10.fc44
     sourcerpm: igvm-0.4.0-10.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/i/intel-audio-firmware-20261019-1.fc44.noarch.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/i/intel-audio-firmware-20261124-1.fc44.noarch.rpm
     repoid: updates
-    size: 3725181
-    checksum: sha256:771ae7680481f90313b84915b244c442937b68179a1d57a8c6ef2292b402c8d7
+    size: 3730041
+    checksum: sha256:0b277bb8749bc431c0be60dbba24a2c6f2f6d5d4f3ddeeaefa21d34707a99c33
     name: intel-audio-firmware
-    evr: 20261019-1.fc44
-    sourcerpm: linux-firmware-20261019-1.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/i/intel-gpu-firmware-20261019-1.fc44.noarch.rpm
+    evr: 20261124-1.fc44
+    sourcerpm: linux-firmware-20261124-1.fc44.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/i/intel-gpu-firmware-20261124-1.fc44.noarch.rpm
     repoid: updates
-    size: 12819214
-    checksum: sha256:dc8aea16bccb31be241fbe09b2c7932d70ac6e85ffe39373b15d8a4cdd09b45e
+    size: 14647923
+    checksum: sha256:6449ec95c581d75a76124b66678f67ea0231b58a51b70f8afb8dbd7af87513b5
     name: intel-gpu-firmware
-    evr: 20261019-1.fc44
-    sourcerpm: linux-firmware-20261019-1.fc44.src.rpm
+    evr: 20261124-1.fc44
+    sourcerpm: linux-firmware-20261124-1.fc44.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/i/intel-mediasdk-23.2.2-11.fc44.x86_64.rpm
     repoid: updates
     size: 3242931
@@ -4603,13 +4603,13 @@ arches:
     name: intel-mediasdk
     evr: 23.2.2-11.fc44
     sourcerpm: intel-mediasdk-23.2.2-11.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/i/intel-npu-firmware-20261019-1.fc44.noarch.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/i/intel-npu-firmware-20261124-1.fc44.noarch.rpm
     repoid: updates
-    size: 996371
-    checksum: sha256:c92af7cf481c9331af6305605f361d73b46136a6eb7a9a8a4706407a9c13343e
+    size: 1247127
+    checksum: sha256:d29cd5f2fa2f2f3f5231ce4a2cc4d4b111058fbb259f43e2243d79264b582b76
     name: intel-npu-firmware
-    evr: 20261019-1.fc44
-    sourcerpm: linux-firmware-20261019-1.fc44.src.rpm
+    evr: 20261124-1.fc44
+    sourcerpm: linux-firmware-20261124-1.fc44.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/i/intel-qpl-1.9.0-3.fc44.x86_64.rpm
     repoid: updates
     size: 256917
@@ -5345,20 +5345,20 @@ arches:
     name: linkdupes
     evr: 0.7.3-2.fc44
     sourcerpm: rust-add-determinism-0.7.3-2.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/l/linux-firmware-20261019-1.fc44.noarch.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/l/linux-firmware-20261124-1.fc44.noarch.rpm
     repoid: updates
-    size: 36626624
-    checksum: sha256:d9e092688eee53cd784aef11bf9931ed76529a3938c6c8300fc646d0bc10348f
+    size: 37308539
+    checksum: sha256:8abe7cb262b63b27030faaaee5e4062a5079292c03449545a8fdd221f8640bf5
     name: linux-firmware
-    evr: 20261019-1.fc44
-    sourcerpm: linux-firmware-20261019-1.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/l/linux-firmware-whence-20261019-1.fc44.noarch.rpm
+    evr: 20261124-1.fc44
+    sourcerpm: linux-firmware-20261124-1.fc44.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/l/linux-firmware-whence-20261124-1.fc44.noarch.rpm
     repoid: updates
-    size: 78442
-    checksum: sha256:ef06b0430b6de48f7381cac6dc7b239e6aa9188fc25ab8df08e2cdbb07755eee
+    size: 85044
+    checksum: sha256:d0441d7e71a7fcd77d21729050a85cea1e888d129c4b07eecee9ae2c86c6b550
     name: linux-firmware-whence
-    evr: 20261019-1.fc44
-    sourcerpm: linux-firmware-20261019-1.fc44.src.rpm
+    evr: 20261124-1.fc44
+    sourcerpm: linux-firmware-20261124-1.fc44.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/l/llvm-filesystem-22.1.8-4.fc44.x86_64.rpm
     repoid: updates
     size: 10255
@@ -5429,13 +5429,13 @@ arches:
     name: mesa-libgbm
     evr: 26.2.7-1.fc44
     sourcerpm: mesa-26.2.7-1.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/m/mt7xxx-firmware-20261019-1.fc44.noarch.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/m/mt7xxx-firmware-20261124-1.fc44.noarch.rpm
     repoid: updates
-    size: 32063074
-    checksum: sha256:2881ce35a7306cdce9d29185af61efc72a7944c7f4799f1cf1c18d5efe8141a9
+    size: 32063551
+    checksum: sha256:14656da2686c6c26db79c2e5ef68f35d4d763f6de9545cd14886ee5b5c94517c
     name: mt7xxx-firmware
-    evr: 20261019-1.fc44
-    sourcerpm: linux-firmware-20261019-1.fc44.src.rpm
+    evr: 20261124-1.fc44
+    sourcerpm: linux-firmware-20261124-1.fc44.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/m/mtools-4.0.50-1.fc44.x86_64.rpm
     repoid: updates
     size: 229850
@@ -5604,20 +5604,20 @@ arches:
     name: ntfsprogs
     evr: 2:2026.2.25-1.fc44
     sourcerpm: ntfs-3g-2026.2.25-1.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/n/nvidia-gpu-firmware-20261019-1.fc44.noarch.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/n/nvidia-gpu-firmware-20261124-1.fc44.noarch.rpm
     repoid: updates
-    size: 104080671
-    checksum: sha256:bb02043e2be7b632a027ff1d0abaa65d3d03ab2bf893f0dab7b36b367ddc94a1
+    size: 104085647
+    checksum: sha256:025a79f4b397d0f53e2e0cdb816e0360d25b095f6f5d60ab87efcf56663512fa
     name: nvidia-gpu-firmware
-    evr: 20261019-1.fc44
-    sourcerpm: linux-firmware-20261019-1.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/n/nxpwireless-firmware-20261019-1.fc44.noarch.rpm
+    evr: 20261124-1.fc44
+    sourcerpm: linux-firmware-20261124-1.fc44.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/n/nxpwireless-firmware-20261124-1.fc44.noarch.rpm
     repoid: updates
-    size: 1630004
-    checksum: sha256:d06634382c7a5427be86c9041f784cde5760a47281ca87483077e3bc229f1d56
+    size: 2248225
+    checksum: sha256:7d249ed98197a969accb1920a753c8c4b2c9925638ef011623dd3c7320858a2f
     name: nxpwireless-firmware
-    evr: 20261019-1.fc44
-    sourcerpm: linux-firmware-20261019-1.fc44.src.rpm
+    evr: 20261124-1.fc44
+    sourcerpm: linux-firmware-20261124-1.fc44.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/o/openapv-libs-1.1.3.0-1.fc44.x86_64.rpm
     repoid: updates
     size: 81424
@@ -5996,55 +5996,55 @@ arches:
     name: perl-vars
     evr: 1.05-525.fc44
     sourcerpm: perl-5.42.3-525.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/p/pipewire-1.6.11-1.fc44.x86_64.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/p/pipewire-1.6.12-1.fc44.x86_64.rpm
     repoid: updates
-    size: 144824
-    checksum: sha256:eb9d5f9f0921d6c45f9edb59e149c53c9ff960d6d500f6eb2c265aa626e668fb
+    size: 145514
+    checksum: sha256:7802b15efff7de3ad08186459b399f8c7fa712d74e7c5bb6f970cc9d640828d6
     name: pipewire
-    evr: 1.6.11-1.fc44
-    sourcerpm: pipewire-1.6.11-1.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/p/pipewire-alsa-1.6.11-1.fc44.x86_64.rpm
+    evr: 1.6.12-1.fc44
+    sourcerpm: pipewire-1.6.12-1.fc44.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/p/pipewire-alsa-1.6.12-1.fc44.x86_64.rpm
     repoid: updates
-    size: 65685
-    checksum: sha256:49e22a2533c04ced61aa8a5534d8326ad34b0b61c588aae1dc31153619c5aa80
+    size: 65858
+    checksum: sha256:7cb56fa042d56ad9238abaacea64a90cd73763674068c00bd825c73a7f2a1f04
     name: pipewire-alsa
-    evr: 1.6.11-1.fc44
-    sourcerpm: pipewire-1.6.11-1.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/p/pipewire-jack-audio-connection-kit-1.6.11-1.fc44.x86_64.rpm
+    evr: 1.6.12-1.fc44
+    sourcerpm: pipewire-1.6.12-1.fc44.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/p/pipewire-jack-audio-connection-kit-1.6.12-1.fc44.x86_64.rpm
     repoid: updates
-    size: 12250
-    checksum: sha256:c0886888cda479d755d8b7a5196af55e996cab46322419f48ac2a0577f49252a
+    size: 12434
+    checksum: sha256:970d12e07b99fb92a137fb07ac7e901e9f4fecabc71631791767116c5388a9a0
     name: pipewire-jack-audio-connection-kit
-    evr: 1.6.11-1.fc44
-    sourcerpm: pipewire-1.6.11-1.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/p/pipewire-jack-audio-connection-kit-libs-1.6.11-1.fc44.x86_64.rpm
+    evr: 1.6.12-1.fc44
+    sourcerpm: pipewire-1.6.12-1.fc44.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/p/pipewire-jack-audio-connection-kit-libs-1.6.12-1.fc44.x86_64.rpm
     repoid: updates
-    size: 154874
-    checksum: sha256:6025a8d7ba2acbfe54007c227ead62b82cd9fb13fc04f25f2ead7a60e4e81f9f
+    size: 155732
+    checksum: sha256:75dbe40e71d161a1b079700ca19cb51d2e97d0c9b1bbec7083c42ab266689610
     name: pipewire-jack-audio-connection-kit-libs
-    evr: 1.6.11-1.fc44
-    sourcerpm: pipewire-1.6.11-1.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/p/pipewire-libs-1.6.11-1.fc44.x86_64.rpm
+    evr: 1.6.12-1.fc44
+    sourcerpm: pipewire-1.6.12-1.fc44.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/p/pipewire-libs-1.6.12-1.fc44.x86_64.rpm
     repoid: updates
-    size: 2779549
-    checksum: sha256:42231bc1667a0ccb0e43b9f845382701899fc451aac17c80124ea1aa2d88f7e6
+    size: 2788378
+    checksum: sha256:0eed22054440c8f920d895aaf8da3f9e6aabb854762a21be990102d8ca30ff8f
     name: pipewire-libs
-    evr: 1.6.11-1.fc44
-    sourcerpm: pipewire-1.6.11-1.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/p/pipewire-plugin-libcamera-1.6.11-1.fc44.x86_64.rpm
+    evr: 1.6.12-1.fc44
+    sourcerpm: pipewire-1.6.12-1.fc44.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/p/pipewire-plugin-libcamera-1.6.12-1.fc44.x86_64.rpm
     repoid: updates
-    size: 77211
-    checksum: sha256:0aafa7b0520b5358a9f9bdc609f27ac31da1fbbe6e1ee459b7c495f2760f19e9
+    size: 77396
+    checksum: sha256:e8b10091e98eb29ab5c97ec0f7641a5d92b22e71655b02dc149667c732c12a86
     name: pipewire-plugin-libcamera
-    evr: 1.6.11-1.fc44
-    sourcerpm: pipewire-1.6.11-1.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/p/pipewire-pulseaudio-1.6.11-1.fc44.x86_64.rpm
+    evr: 1.6.12-1.fc44
+    sourcerpm: pipewire-1.6.12-1.fc44.src.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/p/pipewire-pulseaudio-1.6.12-1.fc44.x86_64.rpm
     repoid: updates
-    size: 226120
-    checksum: sha256:5a8dbaf65df602ac9c1ad6e0355cd19bf58e9fbe7f2f95a531dcee8a083b2480
+    size: 230909
+    checksum: sha256:581ebcf11cc5219266d34ae783b0cd118c9ae238ccec9401cbb2b9f1d1e1437d
     name: pipewire-pulseaudio
-    evr: 1.6.11-1.fc44
-    sourcerpm: pipewire-1.6.11-1.fc44.src.rpm
+    evr: 1.6.12-1.fc44
+    sourcerpm: pipewire-1.6.12-1.fc44.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/p/podman-5.8.9-1.fc44.x86_64.rpm
     repoid: updates
     size: 16120962
@@ -6479,13 +6479,13 @@ arches:
     name: qatzip-libs
     evr: 2.0.0-1.fc44
     sourcerpm: qatzip-2.0.0-1.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/q/qcom-wwan-firmware-20261019-1.fc44.noarch.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/q/qcom-wwan-firmware-20261124-1.fc44.noarch.rpm
     repoid: updates
-    size: 775694
-    checksum: sha256:eb95dbdc13de16a8cd604a48021427efb718baec5793331f29b0ed5aaec61789
+    size: 780573
+    checksum: sha256:6c2763c918e2d8e5af00690e26463ae06a024012ecbae6b61a9aa11c0c4af8a9
     name: qcom-wwan-firmware
-    evr: 20261019-1.fc44
-    sourcerpm: linux-firmware-20261019-1.fc44.src.rpm
+    evr: 20261124-1.fc44
+    sourcerpm: linux-firmware-20261124-1.fc44.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/q/qt6-srpm-macros-6.11.2-1.fc44.noarch.rpm
     repoid: updates
     size: 9297
@@ -6507,13 +6507,13 @@ arches:
     name: rdma-core-common
     evr: 61.1^20260812git975bdaf-1.fc44
     sourcerpm: rdma-core-61.1^20260812git975bdaf-1.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/r/realtek-firmware-20261019-1.fc44.noarch.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/r/realtek-firmware-20261124-1.fc44.noarch.rpm
     repoid: updates
-    size: 7760424
-    checksum: sha256:6c53f6016df0a8ffe097d0aa9d8cc30b7f669a964384edb0814d33101b380075
+    size: 7783916
+    checksum: sha256:dd9492e2045334d2a4c81ee07a6932616e065bb15633b097634c12a59be9bc52
     name: realtek-firmware
-    evr: 20261019-1.fc44
-    sourcerpm: linux-firmware-20261019-1.fc44.src.rpm
+    evr: 20261124-1.fc44
+    sourcerpm: linux-firmware-20261124-1.fc44.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/r/redhat-rpm-config-344-3.fc44.noarch.rpm
     repoid: updates
     size: 78833
@@ -6822,13 +6822,13 @@ arches:
     name: tinysparql
     evr: 3.11.1-1.fc44
     sourcerpm: tinysparql-3.11.1-1.fc44.src.rpm
-  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/t/tiwilink-firmware-20261019-1.fc44.noarch.rpm
+  - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/t/tiwilink-firmware-20261124-1.fc44.noarch.rpm
     repoid: updates
-    size: 4850752
-    checksum: sha256:d879fbda850b71fcb90e6fa8994daaad4669f3f892c977f4e9bfdf2cc7e27d9a
+    size: 4855621
+    checksum: sha256:e1cf658c808074c79c123230e2528d00cb7a00773616f5dbf7ab2b65179a8005
     name: tiwilink-firmware
-    evr: 20261019-1.fc44
-    sourcerpm: linux-firmware-20261019-1.fc44.src.rpm
+    evr: 20261124-1.fc44
+    sourcerpm: linux-firmware-20261124-1.fc44.src.rpm
   - url: https://download-ib01.fedoraproject.org/pub/fedora/linux/updates/44/Everything/x86_64/Packages/t/tmux-3.8-2.fc44.x86_64.rpm
     repoid: updates
     size: 723692
