@@ -240,7 +240,7 @@ func (a *API) CreateInstances(name, keyname, userdata string, count uint64, minD
 		return true, nil
 	})
 	if err != nil {
-		if errTerminate := a.TerminateInstances(ids); errTerminate != nil {
+		if errTerminate := a.TerminateInstances(context.Background(), ids); errTerminate != nil {
 			return nil, fmt.Errorf("terminating instances failed: %v after instances failed to run: %v", errTerminate, err)
 		}
 		return nil, fmt.Errorf("waiting for instances to run: %v", err)
@@ -310,11 +310,11 @@ func (a *API) gcEC2(gracePeriod time.Duration) error {
 		}
 	}
 
-	return a.TerminateInstances(toTerminate)
+	return a.TerminateInstances(context.Background(), toTerminate)
 }
 
 // TerminateInstances schedules EC2 instances to be terminated.
-func (a *API) TerminateInstances(ids []string) error {
+func (a *API) TerminateInstances(ctx context.Context, ids []string) error {
 	if len(ids) == 0 {
 		return nil
 	}
@@ -322,7 +322,7 @@ func (a *API) TerminateInstances(ids []string) error {
 		InstanceIds: ids,
 	}
 
-	if _, err := a.ec2.TerminateInstances(context.Background(), input); err != nil {
+	if _, err := a.ec2.TerminateInstances(ctx, input); err != nil {
 		return err
 	}
 
@@ -400,4 +400,179 @@ func (a *API) GetZonesForInstanceType(instanceType string) ([]string, error) {
 		zones = append(zones, *v.Location)
 	}
 	return zones, nil
+}
+
+// keepalivePurpose tags keepalive instances.
+const keepalivePurpose = "ami-keepalive"
+
+// keepaliveRunTimeout bounds a single RunInstances call, including SDK retries.
+const keepaliveRunTimeout = 30 * time.Second
+
+// ErrInstanceQuotaExceeded signals a regional on-demand quota limit.
+var ErrInstanceQuotaExceeded = errors.New("on-demand instance quota exceeded")
+
+// ErrNoDefaultVPC means the region has no default VPC to launch into.
+// Keepalive instances deliberately never create network infrastructure, so
+// this is fatal for the whole region rather than something to work around.
+var ErrNoDefaultVPC = errors.New("region has no default VPC")
+
+// Prefer inexpensive Nitro types for UEFI support, with a second-family fallback.
+var keepaliveInstanceTypes = map[ec2types.ArchitectureValues][]string{
+	ec2types.ArchitectureValuesX8664: {"t3.micro", "m6i.large"},
+	ec2types.ArchitectureValuesArm64: {"t4g.micro", "m6g.medium"},
+}
+
+// LaunchKeepaliveInstance returns a throwaway instance's ID and type.
+// The caller must terminate it; no guest reachability check is performed.
+//
+// Launches into the region's default VPC and never creates network
+// infrastructure of its own. Region-wide failures wrap ErrInstanceQuotaExceeded
+// or ErrNoDefaultVPC so callers can stop early.
+func (a *API) LaunchKeepaliveInstance(imageID string, arch ec2types.ArchitectureValues) (string, string, error) {
+	types := keepaliveInstanceTypes[arch]
+	if len(types) == 0 {
+		return "", "", fmt.Errorf("no keepalive instance types known for architecture %q", string(arch))
+	}
+
+	var attempts []string
+	for _, instanceType := range types {
+		res, err := a.runKeepaliveInstance(imageID, instanceType)
+		if err == nil {
+			if res == nil || len(res.Instances) == 0 || res.Instances[0].InstanceId == nil {
+				return "", "", fmt.Errorf("launching keepalive instance from %v: no instance returned", imageID)
+			}
+			return *res.Instances[0].InstanceId, instanceType, nil
+		}
+		attempts = append(attempts, fmt.Sprintf("%v: %v", instanceType, err))
+		if isNoDefaultVPCError(err) {
+			// Every other instance type and AMI would fail identically.
+			return "", "", fmt.Errorf("launching keepalive instance from %v: %w; create one with "+
+				"\"aws ec2 create-default-vpc --region %v\": %v",
+				imageID, ErrNoDefaultVPC, a.opts.Region, strings.Join(attempts, "; "))
+		}
+		if isInstanceQuotaError(err) {
+			// Fallback types share the quota and require at least as many vCPUs.
+			return "", "", fmt.Errorf("launching keepalive instance from %v: %w: %v",
+				imageID, ErrInstanceQuotaExceeded, strings.Join(attempts, "; "))
+		}
+		if !isUnusableInstanceTypeError(err) {
+			break
+		}
+		plog.Debugf("keepalive instance type %v unusable in %v: %v", instanceType, a.opts.Region, err)
+	}
+	return "", "", fmt.Errorf("launching keepalive instance from %v: %v", imageID, strings.Join(attempts, "; "))
+}
+
+// runKeepaliveInstance makes one bounded RunInstances call against the
+// region's default VPC. The SDK supplies the idempotency token that makes its
+// own retries safe.
+func (a *API) runKeepaliveInstance(imageID, instanceType string) (*ec2.RunInstancesOutput, error) {
+	tags := []ec2types.Tag{
+		{Key: aws.String("Name"), Value: aws.String(keepalivePurpose + "-" + imageID)},
+		{Key: aws.String("CreatedBy"), Value: aws.String("mantle")},
+		{Key: aws.String("Purpose"), Value: aws.String(keepalivePurpose)},
+	}
+	input := ec2.RunInstancesInput{
+		ImageId:      aws.String(imageID),
+		InstanceType: ec2types.InstanceType(instanceType),
+		MinCount:     aws.Int32(1),
+		MaxCount:     aws.Int32(1),
+		TagSpecifications: []ec2types.TagSpecification{
+			{ResourceType: ec2types.ResourceTypeInstance, Tags: tags},
+			{ResourceType: ec2types.ResourceTypeVolume, Tags: tags},
+		},
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), keepaliveRunTimeout)
+	defer cancel()
+	return a.ec2.RunInstances(ctx, &input)
+}
+
+// isUnusableInstanceTypeError identifies failures worth trying another type for.
+func isUnusableInstanceTypeError(err error) bool {
+	var ae smithy.APIError
+	if !errors.As(err, &ae) {
+		return false
+	}
+	switch ae.ErrorCode() {
+	case "Unsupported", "InvalidInstanceType", "InsufficientInstanceCapacity":
+		return true
+	}
+	return false
+}
+
+func isNoDefaultVPCError(err error) bool {
+	var ae smithy.APIError
+	if !errors.As(err, &ae) {
+		return false
+	}
+	switch ae.ErrorCode() {
+	case "VPCIdNotSpecified", "DefaultVpcDoesNotExist":
+		return true
+	}
+	return false
+}
+
+func isInstanceQuotaError(err error) bool {
+	var ae smithy.APIError
+	if !errors.As(err, &ae) {
+		return false
+	}
+	switch ae.ErrorCode() {
+	case "VcpuLimitExceeded", "InstanceLimitExceeded":
+		return true
+	}
+	return false
+}
+
+// WaitForInstancesRunning returns startup failures by instance ID (empty on success).
+// The error reports cancellation or a failed state lookup.
+func (a *API) WaitForInstancesRunning(ctx context.Context, ids []string, timeout time.Duration) (map[string]error, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	input := &ec2.DescribeInstancesInput{InstanceIds: ids}
+	// The SDK waiter retries InvalidInstanceID.NotFound for eventual consistency.
+	waiter := ec2.NewInstanceRunningWaiter(a.ec2, func(o *ec2.InstanceRunningWaiterOptions) {
+		o.MinDelay = 10 * time.Second
+	})
+	if err := waiter.Wait(ctx, input, timeout); err == nil {
+		return nil, nil
+	} else if ctx.Err() != nil {
+		return nil, fmt.Errorf("waiting for instances to start: %v", err)
+	}
+
+	// Fetch per-instance failure details after the batch wait fails.
+	desc, err := a.ec2.DescribeInstances(ctx, input)
+	if err != nil {
+		return nil, fmt.Errorf("describing instances that failed to start: %v", err)
+	}
+	failures := map[string]error{}
+	seen := map[string]bool{}
+	for _, reservation := range desc.Reservations {
+		for _, inst := range reservation.Instances {
+			if inst.InstanceId == nil {
+				continue
+			}
+			seen[*inst.InstanceId] = true
+			var state ec2types.InstanceStateName
+			if inst.State != nil {
+				state = inst.State.Name
+			}
+			if state == ec2types.InstanceStateNameRunning {
+				continue
+			}
+			reason := "no reason given"
+			if inst.StateReason != nil && inst.StateReason.Message != nil {
+				reason = *inst.StateReason.Message
+			}
+			failures[*inst.InstanceId] = fmt.Errorf("instance is %q: %s", string(state), reason)
+		}
+	}
+	for _, id := range ids {
+		if !seen[id] {
+			failures[id] = errors.New("instance not found")
+		}
+	}
+	return failures, nil
 }
